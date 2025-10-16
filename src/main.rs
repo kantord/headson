@@ -1,4 +1,4 @@
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
@@ -28,10 +28,10 @@ fn main() -> Result<()> {
         .context("failed to read from stdin")?;
 
     let value = headson::parse_json(&buffer, cli.budget).context("failed to parse JSON from stdin")?;
-
-    // Always emit debug walk to stderr
+    // Build a priority queue (debugging purpose: dump a concise summary to stderr)
+    let pq = headson::build_priority_queue(&value).context("failed to build priority queue")?;
     let mut stderr = io::stderr();
-    headson::write_debug(&value, &mut stderr).context("failed to write debug output")?;
+    writeln!(stderr, "queue_size={}", pq.len()).ok();
 
     let template = match cli.template {
         Template::Json => headson::OutputTemplate::Json,

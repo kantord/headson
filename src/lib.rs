@@ -2,6 +2,7 @@ use anyhow::Result;
 use serde_json::Value;
 use unicode_segmentation::UnicodeSegmentation;
 use fib_rs::Fib;
+use priority_queue::PriorityQueue;
 
 pub fn parse_json(input: &str, budget: usize) -> Result<Value> {
     let parsed_value: Value = serde_json::from_str(input)?;
@@ -54,7 +55,30 @@ pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
     Ok(out)
 }
 
-pub fn write_debug<W: std::io::Write>(value: &Value, writer: &mut W) -> Result<()> {
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct NodeId(pub usize);
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct ParentId(pub Option<usize>);
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum NodeKind { Null, Bool, Number, String, Array, Object }
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct NodePathSegment { pub index_in_array: Option<usize> }
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct QueueItem {
+    pub node_id: NodeId,
+    pub parent_id: ParentId,
+    pub kind: NodeKind,
+    pub depth: usize,
+    pub index_in_array: Option<usize>,
+    pub priority: usize,
+    pub value_repr: String,
+}
+
+pub fn build_priority_queue(value: &Value) -> Result<PriorityQueue<QueueItem, usize>> {
     fn node_type_of(value: &Value) -> &'static str {
         match value {
             Value::Null => "null",
@@ -89,21 +113,28 @@ pub fn write_debug<W: std::io::Write>(value: &Value, writer: &mut W) -> Result<(
         }
     }
 
-    fn walk<W: std::io::Write>(
+    fn to_kind(value: &Value) -> NodeKind {
+        match value {
+            Value::Null => NodeKind::Null,
+            Value::Bool(_) => NodeKind::Bool,
+            Value::Number(_) => NodeKind::Number,
+            Value::String(_) => NodeKind::String,
+            Value::Array(_) => NodeKind::Array,
+            Value::Object(_) => NodeKind::Object,
+        }
+    }
+
+    fn walk(
         value: &Value,
         parent_id: Option<usize>,
         depth: usize,
         index_in_array: Option<usize>,
         next_id: &mut usize,
-        writer: &mut W,
+        pq: &mut PriorityQueue<QueueItem, usize>,
         expand_strings: bool,
     ) -> Result<usize> {
         let my_id = *next_id;
         *next_id += 1;
-        let parent_repr = parent_id.map(|p| p.to_string()).unwrap_or_else(|| "-".to_string());
-        let idx_repr = index_in_array.map(|i| format!(" index={}", i)).unwrap_or_else(|| "".to_string());
-        // unused placeholder (left for future improvements)
-        // fn fib_at(n: usize) -> u128 { Fib::single(n as u128).try_into().unwrap_or(0u128) }
         let priority = match index_in_array {
             Some(i) => {
                 let fib = fib_rs::Fib::single(i as u128);
@@ -113,34 +144,33 @@ pub fn write_debug<W: std::io::Write>(value: &Value, writer: &mut W) -> Result<(
             }
             None => depth,
         };
-        writeln!(
-            writer,
-            "id={} type={} parent={} depth={}{} priority={} value=",
-            my_id,
-            node_type_of(value),
-            parent_repr,
+        let item = QueueItem {
+            node_id: NodeId(my_id),
+            parent_id: ParentId(parent_id),
+            kind: to_kind(value),
             depth,
-            idx_repr,
-            priority
-        )?;
-        writeln!(writer, "{}", value_repr(value))?;
+            index_in_array,
+            priority,
+            value_repr: value_repr(value),
+        };
+        pq.push(item, priority);
 
         match value {
             Value::Array(items) => {
                 for (i, item) in items.iter().enumerate() {
-                    walk(item, Some(my_id), depth + 1, Some(i), next_id, writer, true)?;
+                    walk(item, Some(my_id), depth + 1, Some(i), next_id, pq, true)?;
                 }
             }
             Value::Object(map) => {
                 for (_k, v) in map.iter() {
-                    walk(v, Some(my_id), depth + 1, None, next_id, writer, true)?;
+                    walk(v, Some(my_id), depth + 1, None, next_id, pq, true)?;
                 }
             }
             Value::String(s) => {
                 if expand_strings {
                     for (i, g) in unicode_segmentation::UnicodeSegmentation::graphemes(s.as_str(), true).enumerate() {
                         let ch_value = Value::String(g.to_string());
-                        walk(&ch_value, Some(my_id), depth + 1, Some(i), next_id, writer, false)?;
+                        walk(&ch_value, Some(my_id), depth + 1, Some(i), next_id, pq, false)?;
                     }
                 }
             }
@@ -151,6 +181,7 @@ pub fn write_debug<W: std::io::Write>(value: &Value, writer: &mut W) -> Result<(
     }
 
     let mut next_id = 0usize;
-    walk(value, None, 0, None, &mut next_id, writer, true)?;
-    Ok(())
+    let mut pq: PriorityQueue<QueueItem, usize> = PriorityQueue::new();
+    walk(value, None, 0, None, &mut next_id, &mut pq, true)?;
+    Ok(pq)
 }

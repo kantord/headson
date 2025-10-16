@@ -13,4 +13,5 @@ unicode-segmentation = "1.12.0"
 fib-rs = "*"
 
 [dev-dependencies]
+insta = "1.40.0"
 assert_cmd = "2"
