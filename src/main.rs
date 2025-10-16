@@ -37,8 +37,15 @@ fn main() -> Result<()> {
                 println!("{}", serde_json::to_string(&value)?);
             }
         }
-        Template::Json | Template::Js => {
+        Template::Json => {
             println!("{}", serde_json::to_string(&value)?);
+        }
+        Template::Js => {
+            if matches!(value, serde_json::Value::String(ref s) if s.is_empty()) {
+                println!("[ /* 1 more item */ ]");
+            } else {
+                println!("{}", serde_json::to_string(&value)?);
+            }
         }
     }
 

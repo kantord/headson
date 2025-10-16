@@ -23,13 +23,13 @@ fn prints_empty_object_compact() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn budget_10_and_single_15_char_string_returns_empty_string() -> Result<(), Box<dyn std::error::Error>> {
+fn budget_10_and_single_15_char_string_returns_js_comment_array() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("headson")?;
-    cmd.arg("-f").arg("json").arg("-n").arg("10")
+    cmd.arg("-f").arg("js").arg("-n").arg("10")
         .write_stdin("[\"123456789012345\"]")
         .assert()
         .success()
-        .stdout("\"\"\n");
+        .stdout("[ /* 1 more item */ ]\n");
     Ok(())
 }
 
