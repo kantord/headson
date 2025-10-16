@@ -29,7 +29,7 @@ fn budget_10_and_single_15_char_string_returns_js_comment_array() -> Result<(), 
         .write_stdin("[\"123456789012345\"]")
         .assert()
         .success()
-        .stdout("[ /* 1 more item */ ]\n");
+        .stdout("[\n  /* 1 more item */\n]\n");
     Ok(())
 }
 
@@ -40,7 +40,7 @@ fn pseudo_budget_10_and_single_15_char_string_prints_ellipsis_array() -> Result<
         .write_stdin("[\"123456789012345\"]")
         .assert()
         .success()
-        .stdout("[ … ]\n");
+        .stdout("[\n  …\n]\n");
     Ok(())
 }
 
@@ -51,7 +51,7 @@ fn pseudo_budget_50_and_single_15_char_string_returns_entire_array() -> Result<(
         .write_stdin("[\"123456789012345\"]")
         .assert()
         .success()
-        .stdout("[\"123456789012345\"]\n");
+        .stdout("[\n  \"123456789012345\"\n]\n");
     Ok(())
 }
 
@@ -62,6 +62,6 @@ fn budget_50_and_single_15_char_string_returns_entire_array() -> Result<(), Box<
         .write_stdin("[\"123456789012345\"]")
         .assert()
         .success()
-        .stdout("[\"123456789012345\"]\n");
+        .stdout("[\n  \"123456789012345\"\n]\n");
     Ok(())
 }

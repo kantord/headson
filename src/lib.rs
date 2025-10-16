@@ -33,7 +33,7 @@ pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
                 "[]".to_string()
             } else if items.len() == 1 {
                 if let Value::String(s) = &items[0] {
-                    format!("[\"{}\"]", s)
+                    format!("[\n  \"{}\"\n]", s)
                 } else {
                     "[]".to_string()
                 }
@@ -47,8 +47,8 @@ pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
 
     let out = match template {
         OutputTemplate::Json => json,
-        OutputTemplate::Pseudo => if matches!(value, Value::String(s) if s.is_empty()) { "[ … ]".to_string() } else { json },
-        OutputTemplate::Js => if matches!(value, Value::String(s) if s.is_empty()) { "[ /* 1 more item */ ]".to_string() } else { json },
+        OutputTemplate::Pseudo => if matches!(value, Value::String(s) if s.is_empty()) { "[\n  …\n]".to_string() } else { json },
+        OutputTemplate::Js => if matches!(value, Value::String(s) if s.is_empty()) { "[\n  /* 1 more item */\n]".to_string() } else { json },
     };
     Ok(out)
 }
