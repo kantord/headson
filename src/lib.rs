@@ -95,6 +95,7 @@ pub fn write_debug<W: std::io::Write>(value: &Value, writer: &mut W) -> Result<(
         index_in_array: Option<usize>,
         next_id: &mut usize,
         writer: &mut W,
+        expand_strings: bool,
     ) -> Result<usize> {
         let my_id = *next_id;
         *next_id += 1;
@@ -114,12 +115,20 @@ pub fn write_debug<W: std::io::Write>(value: &Value, writer: &mut W) -> Result<(
         match value {
             Value::Array(items) => {
                 for (i, item) in items.iter().enumerate() {
-                    walk(item, Some(my_id), depth + 1, Some(i), next_id, writer)?;
+                    walk(item, Some(my_id), depth + 1, Some(i), next_id, writer, true)?;
                 }
             }
             Value::Object(map) => {
                 for (_k, v) in map.iter() {
-                    walk(v, Some(my_id), depth + 1, None, next_id, writer)?;
+                    walk(v, Some(my_id), depth + 1, None, next_id, writer, true)?;
+                }
+            }
+            Value::String(s) => {
+                if expand_strings {
+                    for (i, g) in unicode_segmentation::UnicodeSegmentation::graphemes(s.as_str(), true).enumerate() {
+                        let ch_value = Value::String(g.to_string());
+                        walk(&ch_value, Some(my_id), depth + 1, Some(i), next_id, writer, false)?;
+                    }
                 }
             }
             _ => {}
@@ -129,6 +138,6 @@ pub fn write_debug<W: std::io::Write>(value: &Value, writer: &mut W) -> Result<(
     }
 
     let mut next_id = 0usize;
-    walk(value, None, 0, None, &mut next_id, writer)?;
+    walk(value, None, 0, None, &mut next_id, writer, true)?;
     Ok(())
 }
