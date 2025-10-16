@@ -29,6 +29,10 @@ fn main() -> Result<()> {
 
     let value = headson::parse_json(&buffer, cli.budget).context("failed to parse JSON from stdin")?;
 
+    // Always emit debug walk to stderr
+    let mut stderr = io::stderr();
+    headson::write_debug(&value, &mut stderr).context("failed to write debug output")?;
+
     let template = match cli.template {
         Template::Json => headson::OutputTemplate::Json,
         Template::Pseudo => headson::OutputTemplate::Pseudo,
