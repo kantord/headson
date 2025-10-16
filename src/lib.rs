@@ -18,3 +18,30 @@ pub fn parse_json(input: &str, budget: usize) -> Result<Value> {
 
     Ok(parsed_value)
 }
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum OutputTemplate {
+    Json,
+    Pseudo,
+    Js,
+}
+
+pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
+    match template {
+        OutputTemplate::Json => Ok(serde_json::to_string(value)?),
+        OutputTemplate::Pseudo => {
+            if matches!(value, Value::String(s) if s.is_empty()) {
+                Ok("[ … ]".to_string())
+            } else {
+                Ok(serde_json::to_string(value)?)
+            }
+        }
+        OutputTemplate::Js => {
+            if matches!(value, Value::String(s) if s.is_empty()) {
+                Ok("[ /* 1 more item */ ]".to_string())
+            } else {
+                Ok(serde_json::to_string(value)?)
+            }
+        }
+    }
+}

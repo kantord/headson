@@ -29,25 +29,14 @@ fn main() -> Result<()> {
 
     let value = headson::parse_json(&buffer, cli.budget).context("failed to parse JSON from stdin")?;
 
-    match cli.template {
-        Template::Pseudo => {
-            if matches!(value, serde_json::Value::String(ref s) if s.is_empty()) {
-                println!("[ … ]");
-            } else {
-                println!("{}", serde_json::to_string(&value)?);
-            }
-        }
-        Template::Json => {
-            println!("{}", serde_json::to_string(&value)?);
-        }
-        Template::Js => {
-            if matches!(value, serde_json::Value::String(ref s) if s.is_empty()) {
-                println!("[ /* 1 more item */ ]");
-            } else {
-                println!("{}", serde_json::to_string(&value)?);
-            }
-        }
-    }
+    let template = match cli.template {
+        Template::Json => headson::OutputTemplate::Json,
+        Template::Pseudo => headson::OutputTemplate::Pseudo,
+        Template::Js => headson::OutputTemplate::Js,
+    };
+
+    let output = headson::format_value(&value, template)?;
+    println!("{}", output);
 
     Ok(())
 }
