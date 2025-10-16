@@ -27,21 +27,28 @@ pub enum OutputTemplate {
 }
 
 pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
-    match template {
-        OutputTemplate::Json => Ok(serde_json::to_string(value)?),
-        OutputTemplate::Pseudo => {
-            if matches!(value, Value::String(s) if s.is_empty()) {
-                Ok("[ … ]".to_string())
+    let json = match value {
+        Value::Array(items) => {
+            if items.is_empty() {
+                "[]".to_string()
+            } else if items.len() == 1 {
+                if let Value::String(s) = &items[0] {
+                    format!("[\"{}\"]", s)
+                } else {
+                    "[]".to_string()
+                }
             } else {
-                Ok(serde_json::to_string(value)?)
+                "[]".to_string()
             }
         }
-        OutputTemplate::Js => {
-            if matches!(value, Value::String(s) if s.is_empty()) {
-                Ok("[ /* 1 more item */ ]".to_string())
-            } else {
-                Ok(serde_json::to_string(value)?)
-            }
-        }
-    }
+        Value::Object(_) => "{}".to_string(),
+        _ => "[]".to_string(),
+    };
+
+    let out = match template {
+        OutputTemplate::Json => json,
+        OutputTemplate::Pseudo => if matches!(value, Value::String(s) if s.is_empty()) { "[ … ]".to_string() } else { json },
+        OutputTemplate::Js => if matches!(value, Value::String(s) if s.is_empty()) { "[ /* 1 more item */ ]".to_string() } else { json },
+    };
+    Ok(out)
 }
