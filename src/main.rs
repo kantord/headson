@@ -28,7 +28,19 @@ fn main() -> Result<()> {
         .context("failed to read from stdin")?;
 
     let value = headson::parse_json(&buffer, cli.budget).context("failed to parse JSON from stdin")?;
-    println!("{}", serde_json::to_string(&value)?);
+
+    match cli.template {
+        Template::Pseudo => {
+            if matches!(value, serde_json::Value::String(ref s) if s.is_empty()) {
+                println!("[ … ]");
+            } else {
+                println!("{}", serde_json::to_string(&value)?);
+            }
+        }
+        Template::Json | Template::Js => {
+            println!("{}", serde_json::to_string(&value)?);
+        }
+    }
 
     Ok(())
 }

@@ -34,6 +34,28 @@ fn budget_10_and_single_15_char_string_returns_empty_string() -> Result<(), Box<
 }
 
 #[test]
+fn pseudo_budget_10_and_single_15_char_string_prints_ellipsis_array() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("headson")?;
+    cmd.arg("-f").arg("pseudo").arg("-n").arg("10")
+        .write_stdin("[\"123456789012345\"]")
+        .assert()
+        .success()
+        .stdout("[ … ]\n");
+    Ok(())
+}
+
+#[test]
+fn pseudo_budget_50_and_single_15_char_string_returns_entire_array() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("headson")?;
+    cmd.arg("-f").arg("pseudo").arg("-n").arg("50")
+        .write_stdin("[\"123456789012345\"]")
+        .assert()
+        .success()
+        .stdout("[\"123456789012345\"]\n");
+    Ok(())
+}
+
+#[test]
 fn budget_50_and_single_15_char_string_returns_entire_array() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("headson")?;
     cmd.arg("-f").arg("json").arg("-n").arg("50")
