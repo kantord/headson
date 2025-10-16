@@ -1,6 +1,7 @@
 use anyhow::Result;
 use serde_json::Value;
 use unicode_segmentation::UnicodeSegmentation;
+use fib_rs::Fib;
 
 pub fn parse_json(input: &str, budget: usize) -> Result<Value> {
     let parsed_value: Value = serde_json::from_str(input)?;
@@ -101,16 +102,28 @@ pub fn write_debug<W: std::io::Write>(value: &Value, writer: &mut W) -> Result<(
         *next_id += 1;
         let parent_repr = parent_id.map(|p| p.to_string()).unwrap_or_else(|| "-".to_string());
         let idx_repr = index_in_array.map(|i| format!(" index={}", i)).unwrap_or_else(|| "".to_string());
+        // unused placeholder (left for future improvements)
+        // fn fib_at(n: usize) -> u128 { Fib::single(n as u128).try_into().unwrap_or(0u128) }
+        let priority = match index_in_array {
+            Some(i) => {
+                let fib = fib_rs::Fib::single(i as u128);
+                // Small indices fit in u128; fallback to depth if conversion fails
+                let fib_u128 = fib.to_string().parse::<u128>().unwrap_or(0);
+                depth + fib_u128 as usize
+            }
+            None => depth,
+        };
         writeln!(
             writer,
-            "id={} type={} parent={} depth={}{} value={}",
+            "id={} type={} parent={} depth={}{} priority={} value=",
             my_id,
             node_type_of(value),
             parent_repr,
             depth,
             idx_repr,
-            value_repr(value)
+            priority
         )?;
+        writeln!(writer, "{}", value_repr(value))?;
 
         match value {
             Value::Array(items) => {
