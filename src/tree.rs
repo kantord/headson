@@ -116,11 +116,11 @@ impl TreeNode {
     
 }
 
-pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>) -> Result<TreeNode> {
-    // Collect first 10 by ascending priority (shallower depth first)
+pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>, budget: usize) -> Result<TreeNode> {
+    // Collect first N by ascending priority (shallower depth first), N = budget for now
     let mut all_desc: Vec<(QueueItem, usize)> = pq.clone().into_sorted_iter().collect();
     all_desc.reverse();
-    let items: Vec<QueueItem> = all_desc.into_iter().take(10).map(|(it, _)| it).collect();
+    let items: Vec<QueueItem> = all_desc.into_iter().take(budget).map(|(it, _)| it).collect();
 
     // Index by id
     #[derive(Clone, Debug)]
@@ -226,7 +226,7 @@ mod tests {
     fn build_tree_empty_array() {
         let value: Value = serde_json::from_str("[]").unwrap();
         let pq = build_priority_queue(&value).unwrap();
-        let tree = build_tree(&pq).unwrap();
+        let tree = build_tree(&pq, 10).unwrap();
         use crate::OutputTemplate;
         assert_snapshot!("build_tree_empty", tree.serialize(OutputTemplate::Json));
     }
@@ -235,7 +235,7 @@ mod tests {
     fn build_tree_single_string_array() {
         let value: Value = serde_json::from_str("[\"ab\"]").unwrap();
         let pq = build_priority_queue(&value).unwrap();
-        let tree = build_tree(&pq).unwrap();
+        let tree = build_tree(&pq, 10).unwrap();
         use crate::OutputTemplate;
         assert_snapshot!("build_tree_single", tree.serialize(OutputTemplate::Json));
     }

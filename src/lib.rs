@@ -1,25 +1,13 @@
 use anyhow::Result;
 use serde_json::Value;
-use unicode_segmentation::UnicodeSegmentation;
+ 
 mod queue;
 mod tree;
 pub use queue::{build_priority_queue, NodeId, ParentId, NodeKind, QueueItem};
 pub use tree::{build_tree, TreeKind, TreeNode};
 
-pub fn parse_json(input: &str, budget: usize) -> Result<Value> {
+pub fn parse_json(input: &str, _budget: usize) -> Result<Value> {
     let parsed_value: Value = serde_json::from_str(input)?;
-
-    if let Value::Array(elements) = &parsed_value {
-        if elements.len() == 1 {
-            if let Some(Value::String(s)) = elements.get(0) {
-                let length_in_chars = s.graphemes(true).count();
-                if length_in_chars > budget {
-                    return Ok(Value::String(String::new()));
-                }
-            }
-        }
-    }
-
     Ok(parsed_value)
 }
 
@@ -60,7 +48,7 @@ pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
 pub fn headson(input: &str, template: OutputTemplate, budget: usize) -> Result<String> {
     let parsed = parse_json(input, budget)?;
     let pq = build_priority_queue(&parsed)?;
-    let tree = build_tree(&pq)?;
+    let tree = build_tree(&pq, budget)?;
     Ok(tree.serialize(template))
 }
 
