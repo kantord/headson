@@ -2,7 +2,9 @@ use anyhow::Result;
 use serde_json::Value;
 use unicode_segmentation::UnicodeSegmentation;
 mod queue;
+mod tree;
 pub use queue::{build_priority_queue, NodeId, ParentId, NodeKind, QueueItem};
+pub use tree::{build_tree, TreeKind, TreeNode};
 
 pub fn parse_json(input: &str, budget: usize) -> Result<Value> {
     let parsed_value: Value = serde_json::from_str(input)?;
