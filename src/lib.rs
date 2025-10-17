@@ -57,3 +57,10 @@ pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
     Ok(out)
 }
 
+pub fn headson(input: &str, template: OutputTemplate, budget: usize) -> Result<String> {
+    let parsed = parse_json(input, budget)?;
+    let pq = build_priority_queue(&parsed)?;
+    let tree = build_tree(&pq)?;
+    Ok(tree.serialize(template))
+}
+

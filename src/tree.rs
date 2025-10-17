@@ -1,8 +1,9 @@
 use anyhow::Result;
 use priority_queue::PriorityQueue;
-use serde_json::Value;
+ 
 
 use crate::queue::{NodeKind, QueueItem};
+use crate::OutputTemplate;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TreeKind {
@@ -24,30 +25,54 @@ pub struct TreeNode {
 }
 
 impl TreeNode {
-    pub fn render_json(&self) -> String {
+    pub fn serialize(&self, template: OutputTemplate) -> String {
         match self.kind {
-            TreeKind::Array => {
-                if self.children.is_empty() {
-                    "[]".to_string()
-                } else if self.children.len() == 1 {
-                    let child = &self.children[0];
-                    if let TreeKind::String = child.kind {
-                        let v = child.value.as_deref().unwrap_or("");
-                        format!("[\n  \"{}\"\n]", v)
-                    } else {
-                        "[]".to_string()
-                    }
-                } else {
-                    "[]".to_string()
-                }
-            }
-            TreeKind::String => format!("\"{}\"", self.value.clone().unwrap_or_default()),
-            TreeKind::Object => "{}".to_string(),
-            TreeKind::Number => "0".to_string(),
-            TreeKind::Bool => "false".to_string(),
-            TreeKind::Null => "null".to_string(),
+            TreeKind::Array => self.serialize_array(template),
+            TreeKind::String => self.serialize_string(template),
+            TreeKind::Object => self.serialize_object(template),
+            TreeKind::Number => self.serialize_number(template),
+            TreeKind::Bool => self.serialize_bool(template),
+            TreeKind::Null => self.serialize_null(template),
         }
     }
+
+    fn serialize_array(&self, _template: OutputTemplate) -> String {
+        if self.children.is_empty() {
+            "[]".to_string()
+        } else if self.children.len() == 1 {
+            let child = &self.children[0];
+            if let TreeKind::String = child.kind {
+                let v = child.value.as_deref().unwrap_or("");
+                format!("[\n  \"{}\"\n]", v)
+            } else {
+                "[]".to_string()
+            }
+        } else {
+            "[]".to_string()
+        }
+    }
+
+    fn serialize_string(&self, template: OutputTemplate) -> String {
+        let v = self.value.clone().unwrap_or_default();
+        // Treat empty-string as truncation sentinel for array-of-one-string case
+        let is_trunc = v.is_empty();
+        match template {
+            OutputTemplate::Json => format!("\"{}\"", v),
+            OutputTemplate::Pseudo => {
+                if is_trunc { "[\n  …\n]".to_string() } else { format!("\"{}\"", v) }
+            }
+            OutputTemplate::Js => {
+                if is_trunc { "[\n  /* 1 more item */\n]".to_string() } else { format!("\"{}\"", v) }
+            }
+        }
+    }
+
+    fn serialize_object(&self, _template: OutputTemplate) -> String { "{}".to_string() }
+    fn serialize_number(&self, _template: OutputTemplate) -> String { "0".to_string() }
+    fn serialize_bool(&self, _template: OutputTemplate) -> String { "false".to_string() }
+    fn serialize_null(&self, _template: OutputTemplate) -> String { "null".to_string() }
+
+    
 }
 
 pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>) -> Result<TreeNode> {
@@ -60,8 +85,6 @@ pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>) -> Result<TreeNode> {
     // Index by id
     #[derive(Clone, Debug)]
     struct Rec {
-        id: usize,
-        parent_id: Option<usize>,
         kind: NodeKind,
         index: Option<usize>,
         value: Option<String>,
@@ -76,8 +99,6 @@ pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>) -> Result<TreeNode> {
         map.insert(
             it.node_id.0,
             Rec {
-                id: it.node_id.0,
-                parent_id: it.parent_id.0,
                 kind: it.kind.clone(),
                 index: it.index_in_array,
                 value: val,
@@ -152,13 +173,15 @@ mod tests {
     use super::*;
     use crate::queue::build_priority_queue;
     use insta::assert_snapshot;
+    use serde_json::Value;
 
     #[test]
     fn build_tree_empty_array() {
         let value: Value = serde_json::from_str("[]").unwrap();
         let pq = build_priority_queue(&value).unwrap();
         let tree = build_tree(&pq).unwrap();
-        assert_snapshot!("build_tree_empty", tree.render_json());
+        use crate::OutputTemplate;
+        assert_snapshot!("build_tree_empty", tree.serialize(OutputTemplate::Json));
     }
 
     #[test]
@@ -166,6 +189,7 @@ mod tests {
         let value: Value = serde_json::from_str("[\"ab\"]").unwrap();
         let pq = build_priority_queue(&value).unwrap();
         let tree = build_tree(&pq).unwrap();
-        assert_snapshot!("build_tree_single", tree.render_json());
+        use crate::OutputTemplate;
+        assert_snapshot!("build_tree_single", tree.serialize(OutputTemplate::Json));
     }
 }
