@@ -1,0 +1,6 @@
+---
+source: tests/priority_queue.rs
+expression: "lines.join(\"\\n\")"
+---
+len=1
+QueueItem { node_id: NodeId(0), parent_id: ParentId(None), kind: Array, depth: 0, index_in_array: None, priority: 0, value_repr: "[]" } prio=0

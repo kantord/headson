@@ -1,7 +1,6 @@
 use anyhow::Result;
 use serde_json::Value;
 use unicode_segmentation::UnicodeSegmentation;
-use fib_rs::Fib;
 use priority_queue::PriorityQueue;
 
 pub fn parse_json(input: &str, budget: usize) -> Result<Value> {
