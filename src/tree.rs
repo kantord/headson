@@ -15,62 +15,99 @@ pub enum TreeKind {
     Null,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TreeNode {
     pub id: usize,
     pub kind: TreeKind,
     pub value: Option<String>,
     pub index_in_parent: Option<usize>,
+    pub key_in_parent: Option<String>,
+    pub number_value: Option<f64>,
+    pub bool_value: Option<bool>,
     pub children: Vec<TreeNode>,
 }
 
 impl TreeNode {
     pub fn serialize(&self, template: OutputTemplate) -> String {
+        self.serialize_with_depth(template, 0)
+    }
+
+    fn serialize_with_depth(&self, template: OutputTemplate, depth: usize) -> String {
         match self.kind {
-            TreeKind::Array => self.serialize_array(template),
+            TreeKind::Array => self.serialize_array(template, depth),
             TreeKind::String => self.serialize_string(template),
-            TreeKind::Object => self.serialize_object(template),
-            TreeKind::Number => self.serialize_number(template),
-            TreeKind::Bool => self.serialize_bool(template),
-            TreeKind::Null => self.serialize_null(template),
+            TreeKind::Object => self.serialize_object(template, depth),
+            TreeKind::Number => self.serialize_number(),
+            TreeKind::Bool => self.serialize_bool(),
+            TreeKind::Null => self.serialize_null(),
         }
     }
 
-    fn serialize_array(&self, _template: OutputTemplate) -> String {
-        if self.children.is_empty() {
-            "[]".to_string()
-        } else if self.children.len() == 1 {
+    fn indent(depth: usize) -> String { "  ".repeat(depth) }
+
+    fn serialize_array(&self, template: OutputTemplate, depth: usize) -> String {
+        // Special truncation marker when array has single empty-string child
+        if self.children.len() == 1 {
             let child = &self.children[0];
-            if let TreeKind::String = child.kind {
-                let v = child.value.as_deref().unwrap_or("");
-                format!("[\n  \"{}\"\n]", v)
-            } else {
-                "[]".to_string()
+            if matches!(child.kind, TreeKind::String) && child.value.as_deref() == Some("") {
+                return match template {
+                    OutputTemplate::Json => format!("{}[\n{}\n{}]", Self::indent(depth), Self::indent(depth+1), Self::indent(depth)),
+                    OutputTemplate::Pseudo => format!("{}[\n{}…\n{}]", Self::indent(depth), Self::indent(depth+1), Self::indent(depth)),
+                    OutputTemplate::Js => format!("{}[\n{}/* 1 more item */\n{}]", Self::indent(depth), Self::indent(depth+1), Self::indent(depth)),
+                };
             }
-        } else {
-            "[]".to_string()
         }
+
+        let mut out = String::new();
+        out.push_str(&format!("{}[\n", Self::indent(depth)));
+        for (i, child) in self.children.iter().enumerate() {
+            let rendered = child.serialize_with_depth(template, depth + 1);
+            out.push_str(&rendered);
+            if i + 1 < self.children.len() { out.push(','); }
+            out.push('\n');
+        }
+        out.push_str(&format!("{}]", Self::indent(depth)));
+        out
     }
 
     fn serialize_string(&self, template: OutputTemplate) -> String {
         let v = self.value.clone().unwrap_or_default();
-        // Treat empty-string as truncation sentinel for array-of-one-string case
-        let is_trunc = v.is_empty();
-        match template {
-            OutputTemplate::Json => format!("\"{}\"", v),
-            OutputTemplate::Pseudo => {
-                if is_trunc { "[\n  …\n]".to_string() } else { format!("\"{}\"", v) }
-            }
-            OutputTemplate::Js => {
-                if is_trunc { "[\n  /* 1 more item */\n]".to_string() } else { format!("\"{}\"", v) }
-            }
+        if v.is_empty() {
+            // Treat as truncation sentinel
+            return match template {
+                OutputTemplate::Json => "\"\"".to_string(),
+                OutputTemplate::Pseudo => "[\n  …\n]".to_string(),
+                OutputTemplate::Js => "[\n  /* 1 more item */\n]".to_string(),
+            };
         }
+        format!("\"{}\"", v)
     }
 
-    fn serialize_object(&self, _template: OutputTemplate) -> String { "{}".to_string() }
-    fn serialize_number(&self, _template: OutputTemplate) -> String { "0".to_string() }
-    fn serialize_bool(&self, _template: OutputTemplate) -> String { "false".to_string() }
-    fn serialize_null(&self, _template: OutputTemplate) -> String { "null".to_string() }
+    fn serialize_object(&self, template: OutputTemplate, depth: usize) -> String {
+        let mut out = String::new();
+        out.push_str(&format!("{}{{\n", Self::indent(depth)));
+        for (i, child) in self.children.iter().enumerate() {
+            let key = child.key_in_parent.as_deref().unwrap_or("");
+            let mut rendered = child.serialize_with_depth(template, depth + 1);
+            let first_indent = Self::indent(depth + 1);
+            if rendered.starts_with(&first_indent) {
+                rendered = rendered[first_indent.len()..].to_string();
+            }
+            out.push_str(&format!("{}\"{}\": {}", Self::indent(depth + 1), key, rendered));
+            if i + 1 < self.children.len() { out.push(','); }
+            out.push('\n');
+        }
+        out.push_str(&format!("{}}}", Self::indent(depth)));
+        out
+    }
+
+    fn serialize_number(&self) -> String {
+        if let Some(n) = self.number_value { format!("{}", n) } else { "0".to_string() }
+    }
+    fn serialize_bool(&self) -> String {
+        if let Some(b) = self.bool_value { if b { "true".to_string() } else { "false".to_string() } } else { "false".to_string() }
+    }
+    fn serialize_null(&self) -> String { "null".to_string() }
 
     
 }
@@ -87,6 +124,7 @@ pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>) -> Result<TreeNode> {
     struct Rec {
         kind: NodeKind,
         index: Option<usize>,
+        key: Option<String>,
         value: Option<String>,
     }
 
@@ -94,6 +132,8 @@ pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>) -> Result<TreeNode> {
     for it in &items {
         let val = match it.kind {
             NodeKind::String => Some(strip_quotes(&it.value_repr)),
+            NodeKind::Number => Some(it.value_repr.clone()),
+            NodeKind::Bool => Some(it.value_repr.clone()),
             _ => None,
         };
         map.insert(
@@ -101,6 +141,7 @@ pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>) -> Result<TreeNode> {
             Rec {
                 kind: it.kind.clone(),
                 index: it.index_in_array,
+                key: it.key_in_object.clone(),
                 value: val,
             },
         );
@@ -150,8 +191,11 @@ pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>) -> Result<TreeNode> {
         TreeNode {
             id,
             kind,
-            value: rec.value.clone(),
+            value: match rec.kind { NodeKind::String => rec.value.clone(), _ => None },
             index_in_parent: rec.index,
+            key_in_parent: rec.key.clone(),
+            number_value: match rec.kind { NodeKind::Number => rec.value.as_deref().and_then(|s| s.parse::<f64>().ok()), _ => None },
+            bool_value: match rec.kind { NodeKind::Bool => Some(rec.value.as_deref() == Some("true")), _ => None },
             children: kids,
         }
     }

@@ -26,6 +26,7 @@ pub struct QueueItem {
     pub kind: NodeKind,
     pub depth: usize,
     pub index_in_array: Option<usize>,
+    pub key_in_object: Option<String>,
     pub priority: usize,
     pub value_repr: String,
 }
@@ -69,6 +70,7 @@ fn walk(
     parent_id: Option<usize>,
     depth: usize,
     index_in_array: Option<usize>,
+    key_in_object: Option<String>,
     next_id: &mut usize,
     pq: &mut PriorityQueue<QueueItem, usize>,
     expand_strings: bool,
@@ -89,6 +91,7 @@ fn walk(
         kind: to_kind(value),
         depth,
         index_in_array,
+        key_in_object,
         priority,
         value_repr: value_repr(value),
     };
@@ -97,19 +100,19 @@ fn walk(
     match value {
         Value::Array(items) => {
             for (i, item) in items.iter().enumerate() {
-                walk(item, Some(my_id), depth + 1, Some(i), next_id, pq, true)?;
+                walk(item, Some(my_id), depth + 1, Some(i), None, next_id, pq, true)?;
             }
         }
         Value::Object(map) => {
-            for (_k, v) in map.iter() {
-                walk(v, Some(my_id), depth + 1, None, next_id, pq, true)?;
+            for (k, v) in map.iter() {
+                walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, pq, true)?;
             }
         }
         Value::String(s) => {
             if expand_strings {
                 for (i, g) in UnicodeSegmentation::graphemes(s.as_str(), true).enumerate() {
                     let ch_value = Value::String(g.to_string());
-                    walk(&ch_value, Some(my_id), depth + 1, Some(i), next_id, pq, false)?;
+                    walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, pq, false)?;
                 }
             }
         }
@@ -122,7 +125,7 @@ fn walk(
 pub fn build_priority_queue(value: &Value) -> Result<PriorityQueue<QueueItem, usize>> {
     let mut next_id = 0usize;
     let mut pq: PriorityQueue<QueueItem, usize> = PriorityQueue::new();
-    walk(value, None, 0, None, &mut next_id, &mut pq, true)?;
+    walk(value, None, 0, None, None, &mut next_id, &mut pq, true)?;
     Ok(pq)
 }
 

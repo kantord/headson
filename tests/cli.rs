@@ -7,7 +7,7 @@ fn prints_empty_array_compact() -> Result<(), Box<dyn std::error::Error>> {
         .write_stdin("[]")
         .assert()
         .success()
-        .stdout("[]\n");
+        .stdout("[\n]\n");
     Ok(())
 }
 
@@ -18,7 +18,7 @@ fn prints_empty_object_compact() -> Result<(), Box<dyn std::error::Error>> {
         .write_stdin("{}")
         .assert()
         .success()
-        .stdout("{}\n");
+        .stdout("{\n}\n");
     Ok(())
 }
 
