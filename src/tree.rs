@@ -62,7 +62,11 @@ impl TreeNode {
         out.push_str(&format!("{}[\n", Self::indent(depth)));
         for (i, child) in self.children.iter().enumerate() {
             let rendered = child.serialize_with_depth(template, depth + 1);
-            out.push_str(&rendered);
+            if rendered.contains('\n') {
+                out.push_str(&rendered);
+            } else {
+                out.push_str(&format!("{}{}", Self::indent(depth + 1), rendered));
+            }
             if i + 1 < self.children.len() { out.push(','); }
             out.push('\n');
         }
@@ -113,11 +117,10 @@ impl TreeNode {
 }
 
 pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>) -> Result<TreeNode> {
-    // Collect items
-    let mut items: Vec<QueueItem> = Vec::with_capacity(pq.len());
-    for (item, _prio) in pq.clone().into_sorted_iter() {
-        items.push(item);
-    }
+    // Collect first 10 by ascending priority (shallower depth first)
+    let mut all_desc: Vec<(QueueItem, usize)> = pq.clone().into_sorted_iter().collect();
+    all_desc.reverse();
+    let items: Vec<QueueItem> = all_desc.into_iter().take(10).map(|(it, _)| it).collect();
 
     // Index by id
     #[derive(Clone, Debug)]
