@@ -1,5 +1,4 @@
 use assert_cmd::Command;
-use std::str;
 
 #[test]
 fn prints_empty_array_compact() -> Result<(), Box<dyn std::error::Error>> {

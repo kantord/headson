@@ -78,17 +78,6 @@ pub struct QueueItem {
 }
 
 pub fn build_priority_queue(value: &Value) -> Result<PriorityQueue<QueueItem, usize>> {
-    fn node_type_of(value: &Value) -> &'static str {
-        match value {
-            Value::Null => "null",
-            Value::Bool(_) => "bool",
-            Value::Number(_) => "number",
-            Value::String(_) => "string",
-            Value::Array(_) => "array",
-            Value::Object(_) => "object",
-        }
-    }
-
     fn value_repr(value: &Value) -> String {
         match value {
             Value::Null => "null".to_string(),

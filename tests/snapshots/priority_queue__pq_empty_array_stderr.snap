@@ -1,5 +1,0 @@
----
-source: tests/priority_queue.rs
-expression: stderr
----
-queue_size=1
