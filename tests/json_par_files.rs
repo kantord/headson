@@ -1,0 +1,42 @@
+use assert_cmd::Command;
+use serde_json::Value;
+use std::path::Path;
+use std::fs;
+use test_each_file::test_each_path;
+
+fn run_cli(input: &[u8]) -> (bool, Vec<u8>, Vec<u8>) {
+    let assert = Command::cargo_bin("headson").unwrap()
+        .args(["-n","10000","-f","json"]) // ensure valid JSON output
+        .write_stdin(input)
+        .assert();
+    let ok = assert.get_output().status.success();
+    let out = assert.get_output().stdout.clone();
+    let err = assert.get_output().stderr.clone();
+    (ok, out, err)
+}
+
+fn is_y(path: &Path) -> bool { path.file_name().and_then(|s| s.to_str()).map(|n| n.starts_with("y_")).unwrap_or(false) }
+fn is_n(path: &Path) -> bool { path.file_name().and_then(|s| s.to_str()).map(|n| n.starts_with("n_")).unwrap_or(false) }
+fn is_i(path: &Path) -> bool { path.file_name().and_then(|s| s.to_str()).map(|n| n.starts_with("i_")).unwrap_or(false) }
+
+test_each_path! { in "JSONTestSuite/test_parsing" => jsonsuite_case }
+
+fn jsonsuite_case(path: &Path) {
+    if is_i(path) { return; }
+    if !path.extension().map(|e| e == "json").unwrap_or(false) { return; }
+
+    let input = fs::read(path).expect("read");
+
+    if is_y(path) {
+        let original: Value = serde_json::from_slice(&input).expect("serde accept");
+        let (ok, out, _err) = run_cli(&input);
+        assert!(ok, "cli should succeed: {}", path.display());
+        let reparsed: Value = serde_json::from_slice(&out).expect("cli output valid json");
+        assert_eq!(original, reparsed, "roundtrip mismatch: {}", path.display());
+    } else if is_n(path) {
+        assert!(serde_json::from_slice::<Value>(&input).is_err(), "serde should reject: {}", path.display());
+        let (ok, _out, err) = run_cli(&input);
+        assert!(!ok, "cli should fail: {}", path.display());
+        assert!(!String::from_utf8_lossy(&err).trim().is_empty(), "stderr non-empty: {}", path.display());
+    }
+}

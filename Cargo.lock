@@ -289,6 +289,7 @@ dependencies = [
  "priority-queue",
  "serde",
  "serde_json",
+ "test_each_file",
  "unicode-segmentation",
 ]
 
@@ -595,6 +596,18 @@ name = "termtree"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f50febec83f5ee1df3015341d8bd429f2d1cc62bcba7ea2076759d315084683"
+
+[[package]]
+name = "test_each_file"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2de773517ee4367314c7918f6c9ef69c201ba72bfdbffb00234c22c50a153b73"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "unicode-ident",
+]
 
 [[package]]
 name = "unicase"

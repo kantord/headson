@@ -2,7 +2,6 @@
 name = "headson"
 version = "0.1.0"
 edition = "2024"
-build = "build.rs"
 
 [dependencies]
 anyhow = "1.0.100"
@@ -18,3 +17,4 @@ askama = "0.12"
 [dev-dependencies]
 insta = "1.40.0"
 assert_cmd = "2"
+test_each_file = "0.3"
