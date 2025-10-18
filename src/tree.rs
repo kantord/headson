@@ -1,9 +1,8 @@
 use anyhow::Result;
 use priority_queue::PriorityQueue;
- 
+
 
 use crate::queue::{NodeKind, QueueItem, PQBuild, NodeMetrics};
-use std::cell::RefCell;
 use crate::{OutputTemplate, RenderConfig};
 use crate::render::{ArrayCtx, ObjectCtx, render_array, render_object};
 use serde_json::Number;
@@ -30,15 +29,11 @@ pub struct TreeNode {
     pub bool_value: Option<bool>,
     pub children: Vec<TreeNode>,
     pub omitted_items: Option<usize>,
-    cached: RefCell<Option<String>>,
 }
 
 impl TreeNode {
     pub fn serialize(&self, config: &RenderConfig) -> String {
-        if let Some(s) = self.cached.borrow().as_ref() { return s.clone(); }
-        let s = self.serialize_with_depth(config, 0);
-        *self.cached.borrow_mut() = Some(s.clone());
-        s
+        self.serialize_with_depth(config, 0)
     }
 
     fn serialize_with_depth(&self, config: &RenderConfig, depth: usize) -> String {
@@ -54,10 +49,7 @@ impl TreeNode {
 
     fn indent(depth: usize, unit: &str) -> String { unit.repeat(depth) }
 
-    pub fn reset_cache(&self) {
-        *self.cached.borrow_mut() = None;
-        for child in &self.children { child.reset_cache(); }
-    }
+    
 
     fn serialize_array(&self, config: &RenderConfig, depth: usize) -> String {
         // Empty arrays:
@@ -259,7 +251,6 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
             bool_value: match rec.kind { NodeKind::Bool => Some(rec.value.as_deref() == Some("true")), _ => None },
             children: kids,
             omitted_items,
-            cached: RefCell::new(None),
         }
     }
 
