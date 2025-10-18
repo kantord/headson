@@ -95,17 +95,10 @@ fn walk(
     let priority = match index_in_array {
         Some(i) => {
             if is_string_child {
-                // string-specific penalty: floor(fib(i-10) / 2), clamp for i < 10
-                if i >= 10 {
-                    let n = (i as u128) - 10;
-                    let fib = fib_rs::Fib::single(n);
-                    // divide by 2 using integer division
-                    let half = fib / num_bigint::BigUint::from(2u8);
-                    let half_u128 = half.to_string().parse::<u128>().unwrap_or(0);
-                    depth + half_u128 as usize
-                } else {
-                    depth
-                }
+                // string-specific penalty: (max(i - 20, 1))^2
+                let adj = if i > 20 { i - 20 } else { 1 };
+                let penalty = adj * adj;
+                depth + penalty
             } else {
                 let fib = fib_rs::Fib::single(i as u128);
                 let fib_u128 = fib.to_string().parse::<u128>().unwrap_or(0);
