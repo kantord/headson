@@ -1,0 +1,33 @@
+---
+source: tests/e2e.rs
+expression: stdout
+---
+{
+  "objects": [
+    {
+      "k": "…"
+    },
+    {
+    }
+  ],
+  "deep": [
+    {
+      "a": [
+      ]
+    }
+  ],
+  "matrix": [
+    [
+      1
+    ],
+    [
+    ],
+    [
+      7
+    ]
+  ],
+  "strings": [
+    "…",
+    "…"
+  ]
+}

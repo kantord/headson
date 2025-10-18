@@ -1,0 +1,24 @@
+---
+source: tests/e2e.rs
+expression: stdout
+---
+{
+  "users": [
+    {
+      "id": 1,
+      "roles": [
+      ],
+      "profile": {
+      },
+      "name": "…"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "tags": [
+      "…"
+    ],
+    "pageSize": 20,
+    "next": null
+  }
+}
