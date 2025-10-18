@@ -1,8 +1,7 @@
 use anyhow::Result;
-use priority_queue::PriorityQueue;
 
 
-use crate::queue::{NodeKind, QueueItem, PQBuild, NodeMetrics};
+use crate::queue::{NodeKind, PQBuild, NodeMetrics};
 use crate::{OutputTemplate, RenderConfig};
 use crate::render::{ArrayCtx, ObjectCtx, render_array, render_object};
 use serde_json::Number;
