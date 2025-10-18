@@ -24,6 +24,7 @@ pub enum OutputTemplate {
 pub struct RenderConfig {
     pub template: OutputTemplate,
     pub indent_unit: String,
+    pub space: String,
 }
 
 // legacy helper no longer used

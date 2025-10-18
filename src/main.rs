@@ -12,6 +12,8 @@ struct Cli {
     template: Template,
     #[arg(long = "indent", default_value = "  ")]
     indent: String,
+    #[arg(long = "no-space", default_value_t = false)]
+    no_space: bool,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -34,7 +36,8 @@ fn main() -> Result<()> {
         Template::Pseudo => headson::OutputTemplate::Pseudo,
         Template::Js => headson::OutputTemplate::Js,
     };
-    let config = headson::RenderConfig { template, indent_unit: cli.indent.clone() };
+    let space = if cli.no_space { "".to_string() } else { " ".to_string() };
+    let config = headson::RenderConfig { template, indent_unit: cli.indent.clone(), space };
 
     let output = headson::headson(&buffer, config, cli.budget)?;
     println!("{}", output);

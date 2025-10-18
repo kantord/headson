@@ -101,7 +101,7 @@ impl TreeNode {
         if self.children.is_empty() {
             if let Some(omitted) = self.omitted_items {
                 if omitted > 0 {
-                    let ctx = ObjectCtx { children: vec![], children_len: 0, omitted, indent0: Self::indent(depth, &config.indent_unit), indent1: Self::indent(depth + 1, &config.indent_unit) };
+                    let ctx = ObjectCtx { children: vec![], children_len: 0, omitted, indent0: Self::indent(depth, &config.indent_unit), indent1: Self::indent(depth + 1, &config.indent_unit), sp: config.space.clone() };
                     return render_object(config.template, &ctx);
                 }
             }
@@ -118,7 +118,7 @@ impl TreeNode {
             }
             children.push((i, (key, val)));
         }
-        let ctx = ObjectCtx { children_len: children.len(), children, omitted: self.omitted_items.unwrap_or(0), indent0: Self::indent(depth, &config.indent_unit), indent1: ind };
+        let ctx = ObjectCtx { children_len: children.len(), children, omitted: self.omitted_items.unwrap_or(0), indent0: Self::indent(depth, &config.indent_unit), indent1: ind, sp: config.space.clone() };
         render_object(config.template, &ctx)
     }
 
@@ -284,7 +284,7 @@ mod tests {
         let build = crate::build_priority_queue(&value).unwrap();
         let tree = build_tree(&build, 10).unwrap();
         use crate::RenderConfig; use crate::OutputTemplate;
-        assert_snapshot!("build_tree_empty", tree.serialize(&RenderConfig{ template: OutputTemplate::Json, indent_unit: "  ".to_string() }));
+        assert_snapshot!("build_tree_empty", tree.serialize(&RenderConfig{ template: OutputTemplate::Json, indent_unit: "  ".to_string(), space: " ".to_string() }));
     }
 
     #[test]
@@ -293,6 +293,6 @@ mod tests {
         let build = crate::build_priority_queue(&value).unwrap();
         let tree = build_tree(&build, 10).unwrap();
         use crate::RenderConfig; use crate::OutputTemplate;
-        assert_snapshot!("build_tree_single", tree.serialize(&RenderConfig{ template: OutputTemplate::Json, indent_unit: "  ".to_string() }));
+        assert_snapshot!("build_tree_single", tree.serialize(&RenderConfig{ template: OutputTemplate::Json, indent_unit: "  ".to_string(), space: " ".to_string() }));
     }
 }
