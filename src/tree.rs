@@ -36,54 +36,54 @@ pub struct TreeNode {
 impl TreeNode {
     pub fn serialize(&self, config: &RenderConfig) -> String {
         if let Some(s) = self.cached.borrow().as_ref() { return s.clone(); }
-        let s = self.serialize_with_depth(config.template, 0);
+        let s = self.serialize_with_depth(config, 0);
         *self.cached.borrow_mut() = Some(s.clone());
         s
     }
 
-    fn serialize_with_depth(&self, template: OutputTemplate, depth: usize) -> String {
+    fn serialize_with_depth(&self, config: &RenderConfig, depth: usize) -> String {
         match self.kind {
-            TreeKind::Array => self.serialize_array(template, depth),
-            TreeKind::String => self.serialize_string(template),
-            TreeKind::Object => self.serialize_object(template, depth),
+            TreeKind::Array => self.serialize_array(config, depth),
+            TreeKind::String => self.serialize_string(config.template),
+            TreeKind::Object => self.serialize_object(config, depth),
             TreeKind::Number => self.serialize_number(),
             TreeKind::Bool => self.serialize_bool(),
             TreeKind::Null => self.serialize_null(),
         }
     }
 
-    fn indent(depth: usize) -> String { "  ".repeat(depth) }
+    fn indent(depth: usize, unit: &str) -> String { unit.repeat(depth) }
 
     pub fn reset_cache(&self) {
         *self.cached.borrow_mut() = None;
         for child in &self.children { child.reset_cache(); }
     }
 
-    fn serialize_array(&self, template: OutputTemplate, depth: usize) -> String {
+    fn serialize_array(&self, config: &RenderConfig, depth: usize) -> String {
         // Empty arrays:
         // - truly empty (no original items): always []
         // - truncated to show zero items (omitted_items > 0): show template-specific marker with brackets
         if self.children.is_empty() {
             if let Some(omitted) = self.omitted_items {
                 if omitted > 0 {
-                    let ctx = ArrayCtx { children: vec![], children_len: 0, omitted, indent0: Self::indent(depth), indent1: Self::indent(depth + 1) };
-                    return render_array(template, &ctx);
+                    let ctx = ArrayCtx { children: vec![], children_len: 0, omitted, indent0: Self::indent(depth, &config.indent_unit), indent1: Self::indent(depth + 1, &config.indent_unit) };
+                    return render_array(config.template, &ctx);
                 }
             }
             return "[]".to_string();
         }
         let mut children: Vec<(usize, String)> = Vec::with_capacity(self.children.len());
-        let ind = Self::indent(depth + 1);
+        let ind = Self::indent(depth + 1, &config.indent_unit);
         for (i, c) in self.children.iter().enumerate() {
-            let rendered = c.serialize_with_depth(template, depth + 1);
+            let rendered = c.serialize_with_depth(config, depth + 1);
             if rendered.contains('\n') {
                 children.push((i, rendered));
             } else {
                 children.push((i, format!("{}{}", ind, rendered)));
             }
         }
-        let ctx = ArrayCtx { children_len: children.len(), children, omitted: self.omitted_items.unwrap_or(0), indent0: Self::indent(depth), indent1: ind };
-        render_array(template, &ctx)
+        let ctx = ArrayCtx { children_len: children.len(), children, omitted: self.omitted_items.unwrap_or(0), indent0: Self::indent(depth, &config.indent_unit), indent1: ind };
+        render_array(config.template, &ctx)
     }
 
     fn serialize_string(&self, _template: OutputTemplate) -> String {
@@ -103,32 +103,32 @@ impl TreeNode {
         serde_json::to_string(&v).unwrap_or_else(|_| format!("\"{}\"", v))
     }
 
-    fn serialize_object(&self, template: OutputTemplate, depth: usize) -> String {
+    fn serialize_object(&self, config: &RenderConfig, depth: usize) -> String {
         // Empty objects:
         // - truly empty: {}
         // - truncated to zero visible properties (omitted_items > 0): show marker per template
         if self.children.is_empty() {
             if let Some(omitted) = self.omitted_items {
                 if omitted > 0 {
-                    let ctx = ObjectCtx { children: vec![], children_len: 0, omitted, indent0: Self::indent(depth), indent1: Self::indent(depth + 1) };
-                    return render_object(template, &ctx);
+                    let ctx = ObjectCtx { children: vec![], children_len: 0, omitted, indent0: Self::indent(depth, &config.indent_unit), indent1: Self::indent(depth + 1, &config.indent_unit) };
+                    return render_object(config.template, &ctx);
                 }
             }
             return "{}".to_string();
         }
         let mut children: Vec<(usize, (String, String))> = Vec::with_capacity(self.children.len());
-        let ind = Self::indent(depth + 1);
+        let ind = Self::indent(depth + 1, &config.indent_unit);
         for (i, c) in self.children.iter().enumerate() {
             let raw_key = c.key_in_parent.clone().unwrap_or_default();
             let key = strip_quotes(&serde_json::to_string(&raw_key).unwrap_or_else(|_| format!("\"{}\"", raw_key)));
-            let mut val = c.serialize_with_depth(template, depth + 1);
+            let mut val = c.serialize_with_depth(config, depth + 1);
             if val.starts_with(&ind) {
                 val = val[ind.len()..].to_string();
             }
             children.push((i, (key, val)));
         }
-        let ctx = ObjectCtx { children_len: children.len(), children, omitted: self.omitted_items.unwrap_or(0), indent0: Self::indent(depth), indent1: ind };
-        render_object(template, &ctx)
+        let ctx = ObjectCtx { children_len: children.len(), children, omitted: self.omitted_items.unwrap_or(0), indent0: Self::indent(depth, &config.indent_unit), indent1: ind };
+        render_object(config.template, &ctx)
     }
 
     fn serialize_number(&self) -> String {
@@ -287,7 +287,7 @@ mod tests {
         let build = crate::build_priority_queue(&value).unwrap();
         let tree = build_tree(&build, 10).unwrap();
         use crate::RenderConfig; use crate::OutputTemplate;
-        assert_snapshot!("build_tree_empty", tree.serialize(&RenderConfig{ template: OutputTemplate::Json }));
+        assert_snapshot!("build_tree_empty", tree.serialize(&RenderConfig{ template: OutputTemplate::Json, indent_unit: "  ".to_string() }));
     }
 
     #[test]
@@ -296,6 +296,6 @@ mod tests {
         let build = crate::build_priority_queue(&value).unwrap();
         let tree = build_tree(&build, 10).unwrap();
         use crate::RenderConfig; use crate::OutputTemplate;
-        assert_snapshot!("build_tree_single", tree.serialize(&RenderConfig{ template: OutputTemplate::Json }));
+        assert_snapshot!("build_tree_single", tree.serialize(&RenderConfig{ template: OutputTemplate::Json, indent_unit: "  ".to_string() }));
     }
 }

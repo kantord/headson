@@ -10,6 +10,8 @@ struct Cli {
     budget: usize,
     #[arg(short = 'f', long = "template", value_enum, default_value_t = Template::Pseudo)]
     template: Template,
+    #[arg(long = "indent", default_value = "  ")]
+    indent: String,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -32,7 +34,7 @@ fn main() -> Result<()> {
         Template::Pseudo => headson::OutputTemplate::Pseudo,
         Template::Js => headson::OutputTemplate::Js,
     };
-    let config = headson::RenderConfig { template };
+    let config = headson::RenderConfig { template, indent_unit: cli.indent.clone() };
 
     let output = headson::headson(&buffer, config, cli.budget)?;
     println!("{}", output);

@@ -20,9 +20,10 @@ pub enum OutputTemplate {
     Js,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RenderConfig {
     pub template: OutputTemplate,
+    pub indent_unit: String,
 }
 
 pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
