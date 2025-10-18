@@ -42,6 +42,10 @@ pub struct NodeMetrics {
 pub struct PQBuild {
     pub pq: PriorityQueue<QueueItem, usize>,
     pub metrics: std::collections::HashMap<usize, NodeMetrics>,
+    pub id_to_item: std::collections::HashMap<usize, QueueItem>,
+    pub parent_of: std::collections::HashMap<usize, Option<usize>>,
+    pub children_of: std::collections::HashMap<usize, Vec<usize>>,
+    pub order_index: std::collections::HashMap<usize, usize>,
 }
 
 fn value_repr(value: &Value) -> String {
@@ -154,7 +158,29 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     let mut pq: PriorityQueue<QueueItem, usize> = PriorityQueue::new();
     let mut metrics: std::collections::HashMap<usize, NodeMetrics> = std::collections::HashMap::new();
     walk(value, None, 0, None, None, &mut next_id, &mut pq, &mut metrics, true, false)?;
-    Ok(PQBuild { pq, metrics })
+    // Build arena-like maps
+    let mut id_to_item = std::collections::HashMap::new();
+    let mut parent_of = std::collections::HashMap::new();
+    let mut children_of: std::collections::HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
+    let mut order_index = std::collections::HashMap::new();
+
+    // Stable order index by descending priority
+    let mut all_desc: Vec<(QueueItem, usize)> = pq.clone().into_sorted_iter().collect();
+    all_desc.reverse();
+    for (idx, (it, _prio)) in all_desc.into_iter().enumerate() {
+        order_index.insert(it.node_id.0, idx);
+        parent_of.insert(it.node_id.0, it.parent_id.0);
+        id_to_item.insert(it.node_id.0, it.clone());
+        if let Some(pid) = it.parent_id.0 {
+            children_of.entry(pid).or_default().push(it.node_id.0);
+        }
+    }
+    // Ensure children are ordered by index_in_array when relevant
+    for (_pid, kids) in children_of.iter_mut() {
+        kids.sort_by_key(|cid| id_to_item.get(cid).and_then(|r| r.index_in_array).unwrap_or(usize::MAX));
+    }
+
+    Ok(PQBuild { pq, metrics, id_to_item, parent_of, children_of, order_index })
 }
 
 #[cfg(test)]

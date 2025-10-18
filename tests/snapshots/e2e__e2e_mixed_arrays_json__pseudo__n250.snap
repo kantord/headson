@@ -8,10 +8,7 @@ expression: stdout
     …
   ],
   "matrix": [
-    [
-      1
-      …
-    ],
+        [ … ],
     [
       4
       …
@@ -19,14 +16,14 @@ expression: stdout
     …
   ],
   "strings": [
-    "o…",
-    "…"
+    "…",
+    "…",
+    "f…",
+    "f…"
     …
   ],
   "deep": [
         { … },
-    {
-      "a": [ … ]
-    }
+        { … }
   ]
 }

@@ -16,9 +16,12 @@ expression: stdout
     {
       "roles": [ … ],
       "name": "…",
-      "id": 1,
-      "profile": { … }
+      "id": 1
+      …
+    },
+    {
+      "id": 2
+      …
     }
-    …
   ]
 }

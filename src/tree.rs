@@ -135,12 +135,18 @@ impl TreeNode {
 }
 
 pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
-    let pq: &PriorityQueue<QueueItem, usize> = &pq_build.pq;
     let metrics: &std::collections::HashMap<usize, NodeMetrics> = &pq_build.metrics;
-    // Collect first N by ascending priority (shallower depth first), N = budget for now
-    let mut all_desc: Vec<(QueueItem, usize)> = pq.clone().into_sorted_iter().collect();
-    all_desc.reverse();
-    let items: Vec<QueueItem> = all_desc.into_iter().take(budget).map(|(it, _)| it).collect();
+    // Include nodes with order_index < budget, plus ensure ancestors are included
+    let mut included: std::collections::HashSet<usize> = std::collections::HashSet::new();
+    let mut to_process: Vec<usize> = Vec::new();
+    for (id, &ord) in &pq_build.order_index {
+        if ord < budget { included.insert(*id); to_process.push(*id); }
+    }
+    while let Some(id) = to_process.pop() {
+        if let Some(parent) = pq_build.parent_of.get(&id).copied().flatten() {
+            if included.insert(parent) { to_process.push(parent); }
+        }
+    }
 
     // Index by id
     #[derive(Clone, Debug)]
@@ -153,7 +159,8 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
     }
 
     let mut map = std::collections::HashMap::<usize, Rec>::new();
-    for it in &items {
+    for id in &included {
+        let it = pq_build.id_to_item.get(id).expect("missing item");
         let val = match it.kind {
             NodeKind::String => Some(strip_quotes(&it.value_repr)),
             NodeKind::Bool => Some(it.value_repr.clone()),
@@ -176,17 +183,17 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
         );
     }
 
-    // Build children lists; include string character children so strings can truncate like arrays
+    // Build children lists using arena, filter to included
     let mut children: std::collections::HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
-    for it in &items {
-        if let Some(pid) = it.parent_id.0 {
-            children.entry(pid).or_default().push(it.node_id.0);
-        }
+    for (pid, kids) in &pq_build.children_of {
+        let kept = kids.iter().copied().filter(|cid| included.contains(cid)).collect::<Vec<_>>();
+        if !kept.is_empty() { children.insert(*pid, kept); }
     }
 
     // Identify root (no parent)
-    let root_id = items
-        .iter()
+    let root_id = pq_build
+        .id_to_item
+        .values()
         .find(|it| it.parent_id.0.is_none())
         .map(|it| it.node_id.0)
         .ok_or_else(|| anyhow::anyhow!("no root in queue"))?;
