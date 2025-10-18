@@ -88,14 +88,29 @@ fn walk(
     pq: &mut PriorityQueue<QueueItem, usize>,
     metrics: &mut std::collections::HashMap<usize, NodeMetrics>,
     expand_strings: bool,
+    is_string_child: bool,
 ) -> Result<usize> {
     let my_id = *next_id;
     *next_id += 1;
     let priority = match index_in_array {
         Some(i) => {
-            let fib = fib_rs::Fib::single(i as u128);
-            let fib_u128 = fib.to_string().parse::<u128>().unwrap_or(0);
-            depth + fib_u128 as usize
+            if is_string_child {
+                // string-specific penalty: floor(fib(i-10) / 2), clamp for i < 10
+                if i >= 10 {
+                    let n = (i as u128) - 10;
+                    let fib = fib_rs::Fib::single(n);
+                    // divide by 2 using integer division
+                    let half = fib / num_bigint::BigUint::from(2u8);
+                    let half_u128 = half.to_string().parse::<u128>().unwrap_or(0);
+                    depth + half_u128 as usize
+                } else {
+                    depth
+                }
+            } else {
+                let fib = fib_rs::Fib::single(i as u128);
+                let fib_u128 = fib.to_string().parse::<u128>().unwrap_or(0);
+                depth + fib_u128 as usize
+            }
         }
         None => depth,
     };
@@ -118,13 +133,13 @@ fn walk(
         Value::Array(items) => {
             entry.array_len = Some(items.len());
             for (i, item) in items.iter().enumerate() {
-                walk(item, Some(my_id), depth + 1, Some(i), None, next_id, pq, metrics, true)?;
+                walk(item, Some(my_id), depth + 1, Some(i), None, next_id, pq, metrics, true, false)?;
             }
         }
         Value::Object(map) => {
             entry.object_len = Some(map.len());
             for (k, v) in map.iter() {
-                walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, pq, metrics, true)?;
+                walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, pq, metrics, true, false)?;
             }
         }
         Value::String(s) => {
@@ -132,7 +147,7 @@ fn walk(
             if expand_strings {
                 for (i, g) in UnicodeSegmentation::graphemes(s.as_str(), true).enumerate() {
                     let ch_value = Value::String(g.to_string());
-                    walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, pq, metrics, false)?;
+                    walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, pq, metrics, false, true)?;
                 }
             }
         }
@@ -146,7 +161,7 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     let mut next_id = 0usize;
     let mut pq: PriorityQueue<QueueItem, usize> = PriorityQueue::new();
     let mut metrics: std::collections::HashMap<usize, NodeMetrics> = std::collections::HashMap::new();
-    walk(value, None, 0, None, None, &mut next_id, &mut pq, &mut metrics, true)?;
+    walk(value, None, 0, None, None, &mut next_id, &mut pq, &mut metrics, true, false)?;
     Ok(PQBuild { pq, metrics })
 }
 

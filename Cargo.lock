@@ -231,6 +231,7 @@ dependencies = [
  "clap",
  "fib-rs",
  "insta",
+ "num-bigint",
  "priority-queue",
  "serde",
  "serde_json",

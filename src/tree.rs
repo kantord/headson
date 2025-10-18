@@ -89,16 +89,20 @@ impl TreeNode {
         out
     }
 
-    fn serialize_string(&self, template: OutputTemplate) -> String {
-        let v = self.value.clone().unwrap_or_default();
-        if v.is_empty() {
-            // Treat as truncation sentinel
-            return match template {
-                OutputTemplate::Json => "\"\"".to_string(),
-                OutputTemplate::Pseudo => "[\n  …\n]".to_string(),
-                OutputTemplate::Js => "[\n  /* 1 more item */\n]".to_string(),
-            };
+    fn serialize_string(&self, _template: OutputTemplate) -> String {
+        // If string was truncated by PQ, render the kept prefix + ellipsis inside quotes
+        if let Some(omitted) = self.omitted_items {
+            if omitted > 0 {
+                let mut kept = String::new();
+                for child in &self.children {
+                    if matches!(child.kind, TreeKind::String) {
+                        kept.push_str(child.value.as_deref().unwrap_or(""));
+                    }
+                }
+                return format!("\"{}…\"", kept);
+            }
         }
+        let v = self.value.clone().unwrap_or_default();
         format!("\"{}\"", v)
     }
 
@@ -167,15 +171,10 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
         );
     }
 
-    // Build children lists, ignoring string character children (parent is String)
+    // Build children lists; include string character children so strings can truncate like arrays
     let mut children: std::collections::HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
     for it in &items {
         if let Some(pid) = it.parent_id.0 {
-            if let Some(parent) = map.get(&pid) {
-                if let NodeKind::String = parent.kind {
-                    continue; // skip char-level expansions
-                }
-            }
             children.entry(pid).or_default().push(it.node_id.0);
         }
     }
@@ -214,6 +213,14 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
             NodeKind::Array => {
                 if let Some(node_metrics) = metrics.get(&id) {
                     if let Some(orig_len) = node_metrics.array_len {
+                        let kept = kids.len();
+                        if orig_len > kept { Some(orig_len - kept) } else { None }
+                    } else { None }
+                } else { None }
+            }
+            NodeKind::String => {
+                if let Some(node_metrics) = metrics.get(&id) {
+                    if let Some(orig_len) = node_metrics.string_len {
                         let kept = kids.len();
                         if orig_len > kept { Some(orig_len - kept) } else { None }
                     } else { None }
