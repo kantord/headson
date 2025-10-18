@@ -4,20 +4,15 @@ expression: stdout
 ---
 {
   "objects": [
-    {
-    }
+    { /* empty */ }
     /* 2 more items */
   ],
   "deep": [
-    {
-    }
+    { /* empty */ }
     /* 1 more items */
   ],
   "matrix": [
-    [
-      1
-      /* 2 more items */
-    ]
+    [ /* empty */ ]
     /* 2 more items */
   ],
   "strings": [

@@ -6,17 +6,14 @@ expression: stdout
   "users": [
     {
       "id": 1,
-      "roles": [
-        /* 3 more items */
-      ]
+      "roles": [ /* empty */ ],
+      "profile": { /* empty */ }
     }
     /* 1 more items */
   ],
   "meta": {
     "page": 1,
-    "tags": [
-      /* 5 more items */
-    ],
+    "tags": [ /* empty */ ],
     "pageSize": 20,
     "next": null
   }

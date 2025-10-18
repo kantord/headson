@@ -4,8 +4,7 @@ expression: stdout
 ---
 {
   "users": [
-    {
-    }
+    { /* empty */ }
     /* 1 more items */
   ],
   "meta": {

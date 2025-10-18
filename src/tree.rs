@@ -57,6 +57,14 @@ impl TreeNode {
     }
 
     fn serialize_array(&self, template: OutputTemplate, depth: usize) -> String {
+        // Empty arrays: single-line per template
+        if self.children.is_empty() {
+            return match template {
+                OutputTemplate::Json => "[]".to_string(),
+                OutputTemplate::Pseudo => "[…]".to_string(),
+                OutputTemplate::Js => "[ /* empty */ ]".to_string(),
+            };
+        }
         // Special truncation marker when array has single empty-string child
         if self.children.len() == 1 {
             let child = &self.children[0];
@@ -81,11 +89,14 @@ impl TreeNode {
             if i + 1 < self.children.len() { out.push(','); }
             out.push('\n');
         }
-        // If items were omitted by PQ truncation, append a marker for pseudo/js
+        // If items were omitted by PQ truncation, append a marker per template (single-line for json)
         if let Some(omitted) = self.omitted_items {
             if omitted > 0 {
                 match template {
-                    OutputTemplate::Json => {}
+                    OutputTemplate::Json => {
+                        // keep json valid; add a compact trailing comment line (single line marker)
+                        out.push_str(&format!("{}/* {} more items */\n", Self::indent(depth + 1), omitted));
+                    }
                     OutputTemplate::Pseudo => {
                         out.push_str(&format!("{}…\n", Self::indent(depth + 1)));
                     }
@@ -117,6 +128,14 @@ impl TreeNode {
     }
 
     fn serialize_object(&self, template: OutputTemplate, depth: usize) -> String {
+        // Empty objects: single-line per template
+        if self.children.is_empty() {
+            return match template {
+                OutputTemplate::Json => "{}".to_string(),
+                OutputTemplate::Pseudo => "{…}".to_string(),
+                OutputTemplate::Js => "{ /* empty */ }".to_string(),
+            };
+        }
         let mut out = String::new();
         out.push_str(&format!("{}{{\n", Self::indent(depth)));
         for (i, child) in self.children.iter().enumerate() {
