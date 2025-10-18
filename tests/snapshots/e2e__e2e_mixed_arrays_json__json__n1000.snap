@@ -3,43 +3,6 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
-  "objects": [
-    {
-      "k": "v1"
-    },
-    {
-      "k": "v2"
-    },
-    {
-      "k": "v3"
-    }
-  ],
-  "matrix": [
-    [
-      1,
-      2,
-      3
-    ],
-    [
-      4,
-      5,
-      6
-    ],
-    [
-      7,
-      8,
-      9
-    ]
-  ],
-  "strings": [
-    "one",
-    "two",
-    "three",
-    "four",
-    "five",
-    "six",
-    "seven"
-  ],
   "deep": [
     {
       "a": [
@@ -73,5 +36,42 @@ expression: stdout
         }
       ]
     }
+  ],
+  "objects": [
+    {
+      "k": "v1"
+    },
+    {
+      "k": "v2"
+    },
+    {
+      "k": "v3"
+    }
+  ],
+  "strings": [
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven"
+  ],
+  "matrix": [
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      4,
+      5,
+      6
+    ],
+    [
+      7,
+      8,
+      9
+    ]
   ]
 }

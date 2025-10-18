@@ -3,18 +3,6 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
-  "meta": {
-    "pageSize": 20,
-    "next": null,
-    "page": 1,
-    "tags": [
-      "alpha",
-      "beta",
-      "gamma",
-      "delta",
-      "epsilon"
-    ]
-  },
   "users": [
     {
       "roles": [
@@ -25,29 +13,41 @@ expression: stdout
       "name": "Alice Wonderland",
       "id": 1,
       "profile": {
-        "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
         "social": {
-          "twitter": "@alice",
           "web": "https://example.com/users/alice",
+          "twitter": "@alice",
           "github": "alice"
-        }
+        },
+        "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
       }
     },
     {
-      "id": 2,
-      "roles": [
-        "contributor",
-        "viewer"
-      ],
       "name": "Bob Builder",
+      "id": 2,
       "profile": {
-        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
         "social": {
           "twitter": "@buildWithBob",
           "github": "bobbuilder",
           "web": "https://bob.example.org"
-        }
-      }
+        },
+        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+      },
+      "roles": [
+        "contributor",
+        "viewer"
+      ]
     }
-  ]
+  ],
+  "meta": {
+    "next": null,
+    "pageSize": 20,
+    "page": 1,
+    "tags": [
+      "alpha",
+      "beta",
+      "gamma",
+      "delta",
+      "epsilon"
+    ]
+  }
 }

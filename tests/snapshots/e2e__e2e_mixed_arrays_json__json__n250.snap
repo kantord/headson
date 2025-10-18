@@ -3,21 +3,24 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
+  "deep": [
+    {
+      "a": []
+    }
+    /* 1 more items */
+  ],
   "objects": [
-        {}
+    {
+      "k": "…"
+    }
     /* 2 more items */
+  ],
+  "strings": [
+    "o…"
+    /* 6 more items */
   ],
   "matrix": [
         []
     /* 2 more items */
-  ],
-  "strings": [
-    "…",
-    "…"
-    /* 5 more items */
-  ],
-  "deep": [
-        {}
-    /* 1 more items */
   ]
 }

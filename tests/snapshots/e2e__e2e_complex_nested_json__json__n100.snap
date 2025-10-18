@@ -3,9 +3,10 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
-  "meta": {},
-  "users": [
-        {}
-    /* 1 more items */
-  ]
+  "users": [],
+  "meta": {
+    "next": null,
+    "pageSize": 20
+    /* 2 more properties */
+  }
 }

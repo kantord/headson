@@ -94,22 +94,53 @@ fn walk(
     expand_strings: bool,
     is_string_child: bool,
 ) -> Result<usize> {
+    // This variant keeps for back-compat; see cumulative version below
+    cumulative_walk(
+        value,
+        parent_id,
+        depth,
+        index_in_array,
+        key_in_object,
+        next_id,
+        pq,
+        metrics,
+        expand_strings,
+        is_string_child,
+        0u128,
+    )
+}
+
+fn cumulative_walk(
+    value: &Value,
+    parent_id: Option<usize>,
+    depth: usize,
+    index_in_array: Option<usize>,
+    key_in_object: Option<String>,
+    next_id: &mut usize,
+    pq: &mut PriorityQueue<QueueItem, usize>,
+    metrics: &mut std::collections::HashMap<usize, NodeMetrics>,
+    expand_strings: bool,
+    is_string_child: bool,
+    parent_score: u128,
+) -> Result<usize> {
     let my_id = *next_id;
     *next_id += 1;
-    let priority = match index_in_array {
-        Some(i) => {
-            if is_string_child {
-                // string-specific penalty: i + (max(0, i - 20))^2
-                let extra = if i > 20 { let d = i - 20; d * d } else { 0 };
-                depth + i + extra
-            } else {
-                // array-specific penalty: i^3
-                let penalty = i.pow(3);
-                depth + penalty
-            }
+    // Cumulative scoring: score = parent_score + 1 + node_penalty
+    // node_penalty:
+    // - string char at index i: i + max(0, i-20)^2
+    // - array item at index i: (i^3) * M (M large to dominate)
+    // - others: 0
+    const M: u128 = 1_000_000_000_000; // 1e12
+    let node_penalty: u128 = match (index_in_array, is_string_child) {
+        (Some(i), true) => {
+            let extra = if i > 20 { let d = (i - 20) as u128; d * d } else { 0 };
+            (i as u128) + extra
         }
-        None => depth,
+        (Some(i), false) => (i as u128).pow(3) * M,
+        _ => 0,
     };
+    let score_u128 = parent_score + 1 + node_penalty;
+    let priority: usize = if score_u128 > usize::MAX as u128 { usize::MAX } else { score_u128 as usize };
     let item = QueueItem {
         node_id: NodeId(my_id),
         parent_id: ParentId(parent_id),
@@ -129,13 +160,13 @@ fn walk(
         Value::Array(items) => {
             entry.array_len = Some(items.len());
             for (i, item) in items.iter().enumerate() {
-                walk(item, Some(my_id), depth + 1, Some(i), None, next_id, pq, metrics, true, false)?;
+                cumulative_walk(item, Some(my_id), depth + 1, Some(i), None, next_id, pq, metrics, true, false, score_u128)?;
             }
         }
         Value::Object(map) => {
             entry.object_len = Some(map.len());
             for (k, v) in map.iter() {
-                walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, pq, metrics, true, false)?;
+                cumulative_walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, pq, metrics, true, false, score_u128)?;
             }
         }
         Value::String(s) => {
@@ -143,7 +174,7 @@ fn walk(
             if expand_strings {
                 for (i, g) in UnicodeSegmentation::graphemes(s.as_str(), true).enumerate() {
                     let ch_value = Value::String(g.to_string());
-                    walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, pq, metrics, false, true)?;
+                    cumulative_walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, pq, metrics, false, true, score_u128)?;
                 }
             }
         }

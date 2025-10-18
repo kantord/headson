@@ -3,12 +3,10 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
+  "users": [ … ],
   "meta": {
+    "next": null,
     "pageSize": 20
     …
-  },
-  "users": [
-        { … }
-    …
-  ]
+  }
 }

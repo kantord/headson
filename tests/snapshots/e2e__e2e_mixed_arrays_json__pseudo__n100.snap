@@ -3,8 +3,8 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
+  "deep": [ … ],
   "objects": [ … ],
-  "matrix": [ … ],
   "strings": [ … ],
-  "deep": [ … ]
+  "matrix": [ … ]
 }
