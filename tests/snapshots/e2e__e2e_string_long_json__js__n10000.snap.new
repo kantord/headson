@@ -1,0 +1,8 @@
+---
+source: tests/e2e.rs
+assertion_line: 31
+expression: stdout
+---
+[
+  "abcdefghijklmnopqrstuvwxyz"
+]
