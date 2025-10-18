@@ -31,6 +31,19 @@ pub struct QueueItem {
     pub value_repr: String,
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct NodeMetrics {
+    pub array_len: Option<usize>,
+    pub object_len: Option<usize>,
+    pub string_len: Option<usize>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PQBuild {
+    pub pq: PriorityQueue<QueueItem, usize>,
+    pub metrics: std::collections::HashMap<usize, NodeMetrics>,
+}
+
 fn value_repr(value: &Value) -> String {
     match value {
         Value::Null => "null".to_string(),
@@ -73,6 +86,7 @@ fn walk(
     key_in_object: Option<String>,
     next_id: &mut usize,
     pq: &mut PriorityQueue<QueueItem, usize>,
+    metrics: &mut std::collections::HashMap<usize, NodeMetrics>,
     expand_strings: bool,
 ) -> Result<usize> {
     let my_id = *next_id;
@@ -97,22 +111,28 @@ fn walk(
     };
     pq.push(item, priority);
 
+    // Record metrics for this node
+    let entry = metrics.entry(my_id).or_default();
+
     match value {
         Value::Array(items) => {
+            entry.array_len = Some(items.len());
             for (i, item) in items.iter().enumerate() {
-                walk(item, Some(my_id), depth + 1, Some(i), None, next_id, pq, true)?;
+                walk(item, Some(my_id), depth + 1, Some(i), None, next_id, pq, metrics, true)?;
             }
         }
         Value::Object(map) => {
+            entry.object_len = Some(map.len());
             for (k, v) in map.iter() {
-                walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, pq, true)?;
+                walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, pq, metrics, true)?;
             }
         }
         Value::String(s) => {
+            entry.string_len = Some(UnicodeSegmentation::graphemes(s.as_str(), true).count());
             if expand_strings {
                 for (i, g) in UnicodeSegmentation::graphemes(s.as_str(), true).enumerate() {
                     let ch_value = Value::String(g.to_string());
-                    walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, pq, false)?;
+                    walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, pq, metrics, false)?;
                 }
             }
         }
@@ -122,11 +142,12 @@ fn walk(
     Ok(my_id)
 }
 
-pub fn build_priority_queue(value: &Value) -> Result<PriorityQueue<QueueItem, usize>> {
+pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     let mut next_id = 0usize;
     let mut pq: PriorityQueue<QueueItem, usize> = PriorityQueue::new();
-    walk(value, None, 0, None, None, &mut next_id, &mut pq, true)?;
-    Ok(pq)
+    let mut metrics: std::collections::HashMap<usize, NodeMetrics> = std::collections::HashMap::new();
+    walk(value, None, 0, None, None, &mut next_id, &mut pq, &mut metrics, true)?;
+    Ok(PQBuild { pq, metrics })
 }
 
 #[cfg(test)]
@@ -137,9 +158,9 @@ mod tests {
     #[test]
     fn pq_empty_array() {
         let value: Value = serde_json::from_str("[]").unwrap();
-        let pq = build_priority_queue(&value).unwrap();
-        let mut lines = vec![format!("len={}", pq.len())];
-        for (item, prio) in pq.into_sorted_iter() {
+        let build = build_priority_queue(&value).unwrap();
+        let mut lines = vec![format!("len={}", build.pq.len())];
+        for (item, prio) in build.pq.into_sorted_iter() {
             lines.push(format!("{:?} prio={}", item, prio));
         }
         assert_snapshot!("pq_empty_array_queue", lines.join("\n"));
@@ -148,9 +169,9 @@ mod tests {
     #[test]
     fn pq_single_string_array() {
         let value: Value = serde_json::from_str("[\"ab\"]").unwrap();
-        let pq = build_priority_queue(&value).unwrap();
-        let mut lines = vec![format!("len={}", pq.len())];
-        for (item, prio) in pq.into_sorted_iter() {
+        let build = build_priority_queue(&value).unwrap();
+        let mut lines = vec![format!("len={}", build.pq.len())];
+        for (item, prio) in build.pq.into_sorted_iter() {
             lines.push(format!("{:?} prio={}", item, prio));
         }
         assert_snapshot!("pq_single_string_array_queue", lines.join("\n"));

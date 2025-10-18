@@ -2,7 +2,7 @@ use anyhow::Result;
 use priority_queue::PriorityQueue;
  
 
-use crate::queue::{NodeKind, QueueItem};
+use crate::queue::{NodeKind, QueueItem, PQBuild, NodeMetrics};
 use crate::OutputTemplate;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -25,6 +25,7 @@ pub struct TreeNode {
     pub number_value: Option<f64>,
     pub bool_value: Option<bool>,
     pub children: Vec<TreeNode>,
+    pub omitted_items: Option<usize>,
 }
 
 impl TreeNode {
@@ -69,6 +70,20 @@ impl TreeNode {
             }
             if i + 1 < self.children.len() { out.push(','); }
             out.push('\n');
+        }
+        // If items were omitted by PQ truncation, append a marker for pseudo/js
+        if let Some(omitted) = self.omitted_items {
+            if omitted > 0 {
+                match template {
+                    OutputTemplate::Json => {}
+                    OutputTemplate::Pseudo => {
+                        out.push_str(&format!("{}…\n", Self::indent(depth + 1)));
+                    }
+                    OutputTemplate::Js => {
+                        out.push_str(&format!("{}/* {} more items */\n", Self::indent(depth + 1), omitted));
+                    }
+                }
+            }
         }
         out.push_str(&format!("{}]", Self::indent(depth)));
         out
@@ -116,7 +131,9 @@ impl TreeNode {
     
 }
 
-pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>, budget: usize) -> Result<TreeNode> {
+pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
+    let pq: &PriorityQueue<QueueItem, usize> = &pq_build.pq;
+    let metrics: &std::collections::HashMap<usize, NodeMetrics> = &pq_build.metrics;
     // Collect first N by ascending priority (shallower depth first), N = budget for now
     let mut all_desc: Vec<(QueueItem, usize)> = pq.clone().into_sorted_iter().collect();
     all_desc.reverse();
@@ -174,6 +191,7 @@ pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>, budget: usize) -> Result
         id: usize,
         map: &std::collections::HashMap<usize, Rec>,
         children: &std::collections::HashMap<usize, Vec<usize>>,
+        metrics: &std::collections::HashMap<usize, NodeMetrics>,
     ) -> TreeNode {
         let rec = map.get(&id).expect("missing rec");
         let kind = match rec.kind {
@@ -189,8 +207,20 @@ pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>, budget: usize) -> Result
         kids_ids.sort_by_key(|cid| map.get(cid).and_then(|r| r.index).unwrap_or(usize::MAX));
         let kids = kids_ids
             .into_iter()
-            .map(|cid| to_tree(cid, map, children))
+            .map(|cid| to_tree(cid, map, children, metrics))
             .collect::<Vec<_>>();
+        // Compute omitted items for arrays using PQ metrics
+        let omitted_items = match rec.kind {
+            NodeKind::Array => {
+                if let Some(node_metrics) = metrics.get(&id) {
+                    if let Some(orig_len) = node_metrics.array_len {
+                        let kept = kids.len();
+                        if orig_len > kept { Some(orig_len - kept) } else { None }
+                    } else { None }
+                } else { None }
+            }
+            _ => None,
+        };
         TreeNode {
             id,
             kind,
@@ -200,10 +230,11 @@ pub fn build_tree(pq: &PriorityQueue<QueueItem, usize>, budget: usize) -> Result
             number_value: match rec.kind { NodeKind::Number => rec.value.as_deref().and_then(|s| s.parse::<f64>().ok()), _ => None },
             bool_value: match rec.kind { NodeKind::Bool => Some(rec.value.as_deref() == Some("true")), _ => None },
             children: kids,
+            omitted_items,
         }
     }
 
-    Ok(to_tree(root_id, &map, &children))
+    Ok(to_tree(root_id, &map, &children, metrics))
 }
 
 fn strip_quotes(s: &str) -> String {
@@ -225,8 +256,8 @@ mod tests {
     #[test]
     fn build_tree_empty_array() {
         let value: Value = serde_json::from_str("[]").unwrap();
-        let pq = build_priority_queue(&value).unwrap();
-        let tree = build_tree(&pq, 10).unwrap();
+        let build = crate::build_priority_queue(&value).unwrap();
+        let tree = build_tree(&build, 10).unwrap();
         use crate::OutputTemplate;
         assert_snapshot!("build_tree_empty", tree.serialize(OutputTemplate::Json));
     }
@@ -234,8 +265,8 @@ mod tests {
     #[test]
     fn build_tree_single_string_array() {
         let value: Value = serde_json::from_str("[\"ab\"]").unwrap();
-        let pq = build_priority_queue(&value).unwrap();
-        let tree = build_tree(&pq, 10).unwrap();
+        let build = crate::build_priority_queue(&value).unwrap();
+        let tree = build_tree(&build, 10).unwrap();
         use crate::OutputTemplate;
         assert_snapshot!("build_tree_single", tree.serialize(OutputTemplate::Json));
     }

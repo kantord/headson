@@ -3,7 +3,7 @@ use serde_json::Value;
  
 mod queue;
 mod tree;
-pub use queue::{build_priority_queue, NodeId, ParentId, NodeKind, QueueItem};
+pub use queue::{build_priority_queue, NodeId, ParentId, NodeKind, QueueItem, PQBuild};
 pub use tree::{build_tree, TreeKind, TreeNode};
 
 pub fn parse_json(input: &str, _budget: usize) -> Result<Value> {
@@ -47,8 +47,8 @@ pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
 
 pub fn headson(input: &str, template: OutputTemplate, budget: usize) -> Result<String> {
     let parsed = parse_json(input, budget)?;
-    let pq = build_priority_queue(&parsed)?;
-    let tree = build_tree(&pq, budget)?;
+    let pq_build = build_priority_queue(&parsed)?;
+    let tree = build_tree(&pq_build, budget)?;
     Ok(tree.serialize(template))
 }
 
