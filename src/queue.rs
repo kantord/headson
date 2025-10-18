@@ -82,34 +82,6 @@ fn to_kind(value: &Value) -> NodeKind {
     }
 }
 
-fn walk(
-    value: &Value,
-    parent_id: Option<usize>,
-    depth: usize,
-    index_in_array: Option<usize>,
-    key_in_object: Option<String>,
-    next_id: &mut usize,
-    pq: &mut PriorityQueue<QueueItem, usize>,
-    metrics: &mut std::collections::HashMap<usize, NodeMetrics>,
-    expand_strings: bool,
-    is_string_child: bool,
-) -> Result<usize> {
-    // This variant keeps for back-compat; see cumulative version below
-    cumulative_walk(
-        value,
-        parent_id,
-        depth,
-        index_in_array,
-        key_in_object,
-        next_id,
-        pq,
-        metrics,
-        expand_strings,
-        is_string_child,
-        0u128,
-    )
-}
-
 fn cumulative_walk(
     value: &Value,
     parent_id: Option<usize>,
@@ -188,7 +160,7 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     let mut next_id = 0usize;
     let mut pq: PriorityQueue<QueueItem, usize> = PriorityQueue::new();
     let mut metrics: std::collections::HashMap<usize, NodeMetrics> = std::collections::HashMap::new();
-    walk(value, None, 0, None, None, &mut next_id, &mut pq, &mut metrics, true, false)?;
+    cumulative_walk(value, None, 0, None, None, &mut next_id, &mut pq, &mut metrics, true, false, 0u128)?;
     // Build arena-like maps
     let mut id_to_item = std::collections::HashMap::new();
     let mut parent_of = std::collections::HashMap::new();

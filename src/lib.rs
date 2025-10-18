@@ -26,32 +26,7 @@ pub struct RenderConfig {
     pub indent_unit: String,
 }
 
-pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
-    let json = match value {
-        Value::Array(items) => {
-            if items.is_empty() {
-                "[]".to_string()
-            } else if items.len() == 1 {
-                if let Value::String(s) = &items[0] {
-                    format!("[\n  \"{}\"\n]", s)
-                } else {
-                    "[]".to_string()
-                }
-            } else {
-                "[]".to_string()
-            }
-        }
-        Value::Object(_) => "{}".to_string(),
-        _ => "[]".to_string(),
-    };
-
-    let out = match template {
-        OutputTemplate::Json => json,
-        OutputTemplate::Pseudo => if matches!(value, Value::String(s) if s.is_empty()) { "[\n  …\n]".to_string() } else { json },
-        OutputTemplate::Js => if matches!(value, Value::String(s) if s.is_empty()) { "[\n  /* 1 more item */\n]".to_string() } else { json },
-    };
-    Ok(out)
-}
+// legacy helper no longer used
 
 pub fn headson(input: &str, config: RenderConfig, budget: usize) -> Result<String> {
     let parsed = parse_json(input, budget)?;
