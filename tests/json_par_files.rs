@@ -17,12 +17,10 @@ fn run_cli(input: &[u8]) -> (bool, Vec<u8>, Vec<u8>) {
 
 fn is_y(path: &Path) -> bool { path.file_name().and_then(|s| s.to_str()).map(|n| n.starts_with("y_")).unwrap_or(false) }
 fn is_n(path: &Path) -> bool { path.file_name().and_then(|s| s.to_str()).map(|n| n.starts_with("n_")).unwrap_or(false) }
-fn is_i(path: &Path) -> bool { path.file_name().and_then(|s| s.to_str()).map(|n| n.starts_with("i_")).unwrap_or(false) }
 
 test_each_path! { in "JSONTestSuite/test_parsing" => jsonsuite_case }
 
 fn jsonsuite_case(path: &Path) {
-    if is_i(path) { return; }
     if !path.extension().map(|e| e == "json").unwrap_or(false) { return; }
 
     let input = fs::read(path).expect("read");
