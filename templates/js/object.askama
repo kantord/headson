@@ -1,5 +1,9 @@
 {%- if children_len == 0 -%}
-{{ indent0 }}{}
+{%- if omitted > 0 -%}
+{{ indent0 }}{ /* {{ omitted }} more properties */ }
+{%- else -%}
+{{ indent0 }}{ /* empty */ }
+{%- endif -%}
 {%- else -%}
 {{ indent0 }}{
 {%- for kv in children %}

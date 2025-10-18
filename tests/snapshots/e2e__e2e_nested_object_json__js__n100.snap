@@ -3,14 +3,6 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
-  "a": {
-    "b": [],
-    "c": 1
-  },
-  "d": [
-    {
-      "k": "…"
-    },
-        {}
-  ]
+  "a": { /* 2 more properties */ },
+  "d": [ /* 2 more items */ ]
 }

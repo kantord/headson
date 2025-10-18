@@ -3,7 +3,7 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
-  "users": [],
+  "users": [ /* 2 more items */ ],
   "meta": {
     "page": 1
     /* 3 more properties */
