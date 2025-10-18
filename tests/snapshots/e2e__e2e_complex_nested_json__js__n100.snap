@@ -5,7 +5,7 @@ expression: stdout
 {
   "users": [ /* 2 more items */ ],
   "meta": {
-    "page": 1
+    "next": null
     /* 3 more properties */
   }
 }

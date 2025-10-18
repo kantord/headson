@@ -8,9 +8,7 @@ expression: stdout
     "c": 1
   },
   "d": [
-    {
-      "k": "…"
-    },
         {}
+    /* 1 more items */
   ]
 }

@@ -5,12 +5,7 @@ expression: stdout
 {
   "users": [
     {
-      "id": 1,
-      "roles": [
-        "admin",
-        "editor",
-        "viewer"
-      ],
+      "name": "Alice Wonderland",
       "profile": {
         "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incid…",
         "social": {
@@ -19,27 +14,32 @@ expression: stdout
           "web": "https://example.com/users/alice"
         }
       },
-      "name": "Alice Wonderland"
+      "id": 1,
+      "roles": [
+        "admin",
+        "editor",
+        "viewer"
+      ]
     },
     {
-      "id": 2,
       "profile": {
+        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex…",
         "social": {
           "github": "bobbuilder",
           "twitter": "@buildWithBob",
           "web": "https://bob.example.org"
-        },
-        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex…"
+        }
       },
-      "name": "Bob Builder",
       "roles": [
         "contributor",
         "viewer"
-      ]
+      ],
+      "name": "Bob Builder",
+      "id": 2
     }
   ],
   "meta": {
-    "page": 1,
+    "next": null,
     "tags": [
       "alpha",
       "beta",
@@ -47,7 +47,7 @@ expression: stdout
       "delta",
       "epsilon"
     ],
-    "pageSize": 20,
-    "next": null
+    "page": 1,
+    "pageSize": 20
   }
 }

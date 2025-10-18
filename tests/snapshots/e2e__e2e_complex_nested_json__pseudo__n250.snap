@@ -5,20 +5,20 @@ expression: stdout
 {
   "users": [
     {
-      "id": 1,
-      "roles": [ … ],
+      "name": "…",
       "profile": { … },
-      "name": "…"
+      "id": 1,
+      "roles": [ … ]
     }
     …
   ],
   "meta": {
-    "page": 1,
+    "next": null,
     "tags": [
       "…"
       …
     ],
-    "pageSize": 20,
-    "next": null
+    "page": 1,
+    "pageSize": 20
   }
 }

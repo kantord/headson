@@ -3,7 +3,6 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
-  "objects": [ /* 3 more items */ ],
-  "deep": [ /* 2 more items */ ]
-  /* 2 more properties */
+  "strings": [ /* 7 more items */ ]
+  /* 3 more properties */
 }

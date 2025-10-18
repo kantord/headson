@@ -3,10 +3,13 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
+  "strings": [
+    "…"
+    …
+  ],
   "objects": [
-    {
-      "k": "…"
-    }
+        { … },
+        { … }
     …
   ],
   "deep": [
@@ -18,15 +21,10 @@ expression: stdout
       1
       …
     ],
-        [ … ],
     [
-      7
+      4
       …
     ]
-  ],
-  "strings": [
-    "…",
-    "…"
     …
   ]
 }

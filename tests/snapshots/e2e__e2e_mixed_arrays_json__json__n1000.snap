@@ -3,6 +3,15 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
+  "strings": [
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven"
+  ],
   "objects": [
     {
       "k": "v1"
@@ -64,14 +73,5 @@ expression: stdout
       8,
       9
     ]
-  ],
-  "strings": [
-    "one",
-    "two",
-    "three",
-    "four",
-    "five",
-    "six",
-    "seven"
   ]
 }

@@ -100,9 +100,9 @@ fn walk(
                 let penalty = adj * adj;
                 depth + penalty
             } else {
-                let fib = fib_rs::Fib::single(i as u128);
-                let fib_u128 = fib.to_string().parse::<u128>().unwrap_or(0);
-                depth + fib_u128 as usize
+                // array-specific penalty: i^3
+                let penalty = i.pow(3);
+                depth + penalty
             }
         }
         None => depth,
