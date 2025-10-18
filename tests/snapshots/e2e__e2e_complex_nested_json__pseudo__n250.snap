@@ -6,8 +6,8 @@ expression: stdout
   "users": [
     {
       "id": 1,
-      "roles": [],
-      "profile": {},
+      "roles": [ … ],
+      "profile": { … },
       "name": "…"
     }
     …
