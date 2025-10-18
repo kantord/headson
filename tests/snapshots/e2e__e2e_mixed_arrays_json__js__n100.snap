@@ -1,0 +1,12 @@
+---
+source: tests/e2e.rs
+expression: stdout
+---
+{
+  "objects": [
+    /* 3 more items */
+  ],
+  "deep": [
+    /* 2 more items */
+  ]
+}

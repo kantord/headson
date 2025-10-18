@@ -1,0 +1,14 @@
+---
+source: tests/e2e.rs
+expression: stdout
+---
+{
+  "users": [
+    {
+    }
+    …
+  ],
+  "meta": {
+    "page": 1
+  }
+}
