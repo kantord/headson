@@ -87,7 +87,6 @@ impl TreeNode {
     }
 
     fn serialize_string(&self, _template: OutputTemplate) -> String {
-        // If string was truncated by PQ, render the kept prefix + ellipsis inside quotes
         if let Some(omitted) = self.omitted_items {
             if omitted > 0 {
                 let mut kept = String::new();
@@ -96,11 +95,12 @@ impl TreeNode {
                         kept.push_str(child.value.as_deref().unwrap_or(""));
                     }
                 }
-                return format!("\"{}…\"", kept);
+                let truncated = format!("{}…", kept);
+                return serde_json::to_string(&truncated).unwrap_or_else(|_| format!("\"{}…\"", kept));
             }
         }
         let v = self.value.clone().unwrap_or_default();
-        format!("\"{}\"", v)
+        serde_json::to_string(&v).unwrap_or_else(|_| format!("\"{}\"", v))
     }
 
     fn serialize_object(&self, template: OutputTemplate, depth: usize) -> String {
@@ -119,7 +119,8 @@ impl TreeNode {
         let mut children: Vec<(usize, (String, String))> = Vec::with_capacity(self.children.len());
         let ind = Self::indent(depth + 1);
         for (i, c) in self.children.iter().enumerate() {
-            let key = c.key_in_parent.clone().unwrap_or_default();
+            let raw_key = c.key_in_parent.clone().unwrap_or_default();
+            let key = strip_quotes(&serde_json::to_string(&raw_key).unwrap_or_else(|_| format!("\"{}\"", raw_key)));
             let mut val = c.serialize_with_depth(template, depth + 1);
             if val.starts_with(&ind) {
                 val = val[ind.len()..].to_string();

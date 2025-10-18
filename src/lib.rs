@@ -7,6 +7,12 @@ mod render;
 pub use queue::{build_priority_queue, NodeId, ParentId, NodeKind, QueueItem, PQBuild};
 pub use tree::{build_tree, TreeKind, TreeNode};
 
+#[cfg(test)]
+#[path = "."]
+mod generated_tests {
+    include!(env!("JSON_SUITE_GEN"));
+}
+
 pub fn parse_json(input: &str, _budget: usize) -> Result<Value> {
     let parsed_value: Value = serde_json::from_str(input)?;
     Ok(parsed_value)
