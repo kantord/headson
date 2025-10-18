@@ -4,9 +4,7 @@ expression: stdout
 ---
 {
   "a": {
-    "b": [
-      /* 3 more items */
-    ]
+    /* 2 more properties */
   },
   "d": [
     /* 2 more items */

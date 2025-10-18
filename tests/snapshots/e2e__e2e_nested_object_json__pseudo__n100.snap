@@ -11,6 +11,6 @@ expression: stdout
     {
       "k": "…"
     },
-    {}
+    {…}
   ]
 }

@@ -5,10 +5,8 @@ expression: stdout
 {
   "users": [
     {
-      "id": 1,
-      "roles": [
-        /* 3 more items */
-      ]
+      "id": 1
+      /* 3 more properties */
     }
     /* 1 more items */
   ],

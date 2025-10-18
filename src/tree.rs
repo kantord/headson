@@ -135,8 +135,19 @@ impl TreeNode {
     }
 
     fn serialize_object(&self, template: OutputTemplate, depth: usize) -> String {
-        // Empty objects: always {}
+        // Empty objects:
+        // - truly empty: {}
+        // - truncated to zero visible properties (omitted_items > 0): show marker per template
         if self.children.is_empty() {
+            if let Some(omitted) = self.omitted_items {
+                if omitted > 0 {
+                    return match template {
+                        OutputTemplate::Json => format!("{}{{\n{}/* {} more properties */\n{}}}", Self::indent(depth), Self::indent(depth + 1), omitted, Self::indent(depth)),
+                        OutputTemplate::Pseudo => "{…}".to_string(),
+                        OutputTemplate::Js => format!("{}{{\n{}/* {} more properties */\n{}}}", Self::indent(depth), Self::indent(depth + 1), omitted, Self::indent(depth)),
+                    };
+                }
+            }
             return "{}".to_string();
         }
         let mut out = String::new();
@@ -151,6 +162,22 @@ impl TreeNode {
             out.push_str(&format!("{}\"{}\": {}", Self::indent(depth + 1), key, rendered));
             if i + 1 < self.children.len() { out.push(','); }
             out.push('\n');
+        }
+        // If properties were omitted by PQ truncation, append a marker per template
+        if let Some(omitted) = self.omitted_items {
+            if omitted > 0 {
+                match template {
+                    OutputTemplate::Json => {
+                        out.push_str(&format!("{}/* {} more properties */\n", Self::indent(depth + 1), omitted));
+                    }
+                    OutputTemplate::Pseudo => {
+                        out.push_str(&format!("{}…\n", Self::indent(depth + 1)));
+                    }
+                    OutputTemplate::Js => {
+                        out.push_str(&format!("{}/* {} more properties */\n", Self::indent(depth + 1), omitted));
+                    }
+                }
+            }
         }
         out.push_str(&format!("{}}}", Self::indent(depth)));
         out
@@ -240,7 +267,7 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
             .into_iter()
             .map(|cid| to_tree(cid, map, children, metrics))
             .collect::<Vec<_>>();
-        // Compute omitted items for arrays using PQ metrics
+        // Compute omitted items for arrays/strings/objects using PQ metrics
         let omitted_items = match rec.kind {
             NodeKind::Array => {
                 if let Some(node_metrics) = metrics.get(&id) {
@@ -253,6 +280,14 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
             NodeKind::String => {
                 if let Some(node_metrics) = metrics.get(&id) {
                     if let Some(orig_len) = node_metrics.string_len {
+                        let kept = kids.len();
+                        if orig_len > kept { Some(orig_len - kept) } else { None }
+                    } else { None }
+                } else { None }
+            }
+            NodeKind::Object => {
+                if let Some(node_metrics) = metrics.get(&id) {
+                    if let Some(orig_len) = node_metrics.object_len {
                         let kept = kids.len();
                         if orig_len > kept { Some(orig_len - kept) } else { None }
                     } else { None }
