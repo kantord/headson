@@ -3,6 +3,7 @@ use priority_queue::PriorityQueue;
  
 
 use crate::queue::{NodeKind, QueueItem, PQBuild, NodeMetrics};
+use std::cell::RefCell;
 use crate::OutputTemplate;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -26,11 +27,15 @@ pub struct TreeNode {
     pub bool_value: Option<bool>,
     pub children: Vec<TreeNode>,
     pub omitted_items: Option<usize>,
+    cached: RefCell<Option<String>>,
 }
 
 impl TreeNode {
     pub fn serialize(&self, template: OutputTemplate) -> String {
-        self.serialize_with_depth(template, 0)
+        if let Some(s) = self.cached.borrow().as_ref() { return s.clone(); }
+        let s = self.serialize_with_depth(template, 0);
+        *self.cached.borrow_mut() = Some(s.clone());
+        s
     }
 
     fn serialize_with_depth(&self, template: OutputTemplate, depth: usize) -> String {
@@ -45,6 +50,11 @@ impl TreeNode {
     }
 
     fn indent(depth: usize) -> String { "  ".repeat(depth) }
+
+    pub fn reset_cache(&self) {
+        *self.cached.borrow_mut() = None;
+        for child in &self.children { child.reset_cache(); }
+    }
 
     fn serialize_array(&self, template: OutputTemplate, depth: usize) -> String {
         // Special truncation marker when array has single empty-string child
@@ -238,6 +248,7 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
             bool_value: match rec.kind { NodeKind::Bool => Some(rec.value.as_deref() == Some("true")), _ => None },
             children: kids,
             omitted_items,
+            cached: RefCell::new(None),
         }
     }
 

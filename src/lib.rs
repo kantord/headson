@@ -52,39 +52,25 @@ pub fn headson(input: &str, template: OutputTemplate, budget: usize) -> Result<S
 }
 
 fn best_render_under_char_budget(pq_build: &PQBuild, template: OutputTemplate, char_budget: usize) -> Result<String> {
-    // Iterate cumulatively increasing the number of PQ items included, stop when render exceeds budget.
-    // Keep last two candidates via a small ring buffer, return the best that still fits.
+    // Binary search the largest k in [1, total] whose render fits into char_budget
     let total = pq_build.pq.len();
-    let mut cand: [Option<String>; 2] = [None, None];
-    let mut best_len: usize = 0;
-    let mut i: usize = 1; // include at least root
+    if total == 0 { return Ok(String::new()); }
+    let mut lo = 1usize;
+    let mut hi = total;
+    let mut best: Option<String> = None;
 
-    while i <= total {
-        let tree = build_tree(pq_build, i)?;
+    while lo <= hi {
+        let mid = lo + (hi - lo) / 2;
+        let tree = build_tree(pq_build, mid)?;
         let s = tree.serialize(template);
-        let l = s.len();
-        let slot = i % 2;
-        cand[slot] = Some(s);
-        if l > char_budget {
-            break;
+        if s.len() <= char_budget {
+            best = Some(s);
+            lo = mid + 1;
+        } else {
+            hi = mid.saturating_sub(1);
         }
-        best_len = l;
-        i += 1;
     }
 
-    // Choose the best that fits (largest length <= budget)
-    let idx = if i == 0 { 0 } else { (i.saturating_sub(1)) % 2 };
-    if let Some(s) = cand[idx].clone() {
-        if s.len() <= char_budget { return Ok(s); }
-    }
-    // Fallback: try the other candidate
-    let other = (idx + 1) % 2;
-    if let Some(s) = cand[other].clone() {
-        if s.len() <= char_budget { return Ok(s); }
-    }
-    // If nothing fits, render minimal tree with 1 item, or empty string if even that fails
-    let tree = build_tree(pq_build, 1)?;
-    let s = tree.serialize(template);
-    if s.len() <= char_budget { Ok(s) } else { Ok(String::new()) }
+    Ok(best.unwrap_or_default())
 }
 
