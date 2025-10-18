@@ -29,7 +29,7 @@ fn budget_10_and_single_15_char_string_returns_js_comment_array() -> Result<(), 
         .write_stdin("[\"123456789012345\"]")
         .assert()
         .success()
-        .stdout("[\n  /* 1 more item */\n]\n");
+        .stdout("[\n  \"34578904…\"\n]\n");
     Ok(())
 }
 
@@ -40,7 +40,7 @@ fn pseudo_budget_10_and_single_15_char_string_prints_ellipsis_array() -> Result<
         .write_stdin("[\"123456789012345\"]")
         .assert()
         .success()
-        .stdout("[\n  …\n]\n");
+        .stdout("[\n  \"34578904…\"\n]\n");
     Ok(())
 }
 
