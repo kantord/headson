@@ -32,8 +32,9 @@ fn main() -> Result<()> {
         Template::Pseudo => headson::OutputTemplate::Pseudo,
         Template::Js => headson::OutputTemplate::Js,
     };
+    let config = headson::RenderConfig { template };
 
-    let output = headson::headson(&buffer, template, cli.budget)?;
+    let output = headson::headson(&buffer, config, cli.budget)?;
     println!("{}", output);
 
     Ok(())

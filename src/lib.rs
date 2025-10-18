@@ -18,6 +18,11 @@ pub enum OutputTemplate {
     Js,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct RenderConfig {
+    pub template: OutputTemplate,
+}
+
 pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
     let json = match value {
         Value::Array(items) => {
@@ -45,13 +50,13 @@ pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
     Ok(out)
 }
 
-pub fn headson(input: &str, template: OutputTemplate, budget: usize) -> Result<String> {
+pub fn headson(input: &str, config: RenderConfig, budget: usize) -> Result<String> {
     let parsed = parse_json(input, budget)?;
     let pq_build = build_priority_queue(&parsed)?;
-    best_render_under_char_budget(&pq_build, template, budget)
+    best_render_under_char_budget(&pq_build, config, budget)
 }
 
-fn best_render_under_char_budget(pq_build: &PQBuild, template: OutputTemplate, char_budget: usize) -> Result<String> {
+fn best_render_under_char_budget(pq_build: &PQBuild, config: RenderConfig, char_budget: usize) -> Result<String> {
     // Binary search the largest k in [1, total] whose render fits into char_budget
     let total = pq_build.pq.len();
     if total == 0 { return Ok(String::new()); }
@@ -62,7 +67,7 @@ fn best_render_under_char_budget(pq_build: &PQBuild, template: OutputTemplate, c
     while lo <= hi {
         let mid = lo + (hi - lo) / 2;
         let tree = build_tree(pq_build, mid)?;
-        let s = tree.serialize(template);
+        let s = tree.serialize(&config);
         if s.len() <= char_budget {
             best = Some(s);
             lo = mid + 1;

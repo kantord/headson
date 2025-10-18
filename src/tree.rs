@@ -4,7 +4,7 @@ use priority_queue::PriorityQueue;
 
 use crate::queue::{NodeKind, QueueItem, PQBuild, NodeMetrics};
 use std::cell::RefCell;
-use crate::OutputTemplate;
+use crate::{OutputTemplate, RenderConfig};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TreeKind {
@@ -31,9 +31,9 @@ pub struct TreeNode {
 }
 
 impl TreeNode {
-    pub fn serialize(&self, template: OutputTemplate) -> String {
+    pub fn serialize(&self, config: &RenderConfig) -> String {
         if let Some(s) = self.cached.borrow().as_ref() { return s.clone(); }
-        let s = self.serialize_with_depth(template, 0);
+        let s = self.serialize_with_depth(config.template, 0);
         *self.cached.borrow_mut() = Some(s.clone());
         s
     }
@@ -295,8 +295,8 @@ mod tests {
         let value: Value = serde_json::from_str("[]").unwrap();
         let build = crate::build_priority_queue(&value).unwrap();
         let tree = build_tree(&build, 10).unwrap();
-        use crate::OutputTemplate;
-        assert_snapshot!("build_tree_empty", tree.serialize(OutputTemplate::Json));
+        use crate::RenderConfig; use crate::OutputTemplate;
+        assert_snapshot!("build_tree_empty", tree.serialize(&RenderConfig{ template: OutputTemplate::Json }));
     }
 
     #[test]
@@ -304,7 +304,7 @@ mod tests {
         let value: Value = serde_json::from_str("[\"ab\"]").unwrap();
         let build = crate::build_priority_queue(&value).unwrap();
         let tree = build_tree(&build, 10).unwrap();
-        use crate::OutputTemplate;
-        assert_snapshot!("build_tree_single", tree.serialize(OutputTemplate::Json));
+        use crate::RenderConfig; use crate::OutputTemplate;
+        assert_snapshot!("build_tree_single", tree.serialize(&RenderConfig{ template: OutputTemplate::Json }));
     }
 }
