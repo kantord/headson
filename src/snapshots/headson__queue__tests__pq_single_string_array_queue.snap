@@ -3,7 +3,7 @@ source: src/queue.rs
 expression: "lines.join(\"\\n\")"
 ---
 len=4
-QueueItem { node_id: NodeId(2), parent_id: ParentId(Some(1)), kind: String, depth: 2, index_in_array: Some(0), key_in_object: None, priority: 3, value_repr: "\"a\"" } prio=3
 QueueItem { node_id: NodeId(3), parent_id: ParentId(Some(1)), kind: String, depth: 2, index_in_array: Some(1), key_in_object: None, priority: 3, value_repr: "\"b\"" } prio=3
+QueueItem { node_id: NodeId(2), parent_id: ParentId(Some(1)), kind: String, depth: 2, index_in_array: Some(0), key_in_object: None, priority: 2, value_repr: "\"a\"" } prio=2
 QueueItem { node_id: NodeId(1), parent_id: ParentId(Some(0)), kind: String, depth: 1, index_in_array: Some(0), key_in_object: None, priority: 1, value_repr: "\"ab\"" } prio=1
 QueueItem { node_id: NodeId(0), parent_id: ParentId(None), kind: Array, depth: 0, index_in_array: None, key_in_object: None, priority: 0, value_repr: "[\"ab\"]" } prio=0

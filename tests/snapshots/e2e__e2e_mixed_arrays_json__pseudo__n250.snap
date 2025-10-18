@@ -3,16 +3,7 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
-  "strings": [
-    "…"
-    …
-  ],
   "objects": [
-        { … },
-        { … }
-    …
-  ],
-  "deep": [
         { … }
     …
   ],
@@ -26,5 +17,16 @@ expression: stdout
       …
     ]
     …
+  ],
+  "strings": [
+    "o…",
+    "…"
+    …
+  ],
+  "deep": [
+        { … },
+    {
+      "a": [ … ]
+    }
   ]
 }

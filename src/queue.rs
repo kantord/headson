@@ -95,10 +95,9 @@ fn walk(
     let priority = match index_in_array {
         Some(i) => {
             if is_string_child {
-                // string-specific penalty: (max(i - 20, 1))^2
-                let adj = if i > 20 { i - 20 } else { 1 };
-                let penalty = adj * adj;
-                depth + penalty
+                // string-specific penalty: i + (max(0, i - 20))^2
+                let extra = if i > 20 { let d = i - 20; d * d } else { 0 };
+                depth + i + extra
             } else {
                 // array-specific penalty: i^3
                 let penalty = i.pow(3);

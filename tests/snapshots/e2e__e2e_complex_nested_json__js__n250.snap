@@ -3,17 +3,20 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
+  "meta": {
+    "pageSize": 20,
+    "next": null,
+    "page": 1,
+    "tags": [
+      "…"
+      /* 4 more items */
+    ]
+  },
   "users": [
     {
-      "name": "…"
+      "roles": [ /* 3 more items */ ]
       /* 3 more properties */
     }
     /* 1 more items */
-  ],
-  "meta": {
-    "next": null,
-    "tags": [ /* 5 more items */ ],
-    "page": 1,
-    "pageSize": 20
-  }
+  ]
 }
