@@ -57,13 +57,20 @@ impl TreeNode {
     }
 
     fn serialize_array(&self, template: OutputTemplate, depth: usize) -> String {
-        // Empty arrays: single-line per template
+        // Empty arrays:
+        // - truly empty (no original items): always []
+        // - truncated to show zero items (omitted_items > 0): show template-specific marker with brackets
         if self.children.is_empty() {
-            return match template {
-                OutputTemplate::Json => "[]".to_string(),
-                OutputTemplate::Pseudo => "[…]".to_string(),
-                OutputTemplate::Js => "[ /* empty */ ]".to_string(),
-            };
+            if let Some(omitted) = self.omitted_items {
+                if omitted > 0 {
+                    return match template {
+                        OutputTemplate::Json => format!("{}[\n{}/* {} more items */\n{}]", Self::indent(depth), Self::indent(depth + 1), omitted, Self::indent(depth)),
+                        OutputTemplate::Pseudo => "[…]".to_string(),
+                        OutputTemplate::Js => format!("{}[\n{}/* {} more items */\n{}]", Self::indent(depth), Self::indent(depth + 1), omitted, Self::indent(depth)),
+                    };
+                }
+            }
+            return "[]".to_string();
         }
         // Special truncation marker when array has single empty-string child
         if self.children.len() == 1 {
@@ -128,13 +135,9 @@ impl TreeNode {
     }
 
     fn serialize_object(&self, template: OutputTemplate, depth: usize) -> String {
-        // Empty objects: single-line per template
+        // Empty objects: always {}
         if self.children.is_empty() {
-            return match template {
-                OutputTemplate::Json => "{}".to_string(),
-                OutputTemplate::Pseudo => "{…}".to_string(),
-                OutputTemplate::Js => "{ /* empty */ }".to_string(),
-            };
+            return "{}".to_string();
         }
         let mut out = String::new();
         out.push_str(&format!("{}{{\n", Self::indent(depth)));

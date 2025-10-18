@@ -10,7 +10,7 @@ expression: stdout
     …
   ],
   "deep": [
-    {…}
+    {}
     …
   ],
   "matrix": [

@@ -4,10 +4,11 @@ expression: stdout
 ---
 {
   "a": {
-    "b": [ /* empty */ ]
+    "b": [
+      /* 3 more items */
+    ]
   },
   "d": [
-    { /* empty */ }
-    /* 1 more items */
+    /* 2 more items */
   ]
 }

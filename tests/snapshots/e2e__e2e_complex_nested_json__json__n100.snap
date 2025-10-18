@@ -8,7 +8,6 @@ expression: stdout
     /* 1 more items */
   ],
   "meta": {
-    "page": 1,
-    "tags": []
+    "page": 1
   }
 }

@@ -3,7 +3,10 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
-  "objects": [ /* empty */ ],
-  "deep": [ /* empty */ ],
-  "matrix": [ /* empty */ ]
+  "objects": [
+    /* 3 more items */
+  ],
+  "deep": [
+    /* 2 more items */
+  ]
 }
