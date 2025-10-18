@@ -1,0 +1,12 @@
+{%- if children_len == 0 -%}
+[]
+{%- else -%}
+[
+{%- for item in children %}
+{{ item.1 }}{%- if item.0 + 1 < children_len -%},{%- endif -%}
+{%- endfor -%}
+{%- if omitted > 0 %}
+{{ "  " }}/* {{ omitted }} more items */
+{%- endif %}
+]
+{%- endif -%}

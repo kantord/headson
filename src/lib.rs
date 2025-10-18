@@ -3,6 +3,7 @@ use serde_json::Value;
  
 mod queue;
 mod tree;
+mod render;
 pub use queue::{build_priority_queue, NodeId, ParentId, NodeKind, QueueItem, PQBuild};
 pub use tree::{build_tree, TreeKind, TreeNode};
 

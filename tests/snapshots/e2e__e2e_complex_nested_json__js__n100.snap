@@ -4,9 +4,11 @@ expression: stdout
 ---
 {
   "users": [
-    /* 2 more items */
-  ],
+    {}
+  /* 1 more items */
+],
   "meta": {
-    /* 4 more properties */
-  }
+  "page": 1
+  /* 3 more properties */
+}
 }

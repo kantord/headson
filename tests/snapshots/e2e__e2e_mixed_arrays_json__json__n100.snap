@@ -3,8 +3,11 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
-  "objects": [
-    /* 3 more items */
-  ]
-  /* 3 more properties */
+  "objects": [],
+  "deep": [],
+  "matrix": [
+    []
+  /* 2 more items */
+],
+  "strings": []
 }

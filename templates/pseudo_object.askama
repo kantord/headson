@@ -1,0 +1,12 @@
+{%- if children_len == 0 -%}
+{}
+{%- else -%}
+{
+{%- for kv in children %}
+{{ "  " }}"{{ kv.1 .0 }}": {{ kv.1 .1 }}{%- if kv.0 + 1 < children_len -%},{%- endif -%}
+{%- endfor -%}
+{%- if omitted > 0 %}
+{{ "  " }}…
+{%- endif %}
+}
+{%- endif -%}

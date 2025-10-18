@@ -4,21 +4,26 @@ expression: stdout
 ---
 {
   "users": [
-    {
-      "id": 1,
-      "roles": […],
-      "profile": {…},
-      "name": "…"
-    }
-    …
-  ],
+{
+  "id": 1,
+  "roles": [],
+  "profile": {},
+  "name": "…"
+},
+{
+  "id": 2,
+  "profile": {},
+  "name": "…",
+  "roles": []
+}
+],
   "meta": {
-    "page": 1,
-    "tags": [
+  "page": 1,
+  "tags": [
       "…"
-      …
-    ],
-    "pageSize": 20,
-    "next": null
-  }
+  …
+],
+  "pageSize": 20,
+  "next": null
+}
 }

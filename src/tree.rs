@@ -5,6 +5,8 @@ use priority_queue::PriorityQueue;
 use crate::queue::{NodeKind, QueueItem, PQBuild, NodeMetrics};
 use std::cell::RefCell;
 use crate::{OutputTemplate, RenderConfig};
+use crate::render::{ArrayCtx, ObjectCtx, render_array, render_object};
+ 
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TreeKind {
@@ -63,58 +65,24 @@ impl TreeNode {
         if self.children.is_empty() {
             if let Some(omitted) = self.omitted_items {
                 if omitted > 0 {
-                    return match template {
-                        OutputTemplate::Json => format!("{}[\n{}/* {} more items */\n{}]", Self::indent(depth), Self::indent(depth + 1), omitted, Self::indent(depth)),
-                        OutputTemplate::Pseudo => "[…]".to_string(),
-                        OutputTemplate::Js => format!("{}[\n{}/* {} more items */\n{}]", Self::indent(depth), Self::indent(depth + 1), omitted, Self::indent(depth)),
-                    };
+                    let ctx = ArrayCtx { children: vec![], children_len: 0, omitted };
+                    return render_array(template, &ctx);
                 }
             }
             return "[]".to_string();
         }
-        // Special truncation marker when array has single empty-string child
-        if self.children.len() == 1 {
-            let child = &self.children[0];
-            if matches!(child.kind, TreeKind::String) && child.value.as_deref() == Some("") {
-                return match template {
-                    OutputTemplate::Json => format!("{}[\n{}\n{}]", Self::indent(depth), Self::indent(depth+1), Self::indent(depth)),
-                    OutputTemplate::Pseudo => format!("{}[\n{}…\n{}]", Self::indent(depth), Self::indent(depth+1), Self::indent(depth)),
-                    OutputTemplate::Js => format!("{}[\n{}/* 1 more item */\n{}]", Self::indent(depth), Self::indent(depth+1), Self::indent(depth)),
-                };
-            }
-        }
-
-        let mut out = String::new();
-        out.push_str(&format!("{}[\n", Self::indent(depth)));
-        for (i, child) in self.children.iter().enumerate() {
-            let rendered = child.serialize_with_depth(template, depth + 1);
+        let mut children: Vec<(usize, String)> = Vec::with_capacity(self.children.len());
+        let ind = Self::indent(depth + 1);
+        for (i, c) in self.children.iter().enumerate() {
+            let rendered = c.serialize_with_depth(template, depth + 1);
             if rendered.contains('\n') {
-                out.push_str(&rendered);
+                children.push((i, rendered));
             } else {
-                out.push_str(&format!("{}{}", Self::indent(depth + 1), rendered));
-            }
-            if i + 1 < self.children.len() { out.push(','); }
-            out.push('\n');
-        }
-        // If items were omitted by PQ truncation, append a marker per template (single-line for json)
-        if let Some(omitted) = self.omitted_items {
-            if omitted > 0 {
-                match template {
-                    OutputTemplate::Json => {
-                        // keep json valid; add a compact trailing comment line (single line marker)
-                        out.push_str(&format!("{}/* {} more items */\n", Self::indent(depth + 1), omitted));
-                    }
-                    OutputTemplate::Pseudo => {
-                        out.push_str(&format!("{}…\n", Self::indent(depth + 1)));
-                    }
-                    OutputTemplate::Js => {
-                        out.push_str(&format!("{}/* {} more items */\n", Self::indent(depth + 1), omitted));
-                    }
-                }
+                children.push((i, format!("{}{}", ind, rendered)));
             }
         }
-        out.push_str(&format!("{}]", Self::indent(depth)));
-        out
+        let ctx = ArrayCtx { children_len: children.len(), children, omitted: self.omitted_items.unwrap_or(0) };
+        render_array(template, &ctx)
     }
 
     fn serialize_string(&self, _template: OutputTemplate) -> String {
@@ -141,46 +109,24 @@ impl TreeNode {
         if self.children.is_empty() {
             if let Some(omitted) = self.omitted_items {
                 if omitted > 0 {
-                    return match template {
-                        OutputTemplate::Json => format!("{}{{\n{}/* {} more properties */\n{}}}", Self::indent(depth), Self::indent(depth + 1), omitted, Self::indent(depth)),
-                        OutputTemplate::Pseudo => "{…}".to_string(),
-                        OutputTemplate::Js => format!("{}{{\n{}/* {} more properties */\n{}}}", Self::indent(depth), Self::indent(depth + 1), omitted, Self::indent(depth)),
-                    };
+                    let ctx = ObjectCtx { children: vec![], children_len: 0, omitted };
+                    return render_object(template, &ctx);
                 }
             }
             return "{}".to_string();
         }
-        let mut out = String::new();
-        out.push_str(&format!("{}{{\n", Self::indent(depth)));
-        for (i, child) in self.children.iter().enumerate() {
-            let key = child.key_in_parent.as_deref().unwrap_or("");
-            let mut rendered = child.serialize_with_depth(template, depth + 1);
-            let first_indent = Self::indent(depth + 1);
-            if rendered.starts_with(&first_indent) {
-                rendered = rendered[first_indent.len()..].to_string();
+        let mut children: Vec<(usize, (String, String))> = Vec::with_capacity(self.children.len());
+        let ind = Self::indent(depth + 1);
+        for (i, c) in self.children.iter().enumerate() {
+            let key = c.key_in_parent.clone().unwrap_or_default();
+            let mut val = c.serialize_with_depth(template, depth + 1);
+            if val.starts_with(&ind) {
+                val = val[ind.len()..].to_string();
             }
-            out.push_str(&format!("{}\"{}\": {}", Self::indent(depth + 1), key, rendered));
-            if i + 1 < self.children.len() { out.push(','); }
-            out.push('\n');
+            children.push((i, (key, val)));
         }
-        // If properties were omitted by PQ truncation, append a marker per template
-        if let Some(omitted) = self.omitted_items {
-            if omitted > 0 {
-                match template {
-                    OutputTemplate::Json => {
-                        out.push_str(&format!("{}/* {} more properties */\n", Self::indent(depth + 1), omitted));
-                    }
-                    OutputTemplate::Pseudo => {
-                        out.push_str(&format!("{}…\n", Self::indent(depth + 1)));
-                    }
-                    OutputTemplate::Js => {
-                        out.push_str(&format!("{}/* {} more properties */\n", Self::indent(depth + 1), omitted));
-                    }
-                }
-            }
-        }
-        out.push_str(&format!("{}}}", Self::indent(depth)));
-        out
+        let ctx = ObjectCtx { children_len: children.len(), children, omitted: self.omitted_items.unwrap_or(0) };
+        render_object(template, &ctx)
     }
 
     fn serialize_number(&self) -> String {
@@ -324,7 +270,6 @@ fn strip_quotes(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::queue::build_priority_queue;
     use insta::assert_snapshot;
     use serde_json::Value;
 
