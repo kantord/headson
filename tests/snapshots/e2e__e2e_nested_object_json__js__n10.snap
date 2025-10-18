@@ -1,0 +1,21 @@
+---
+source: tests/e2e.rs
+expression: stdout
+---
+{
+  "a": {
+    "b": [
+      "…"
+      /* 2 more items */
+    ],
+    "c": 1
+  },
+  "d": [
+    {
+      "k": "…"
+    },
+    {
+      "k": "…"
+    }
+  ]
+}

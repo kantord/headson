@@ -48,7 +48,43 @@ pub fn format_value(value: &Value, template: OutputTemplate) -> Result<String> {
 pub fn headson(input: &str, template: OutputTemplate, budget: usize) -> Result<String> {
     let parsed = parse_json(input, budget)?;
     let pq_build = build_priority_queue(&parsed)?;
-    let tree = build_tree(&pq_build, budget)?;
-    Ok(tree.serialize(template))
+    best_render_under_char_budget(&pq_build, template, budget)
+}
+
+fn best_render_under_char_budget(pq_build: &PQBuild, template: OutputTemplate, char_budget: usize) -> Result<String> {
+    // Iterate cumulatively increasing the number of PQ items included, stop when render exceeds budget.
+    // Keep last two candidates via a small ring buffer, return the best that still fits.
+    let total = pq_build.pq.len();
+    let mut cand: [Option<String>; 2] = [None, None];
+    let mut best_len: usize = 0;
+    let mut i: usize = 1; // include at least root
+
+    while i <= total {
+        let tree = build_tree(pq_build, i)?;
+        let s = tree.serialize(template);
+        let l = s.len();
+        let slot = i % 2;
+        cand[slot] = Some(s);
+        if l > char_budget {
+            break;
+        }
+        best_len = l;
+        i += 1;
+    }
+
+    // Choose the best that fits (largest length <= budget)
+    let idx = if i == 0 { 0 } else { (i.saturating_sub(1)) % 2 };
+    if let Some(s) = cand[idx].clone() {
+        if s.len() <= char_budget { return Ok(s); }
+    }
+    // Fallback: try the other candidate
+    let other = (idx + 1) % 2;
+    if let Some(s) = cand[other].clone() {
+        if s.len() <= char_budget { return Ok(s); }
+    }
+    // If nothing fits, render minimal tree with 1 item, or empty string if even that fails
+    let tree = build_tree(pq_build, 1)?;
+    let s = tree.serialize(template);
+    if s.len() <= char_budget { Ok(s) } else { Ok(String::new()) }
 }
 
