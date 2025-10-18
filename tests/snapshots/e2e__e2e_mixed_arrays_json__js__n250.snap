@@ -4,27 +4,22 @@ expression: stdout
 ---
 {
   "objects": [
-    {}
-  /* 2 more items */
-],
+        {}
+    /* 2 more items */
+  ],
   "deep": [
-    {}
-  /* 1 more items */
-],
+        {}
+    /* 1 more items */
+  ],
   "matrix": [
-[
+    [
       1
-  /* 2 more items */
-],
-    [],
-[
-      7
-  /* 2 more items */
-]
-],
+      /* 2 more items */
+    ]
+    /* 2 more items */
+  ],
   "strings": [
-    "…",
     "…"
-  /* 5 more items */
-]
+    /* 6 more items */
+  ]
 }

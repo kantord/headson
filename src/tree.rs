@@ -65,7 +65,7 @@ impl TreeNode {
         if self.children.is_empty() {
             if let Some(omitted) = self.omitted_items {
                 if omitted > 0 {
-                    let ctx = ArrayCtx { children: vec![], children_len: 0, omitted };
+                    let ctx = ArrayCtx { children: vec![], children_len: 0, omitted, indent0: Self::indent(depth), indent1: Self::indent(depth + 1) };
                     return render_array(template, &ctx);
                 }
             }
@@ -81,7 +81,7 @@ impl TreeNode {
                 children.push((i, format!("{}{}", ind, rendered)));
             }
         }
-        let ctx = ArrayCtx { children_len: children.len(), children, omitted: self.omitted_items.unwrap_or(0) };
+        let ctx = ArrayCtx { children_len: children.len(), children, omitted: self.omitted_items.unwrap_or(0), indent0: Self::indent(depth), indent1: ind };
         render_array(template, &ctx)
     }
 
@@ -109,7 +109,7 @@ impl TreeNode {
         if self.children.is_empty() {
             if let Some(omitted) = self.omitted_items {
                 if omitted > 0 {
-                    let ctx = ObjectCtx { children: vec![], children_len: 0, omitted };
+                    let ctx = ObjectCtx { children: vec![], children_len: 0, omitted, indent0: Self::indent(depth), indent1: Self::indent(depth + 1) };
                     return render_object(template, &ctx);
                 }
             }
@@ -125,7 +125,7 @@ impl TreeNode {
             }
             children.push((i, (key, val)));
         }
-        let ctx = ObjectCtx { children_len: children.len(), children, omitted: self.omitted_items.unwrap_or(0) };
+        let ctx = ObjectCtx { children_len: children.len(), children, omitted: self.omitted_items.unwrap_or(0), indent0: Self::indent(depth), indent1: ind };
         render_object(template, &ctx)
     }
 

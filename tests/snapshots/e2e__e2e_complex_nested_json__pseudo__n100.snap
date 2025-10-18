@@ -4,13 +4,12 @@ expression: stdout
 ---
 {
   "users": [
-    {}
-  …
-],
+        {}
+    …
+  ],
   "meta": {
-  "page": 1,
-  "tags": [],
-  "pageSize": 20
-  …
-}
+    "page": 1,
+    "tags": []
+    …
+  }
 }

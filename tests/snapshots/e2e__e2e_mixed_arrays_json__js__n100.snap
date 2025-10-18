@@ -5,9 +5,6 @@ expression: stdout
 {
   "objects": [],
   "deep": [],
-  "matrix": [
-    []
-  /* 2 more items */
-],
+  "matrix": [],
   "strings": []
 }
