@@ -6,6 +6,7 @@ use crate::queue::{NodeKind, QueueItem, PQBuild, NodeMetrics};
 use std::cell::RefCell;
 use crate::{OutputTemplate, RenderConfig};
 use crate::render::{ArrayCtx, ObjectCtx, render_array, render_object};
+use serde_json::Number;
  
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -25,7 +26,7 @@ pub struct TreeNode {
     pub value: Option<String>,
     pub index_in_parent: Option<usize>,
     pub key_in_parent: Option<String>,
-    pub number_value: Option<f64>,
+    pub number_value: Option<Number>,
     pub bool_value: Option<bool>,
     pub children: Vec<TreeNode>,
     pub omitted_items: Option<usize>,
@@ -130,7 +131,7 @@ impl TreeNode {
     }
 
     fn serialize_number(&self) -> String {
-        if let Some(n) = self.number_value { format!("{}", n) } else { "0".to_string() }
+        if let Some(ref n) = self.number_value { n.to_string() } else { "0".to_string() }
     }
     fn serialize_bool(&self) -> String {
         if let Some(b) = self.bool_value { if b { "true".to_string() } else { "false".to_string() } } else { "false".to_string() }
@@ -155,16 +156,21 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
         index: Option<usize>,
         key: Option<String>,
         value: Option<String>,
+        number: Option<Number>,
     }
 
     let mut map = std::collections::HashMap::<usize, Rec>::new();
     for it in &items {
         let val = match it.kind {
             NodeKind::String => Some(strip_quotes(&it.value_repr)),
-            NodeKind::Number => Some(it.value_repr.clone()),
             NodeKind::Bool => Some(it.value_repr.clone()),
             _ => None,
         };
+        let number = if let NodeKind::Number = it.kind {
+            serde_json::from_str::<serde_json::Value>(&it.value_repr)
+                .ok()
+                .and_then(|v| if let serde_json::Value::Number(n) = v { Some(n) } else { None })
+        } else { None };
         map.insert(
             it.node_id.0,
             Rec {
@@ -172,6 +178,7 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
                 index: it.index_in_array,
                 key: it.key_in_object.clone(),
                 value: val,
+                number,
             },
         );
     }
@@ -247,7 +254,7 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
             value: match rec.kind { NodeKind::String => rec.value.clone(), _ => None },
             index_in_parent: rec.index,
             key_in_parent: rec.key.clone(),
-            number_value: match rec.kind { NodeKind::Number => rec.value.as_deref().and_then(|s| s.parse::<f64>().ok()), _ => None },
+            number_value: match rec.kind { NodeKind::Number => rec.number.clone(), _ => None },
             bool_value: match rec.kind { NodeKind::Bool => Some(rec.value.as_deref() == Some("true")), _ => None },
             children: kids,
             omitted_items,
