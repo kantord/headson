@@ -20,12 +20,12 @@ expression: stdout
   ],
   "objects": [
     {
-      "k": "v…"
+      "k": "v1"
     }
     …
   ],
   "strings": [
-    "on…"
+    "one"
     …
   ]
 }
