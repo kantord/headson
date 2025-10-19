@@ -172,7 +172,7 @@ fn cumulative_walk(
             if expand_strings {
                 let t_chars = Instant::now();
                 let mut len = 0usize;
-                for (i, g) in UnicodeSegmentation::graphemes(s.as_str(), true).enumerate() {
+                for (i, _g) in UnicodeSegmentation::graphemes(s.as_str(), true).enumerate() {
                     len = i + 1;
                     // Inline fast-path for string character nodes to avoid constructing a serde_json::Value
                     let child_id = *next_id;
@@ -190,10 +190,11 @@ fn cumulative_walk(
                         index_in_array: Some(i),
                         key_in_object: None,
                         priority,
-                        value_repr: format!("\"{}\"", g),
+                        // Avoid allocating tiny strings for each grapheme child
+                        value_repr: String::new(),
                         number_value: None,
                         bool_value: None,
-                        string_value: Some(g.to_string()),
+                        string_value: None,
                     };
                     out_items.push(item);
                     if metrics.len() <= child_id { metrics.resize(child_id + 1, NodeMetrics::default()); }

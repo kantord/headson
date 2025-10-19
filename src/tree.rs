@@ -5,6 +5,7 @@ use crate::queue::{NodeKind, PQBuild, NodeMetrics};
 use crate::{OutputTemplate, RenderConfig};
 use crate::render::{ArrayCtx, ObjectCtx, render_array, render_object};
 use serde_json::Number;
+use unicode_segmentation::UnicodeSegmentation;
  
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -80,11 +81,13 @@ impl TreeNode {
     fn serialize_string(&self, _template: OutputTemplate) -> String {
         if let Some(omitted) = self.omitted_items {
             if omitted > 0 {
+                let full = self.value.as_deref().unwrap_or("");
+                let keep_n = self.children.len();
+                // Build kept prefix by taking first N graphemes from the parent string
                 let mut kept = String::new();
-                for child in &self.children {
-                    if matches!(child.kind, TreeKind::String) {
-                        kept.push_str(child.value.as_deref().unwrap_or(""));
-                    }
+                for (i, g) in UnicodeSegmentation::graphemes(full, true).enumerate() {
+                    if i >= keep_n { break; }
+                    kept.push_str(g);
                 }
                 let truncated = format!("{}…", kept);
                 return serde_json::to_string(&truncated).unwrap_or_else(|_| format!("\"{}…\"", kept));
