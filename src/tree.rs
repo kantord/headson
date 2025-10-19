@@ -164,52 +164,9 @@ pub(crate) fn build_tree_with_marks(
     }
     let mark_ms = (std::time::Instant::now() - t_mark).as_millis();
 
-    // Index by id
-    #[derive(Clone, Debug)]
-    struct Rec {
-        kind: NodeKind,
-        index: Option<usize>,
-        key: Option<String>,
-        value: Option<String>,
-        number: Option<Number>,
-    }
-
-    let t_recs = std::time::Instant::now();
-    let mut recs: Vec<Option<Rec>> = vec![None; pq_build.total_nodes];
+    // Count included nodes for reporting
     let mut included_count = 0usize;
-    for id in 0..pq_build.total_nodes {
-        if marks[id] == mark_gen {
-            included_count += 1;
-            let it = &pq_build.id_to_item[id];
-            let val = match it.kind {
-                NodeKind::String => Some(strip_quotes(&it.value_repr)),
-                NodeKind::Bool => Some(it.value_repr.clone()),
-                _ => None,
-            };
-            let number = if let NodeKind::Number = it.kind {
-                serde_json::from_str::<serde_json::Value>(&it.value_repr)
-                    .ok()
-                    .and_then(|v| if let serde_json::Value::Number(n) = v { Some(n) } else { None })
-            } else { None };
-            recs[id] = Some(Rec { kind: it.kind.clone(), index: it.index_in_array, key: it.key_in_object.clone(), value: val, number });
-        }
-    }
-    let recs_ms = (std::time::Instant::now() - t_recs).as_millis();
-
-    // Build children lists using arena, filter to included
-    let t_children = std::time::Instant::now();
-    let mut children: Vec<Vec<usize>> = vec![Vec::new(); pq_build.total_nodes];
-    let mut edges_kept = 0usize;
-    for (pid, kids) in pq_build.children_of.iter().enumerate() {
-        let kept = kids
-            .iter()
-            .copied()
-            .filter(|&cid| marks[cid] == mark_gen)
-            .collect::<Vec<_>>();
-        edges_kept += kept.len();
-        children[pid] = kept;
-    }
-    let children_ms = (std::time::Instant::now() - t_children).as_millis();
+    for id in 0..pq_build.total_nodes { if marks[id] == mark_gen { included_count += 1; } }
 
     // Identify root (no parent)
     let root_id = (0..pq_build.total_nodes)
@@ -218,15 +175,17 @@ pub(crate) fn build_tree_with_marks(
 
     fn to_tree(
         id: usize,
-        recs: &Vec<Option<Rec>>,
-        children: &Vec<Vec<usize>>,
+        pq_build: &PQBuild,
+        marks: &Vec<u32>,
+        mark_gen: u32,
         metrics: &Vec<NodeMetrics>,
         nodes_built: &mut usize,
+        edges_kept: &mut usize,
         depth: usize,
         max_depth: &mut usize,
     ) -> TreeNode {
-        let rec = recs[id].as_ref().expect("missing rec");
-        let kind = match rec.kind {
+        let it = &pq_build.id_to_item[id];
+        let kind = match it.kind {
             NodeKind::Array => TreeKind::Array,
             NodeKind::String => TreeKind::String,
             NodeKind::Object => TreeKind::Object,
@@ -236,44 +195,39 @@ pub(crate) fn build_tree_with_marks(
         };
         *nodes_built += 1;
         if depth > *max_depth { *max_depth = depth; }
-        // Children are already index-ordered in `children_of` (built during PQ),
-        // and filtering by marks preserves that order.
-        let mut kids_ids = children.get(id).cloned().unwrap_or_default();
-        let kids = kids_ids
-            .into_iter()
-            .map(|cid| to_tree(cid, recs, children, metrics, nodes_built, depth + 1, max_depth))
-            .collect::<Vec<_>>();
-        // Compute omitted items for arrays/strings/objects using PQ metrics
-        let omitted_items = match rec.kind {
-            NodeKind::Array => {
-                if let Some(orig_len) = metrics[id].array_len {
-                    let kept = kids.len();
-                    if orig_len > kept { Some(orig_len - kept) } else { None }
-                } else { None }
+        let mut children_nodes: Vec<TreeNode> = Vec::new();
+        if let Some(kids_ids) = pq_build.children_of.get(id) {
+            for &cid in kids_ids {
+                if marks[cid] == mark_gen {
+                    *edges_kept += 1;
+                    let child = to_tree(cid, pq_build, marks, mark_gen, metrics, nodes_built, edges_kept, depth + 1, max_depth);
+                    children_nodes.push(child);
+                }
             }
-            NodeKind::String => {
-                if let Some(orig_len) = metrics[id].string_len {
-                    let kept = kids.len();
-                    if orig_len > kept { Some(orig_len - kept) } else { None }
-                } else { None }
-            }
-            NodeKind::Object => {
-                if let Some(orig_len) = metrics[id].object_len {
-                    let kept = kids.len();
-                    if orig_len > kept { Some(orig_len - kept) } else { None }
-                } else { None }
-            }
+        }
+        let kept = children_nodes.len();
+        let omitted_items = match it.kind {
+            NodeKind::Array => metrics[id].array_len.and_then(|orig| if orig > kept { Some(orig - kept) } else { None }),
+            NodeKind::String => metrics[id].string_len.and_then(|orig| if orig > kept { Some(orig - kept) } else { None }),
+            NodeKind::Object => metrics[id].object_len.and_then(|orig| if orig > kept { Some(orig - kept) } else { None }),
             _ => None,
         };
+        let number_value = if let NodeKind::Number = it.kind {
+            serde_json::from_str::<serde_json::Value>(&it.value_repr)
+                .ok()
+                .and_then(|v| if let serde_json::Value::Number(n) = v { Some(n) } else { None })
+        } else { None };
+        let bool_value = if let NodeKind::Bool = it.kind { Some(it.value_repr.as_str() == "true") } else { None };
+        let string_value = if let NodeKind::String = it.kind { Some(strip_quotes(&it.value_repr)) } else { None };
         TreeNode {
             id,
             kind,
-            value: match rec.kind { NodeKind::String => rec.value.clone(), _ => None },
-            index_in_parent: rec.index,
-            key_in_parent: rec.key.clone(),
-            number_value: match rec.kind { NodeKind::Number => rec.number.clone(), _ => None },
-            bool_value: match rec.kind { NodeKind::Bool => Some(rec.value.as_deref() == Some("true")), _ => None },
-            children: kids,
+            value: string_value,
+            index_in_parent: it.index_in_array,
+            key_in_parent: it.key_in_object.clone(),
+            number_value,
+            bool_value,
+            children: children_nodes,
             omitted_items,
         }
     }
@@ -281,13 +235,14 @@ pub(crate) fn build_tree_with_marks(
     let t_tree = std::time::Instant::now();
     let mut nodes_built = 0usize;
     let mut max_depth = 0usize;
-    let tree = to_tree(root_id, &recs, &children, metrics, &mut nodes_built, 0, &mut max_depth);
+    let mut edges_kept = 0usize;
+    let tree = to_tree(root_id, pq_build, marks, mark_gen, metrics, &mut nodes_built, &mut edges_kept, 0, &mut max_depth);
     let tree_ms = (std::time::Instant::now() - t_tree).as_millis();
     if profile {
         let total_ms = (std::time::Instant::now() - t_all_start).as_millis();
         eprintln!(
-            "build_tree: mark={}ms, recs={}ms (included={}), children={}ms (edges={}), tree={}ms (nodes={}, max_depth={}), total={}ms",
-            mark_ms, recs_ms, included_count, children_ms, edges_kept, tree_ms, nodes_built, max_depth, total_ms
+            "build_tree: mark={}ms, build={}ms (included={}, nodes={}, edges={}, max_depth={}), total={}ms",
+            mark_ms, tree_ms, included_count, nodes_built, edges_kept, max_depth, total_ms
         );
     }
     Ok(tree)
