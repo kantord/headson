@@ -212,13 +212,9 @@ pub(crate) fn build_tree_with_marks(
             NodeKind::Object => metrics[id].object_len.and_then(|orig| if orig > kept { Some(orig - kept) } else { None }),
             _ => None,
         };
-        let number_value = if let NodeKind::Number = it.kind {
-            serde_json::from_str::<serde_json::Value>(&it.value_repr)
-                .ok()
-                .and_then(|v| if let serde_json::Value::Number(n) = v { Some(n) } else { None })
-        } else { None };
-        let bool_value = if let NodeKind::Bool = it.kind { Some(it.value_repr.as_str() == "true") } else { None };
-        let string_value = if let NodeKind::String = it.kind { Some(strip_quotes(&it.value_repr)) } else { None };
+        let number_value = if let NodeKind::Number = it.kind { it.number_value.clone() } else { None };
+        let bool_value = if let NodeKind::Bool = it.kind { it.bool_value } else { None };
+        let string_value = if let NodeKind::String = it.kind { it.string_value.clone() } else { None };
         TreeNode {
             id,
             kind,

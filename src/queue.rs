@@ -29,6 +29,9 @@ pub struct QueueItem {
     pub key_in_object: Option<String>,
     pub priority: usize,
     pub value_repr: String,
+    pub number_value: Option<serde_json::Number>,
+    pub bool_value: Option<bool>,
+    pub string_value: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -137,6 +140,9 @@ fn cumulative_walk(
         key_in_object,
         priority,
         value_repr: value_repr(value),
+        number_value: match value { Value::Number(n) => Some(n.clone()), _ => None },
+        bool_value: match value { Value::Bool(b) => Some(*b), _ => None },
+        string_value: match value { Value::String(s) => Some(s.clone()), _ => None },
     };
     out_items.push(item);
     stats.total_nodes += 1;
@@ -185,6 +191,9 @@ fn cumulative_walk(
                         key_in_object: None,
                         priority,
                         value_repr: format!("\"{}\"", g),
+                        number_value: None,
+                        bool_value: None,
+                        string_value: Some(g.to_string()),
                     };
                     out_items.push(item);
                     if metrics.len() <= child_id { metrics.resize(child_id + 1, NodeMetrics::default()); }
