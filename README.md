@@ -37,7 +37,7 @@ Exit codes and I/O:
 High-level flow:
 
 1) Parse: `serde_json::from_str` into `serde_json::Value`.
-2) Priority queue build: single walk over the JSON to produce a flat list of items, cumulative scores, and per-node metrics.
+2) Priority queue build (frontier): best‑first (min‑heap) expansion by cumulative score; builds just enough nodes for probing (no global full‑build/sort). Per‑node metrics capture sizes/truncation flags.
 3) Node selection by binary search: search k ∈ [1, total_nodes] for the largest k that renders within the output-size budget.
 4) Inclusion marking: include nodes with `order_index < k` plus their full ancestor closure; compute omitted counts using original sizes.
 5) Render: arena-backed serializer delegates arrays/objects to Askama templates and handles string truncation.
@@ -50,7 +50,7 @@ Each node gets a cumulative score: `score = parent_score + 1 + node_penalty`.
 - Strings: characters are expanded as child nodes (via `unicode-segmentation` graphemes). For char at index i, `node_penalty = i + max(0, i − 20)^2`, favoring prefixes and discouraging scattered picks.
 - Others: `node_penalty = 0` (depth contributes via the `+1` per level).
 
-The PQ is implemented as “Vec + sort”: nodes are walked once, collected with scores, then stably sorted by ascending priority to assign a global `order_index`. Per-node metrics (`NodeMetrics`) capture `array_len`, `object_len`, and `string_len` as needed.
+Frontier PQ build (default): a best‑first traversal yields `ids_by_order` directly without sorting all nodes. Per‑node metrics capture `array_len`, `object_len`, and `string_len` or `string_truncated` as needed.
 
 ### Inclusion and Truncation
 
@@ -79,7 +79,12 @@ Template semantics (in `templates/`):
 Additional details:
 
 - Arrays never include a space after commas; objects apply `space` after colons.
-- Strings are escaped via `serde_json`. When truncated, only a quoted kept prefix plus an ellipsis is rendered, ensuring prefix-only semantics.
+- Strings are escaped via `serde_json`. When truncated, only a quoted kept prefix plus an ellipsis is rendered, ensuring prefix‑only semantics.
+
+### PQ caps (configurable)
+
+- `--string-cap <n>`: hard cap on grapheme expansion per string during PQ build (default: 500). Prevents runaway work for very long strings. Rendering still shows prefix + ellipsis.
+- Array cap (derived from budget): per‑array expansion is capped at `budget / 2`, based on a conservative lower bound that an array of N items needs ~2N characters to fit. Arrays longer than this cannot fit within the budget, so we avoid walking/pushing those extra items during PQ.
 
 ## Testing
 
@@ -105,6 +110,15 @@ Observed characteristics and current hotspots:
 - Rendering is typically negligible compared to PQ build and probe builds.
 
 Recent optimizations implemented:
+- Frontier (top‑K) PQ build (default in CLI): best‑first expansion by cumulative score (no full sort/build).
+- O(k) inclusion marking via `ids_by_order` for probes.
+- Arena-backed render (no intermediate tree allocations).
+- PQ arena switched from HashMaps to Vecs (id-indexed).
+- Removed per-node child sorting (children already ordered in PQ phase).
+- String cap and micro‑opts (no per‑grapheme allocations; prefix slicing by grapheme count).
+- QueueItem stores typed values (number/bool/string); removed reparsing and `value_repr`.
+
+Older optimizations:
 - PQ arena switched from HashMaps to Vecs (id-indexed), greatly reducing map overhead.
 - Inclusion marking uses a reusable generational bitset across probes (no per-probe clears).
 - Tree building switched to on-demand traversal from the arena (no per-probe filtered vectors).
@@ -129,7 +143,7 @@ These changes cut PQ time and per-probe build time substantially on large inputs
 
 - JSON template truncation is not valid JSON: when content is omitted, the `json` templates include comments like `/* N more items */`. Tests avoid this by using a large budget (`-n 10000`) for conformance. If strict JSON is required under truncation, the templates must be adjusted to use JSON-native markers (e.g., strings) instead of comments.
 - Budget semantics: `-n/--budget` constrains the rendered output length in bytes, not the number of nodes. Internally we binary-search k (a node count) to fit the byte-length budget. Non-ASCII characters count by bytes, not grapheme clusters.
-- Performance hotspots: long-string grapheme enumeration and HashMap/map builds dominate PQ time on large inputs.
+- Performance hotspots: parsing dominates on multi‑GB inputs (serde_json). Frontier PQ + caps keep PQ cost relatively small.
 - Dependencies pruned: removed unused `priority-queue` crate.
 - Minor CLI polish: the `about` description is outdated relative to current functionality.
 - Object key ordering follows `serde_json::Map` iteration order; stability can depend on the upstream map implementation and input.
@@ -144,4 +158,4 @@ These changes cut PQ time and per-probe build time substantially on large inputs
 - Make truncated `json` output strict JSON (no comments) while still conveying omitted counts.
 - Consider renaming `--budget` to clarify it is an output-size budget, or add a separate node-budget mode if needed.
 - Explore faster string handling and/or configurable string expansion (e.g., cap grapheme enumeration).
-- Reduce map-building costs; investigate arena representations that reduce allocations.
+- Optional early-stop writer for probe renders; flat edge arena (single children buffer + offsets); streaming/partial deserialization (e.g., custom Visitor to cap arrays during deserialization), or faster parsers (e.g., simd‑json) for parse-bound workloads.
