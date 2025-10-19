@@ -143,28 +143,31 @@ These changes cut PQ time and per-probe build time substantially on large inputs
 
 ## Benchmarking (Hyperfine)
 
-For quick end-to-end timing on real inputs, use Hyperfine. A helper script builds the release binary, runs multiple budgets, and exports results as JSON.
+For quick end-to-end timing, use Hyperfine. The script builds the release binary, generates synthetic data, and runs two scenarios to highlight I/O impact.
 
 Requirements: hyperfine installed (https://github.com/sharkdp/hyperfine)
 
-Run with default sample input:
+Default run (no args):
 
-```
-bash scripts/bench_hyperfine.sh
-```
+    bash scripts/bench_hyperfine.sh
 
-Run on a large input and custom parameters:
+What it measures:
 
-```
-HF_INPUT=/path/to/large.json \
-HF_BUDGETS=100,1000,10000,50000 \
-HF_TEMPLATE=pseudo \
-HF_RUNS=15 \
-HF_WARMUP=3 \
-bash scripts/bench_hyperfine.sh
-```
+- PIPE: generator → headson (live pipeline). Measures generator + parse/PQ/render.
+- FILE: generator → file → headson --input file. Measures parse/PQ/render + disk read.
+- GEN: generator → /dev/null. Measures pure generator cost.
+- WRITE: generator → file. Measures write throughput (page-cache affected).
 
-Results are saved under `benchmarks/hyperfine/bench_*.json`.
+Outputs:
+
+- Results saved under `benchmarks/hyperfine/bench_*.json`.
+- The script prints the generated file size and, if `jq` is available, a short summary comparing PIPE vs FILE per budget (mean ms and delta).
+
+Tuning:
+
+- Change input size/seed: `HF_GEN_COUNT=500000 HF_GEN_SEED=123 bash scripts/bench_hyperfine.sh`
+- Change budgets/template: `HF_BUDGETS=100,1000,10000 HF_TEMPLATE=pseudo bash scripts/bench_hyperfine.sh`
+- Stability: increase warmups or pin to a core: `HF_WARMUP=5 taskset -c 0 bash scripts/bench_hyperfine.sh`
 
 ## Known Issues and Limitations
 
