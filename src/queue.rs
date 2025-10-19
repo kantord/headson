@@ -28,7 +28,6 @@ pub struct QueueItem {
     pub index_in_array: Option<usize>,
     pub key_in_object: Option<String>,
     pub priority: usize,
-    pub value_repr: String,
     pub number_value: Option<serde_json::Number>,
     pub bool_value: Option<bool>,
     pub string_value: Option<String>,
@@ -65,12 +64,7 @@ pub struct PQBuild {
     pub profile: BuildProfile,
 }
 
-fn value_repr(value: &Value) -> String {
-    match value {
-        Value::String(s) => format!("\"{}\"", s),
-        _ => String::new(),
-    }
-}
+// value_repr removed; we now keep only typed values as needed.
 
 fn to_kind(value: &Value) -> NodeKind {
     match value {
@@ -123,7 +117,6 @@ fn cumulative_walk(
         index_in_array,
         key_in_object,
         priority,
-        value_repr: value_repr(value),
         number_value: match value { Value::Number(n) => Some(n.clone()), _ => None },
         bool_value: match value { Value::Bool(b) => Some(*b), _ => None },
         string_value: match value { Value::String(s) => Some(s.clone()), _ => None },
@@ -174,8 +167,6 @@ fn cumulative_walk(
                         index_in_array: Some(i),
                         key_in_object: None,
                         priority,
-                        // Avoid allocating tiny strings for each grapheme child
-                        value_repr: String::new(),
                         number_value: None,
                         bool_value: None,
                         string_value: None,
