@@ -35,22 +35,16 @@ pub fn headson_with_cfg(input: &str, config: RenderConfig, pq_cfg: &PQConfig, bu
     if do_prof {
         let p = &pq_build.profile;
         eprintln!(
-            "pq breakdown: walk={}ms (strings={}, chars={}, enum={}ms) sort={}ms maps={}ms",
+            "pq breakdown: walk={}ms (strings={}, chars={})",
             p.walk_ms,
             p.strings,
             p.string_chars,
-            p.string_enum_ns / 1_000_000,
-            p.sort_ms,
-            p.maps_ms
         );
         eprintln!(
-            "pq details: arrays={} (items_total={}), objects={} (props_total={}), maxlens: array={}, object={}, string={}, long_strings(1k/10k)={}/{}, edges={}, fill={}ms, child_sort={}ms",
+            "pq details: arrays={} (items_total={}), objects={} (props_total={}), maxlens: array={}, object={}, string={}, edges={}",
             p.arrays, p.arrays_items_total, p.objects, p.objects_props_total,
             p.max_array_len, p.max_object_len, p.max_string_len,
-            p.long_strings_over_1k, p.long_strings_over_10k,
             p.children_edges_total,
-            p.map_fill_ns as u128 / 1_000_000,
-            p.child_sort_ns as u128 / 1_000_000,
         );
         eprintln!(
             "timings: parse={}ms, pq={}ms, search+render={}ms, total={}ms",
@@ -76,22 +70,16 @@ pub fn headson_with_cfg_bytes(input: Vec<u8>, config: RenderConfig, pq_cfg: &PQC
     if do_prof {
         let p = &pq_build.profile;
         eprintln!(
-            "pq breakdown: walk={}ms (strings={}, chars={}, enum={}ms) sort={}ms maps={}ms",
+            "pq breakdown: walk={}ms (strings={}, chars={})",
             p.walk_ms,
             p.strings,
             p.string_chars,
-            p.string_enum_ns / 1_000_000,
-            p.sort_ms,
-            p.maps_ms
         );
         eprintln!(
-            "pq details: arrays={} (items_total={}), objects={} (props_total={}), maxlens: array={}, object={}, string={}, long_strings(1k/10k)={}/{}, edges={}, fill={}ms, child_sort={}ms",
+            "pq details: arrays={} (items_total={}), objects={} (props_total={}), maxlens: array={}, object={}, string={}, edges={}",
             p.arrays, p.arrays_items_total, p.objects, p.objects_props_total,
             p.max_array_len, p.max_object_len, p.max_string_len,
-            p.long_strings_over_1k, p.long_strings_over_10k,
             p.children_edges_total,
-            p.map_fill_ns as u128 / 1_000_000,
-            p.child_sort_ns as u128 / 1_000_000,
         );
         eprintln!(
             "timings: parse={}ms, pq={}ms, search+render={}ms, total={}ms",
@@ -120,16 +108,15 @@ fn best_render_under_char_budget(pq_build: &PQBuild, config: RenderConfig, char_
 
     while lo <= hi {
         let mid = lo + (hi - lo) / 2;
-        let t_build = std::time::Instant::now();
+        let t_render = std::time::Instant::now();
         let s = crate::tree::render_arena_with_marks(pq_build, mid, &mut marks, mark_gen, &config, do_prof)?;
         let t_end = std::time::Instant::now();
         mark_gen = mark_gen.wrapping_add(1).max(1); // avoid 0 sentinel and handle wrap
         if do_prof {
             eprintln!(
-                "probe k={}, build={}ms, render={}ms, size={}",
+                "probe k={}, render_ms={}, size={}",
                 mid,
-                0,
-                (t_end - t_build).as_millis(),
+                (t_end - t_render).as_millis(),
                 s.len()
             );
         }

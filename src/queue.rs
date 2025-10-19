@@ -1,6 +1,5 @@
 use anyhow::Result;
 use unicode_segmentation::UnicodeSegmentation;
-// use std::time::Instant; // removed unused; timings gathered elsewhere
 const MAX_STRING_ENUM: usize = 500;
 
 use std::cmp::Reverse;
@@ -61,21 +60,14 @@ pub struct BuildProfile {
     pub objects: usize,
     pub strings: usize,
     pub string_chars: usize,
-    pub string_enum_ns: u128,
     pub walk_ms: u128,
-    pub sort_ms: u128,
-    pub maps_ms: u128,
     // Extra diagnostics
     pub arrays_items_total: usize,
     pub objects_props_total: usize,
     pub max_array_len: usize,
     pub max_object_len: usize,
     pub max_string_len: usize,
-    pub long_strings_over_1k: usize,
-    pub long_strings_over_10k: usize,
     pub children_edges_total: usize,
-    pub map_fill_ns: u128,
-    pub child_sort_ns: u128,
 }
 
 #[derive(Clone, Debug)]
@@ -138,6 +130,8 @@ pub fn build_priority_queue_from_arena(arena: &StreamArena, cfg: &PQConfig) -> R
     heap.push(Reverse(Entry{ score: 1, pq_id: root_pq, kind: root_kind, depth: 0, arena_node: Some(root_ar) }));
     stats.total_nodes += 1;
 
+    // Safety cap to prevent runaway expansion on adversarial inputs.
+    // Large enough to exceed any realistic budget while keeping memory bounded.
     let safety_cap: usize = 2_000_000;
 
     while let Some(Reverse(entry)) = heap.pop() {
@@ -259,7 +253,6 @@ pub fn build_priority_queue_from_arena(arena: &StreamArena, cfg: &PQConfig) -> R
     let mut order_index: Vec<usize> = vec![usize::MAX; total];
     for (idx, &pid) in ids_by_order.iter().enumerate() { if pid < total { order_index[pid] = idx; } }
     stats.children_edges_total = children_of.iter().map(|v| v.len()).sum();
-    stats.sort_ms = 0; stats.maps_ms = 0;
 
     Ok(PQBuild { metrics, id_to_item, parent_of, children_of, order_index, ids_by_order, total_nodes: total, profile: stats })
 }

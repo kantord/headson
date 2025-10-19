@@ -6,6 +6,9 @@ use unicode_segmentation::UnicodeSegmentation;
 fn indent(depth: usize, unit: &str) -> String { unit.repeat(depth) }
 
 // Direct rendering from arena + marks, no TreeNode allocation.
+//
+// Marks use a generation counter: `marks[id] == mark_gen` means included.
+// This lets us reuse a single marks buffer across multiple probes without clearing.
 pub(crate) fn render_arena_with_marks(
     pq_build: &PQBuild,
     budget: usize,
@@ -177,9 +180,6 @@ pub(crate) fn render_arena_with_marks(
     }
     Ok(out)
 }
-
-// no-op: previously used to remove quotes from JSON-escaped keys; now keys are
-// pre-escaped with quotes and inserted directly by templates.
 
 #[cfg(test)]
 mod tests {

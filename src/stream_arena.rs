@@ -259,6 +259,9 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
     }
 }
 
+// Build a compact arena in a single pass using a serde Visitor.
+// Arrays are capped at `cfg.array_max_items` during parse; we still record the
+// total length to report omissions accurately later.
 pub fn build_stream_arena(input: &str, cfg: &PQConfig) -> Result<StreamArena> {
     // Use simd-json serde deserializer, parsing from a mutable buffer
     let mut bytes = input.as_bytes().to_vec();
@@ -285,6 +288,6 @@ pub fn build_stream_arena_from_bytes(mut bytes: Vec<u8>, cfg: &PQConfig) -> Resu
     };
     let mut arena = cell.arena.into_inner();
     arena.root_id = root_id;
-    // Keep bytes alive by storing them as a String in the root string if needed is complex; we don't borrow slices here, so we can drop bytes.
+    // We do not borrow into `bytes`, so it can be dropped safely here.
     Ok(arena)
 }
