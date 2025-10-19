@@ -67,24 +67,8 @@ pub struct PQBuild {
 
 fn value_repr(value: &Value) -> String {
     match value {
-        Value::Null => "null".to_string(),
-        Value::Bool(b) => b.to_string(),
-        Value::Number(n) => n.to_string(),
         Value::String(s) => format!("\"{}\"", s),
-        Value::Array(items) => {
-            if items.is_empty() {
-                "[]".to_string()
-            } else if items.len() == 1 {
-                if let Value::String(s) = &items[0] {
-                    format!("[\"{}\"]", s)
-                } else {
-                    "[]".to_string()
-                }
-            } else {
-                "[]".to_string()
-            }
-        }
-        Value::Object(_) => "{}".to_string(),
+        _ => String::new(),
     }
 }
 
