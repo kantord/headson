@@ -35,11 +35,12 @@ pub fn render_arena_with_marks(
         }
     }
     while let Some(id) = stack.pop() {
-        if let Some(parent) = pq_build.parent_of[id] {
-            if marks[parent] != mark_gen {
+        match pq_build.parent_of[id] {
+            Some(parent) if marks[parent] != mark_gen => {
                 marks[parent] = mark_gen;
                 stack.push(parent);
             }
+            _ => {}
         }
     }
     let mark_ms = t_mark.elapsed().as_millis();
@@ -234,11 +235,16 @@ pub fn render_arena_with_marks(
                 }
                 "0".to_string()
             }
-            NodeKind::Bool => it
-                .bool_value
-                .map_or_else(|| "false".to_string(), |b| {
-                    if b { "true".to_string() } else { "false".to_string() }
-                }),
+            NodeKind::Bool => it.bool_value.map_or_else(
+                || "false".to_string(),
+                |b| {
+                    if b {
+                        "true".to_string()
+                    } else {
+                        "false".to_string()
+                    }
+                },
+            ),
             NodeKind::Null => "null".to_string(),
         }
     }
