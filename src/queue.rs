@@ -12,7 +12,12 @@ pub struct PQConfig {
 }
 
 impl Default for PQConfig {
-    fn default() -> Self { Self { max_string_graphemes: MAX_STRING_ENUM, array_max_items: usize::MAX } }
+    fn default() -> Self {
+        Self {
+            max_string_graphemes: MAX_STRING_ENUM,
+            array_max_items: usize::MAX,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -89,7 +94,10 @@ pub struct PQBuild {
 // Frontier builder from streaming arena (Stage 2 adapter)
 use crate::stream_arena::StreamArena;
 
-pub fn build_priority_queue_from_arena(arena: &StreamArena, cfg: &PQConfig) -> Result<PQBuild> {
+pub fn build_priority_queue_from_arena(
+    arena: &StreamArena,
+    cfg: &PQConfig,
+) -> Result<PQBuild> {
     #[derive(Clone)]
     struct Entry {
         score: u128,
@@ -98,10 +106,24 @@ pub fn build_priority_queue_from_arena(arena: &StreamArena, cfg: &PQConfig) -> R
         depth: usize,
         arena_node: Option<usize>,
     }
-    impl PartialEq for Entry { fn eq(&self, other: &Self) -> bool { self.score == other.score && self.pq_id == other.pq_id } }
+    impl PartialEq for Entry {
+        fn eq(&self, other: &Self) -> bool {
+            self.score == other.score && self.pq_id == other.pq_id
+        }
+    }
     impl Eq for Entry {}
-    impl PartialOrd for Entry { fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> { Some(self.cmp(other)) } }
-    impl Ord for Entry { fn cmp(&self, other: &Self) -> std::cmp::Ordering { self.score.cmp(&other.score).then_with(|| self.pq_id.cmp(&other.pq_id)) } }
+    impl PartialOrd for Entry {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+    impl Ord for Entry {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            self.score
+                .cmp(&other.score)
+                .then_with(|| self.pq_id.cmp(&other.pq_id))
+        }
+    }
 
     let mut stats = BuildProfile::default();
     let t_walk = std::time::Instant::now();
@@ -116,18 +138,31 @@ pub fn build_priority_queue_from_arena(arena: &StreamArena, cfg: &PQConfig) -> R
     // Seed root from arena
     let root_ar = arena.root_id;
     let root_kind = arena.nodes[root_ar].kind.clone();
-    let root_pq = next_pq_id; next_pq_id += 1;
+    let root_pq = next_pq_id;
+    next_pq_id += 1;
     parent_of.push(None);
     children_of.push(Vec::new());
     metrics.push(NodeMetrics::default());
     let n = &arena.nodes[root_ar];
-    id_to_item.push(QueueItem{
-        node_id: NodeId(root_pq), parent_id: ParentId(None), kind: root_kind.clone(), depth: 0,
-        index_in_array: None, key_in_object: None, priority: 1usize,
-        number_value: n.number_value.clone(), bool_value: n.bool_value,
+    id_to_item.push(QueueItem {
+        node_id: NodeId(root_pq),
+        parent_id: ParentId(None),
+        kind: root_kind.clone(),
+        depth: 0,
+        index_in_array: None,
+        key_in_object: None,
+        priority: 1usize,
+        number_value: n.number_value.clone(),
+        bool_value: n.bool_value,
         string_value: n.string_value.clone(),
     });
-    heap.push(Reverse(Entry{ score: 1, pq_id: root_pq, kind: root_kind, depth: 0, arena_node: Some(root_ar) }));
+    heap.push(Reverse(Entry {
+        score: 1,
+        pq_id: root_pq,
+        kind: root_kind,
+        depth: 0,
+        arena_node: Some(root_ar),
+    }));
     stats.total_nodes += 1;
 
     // Safety cap to prevent runaway expansion on adversarial inputs.
@@ -141,28 +176,42 @@ pub fn build_priority_queue_from_arena(arena: &StreamArena, cfg: &PQConfig) -> R
         if let Some(ar_id) = entry.arena_node {
             match entry.kind {
                 NodeKind::Array => {
-                    let alen = arena.nodes[ar_id].array_len.unwrap_or(arena.nodes[ar_id].children_len);
+                    let alen = arena.nodes[ar_id]
+                        .array_len
+                        .unwrap_or(arena.nodes[ar_id].children_len);
                     metrics[id].array_len = Some(alen);
                     stats.arrays += 1;
                     stats.arrays_items_total += alen;
-                    if alen > stats.max_array_len { stats.max_array_len = alen; }
+                    if alen > stats.max_array_len {
+                        stats.max_array_len = alen;
+                    }
                 }
                 NodeKind::Object => {
-                    let olen = arena.nodes[ar_id].object_len.unwrap_or(arena.nodes[ar_id].children_len);
+                    let olen = arena.nodes[ar_id]
+                        .object_len
+                        .unwrap_or(arena.nodes[ar_id].children_len);
                     metrics[id].object_len = Some(olen);
                     stats.objects += 1;
                     stats.objects_props_total += olen;
-                    if olen > stats.max_object_len { stats.max_object_len = olen; }
+                    if olen > stats.max_object_len {
+                        stats.max_object_len = olen;
+                    }
                 }
                 NodeKind::String => {
                     stats.strings += 1;
-                    let s = id_to_item[id].string_value.as_deref().unwrap_or("");
+                    let s =
+                        id_to_item[id].string_value.as_deref().unwrap_or("");
                     let mut iter = UnicodeSegmentation::graphemes(s, true);
-                    let count = iter.by_ref().take(cfg.max_string_graphemes).count();
+                    let count =
+                        iter.by_ref().take(cfg.max_string_graphemes).count();
                     metrics[id].string_len = Some(count);
-                    if iter.next().is_some() { metrics[id].string_truncated = true; }
+                    if iter.next().is_some() {
+                        metrics[id].string_truncated = true;
+                    }
                     stats.string_chars += count;
-                    if count > stats.max_string_len { stats.max_string_len = count; }
+                    if count > stats.max_string_len {
+                        stats.max_string_len = count;
+                    }
                 }
                 _ => {}
             }
@@ -177,29 +226,53 @@ pub fn build_priority_queue_from_arena(arena: &StreamArena, cfg: &PQConfig) -> R
                     for i in 0..kept {
                         let child_ar = arena.children[node.children_start + i];
                         let child_kind = arena.nodes[child_ar].kind.clone();
-                        let child_pq = next_pq_id; next_pq_id += 1;
-                        parent_of.push(Some(id)); children_of.push(Vec::new()); metrics.push(NodeMetrics::default());
+                        let child_pq = next_pq_id;
+                        next_pq_id += 1;
+                        parent_of.push(Some(id));
+                        children_of.push(Vec::new());
+                        metrics.push(NodeMetrics::default());
                         let extra = (i as u128).pow(3) * 1_000_000_000_000u128;
                         let score = entry.score + 1 + extra;
                         let cn = &arena.nodes[child_ar];
-                        id_to_item.push(QueueItem{
-                            node_id: NodeId(child_pq), parent_id: ParentId(Some(id)), kind: child_kind.clone(), depth: entry.depth+1,
-                            index_in_array: Some(i), key_in_object: None, priority: if score>usize::MAX as u128 {usize::MAX} else {score as usize},
-                            number_value: cn.number_value.clone(), bool_value: cn.bool_value, string_value: cn.string_value.clone(),
+                        id_to_item.push(QueueItem {
+                            node_id: NodeId(child_pq),
+                            parent_id: ParentId(Some(id)),
+                            kind: child_kind.clone(),
+                            depth: entry.depth + 1,
+                            index_in_array: Some(i),
+                            key_in_object: None,
+                            priority: if score > usize::MAX as u128 {
+                                usize::MAX
+                            } else {
+                                score as usize
+                            },
+                            number_value: cn.number_value.clone(),
+                            bool_value: cn.bool_value,
+                            string_value: cn.string_value.clone(),
                         });
                         children_of[id].push(child_pq);
-                        heap.push(Reverse(Entry{ score, pq_id: child_pq, kind: child_kind, depth: entry.depth+1, arena_node: Some(child_ar) }));
+                        heap.push(Reverse(Entry {
+                            score,
+                            pq_id: child_pq,
+                            kind: child_kind,
+                            depth: entry.depth + 1,
+                            arena_node: Some(child_ar),
+                        }));
                         stats.total_nodes += 1;
-                        if next_pq_id >= safety_cap { break; }
+                        if next_pq_id >= safety_cap {
+                            break;
+                        }
                     }
                 }
             }
             NodeKind::Object => {
                 if let Some(ar_id) = entry.arena_node {
                     let node = &arena.nodes[ar_id];
-                    let mut items: Vec<(String, usize, usize)> = Vec::with_capacity(node.children_len);
+                    let mut items: Vec<(String, usize, usize)> =
+                        Vec::with_capacity(node.children_len);
                     for i in 0..node.children_len {
-                        let key = arena.obj_keys[node.obj_keys_start + i].clone();
+                        let key =
+                            arena.obj_keys[node.obj_keys_start + i].clone();
                         let child_ar = arena.children[node.children_start + i];
                         items.push((key, child_ar, i));
                     }
@@ -207,54 +280,122 @@ pub fn build_priority_queue_from_arena(arena: &StreamArena, cfg: &PQConfig) -> R
                     items.sort_by(|a, b| a.0.cmp(&b.0));
                     for (key, child_ar, _i) in items.into_iter() {
                         let child_kind = arena.nodes[child_ar].kind.clone();
-                        let child_pq = next_pq_id; next_pq_id += 1;
-                        parent_of.push(Some(id)); children_of.push(Vec::new()); metrics.push(NodeMetrics::default());
+                        let child_pq = next_pq_id;
+                        next_pq_id += 1;
+                        parent_of.push(Some(id));
+                        children_of.push(Vec::new());
+                        metrics.push(NodeMetrics::default());
                         let score = entry.score + 1;
                         let cn = &arena.nodes[child_ar];
-                        id_to_item.push(QueueItem{
-                            node_id: NodeId(child_pq), parent_id: ParentId(Some(id)), kind: child_kind.clone(), depth: entry.depth+1,
-                            index_in_array: None, key_in_object: Some(key.clone()), priority: if score>usize::MAX as u128 {usize::MAX} else {score as usize},
-                            number_value: cn.number_value.clone(), bool_value: cn.bool_value, string_value: cn.string_value.clone(),
+                        id_to_item.push(QueueItem {
+                            node_id: NodeId(child_pq),
+                            parent_id: ParentId(Some(id)),
+                            kind: child_kind.clone(),
+                            depth: entry.depth + 1,
+                            index_in_array: None,
+                            key_in_object: Some(key.clone()),
+                            priority: if score > usize::MAX as u128 {
+                                usize::MAX
+                            } else {
+                                score as usize
+                            },
+                            number_value: cn.number_value.clone(),
+                            bool_value: cn.bool_value,
+                            string_value: cn.string_value.clone(),
                         });
                         children_of[id].push(child_pq);
-                        heap.push(Reverse(Entry{ score, pq_id: child_pq, kind: child_kind, depth: entry.depth+1, arena_node: Some(child_ar) }));
+                        heap.push(Reverse(Entry {
+                            score,
+                            pq_id: child_pq,
+                            kind: child_kind,
+                            depth: entry.depth + 1,
+                            arena_node: Some(child_ar),
+                        }));
                         stats.total_nodes += 1;
-                        if next_pq_id >= safety_cap { break; }
+                        if next_pq_id >= safety_cap {
+                            break;
+                        }
                     }
                 }
             }
             NodeKind::String => {
                 // expand grapheme children lazily up to cap
-                let s = id_to_item[id].string_value.clone().unwrap_or_default();
-                let mut iter = UnicodeSegmentation::graphemes(s.as_str(), true);
-                for (i, _g) in iter.by_ref().take(cfg.max_string_graphemes).enumerate() {
-                    let child_pq = next_pq_id; next_pq_id += 1;
-                    parent_of.push(Some(id)); children_of.push(Vec::new()); metrics.push(NodeMetrics::default());
-                    let extra = if i > 20 { let d = (i - 20) as u128; d*d } else { 0 };
+                let s =
+                    id_to_item[id].string_value.clone().unwrap_or_default();
+                let mut iter =
+                    UnicodeSegmentation::graphemes(s.as_str(), true);
+                for (i, _g) in
+                    iter.by_ref().take(cfg.max_string_graphemes).enumerate()
+                {
+                    let child_pq = next_pq_id;
+                    next_pq_id += 1;
+                    parent_of.push(Some(id));
+                    children_of.push(Vec::new());
+                    metrics.push(NodeMetrics::default());
+                    let extra = if i > 20 {
+                        let d = (i - 20) as u128;
+                        d * d
+                    } else {
+                        0
+                    };
                     let score = entry.score + 1 + (i as u128) + extra;
-                    id_to_item.push(QueueItem{
-                        node_id: NodeId(child_pq), parent_id: ParentId(Some(id)), kind: NodeKind::String, depth: entry.depth+1,
-                        index_in_array: Some(i), key_in_object: None, priority: if score>usize::MAX as u128 {usize::MAX} else {score as usize},
-                        number_value: None, bool_value: None, string_value: None,
+                    id_to_item.push(QueueItem {
+                        node_id: NodeId(child_pq),
+                        parent_id: ParentId(Some(id)),
+                        kind: NodeKind::String,
+                        depth: entry.depth + 1,
+                        index_in_array: Some(i),
+                        key_in_object: None,
+                        priority: if score > usize::MAX as u128 {
+                            usize::MAX
+                        } else {
+                            score as usize
+                        },
+                        number_value: None,
+                        bool_value: None,
+                        string_value: None,
                     });
                     children_of[id].push(child_pq);
-                    heap.push(Reverse(Entry{ score, pq_id: child_pq, kind: NodeKind::String, depth: entry.depth+1, arena_node: None }));
+                    heap.push(Reverse(Entry {
+                        score,
+                        pq_id: child_pq,
+                        kind: NodeKind::String,
+                        depth: entry.depth + 1,
+                        arena_node: None,
+                    }));
                     stats.total_nodes += 1;
-                    if next_pq_id >= safety_cap { break; }
+                    if next_pq_id >= safety_cap {
+                        break;
+                    }
                 }
             }
             _ => {}
         }
-        if next_pq_id >= safety_cap { break; }
+        if next_pq_id >= safety_cap {
+            break;
+        }
     }
 
     stats.walk_ms = t_walk.elapsed().as_millis() as u128;
     let total = next_pq_id;
     let mut order_index: Vec<usize> = vec![usize::MAX; total];
-    for (idx, &pid) in ids_by_order.iter().enumerate() { if pid < total { order_index[pid] = idx; } }
+    for (idx, &pid) in ids_by_order.iter().enumerate() {
+        if pid < total {
+            order_index[pid] = idx;
+        }
+    }
     stats.children_edges_total = children_of.iter().map(|v| v.len()).sum();
 
-    Ok(PQBuild { metrics, id_to_item, parent_of, children_of, order_index, ids_by_order, total_nodes: total, profile: stats })
+    Ok(PQBuild {
+        metrics,
+        id_to_item,
+        parent_of,
+        children_of,
+        order_index,
+        ids_by_order,
+        total_nodes: total,
+        profile: stats,
+    })
 }
 
 #[cfg(test)]
@@ -264,23 +405,53 @@ mod tests {
 
     #[test]
     fn pq_empty_array() {
-        let arena = crate::stream_arena::build_stream_arena("[]", &PQConfig::default()).unwrap();
-        let build = build_priority_queue_from_arena(&arena, &PQConfig::default()).unwrap();
-        let mut items_sorted: Vec<_> = build.id_to_item.iter().cloned().collect();
-        items_sorted.sort_by_key(|it| build.order_index.get(it.node_id.0).copied().unwrap_or(usize::MAX));
+        let arena = crate::stream_arena::build_stream_arena(
+            "[]",
+            &PQConfig::default(),
+        )
+        .unwrap();
+        let build =
+            build_priority_queue_from_arena(&arena, &PQConfig::default())
+                .unwrap();
+        let mut items_sorted: Vec<_> =
+            build.id_to_item.iter().cloned().collect();
+        items_sorted.sort_by_key(|it| {
+            build
+                .order_index
+                .get(it.node_id.0)
+                .copied()
+                .unwrap_or(usize::MAX)
+        });
         let mut lines = vec![format!("len={}", build.total_nodes)];
-        for it in items_sorted { lines.push(format!("{:?} prio={}", it, it.priority)); }
+        for it in items_sorted {
+            lines.push(format!("{:?} prio={}", it, it.priority));
+        }
         assert_snapshot!("pq_empty_array_queue", lines.join("\n"));
     }
 
     #[test]
     fn pq_single_string_array() {
-        let arena = crate::stream_arena::build_stream_arena("[\"ab\"]", &PQConfig::default()).unwrap();
-        let build = build_priority_queue_from_arena(&arena, &PQConfig::default()).unwrap();
-        let mut items_sorted: Vec<_> = build.id_to_item.iter().cloned().collect();
-        items_sorted.sort_by_key(|it| build.order_index.get(it.node_id.0).copied().unwrap_or(usize::MAX));
+        let arena = crate::stream_arena::build_stream_arena(
+            "[\"ab\"]",
+            &PQConfig::default(),
+        )
+        .unwrap();
+        let build =
+            build_priority_queue_from_arena(&arena, &PQConfig::default())
+                .unwrap();
+        let mut items_sorted: Vec<_> =
+            build.id_to_item.iter().cloned().collect();
+        items_sorted.sort_by_key(|it| {
+            build
+                .order_index
+                .get(it.node_id.0)
+                .copied()
+                .unwrap_or(usize::MAX)
+        });
         let mut lines = vec![format!("len={}", build.total_nodes)];
-        for it in items_sorted { lines.push(format!("{:?} prio={}", it, it.priority)); }
+        for it in items_sorted {
+            lines.push(format!("{:?} prio={}", it, it.priority));
+        }
         assert_snapshot!("pq_single_string_array_queue", lines.join("\n"));
     }
 }

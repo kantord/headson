@@ -1,8 +1,8 @@
 use crate::queue::NodeKind;
 use crate::queue::PQConfig;
 use anyhow::Result;
-use serde::de::{DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor};
 use serde::Deserializer;
+use serde::de::{DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor};
 
 #[derive(Debug, Default, Clone)]
 pub struct StreamArena {
@@ -66,7 +66,10 @@ struct NodeSeed<'a> {
 impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
     type Value = usize; // node id
 
-    fn deserialize<D>(self, deserializer: D) -> std::result::Result<Self::Value, D::Error>
+    fn deserialize<D>(
+        self,
+        deserializer: D,
+    ) -> std::result::Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -76,11 +79,17 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
         impl<'de, 'b> Visitor<'de> for NodeVisitor<'b> {
             type Value = usize;
 
-            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(
+                &self,
+                f: &mut std::fmt::Formatter,
+            ) -> std::fmt::Result {
                 write!(f, "any JSON value")
             }
 
-            fn visit_bool<E>(self, v: bool) -> std::result::Result<Self::Value, E>
+            fn visit_bool<E>(
+                self,
+                v: bool,
+            ) -> std::result::Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
@@ -94,7 +103,10 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                 Ok(id)
             }
 
-            fn visit_i64<E>(self, v: i64) -> std::result::Result<Self::Value, E>
+            fn visit_i64<E>(
+                self,
+                v: i64,
+            ) -> std::result::Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
@@ -108,7 +120,10 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                 Ok(id)
             }
 
-            fn visit_u64<E>(self, v: u64) -> std::result::Result<Self::Value, E>
+            fn visit_u64<E>(
+                self,
+                v: u64,
+            ) -> std::result::Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
@@ -122,7 +137,10 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                 Ok(id)
             }
 
-            fn visit_f64<E>(self, v: f64) -> std::result::Result<Self::Value, E>
+            fn visit_f64<E>(
+                self,
+                v: f64,
+            ) -> std::result::Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
@@ -131,13 +149,17 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                     let mut a = self.c.arena.borrow_mut();
                     let n = &mut a.nodes[id];
                     n.kind = NodeKind::Number;
-                    let num = serde_json::Number::from_f64(v).ok_or_else(|| E::custom("invalid f64"))?;
+                    let num = serde_json::Number::from_f64(v)
+                        .ok_or_else(|| E::custom("invalid f64"))?;
                     n.number_value = Some(num);
                 }
                 Ok(id)
             }
 
-            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+            fn visit_str<E>(
+                self,
+                v: &str,
+            ) -> std::result::Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
@@ -151,7 +173,10 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                 Ok(id)
             }
 
-            fn visit_string<E>(self, v: String) -> std::result::Result<Self::Value, E>
+            fn visit_string<E>(
+                self,
+                v: String,
+            ) -> std::result::Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
@@ -185,7 +210,10 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                 self.visit_unit()
             }
 
-            fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Self::Value, A::Error>
+            fn visit_seq<A>(
+                self,
+                mut seq: A,
+            ) -> std::result::Result<Self::Value, A::Error>
             where
                 A: SeqAccess<'de>,
             {
@@ -200,7 +228,11 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                         seq.next_element_seed(seed)?
                     };
                     match next {
-                        Some(cid) => { local_children.push(cid); kept += 1; total += 1; }
+                        Some(cid) => {
+                            local_children.push(cid);
+                            kept += 1;
+                            total += 1;
+                        }
                         None => break,
                     }
                 }
@@ -209,7 +241,10 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                     let _ = _ignored; // silence unused
                     total += 1;
                 }
-                let children_start = { let a = self.c.arena.borrow(); a.children.len() };
+                let children_start = {
+                    let a = self.c.arena.borrow();
+                    a.children.len()
+                };
                 {
                     let mut a = self.c.arena.borrow_mut();
                     a.children.extend(local_children.into_iter());
@@ -222,7 +257,10 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                 Ok(id)
             }
 
-            fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error>
+            fn visit_map<A>(
+                self,
+                mut map: A,
+            ) -> std::result::Result<Self::Value, A::Error>
             where
                 A: MapAccess<'de>,
             {
@@ -239,7 +277,10 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                     local_keys.push(key);
                     count += 1;
                 }
-                let (children_start, obj_keys_start) = { let a = self.c.arena.borrow(); (a.children.len(), a.obj_keys.len()) };
+                let (children_start, obj_keys_start) = {
+                    let a = self.c.arena.borrow();
+                    (a.children.len(), a.obj_keys.len())
+                };
                 {
                     let mut a = self.c.arena.borrow_mut();
                     a.children.extend(local_children.into_iter());
@@ -266,7 +307,10 @@ pub fn build_stream_arena(input: &str, cfg: &PQConfig) -> Result<StreamArena> {
     // Use simd-json serde deserializer, parsing from a mutable buffer
     let mut bytes = input.as_bytes().to_vec();
     let mut de = simd_json::Deserializer::from_slice(&mut bytes)?;
-    let cell = ArenaCell { arena: RefCell::new(StreamArena::default()), array_cap: cfg.array_max_items };
+    let cell = ArenaCell {
+        arena: RefCell::new(StreamArena::default()),
+        array_cap: cfg.array_max_items,
+    };
     let root_id: usize = {
         let seed = NodeSeed { cell: &cell };
         seed.deserialize(&mut de)?
@@ -279,9 +323,15 @@ pub fn build_stream_arena(input: &str, cfg: &PQConfig) -> Result<StreamArena> {
 }
 
 // Variant that avoids copying: accepts owned bytes and parses in-place.
-pub fn build_stream_arena_from_bytes(mut bytes: Vec<u8>, cfg: &PQConfig) -> Result<StreamArena> {
+pub fn build_stream_arena_from_bytes(
+    mut bytes: Vec<u8>,
+    cfg: &PQConfig,
+) -> Result<StreamArena> {
     let mut de = simd_json::Deserializer::from_slice(&mut bytes)?;
-    let cell = ArenaCell { arena: RefCell::new(StreamArena::default()), array_cap: cfg.array_max_items };
+    let cell = ArenaCell {
+        arena: RefCell::new(StreamArena::default()),
+        array_cap: cfg.array_max_items,
+    };
     let root_id: usize = {
         let seed = NodeSeed { cell: &cell };
         seed.deserialize(&mut de)?

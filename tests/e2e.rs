@@ -8,8 +8,10 @@ fn run_case(path: &Path, template: &str, n: u32) -> String {
     let input = fs::read_to_string(path).expect("read fixture");
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     let output = cmd
-        .arg("-n").arg(n.to_string())
-        .arg("-f").arg(template)
+        .arg("-n")
+        .arg(n.to_string())
+        .arg("-f")
+        .arg(template)
         .write_stdin(input)
         .output()
         .expect("run");
@@ -29,7 +31,12 @@ fn e2e_parametric() {
                 for tmpl in templates {
                     let stdout = run_case(&entry.path(), tmpl, n);
                     assert_snapshot!(
-                        format!("e2e_{}__{}__n{}", name.replace('.', "_"), tmpl, n),
+                        format!(
+                            "e2e_{}__{}__n{}",
+                            name.replace('.', "_"),
+                            tmpl,
+                            n
+                        ),
                         stdout
                     );
                 }
