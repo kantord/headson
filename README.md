@@ -96,16 +96,24 @@ Run tests: `cargo test`.
 
 Enable profiling with `--profile` to print timings to stderr, e.g.:
 
-- PQ breakdown: `walk` (including string grapheme enumeration), `sort`, and `maps` (HashMap fills + child sorting).
+- PQ breakdown: `walk` (including string grapheme enumeration), `sort`, and `maps` (arena builds).
 - Overall timings: `parse`, `pq`, `search+render`, and `total`.
 
 Observed characteristics and current hotspots:
 
 - String grapheme enumeration can dominate when there are many long strings.
-- Building maps (`id_to_item`, `parent_of`, `children_of`, `order_index`) and sorting children are non-trivial costs.
+- Building maps (`id_to_item`, `parent_of`, `children_of`, `order_index`) is a non‑trivial cost (now using Vecs to reduce overhead). Per‑node child sorting was removed.
 - Rendering is typically negligible compared to PQ build and probe builds.
 
-The current approach replaces a heap with “Vec + sort”, improving PQ build time significantly as per comments and instrumentation.
+Recent optimizations implemented:
+- PQ arena switched from HashMaps to Vecs (id-indexed), greatly reducing map overhead.
+- Inclusion marking uses a reusable generational bitset across probes (no per-probe clears).
+- Tree building switched to on-demand traversal from the arena (no per-probe filtered vectors).
+- Removed per-node child sorting during tree build (children already ordered in PQ phase).
+- String micro-optimizations: avoid per-grapheme string allocations; truncated strings use parent prefix slicing by grapheme count.
+- QueueItem stores typed values (number/bool/string); removed reparsing and `value_repr`.
+
+These changes cut PQ time and per-probe build time substantially on large inputs.
 
 ## Repository Layout
 
@@ -123,7 +131,7 @@ The current approach replaces a heap with “Vec + sort”, improving PQ build t
 - JSON template truncation is not valid JSON: when content is omitted, the `json` templates include comments like `/* N more items */`. Tests avoid this by using a large budget (`-n 10000`) for conformance. If strict JSON is required under truncation, the templates must be adjusted to use JSON-native markers (e.g., strings) instead of comments.
 - Budget semantics: `-n/--budget` constrains the rendered output length in bytes, not the number of nodes. Internally we binary-search k (a node count) to fit the byte-length budget. Non-ASCII characters count by bytes, not grapheme clusters.
 - Performance hotspots: long-string grapheme enumeration and HashMap/map builds dominate PQ time on large inputs.
-- Potential dependency cleanup: the `priority-queue` crate is currently unused in code.
+- Dependencies pruned: removed unused `priority-queue` crate.
 - Minor CLI polish: the `about` description is outdated relative to current functionality.
 - Object key ordering follows `serde_json::Map` iteration order; stability can depend on the upstream map implementation and input.
 
