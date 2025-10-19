@@ -53,11 +53,11 @@ pub struct BuildProfile {
 
 #[derive(Clone, Debug)]
 pub struct PQBuild {
-    pub metrics: std::collections::HashMap<usize, NodeMetrics>,
-    pub id_to_item: std::collections::HashMap<usize, QueueItem>,
-    pub parent_of: std::collections::HashMap<usize, Option<usize>>,
-    pub children_of: std::collections::HashMap<usize, Vec<usize>>,
-    pub order_index: std::collections::HashMap<usize, usize>,
+    pub metrics: Vec<NodeMetrics>,
+    pub id_to_item: Vec<QueueItem>,
+    pub parent_of: Vec<Option<usize>>, // parent_of[id] = parent id
+    pub children_of: Vec<Vec<usize>>,  // children_of[id] = children ids
+    pub order_index: Vec<usize>,       // order_index[id] = global order
     pub total_nodes: usize,
     pub profile: BuildProfile,
 }
@@ -104,7 +104,7 @@ fn cumulative_walk(
     key_in_object: Option<String>,
     next_id: &mut usize,
     out_items: &mut Vec<QueueItem>,
-    metrics: &mut std::collections::HashMap<usize, NodeMetrics>,
+    metrics: &mut Vec<NodeMetrics>,
     expand_strings: bool,
     is_string_child: bool,
     parent_score: u128,
@@ -141,19 +141,21 @@ fn cumulative_walk(
     out_items.push(item);
     stats.total_nodes += 1;
 
-    // Record metrics for this node
-    let entry = metrics.entry(my_id).or_default();
+    // Record metrics for this node. Avoid holding a mutable borrow across
+    // recursive calls to satisfy the borrow checker.
+    // Helper to ensure metrics has an entry for this id
+    if metrics.len() <= my_id { metrics.resize(my_id + 1, NodeMetrics::default()); }
 
     match value {
         Value::Array(items) => {
-            entry.array_len = Some(items.len());
+            metrics[my_id].array_len = Some(items.len());
             stats.arrays += 1;
             for (i, item) in items.iter().enumerate() {
                 cumulative_walk(item, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, true, false, score_u128, stats)?;
             }
         }
         Value::Object(map) => {
-            entry.object_len = Some(map.len());
+            metrics[my_id].object_len = Some(map.len());
             stats.objects += 1;
             for (k, v) in map.iter() {
                 cumulative_walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, out_items, metrics, true, false, score_u128, stats)?;
@@ -170,10 +172,11 @@ fn cumulative_walk(
                     cumulative_walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, false, true, score_u128, stats)?;
                     stats.string_chars += 1;
                 }
-                entry.string_len = Some(len);
+                metrics[my_id].string_len = Some(len);
                 stats.string_enum_ns += t_chars.elapsed().as_nanos();
             } else {
-                entry.string_len = Some(UnicodeSegmentation::graphemes(s.as_str(), true).count());
+                let count = UnicodeSegmentation::graphemes(s.as_str(), true).count();
+                metrics[my_id].string_len = Some(count);
             }
         }
         _ => {}
@@ -185,16 +188,17 @@ fn cumulative_walk(
 pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     let mut next_id = 0usize;
     let mut flat_items: Vec<QueueItem> = Vec::new();
-    let mut metrics: std::collections::HashMap<usize, NodeMetrics> = std::collections::HashMap::new();
+    let mut metrics: Vec<NodeMetrics> = Vec::new();
     let mut stats = BuildProfile::default();
     let t_walk = std::time::Instant::now();
     cumulative_walk(value, None, 0, None, None, &mut next_id, &mut flat_items, &mut metrics, true, false, 0u128, &mut stats)?;
     stats.walk_ms = t_walk.elapsed().as_millis() as u128;
-    // Build arena-like maps
-    let mut id_to_item = std::collections::HashMap::new();
-    let mut parent_of = std::collections::HashMap::new();
-    let mut children_of: std::collections::HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
-    let mut order_index = std::collections::HashMap::new();
+    // Build arena-like Vecs
+    let total = next_id;
+    let mut id_to_item_opt: Vec<Option<QueueItem>> = vec![None; total];
+    let mut parent_of: Vec<Option<usize>> = vec![None; total];
+    let mut children_of: Vec<Vec<usize>> = vec![Vec::new(); total];
+    let mut order_index: Vec<usize> = vec![usize::MAX; total];
 
     // Stable order index by ascending priority
     let t_sort = std::time::Instant::now();
@@ -202,16 +206,19 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     stats.sort_ms = t_sort.elapsed().as_millis() as u128;
     let t_maps = std::time::Instant::now();
     for (idx, it) in flat_items.iter().cloned().enumerate() {
-        order_index.insert(it.node_id.0, idx);
-        parent_of.insert(it.node_id.0, it.parent_id.0);
-        id_to_item.insert(it.node_id.0, it.clone());
+        let id = it.node_id.0;
+        order_index[id] = idx;
+        parent_of[id] = it.parent_id.0;
+        id_to_item_opt[id] = Some(it.clone());
         if let Some(pid) = it.parent_id.0 {
-            children_of.entry(pid).or_default().push(it.node_id.0);
+            children_of[pid].push(id);
         }
     }
+    // Convert id_to_item to a dense Vec
+    let id_to_item: Vec<QueueItem> = id_to_item_opt.into_iter().map(|o| o.expect("missing queue item by id")).collect();
     // Ensure children are ordered by index_in_array when relevant
-    for (_pid, kids) in children_of.iter_mut() {
-        kids.sort_by_key(|cid| id_to_item.get(cid).and_then(|r| r.index_in_array).unwrap_or(usize::MAX));
+    for kids in children_of.iter_mut() {
+        kids.sort_by_key(|cid| id_to_item[*cid].index_in_array.unwrap_or(usize::MAX));
     }
     stats.maps_ms = t_maps.elapsed().as_millis() as u128;
 
@@ -227,8 +234,8 @@ mod tests {
     fn pq_empty_array() {
         let value: Value = serde_json::from_str("[]").unwrap();
         let build = build_priority_queue(&value).unwrap();
-        let mut items_sorted: Vec<_> = build.id_to_item.values().cloned().collect();
-        items_sorted.sort_by_key(|it| build.order_index.get(&it.node_id.0).copied().unwrap_or(usize::MAX));
+        let mut items_sorted: Vec<_> = build.id_to_item.iter().cloned().collect();
+        items_sorted.sort_by_key(|it| build.order_index.get(it.node_id.0).copied().unwrap_or(usize::MAX));
         let mut lines = vec![format!("len={}", build.total_nodes)];
         for it in items_sorted { lines.push(format!("{:?} prio={}", it, it.priority)); }
         assert_snapshot!("pq_empty_array_queue", lines.join("\n"));
@@ -238,8 +245,8 @@ mod tests {
     fn pq_single_string_array() {
         let value: Value = serde_json::from_str("[\"ab\"]").unwrap();
         let build = build_priority_queue(&value).unwrap();
-        let mut items_sorted: Vec<_> = build.id_to_item.values().cloned().collect();
-        items_sorted.sort_by_key(|it| build.order_index.get(&it.node_id.0).copied().unwrap_or(usize::MAX));
+        let mut items_sorted: Vec<_> = build.id_to_item.iter().cloned().collect();
+        items_sorted.sort_by_key(|it| build.order_index.get(it.node_id.0).copied().unwrap_or(usize::MAX));
         let mut lines = vec![format!("len={}", build.total_nodes)];
         for it in items_sorted { lines.push(format!("{:?} prio={}", it, it.priority)); }
         assert_snapshot!("pq_single_string_array_queue", lines.join("\n"));

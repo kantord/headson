@@ -134,15 +134,15 @@ impl TreeNode {
 }
 
 pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
-    let metrics: &std::collections::HashMap<usize, NodeMetrics> = &pq_build.metrics;
+    let metrics: &Vec<NodeMetrics> = &pq_build.metrics;
     // Include nodes with order_index < budget, plus ensure ancestors are included
     let mut included: std::collections::HashSet<usize> = std::collections::HashSet::new();
     let mut to_process: Vec<usize> = Vec::new();
-    for (id, &ord) in &pq_build.order_index {
-        if ord < budget { included.insert(*id); to_process.push(*id); }
+    for (id, &ord) in pq_build.order_index.iter().enumerate() {
+        if ord < budget { included.insert(id); to_process.push(id); }
     }
     while let Some(id) = to_process.pop() {
-        if let Some(parent) = pq_build.parent_of.get(&id).copied().flatten() {
+        if let Some(parent) = pq_build.parent_of[id] {
             if included.insert(parent) { to_process.push(parent); }
         }
     }
@@ -157,9 +157,9 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
         number: Option<Number>,
     }
 
-    let mut map = std::collections::HashMap::<usize, Rec>::new();
-    for id in &included {
-        let it = pq_build.id_to_item.get(id).expect("missing item");
+    let mut recs: Vec<Option<Rec>> = vec![None; pq_build.total_nodes];
+    for &id in &included {
+        let it = &pq_build.id_to_item[id];
         let val = match it.kind {
             NodeKind::String => Some(strip_quotes(&it.value_repr)),
             NodeKind::Bool => Some(it.value_repr.clone()),
@@ -170,40 +170,27 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
                 .ok()
                 .and_then(|v| if let serde_json::Value::Number(n) = v { Some(n) } else { None })
         } else { None };
-        map.insert(
-            it.node_id.0,
-            Rec {
-                kind: it.kind.clone(),
-                index: it.index_in_array,
-                key: it.key_in_object.clone(),
-                value: val,
-                number,
-            },
-        );
+        recs[id] = Some(Rec { kind: it.kind.clone(), index: it.index_in_array, key: it.key_in_object.clone(), value: val, number });
     }
 
     // Build children lists using arena, filter to included
-    let mut children: std::collections::HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
-    for (pid, kids) in &pq_build.children_of {
-        let kept = kids.iter().copied().filter(|cid| included.contains(cid)).collect::<Vec<_>>();
-        if !kept.is_empty() { children.insert(*pid, kept); }
+    let mut children: Vec<Vec<usize>> = vec![Vec::new(); pq_build.total_nodes];
+    for (pid, kids) in pq_build.children_of.iter().enumerate() {
+        children[pid] = kids.iter().copied().filter(|cid| included.contains(cid)).collect::<Vec<_>>();
     }
 
     // Identify root (no parent)
-    let root_id = pq_build
-        .id_to_item
-        .values()
-        .find(|it| it.parent_id.0.is_none())
-        .map(|it| it.node_id.0)
+    let root_id = (0..pq_build.total_nodes)
+        .find(|&id| pq_build.parent_of[id].is_none())
         .ok_or_else(|| anyhow::anyhow!("no root in queue"))?;
 
     fn to_tree(
         id: usize,
-        map: &std::collections::HashMap<usize, Rec>,
-        children: &std::collections::HashMap<usize, Vec<usize>>,
-        metrics: &std::collections::HashMap<usize, NodeMetrics>,
+        recs: &Vec<Option<Rec>>,
+        children: &Vec<Vec<usize>>,
+        metrics: &Vec<NodeMetrics>,
     ) -> TreeNode {
-        let rec = map.get(&id).expect("missing rec");
+        let rec = recs[id].as_ref().expect("missing rec");
         let kind = match rec.kind {
             NodeKind::Array => TreeKind::Array,
             NodeKind::String => TreeKind::String,
@@ -212,38 +199,32 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
             NodeKind::Bool => TreeKind::Bool,
             NodeKind::Null => TreeKind::Null,
         };
-        let mut kids_ids = children.get(&id).cloned().unwrap_or_default();
+        let mut kids_ids = children.get(id).cloned().unwrap_or_default();
         // Sort by index for array-like children
-        kids_ids.sort_by_key(|cid| map.get(cid).and_then(|r| r.index).unwrap_or(usize::MAX));
+        kids_ids.sort_by_key(|cid| recs[*cid].as_ref().and_then(|r| r.index).unwrap_or(usize::MAX));
         let kids = kids_ids
             .into_iter()
-            .map(|cid| to_tree(cid, map, children, metrics))
+            .map(|cid| to_tree(cid, recs, children, metrics))
             .collect::<Vec<_>>();
         // Compute omitted items for arrays/strings/objects using PQ metrics
         let omitted_items = match rec.kind {
             NodeKind::Array => {
-                if let Some(node_metrics) = metrics.get(&id) {
-                    if let Some(orig_len) = node_metrics.array_len {
+                if let Some(orig_len) = metrics[id].array_len {
                         let kept = kids.len();
                         if orig_len > kept { Some(orig_len - kept) } else { None }
                     } else { None }
-                } else { None }
             }
             NodeKind::String => {
-                if let Some(node_metrics) = metrics.get(&id) {
-                    if let Some(orig_len) = node_metrics.string_len {
+                if let Some(orig_len) = metrics[id].string_len {
                         let kept = kids.len();
                         if orig_len > kept { Some(orig_len - kept) } else { None }
                     } else { None }
-                } else { None }
             }
             NodeKind::Object => {
-                if let Some(node_metrics) = metrics.get(&id) {
-                    if let Some(orig_len) = node_metrics.object_len {
+                if let Some(orig_len) = metrics[id].object_len {
                         let kept = kids.len();
                         if orig_len > kept { Some(orig_len - kept) } else { None }
                     } else { None }
-                } else { None }
             }
             _ => None,
         };
@@ -260,7 +241,7 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
         }
     }
 
-    Ok(to_tree(root_id, &map, &children, metrics))
+    Ok(to_tree(root_id, &recs, &children, metrics))
 }
 
 fn strip_quotes(s: &str) -> String {
