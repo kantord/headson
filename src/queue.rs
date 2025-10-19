@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde_json::Value;
 use unicode_segmentation::UnicodeSegmentation;
-use std::time::Instant;
+// use std::time::Instant; // removed unused; timings gathered elsewhere
 const MAX_STRING_ENUM: usize = 500;
 
 use std::cmp::Reverse;
