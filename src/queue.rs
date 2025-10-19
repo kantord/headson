@@ -1,5 +1,4 @@
 use anyhow::Result;
-use priority_queue::PriorityQueue;
 use serde_json::Value;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -40,12 +39,12 @@ pub struct NodeMetrics {
 
 #[derive(Clone, Debug)]
 pub struct PQBuild {
-    pub pq: PriorityQueue<QueueItem, usize>,
     pub metrics: std::collections::HashMap<usize, NodeMetrics>,
     pub id_to_item: std::collections::HashMap<usize, QueueItem>,
     pub parent_of: std::collections::HashMap<usize, Option<usize>>,
     pub children_of: std::collections::HashMap<usize, Vec<usize>>,
     pub order_index: std::collections::HashMap<usize, usize>,
+    pub total_nodes: usize,
 }
 
 fn value_repr(value: &Value) -> String {
@@ -89,7 +88,7 @@ fn cumulative_walk(
     index_in_array: Option<usize>,
     key_in_object: Option<String>,
     next_id: &mut usize,
-    pq: &mut PriorityQueue<QueueItem, usize>,
+    out_items: &mut Vec<QueueItem>,
     metrics: &mut std::collections::HashMap<usize, NodeMetrics>,
     expand_strings: bool,
     is_string_child: bool,
@@ -123,7 +122,7 @@ fn cumulative_walk(
         priority,
         value_repr: value_repr(value),
     };
-    pq.push(item, priority);
+    out_items.push(item);
 
     // Record metrics for this node
     let entry = metrics.entry(my_id).or_default();
@@ -132,13 +131,13 @@ fn cumulative_walk(
         Value::Array(items) => {
             entry.array_len = Some(items.len());
             for (i, item) in items.iter().enumerate() {
-                cumulative_walk(item, Some(my_id), depth + 1, Some(i), None, next_id, pq, metrics, true, false, score_u128)?;
+                cumulative_walk(item, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, true, false, score_u128)?;
             }
         }
         Value::Object(map) => {
             entry.object_len = Some(map.len());
             for (k, v) in map.iter() {
-                cumulative_walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, pq, metrics, true, false, score_u128)?;
+                cumulative_walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, out_items, metrics, true, false, score_u128)?;
             }
         }
         Value::String(s) => {
@@ -146,7 +145,7 @@ fn cumulative_walk(
             if expand_strings {
                 for (i, g) in UnicodeSegmentation::graphemes(s.as_str(), true).enumerate() {
                     let ch_value = Value::String(g.to_string());
-                    cumulative_walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, pq, metrics, false, true, score_u128)?;
+                    cumulative_walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, false, true, score_u128)?;
                 }
             }
         }
@@ -158,19 +157,18 @@ fn cumulative_walk(
 
 pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     let mut next_id = 0usize;
-    let mut pq: PriorityQueue<QueueItem, usize> = PriorityQueue::new();
+    let mut flat_items: Vec<QueueItem> = Vec::new();
     let mut metrics: std::collections::HashMap<usize, NodeMetrics> = std::collections::HashMap::new();
-    cumulative_walk(value, None, 0, None, None, &mut next_id, &mut pq, &mut metrics, true, false, 0u128)?;
+    cumulative_walk(value, None, 0, None, None, &mut next_id, &mut flat_items, &mut metrics, true, false, 0u128)?;
     // Build arena-like maps
     let mut id_to_item = std::collections::HashMap::new();
     let mut parent_of = std::collections::HashMap::new();
     let mut children_of: std::collections::HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
     let mut order_index = std::collections::HashMap::new();
 
-    // Stable order index by descending priority
-    let mut all_desc: Vec<(QueueItem, usize)> = pq.clone().into_sorted_iter().collect();
-    all_desc.reverse();
-    for (idx, (it, _prio)) in all_desc.into_iter().enumerate() {
+    // Stable order index by ascending priority
+    flat_items.sort_by_key(|it| it.priority);
+    for (idx, it) in flat_items.iter().cloned().enumerate() {
         order_index.insert(it.node_id.0, idx);
         parent_of.insert(it.node_id.0, it.parent_id.0);
         id_to_item.insert(it.node_id.0, it.clone());
@@ -183,7 +181,7 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
         kids.sort_by_key(|cid| id_to_item.get(cid).and_then(|r| r.index_in_array).unwrap_or(usize::MAX));
     }
 
-    Ok(PQBuild { pq, metrics, id_to_item, parent_of, children_of, order_index })
+    Ok(PQBuild { metrics, id_to_item, parent_of, children_of, order_index, total_nodes: next_id })
 }
 
 #[cfg(test)]
@@ -195,10 +193,10 @@ mod tests {
     fn pq_empty_array() {
         let value: Value = serde_json::from_str("[]").unwrap();
         let build = build_priority_queue(&value).unwrap();
-        let mut lines = vec![format!("len={}", build.pq.len())];
-        for (item, prio) in build.pq.into_sorted_iter() {
-            lines.push(format!("{:?} prio={}", item, prio));
-        }
+        let mut items_sorted: Vec<_> = build.id_to_item.values().cloned().collect();
+        items_sorted.sort_by_key(|it| build.order_index.get(&it.node_id.0).copied().unwrap_or(usize::MAX));
+        let mut lines = vec![format!("len={}", build.total_nodes)];
+        for it in items_sorted { lines.push(format!("{:?} prio={}", it, it.priority)); }
         assert_snapshot!("pq_empty_array_queue", lines.join("\n"));
     }
 
@@ -206,10 +204,10 @@ mod tests {
     fn pq_single_string_array() {
         let value: Value = serde_json::from_str("[\"ab\"]").unwrap();
         let build = build_priority_queue(&value).unwrap();
-        let mut lines = vec![format!("len={}", build.pq.len())];
-        for (item, prio) in build.pq.into_sorted_iter() {
-            lines.push(format!("{:?} prio={}", item, prio));
-        }
+        let mut items_sorted: Vec<_> = build.id_to_item.values().cloned().collect();
+        items_sorted.sort_by_key(|it| build.order_index.get(&it.node_id.0).copied().unwrap_or(usize::MAX));
+        let mut lines = vec![format!("len={}", build.total_nodes)];
+        for it in items_sorted { lines.push(format!("{:?} prio={}", it, it.priority)); }
         assert_snapshot!("pq_single_string_array_queue", lines.join("\n"));
     }
 }
