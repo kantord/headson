@@ -7,7 +7,7 @@
 {%- else -%}
 {{ indent0 }}{
 {%- for kv in children %}
-{{ indent1 }}"{{ kv.1 .0 }}":{{ sp }}{{ kv.1 .1 }}{%- if kv.0 + 1 < children_len -%},{%- endif -%}
+{{ indent1 }}{{ kv.1 .0 }}:{{ sp }}{{ kv.1 .1 }}{%- if kv.0 + 1 < children_len -%},{%- endif -%}
 {%- endfor -%}
 {%- if omitted > 0 %}
 {{ indent1 }}…

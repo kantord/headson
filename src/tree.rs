@@ -114,7 +114,8 @@ impl TreeNode {
         let ind = Self::indent(depth + 1, &config.indent_unit);
         for (i, c) in self.children.iter().enumerate() {
             let raw_key = c.key_in_parent.clone().unwrap_or_default();
-            let key = strip_quotes(&serde_json::to_string(&raw_key).unwrap_or_else(|_| format!("\"{}\"", raw_key)));
+            // Pre-escape as a JSON string (including quotes) so templates can insert as-is
+            let key = serde_json::to_string(&raw_key).unwrap_or_else(|_| format!("\"{}\"", raw_key));
             let mut val = c.serialize_with_depth(config, depth + 1);
             if val.starts_with(&ind) {
                 val = val[ind.len()..].to_string();
@@ -247,14 +248,8 @@ pub(crate) fn build_tree_with_marks(
     Ok(tree)
 }
 
-fn strip_quotes(s: &str) -> String {
-    let mut out = s.to_string();
-    if out.starts_with('"') && out.ends_with('"') && out.len() >= 2 {
-        out.remove(0);
-        out.pop();
-    }
-    out
-}
+// no-op: previously used to remove quotes from JSON-escaped keys; now keys are
+// pre-escaped with quotes and inserted directly by templates.
 
 #[cfg(test)]
 mod tests {
