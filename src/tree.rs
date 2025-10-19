@@ -284,7 +284,7 @@ mod tests {
         let build = crate::build_priority_queue(&value).unwrap();
         let tree = build_tree(&build, 10).unwrap();
         use crate::RenderConfig; use crate::OutputTemplate;
-        assert_snapshot!("build_tree_empty", tree.serialize(&RenderConfig{ template: OutputTemplate::Json, indent_unit: "  ".to_string(), space: " ".to_string() }));
+        assert_snapshot!("build_tree_empty", tree.serialize(&RenderConfig{ template: OutputTemplate::Json, indent_unit: "  ".to_string(), space: " ".to_string(), profile: false }));
     }
 
     #[test]
@@ -293,6 +293,6 @@ mod tests {
         let build = crate::build_priority_queue(&value).unwrap();
         let tree = build_tree(&build, 10).unwrap();
         use crate::RenderConfig; use crate::OutputTemplate;
-        assert_snapshot!("build_tree_single", tree.serialize(&RenderConfig{ template: OutputTemplate::Json, indent_unit: "  ".to_string(), space: " ".to_string() }));
+        assert_snapshot!("build_tree_single", tree.serialize(&RenderConfig{ template: OutputTemplate::Json, indent_unit: "  ".to_string(), space: " ".to_string(), profile: false }));
     }
 }

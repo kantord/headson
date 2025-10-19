@@ -11,6 +11,13 @@ expression: stdout
     }
     …
   ],
+  "matrix": [
+    [
+      1
+      …
+    ]
+    …
+  ],
   "objects": [
     {
       "k": "v…"
@@ -18,14 +25,7 @@ expression: stdout
     …
   ],
   "strings": [
-    "one"
-    …
-  ],
-  "matrix": [
-    [
-      1
-      …
-    ]
+    "on…"
     …
   ]
 }

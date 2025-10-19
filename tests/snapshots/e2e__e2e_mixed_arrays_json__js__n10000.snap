@@ -37,6 +37,23 @@ expression: stdout
       ]
     }
   ],
+  "matrix": [
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      4,
+      5,
+      6
+    ],
+    [
+      7,
+      8,
+      9
+    ]
+  ],
   "objects": [
     {
       "k": "v1"
@@ -56,22 +73,5 @@ expression: stdout
     "five",
     "six",
     "seven"
-  ],
-  "matrix": [
-    [
-      1,
-      2,
-      3
-    ],
-    [
-      4,
-      5,
-      6
-    ],
-    [
-      7,
-      8,
-      9
-    ]
   ]
 }

@@ -3,49 +3,49 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
+  "meta": {
+    "next": null,
+    "page": 1,
+    "pageSize": 20,
+    "tags": [
+      "alpha",
+      "beta"
+      …
+    ]
+  },
   "users": [
     {
+      "id": 1,
+      "name": "Alice Wonderland",
+      "profile": {
+        "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+        "social": {
+          "github": "alice",
+          "twitter": "@alice",
+          "web": "https://example.com/users/alice"
+        }
+      },
       "roles": [
         "admin",
         "editor"
         …
-      ],
-      "name": "Alice Wonderland",
-      "id": 1,
-      "profile": {
-        "social": {
-          "web": "https://example.com/users/alice",
-          "twitter": "@alice",
-          "github": "alice"
-        },
-        "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-      }
+      ]
     },
     {
-      "name": "Bob Builder",
       "id": 2,
+      "name": "Bob Builder",
       "profile": {
+        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo c…",
         "social": {
-          "twitter": "@buildWithBob",
           "github": "bobbuilder",
+          "twitter": "@buildWithBob",
           "web": "https://bob.example.org"
-        },
-        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo c…"
+        }
       },
       "roles": [
         "contributor"
         …
       ]
     }
-  ],
-  "meta": {
-    "next": null,
-    "pageSize": 20,
-    "page": 1,
-    "tags": [
-      "alpha",
-      "beta"
-      …
-    ]
-  }
+  ]
 }

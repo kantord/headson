@@ -3,22 +3,22 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
-  "users": [
-    {
-      "roles": [ … ],
-      "name": "A…",
-      "id": 1,
-      "profile": { … }
-    }
-    …
-  ],
   "meta": {
     "next": null,
-    "pageSize": 20,
     "page": 1,
+    "pageSize": 20,
     "tags": [
-      "…"
+      "a…"
       …
     ]
-  }
+  },
+  "users": [
+    {
+      "id": 1,
+      "name": "A…",
+      "profile": { … },
+      "roles": [ … ]
+    }
+    …
+  ]
 }

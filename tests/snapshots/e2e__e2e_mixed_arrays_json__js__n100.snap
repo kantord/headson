@@ -4,6 +4,6 @@ expression: stdout
 ---
 {
   "deep": [ /* 2 more items */ ],
-  "objects": [ /* 3 more items */ ]
+  "matrix": [ /* 3 more items */ ]
   /* 2 more properties */
 }

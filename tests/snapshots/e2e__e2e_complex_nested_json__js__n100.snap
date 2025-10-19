@@ -3,9 +3,9 @@ source: tests/e2e.rs
 expression: stdout
 ---
 {
-  "users": [ /* 2 more items */ ],
   "meta": {
     "next": null
     /* 3 more properties */
-  }
+  },
+  "users": [ /* 2 more items */ ]
 }

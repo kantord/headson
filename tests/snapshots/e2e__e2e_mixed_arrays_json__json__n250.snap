@@ -9,18 +9,16 @@ expression: stdout
     }
     /* 1 more items */
   ],
-  "objects": [
-    {
-      "k": "…"
-    }
-    /* 2 more items */
-  ],
-  "strings": [
-    "o…"
-    /* 6 more items */
-  ],
   "matrix": [
         []
     /* 2 more items */
+  ],
+  "objects": [
+        {}
+    /* 2 more items */
+  ],
+  "strings": [
+    "…"
+    /* 6 more items */
   ]
 }

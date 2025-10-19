@@ -4,7 +4,7 @@ expression: stdout
 ---
 {
   "deep": [ … ],
+  "matrix": [ … ],
   "objects": [ … ],
-  "strings": [ … ],
-  "matrix": [ … ]
+  "strings": [ … ]
 }
