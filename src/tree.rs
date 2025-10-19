@@ -134,16 +134,24 @@ impl TreeNode {
 }
 
 pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
+    // Fallback wrapper that builds with a fresh mark vector each time.
+    let mut marks = vec![0u32; pq_build.total_nodes];
+    build_tree_with_marks(pq_build, budget, &mut marks, 1)
+}
+
+pub(crate) fn build_tree_with_marks(pq_build: &PQBuild, budget: usize, marks: &mut Vec<u32>, mark_gen: u32) -> Result<TreeNode> {
     let metrics: &Vec<NodeMetrics> = &pq_build.metrics;
-    // Include nodes with order_index < budget, plus ensure ancestors are included
-    let mut included: std::collections::HashSet<usize> = std::collections::HashSet::new();
-    let mut to_process: Vec<usize> = Vec::new();
+    if marks.len() < pq_build.total_nodes { marks.resize(pq_build.total_nodes, 0); }
+    // Mark included nodes (order_index < budget) and their ancestors using generation marks
+    let mut stack: Vec<usize> = Vec::new();
     for (id, &ord) in pq_build.order_index.iter().enumerate() {
-        if ord < budget { included.insert(id); to_process.push(id); }
+        if ord < budget {
+            if marks[id] != mark_gen { marks[id] = mark_gen; stack.push(id); }
+        }
     }
-    while let Some(id) = to_process.pop() {
+    while let Some(id) = stack.pop() {
         if let Some(parent) = pq_build.parent_of[id] {
-            if included.insert(parent) { to_process.push(parent); }
+            if marks[parent] != mark_gen { marks[parent] = mark_gen; stack.push(parent); }
         }
     }
 
@@ -158,25 +166,31 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
     }
 
     let mut recs: Vec<Option<Rec>> = vec![None; pq_build.total_nodes];
-    for &id in &included {
-        let it = &pq_build.id_to_item[id];
-        let val = match it.kind {
-            NodeKind::String => Some(strip_quotes(&it.value_repr)),
-            NodeKind::Bool => Some(it.value_repr.clone()),
-            _ => None,
-        };
-        let number = if let NodeKind::Number = it.kind {
-            serde_json::from_str::<serde_json::Value>(&it.value_repr)
-                .ok()
-                .and_then(|v| if let serde_json::Value::Number(n) = v { Some(n) } else { None })
-        } else { None };
-        recs[id] = Some(Rec { kind: it.kind.clone(), index: it.index_in_array, key: it.key_in_object.clone(), value: val, number });
+    for id in 0..pq_build.total_nodes {
+        if marks[id] == mark_gen {
+            let it = &pq_build.id_to_item[id];
+            let val = match it.kind {
+                NodeKind::String => Some(strip_quotes(&it.value_repr)),
+                NodeKind::Bool => Some(it.value_repr.clone()),
+                _ => None,
+            };
+            let number = if let NodeKind::Number = it.kind {
+                serde_json::from_str::<serde_json::Value>(&it.value_repr)
+                    .ok()
+                    .and_then(|v| if let serde_json::Value::Number(n) = v { Some(n) } else { None })
+            } else { None };
+            recs[id] = Some(Rec { kind: it.kind.clone(), index: it.index_in_array, key: it.key_in_object.clone(), value: val, number });
+        }
     }
 
     // Build children lists using arena, filter to included
     let mut children: Vec<Vec<usize>> = vec![Vec::new(); pq_build.total_nodes];
     for (pid, kids) in pq_build.children_of.iter().enumerate() {
-        children[pid] = kids.iter().copied().filter(|cid| included.contains(cid)).collect::<Vec<_>>();
+        children[pid] = kids
+            .iter()
+            .copied()
+            .filter(|&cid| marks[cid] == mark_gen)
+            .collect::<Vec<_>>();
     }
 
     // Identify root (no parent)
@@ -210,21 +224,21 @@ pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
         let omitted_items = match rec.kind {
             NodeKind::Array => {
                 if let Some(orig_len) = metrics[id].array_len {
-                        let kept = kids.len();
-                        if orig_len > kept { Some(orig_len - kept) } else { None }
-                    } else { None }
+                    let kept = kids.len();
+                    if orig_len > kept { Some(orig_len - kept) } else { None }
+                } else { None }
             }
             NodeKind::String => {
                 if let Some(orig_len) = metrics[id].string_len {
-                        let kept = kids.len();
-                        if orig_len > kept { Some(orig_len - kept) } else { None }
-                    } else { None }
+                    let kept = kids.len();
+                    if orig_len > kept { Some(orig_len - kept) } else { None }
+                } else { None }
             }
             NodeKind::Object => {
                 if let Some(orig_len) = metrics[id].object_len {
-                        let kept = kids.len();
-                        if orig_len > kept { Some(orig_len - kept) } else { None }
-                    } else { None }
+                    let kept = kids.len();
+                    if orig_len > kept { Some(orig_len - kept) } else { None }
+                } else { None }
             }
             _ => None,
         };

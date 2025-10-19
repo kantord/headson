@@ -71,14 +71,18 @@ fn best_render_under_char_budget(pq_build: &PQBuild, config: RenderConfig, char_
     let mut hi = total.min(char_budget.max(1));
     let mut best: Option<String> = None;
     let do_prof = config.profile;
+    // Reusable inclusion marks to avoid clearing per probe
+    let mut marks: Vec<u32> = vec![0; total];
+    let mut mark_gen: u32 = 1;
 
     while lo <= hi {
         let mid = lo + (hi - lo) / 2;
         let t_build = std::time::Instant::now();
-        let tree = build_tree(pq_build, mid)?;
+        let tree = crate::tree::build_tree_with_marks(pq_build, mid, &mut marks, mark_gen)?;
         let t_render_start = std::time::Instant::now();
         let s = tree.serialize(&config);
         let t_end = std::time::Instant::now();
+        mark_gen = mark_gen.wrapping_add(1).max(1); // avoid 0 sentinel and handle wrap
         if do_prof {
             eprintln!(
                 "probe k={}, build={}ms, render={}ms, size={}",
