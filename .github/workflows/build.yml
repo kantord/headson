@@ -10,7 +10,14 @@ jobs:
     name: Build and test (deny warnings)
     runs-on: ubuntu-latest
     env:
-      RUSTFLAGS: -D warnings
+      RUSTFLAGS: >-
+        -D warnings
+        -D dead_code
+        -D unused_imports
+        -D unused_mut
+        -D unused_variables
+        -D unused_assignments
+        -D unused_parens
     steps:
       - name: Checkout
         uses: actions/checkout@v4
