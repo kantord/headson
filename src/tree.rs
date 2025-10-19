@@ -54,7 +54,7 @@ pub(crate) fn render_arena_with_marks(
         id: usize,
         kind: &NodeKind,
         kept: usize,
-        metrics: &Vec<NodeMetrics>,
+        metrics: &[NodeMetrics],
     ) -> Option<usize> {
         match kind {
             NodeKind::Array => metrics[id].array_len.and_then(|orig| {
@@ -78,10 +78,11 @@ pub(crate) fn render_arena_with_marks(
     }
 
     // Recursive serialization straight from arena
+    #[allow(clippy::too_many_arguments)]
     fn serialize_node(
         id: usize,
         pq: &PQBuild,
-        marks: &Vec<u32>,
+        marks: &[u32],
         mark_gen: u32,
         cfg: &crate::RenderConfig,
         depth: usize,

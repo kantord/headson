@@ -247,7 +247,7 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                 };
                 {
                     let mut a = self.c.arena.borrow_mut();
-                    a.children.extend(local_children.into_iter());
+                    a.children.extend(local_children);
                     let n = &mut a.nodes[id];
                     n.kind = NodeKind::Array;
                     n.children_start = children_start;
@@ -283,8 +283,8 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                 };
                 {
                     let mut a = self.c.arena.borrow_mut();
-                    a.children.extend(local_children.into_iter());
-                    a.obj_keys.extend(local_keys.into_iter());
+                    a.children.extend(local_children);
+                    a.obj_keys.extend(local_keys);
                     let n = &mut a.nodes[id];
                     n.kind = NodeKind::Object;
                     n.children_start = children_start;
@@ -303,6 +303,7 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
 // Build a compact arena in a single pass using a serde Visitor.
 // Arrays are capped at `cfg.array_max_items` during parse; we still record the
 // total length to report omissions accurately later.
+#[cfg(test)]
 pub fn build_stream_arena(input: &str, cfg: &PQConfig) -> Result<StreamArena> {
     // Use simd-json serde deserializer, parsing from a mutable buffer
     let mut bytes = input.as_bytes().to_vec();

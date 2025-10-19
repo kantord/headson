@@ -376,7 +376,7 @@ pub fn build_priority_queue_from_arena(
         }
     }
 
-    stats.walk_ms = t_walk.elapsed().as_millis() as u128;
+    stats.walk_ms = t_walk.elapsed().as_millis();
     let total = next_pq_id;
     let mut order_index: Vec<usize> = vec![usize::MAX; total];
     for (idx, &pid) in ids_by_order.iter().enumerate() {
@@ -413,8 +413,7 @@ mod tests {
         let build =
             build_priority_queue_from_arena(&arena, &PQConfig::default())
                 .unwrap();
-        let mut items_sorted: Vec<_> =
-            build.id_to_item.iter().cloned().collect();
+        let mut items_sorted: Vec<_> = build.id_to_item.clone();
         items_sorted.sort_by_key(|it| {
             build
                 .order_index
@@ -439,8 +438,7 @@ mod tests {
         let build =
             build_priority_queue_from_arena(&arena, &PQConfig::default())
                 .unwrap();
-        let mut items_sorted: Vec<_> =
-            build.id_to_item.iter().cloned().collect();
+        let mut items_sorted: Vec<_> = build.id_to_item.clone();
         items_sorted.sort_by_key(|it| {
             build
                 .order_index
