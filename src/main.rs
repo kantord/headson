@@ -52,7 +52,7 @@ fn main() -> Result<()> {
     // Derive a conservative per-array cap from the budget: an array of N items
     // minimally needs about 2*N characters (item plus comma) to fit. So cap at budget/2.
     let pq_cfg = headson::PQConfig { max_string_graphemes: cli.string_cap, array_max_items: (cli.budget / 2).max(1) };
-    let output = headson::headson_with_cfg_bytes(input_bytes, config, &pq_cfg, cli.budget)?;
+    let output = headson::headson(input_bytes, config, &pq_cfg, cli.budget)?;
     println!("{}", output);
 
     Ok(())
