@@ -10,10 +10,11 @@ use std::collections::BinaryHeap;
 #[derive(Clone, Debug)]
 pub struct PQConfig {
     pub max_string_graphemes: usize,
+    pub array_max_items: usize,
 }
 
 impl Default for PQConfig {
-    fn default() -> Self { Self { max_string_graphemes: MAX_STRING_ENUM } }
+    fn default() -> Self { Self { max_string_graphemes: MAX_STRING_ENUM, array_max_items: usize::MAX } }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -181,7 +182,10 @@ pub fn build_priority_queue_with_config(value: &Value, cfg: &PQConfig) -> Result
         let kind_now2 = entry.kind.clone();
         match (&entry.vref, kind_now2) {
             (VRef::Json(Value::Array(items)), NodeKind::Array) => {
-                for (i, child) in items.iter().enumerate() {
+                // Derive a conservative cap from PQConfig: arrays larger than array_max_items
+                // cannot fit within the budget due to at least one char per item plus commas.
+                let limit = items.len().min(cfg.array_max_items);
+                for (i, child) in items.iter().take(limit).enumerate() {
                     let child_id = next_id; next_id += 1;
                     parent_of.push(Some(id)); children_of.push(Vec::new()); metrics.push(NodeMetrics::default());
                     let score = entry.score + 1 + (i as u128).pow(3) * 1_000_000_000_000u128;

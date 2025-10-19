@@ -42,7 +42,9 @@ fn main() -> Result<()> {
     };
     let space = if cli.no_space { "".to_string() } else { " ".to_string() };
     let config = headson::RenderConfig { template, indent_unit: cli.indent.clone(), space, profile: cli.profile };
-    let pq_cfg = headson::PQConfig { max_string_graphemes: cli.string_cap };
+    // Derive a conservative per-array cap from the budget: an array of N items
+    // minimally needs about 2*N characters (item plus comma) to fit. So cap at budget/2.
+    let pq_cfg = headson::PQConfig { max_string_graphemes: cli.string_cap, array_max_items: (cli.budget / 2).max(1) };
     let output = headson::headson_with_cfg(&buffer, config, &pq_cfg, cli.budget)?;
     println!("{}", output);
 
