@@ -27,6 +27,7 @@ Flags:
 - `--no-space`: remove the single space after `:` in objects. Arrays never add spaces after commas.
 - `--profile`: print timing breakdowns to stderr (parse, PQ build, probes; plus PQ internals).
 - `--string-cap <int>`: maximum graphemes to expand per string during PQ build (default: 500). Caps PQ work on long strings.
+ - `--input <path>`: read JSON directly from a file instead of stdin.
 
 Exit codes and I/O:
 
@@ -139,6 +140,31 @@ These changes cut PQ time and per-probe build time substantially on large inputs
 - `templates/`: Askama templates for `json`, `pseudo`, and `js`.
 - `tests/`: E2E snapshots, JSON conformance tests, and fixtures.
 - `JSONTestSuite/`: upstream test corpus used by the conformance tests.
+
+## Benchmarking (Hyperfine)
+
+For quick end-to-end timing on real inputs, use Hyperfine. A helper script builds the release binary, runs multiple budgets, and exports results as JSON.
+
+Requirements: hyperfine installed (https://github.com/sharkdp/hyperfine)
+
+Run with default sample input:
+
+```
+bash scripts/bench_hyperfine.sh
+```
+
+Run on a large input and custom parameters:
+
+```
+HF_INPUT=/path/to/large.json \
+HF_BUDGETS=100,1000,10000,50000 \
+HF_TEMPLATE=pseudo \
+HF_RUNS=15 \
+HF_WARMUP=3 \
+bash scripts/bench_hyperfine.sh
+```
+
+Results are saved under `benchmarks/hyperfine/bench_*.json`.
 
 ## Known Issues and Limitations
 
