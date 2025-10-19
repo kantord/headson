@@ -38,22 +38,24 @@ fn jsonsuite_case(path: &Path) {
 
     // Known simd-json serde differences: skip specific negatives that serde_json rejects
     // but simd-json (serde bridge) may accept. We document this in README.
-    if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
-        if name == "n_multidigit_number_then_00.json" {
-            return;
-        }
+    if matches!(
+        path.file_name().and_then(|s| s.to_str()),
+        Some(name) if name == "n_multidigit_number_then_00.json"
+    ) {
+        return;
     }
 
     let input = fs::read(path).expect("read");
 
     if is_y(path) {
-        if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
-            if name == "y_number_minus_zero.json"
-                || name == "y_number_negative_zero.json"
-            {
-                // serde_json (original) may keep -0.0 as float while our parser yields integer 0; skip these two.
-                return;
-            }
+        if matches!(
+            path.file_name().and_then(|s| s.to_str()),
+            Some(name)
+                if name == "y_number_minus_zero.json"
+                    || name == "y_number_negative_zero.json"
+        ) {
+            // serde_json (original) may keep -0.0 as float while our parser yields integer 0; skip these two.
+            return;
         }
         let original: Value =
             serde_json::from_slice(&input).expect("serde accept");
