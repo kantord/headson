@@ -60,6 +60,7 @@ pub struct PQBuild {
     pub parent_of: Vec<Option<usize>>, // parent_of[id] = parent id
     pub children_of: Vec<Vec<usize>>,  // children_of[id] = children ids
     pub order_index: Vec<usize>,       // order_index[id] = global order
+    pub ids_by_order: Vec<usize>,      // ids sorted by ascending priority
     pub total_nodes: usize,
     pub profile: BuildProfile,
 }
@@ -210,6 +211,7 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     flat_items.sort_by_key(|it| it.priority);
     stats.sort_ms = t_sort.elapsed().as_millis() as u128;
     let t_maps = std::time::Instant::now();
+    let mut ids_by_order: Vec<usize> = Vec::with_capacity(flat_items.len());
     for (idx, it) in flat_items.iter().cloned().enumerate() {
         let id = it.node_id.0;
         order_index[id] = idx;
@@ -218,6 +220,7 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
         if let Some(pid) = it.parent_id.0 {
             children_of[pid].push(id);
         }
+        ids_by_order.push(id);
     }
     // Convert id_to_item to a dense Vec
     let id_to_item: Vec<QueueItem> = id_to_item_opt.into_iter().map(|o| o.expect("missing queue item by id")).collect();
@@ -227,7 +230,7 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     }
     stats.maps_ms = t_maps.elapsed().as_millis() as u128;
 
-    Ok(PQBuild { metrics, id_to_item, parent_of, children_of, order_index, total_nodes: next_id, profile: stats })
+    Ok(PQBuild { metrics, id_to_item, parent_of, children_of, order_index, ids_by_order, total_nodes: next_id, profile: stats })
 }
 
 #[cfg(test)]

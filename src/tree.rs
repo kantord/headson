@@ -19,10 +19,10 @@ pub(crate) fn render_arena_with_marks(
     // Mark included nodes (order_index < budget) and their ancestors using generation marks
     let t_mark = std::time::Instant::now();
     let mut stack: Vec<usize> = Vec::new();
-    for (id, &ord) in pq_build.order_index.iter().enumerate() {
-        if ord < budget {
-            if marks[id] != mark_gen { marks[id] = mark_gen; stack.push(id); }
-        }
+    let k = budget.min(pq_build.total_nodes);
+    // Mark first k nodes by order directly using ids_by_order (O(k))
+    for &id in pq_build.ids_by_order.iter().take(k) {
+        if marks[id] != mark_gen { marks[id] = mark_gen; stack.push(id); }
     }
     while let Some(id) = stack.pop() {
         if let Some(parent) = pq_build.parent_of[id] {
