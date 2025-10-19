@@ -4,7 +4,7 @@ use serde_json::Value;
 mod queue;
 mod tree;
 mod render;
-pub use queue::{build_priority_queue, NodeId, ParentId, NodeKind, QueueItem, PQBuild};
+pub use queue::{build_priority_queue, build_priority_queue_capped, NodeId, ParentId, NodeKind, QueueItem, PQBuild};
 
 
 pub fn parse_json(input: &str, _budget: usize) -> Result<Value> {
@@ -34,7 +34,8 @@ pub fn headson(input: &str, config: RenderConfig, budget: usize) -> Result<Strin
     let t0 = std::time::Instant::now();
     let parsed = parse_json(input, budget)?;
     let t1 = std::time::Instant::now();
-    let pq_build = build_priority_queue(&parsed)?;
+    // Use the output budget as a conservative per-parent cap to reduce PQ expansion
+    let pq_build = build_priority_queue_capped(&parsed, budget)?;
     let t2 = std::time::Instant::now();
     let out = best_render_under_char_budget(&pq_build, config.clone(), budget)?;
     let t3 = std::time::Instant::now();

@@ -2,6 +2,7 @@ use anyhow::Result;
 use serde_json::Value;
 use unicode_segmentation::UnicodeSegmentation;
 use std::time::Instant;
+const MAX_STRING_ENUM: usize = 500;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct NodeId(pub usize);
@@ -38,6 +39,7 @@ pub struct NodeMetrics {
     pub array_len: Option<usize>,
     pub object_len: Option<usize>,
     pub string_len: Option<usize>,
+    pub string_truncated: bool,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -102,6 +104,7 @@ fn cumulative_walk(
     is_string_child: bool,
     parent_score: u128,
     stats: &mut BuildProfile,
+    cap: Option<usize>,
 ) -> Result<usize> {
     let my_id = *next_id;
     *next_id += 1;
@@ -147,8 +150,9 @@ fn cumulative_walk(
             stats.arrays += 1;
             stats.arrays_items_total += items.len();
             if items.len() > stats.max_array_len { stats.max_array_len = items.len(); }
-            for (i, item) in items.iter().enumerate() {
-                cumulative_walk(item, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, true, false, score_u128, stats)?;
+            let limit = cap.unwrap_or(usize::MAX).min(items.len());
+            for (i, item) in items.iter().take(limit).enumerate() {
+                cumulative_walk(item, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, true, false, score_u128, stats, cap)?;
             }
         }
         Value::Object(map) => {
@@ -157,16 +161,19 @@ fn cumulative_walk(
             stats.objects_props_total += map.len();
             if map.len() > stats.max_object_len { stats.max_object_len = map.len(); }
             for (k, v) in map.iter() {
-                cumulative_walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, out_items, metrics, true, false, score_u128, stats)?;
+                cumulative_walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, out_items, metrics, true, false, score_u128, stats, cap)?;
             }
         }
         Value::String(s) => {
             stats.strings += 1;
             if expand_strings {
                 let t_chars = Instant::now();
-                let mut len = 0usize;
-                for (i, _g) in UnicodeSegmentation::graphemes(s.as_str(), true).enumerate() {
-                    len = i + 1;
+                let mut kept = 0usize;
+                // Hard cap for per-string grapheme expansion
+                let limit = cap.unwrap_or(usize::MAX).min(MAX_STRING_ENUM);
+                let mut iter = UnicodeSegmentation::graphemes(s.as_str(), true);
+                for (i, _g) in iter.by_ref().take(limit).enumerate() {
+                    kept = i + 1;
                     // Inline fast-path for string character nodes to avoid constructing a serde_json::Value
                     let child_id = *next_id;
                     *next_id += 1;
@@ -193,11 +200,16 @@ fn cumulative_walk(
                     stats.total_nodes += 1;
                     stats.string_chars += 1;
                 }
-                metrics[my_id].string_len = Some(len);
+                // If there are more graphemes beyond the limit, mark truncated; else set full length
+                if iter.next().is_some() {
+                    metrics[my_id].string_truncated = true;
+                } else {
+                    metrics[my_id].string_len = Some(kept);
+                    if kept > stats.max_string_len { stats.max_string_len = kept; }
+                    if kept >= 1000 { stats.long_strings_over_1k += 1; }
+                    if kept >= 10_000 { stats.long_strings_over_10k += 1; }
+                }
                 stats.string_enum_ns += t_chars.elapsed().as_nanos();
-                if len > stats.max_string_len { stats.max_string_len = len; }
-                if len >= 1000 { stats.long_strings_over_1k += 1; }
-                if len >= 10_000 { stats.long_strings_over_10k += 1; }
             } else {
                 let count = UnicodeSegmentation::graphemes(s.as_str(), true).count();
                 metrics[my_id].string_len = Some(count);
@@ -218,7 +230,57 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     let mut metrics: Vec<NodeMetrics> = Vec::new();
     let mut stats = BuildProfile::default();
     let t_walk = std::time::Instant::now();
-    cumulative_walk(value, None, 0, None, None, &mut next_id, &mut flat_items, &mut metrics, true, false, 0u128, &mut stats)?;
+    cumulative_walk(value, None, 0, None, None, &mut next_id, &mut flat_items, &mut metrics, true, false, 0u128, &mut stats, None)?;
+    stats.walk_ms = t_walk.elapsed().as_millis() as u128;
+    // Build arena-like Vecs
+    let total = next_id;
+    let mut id_to_item_opt: Vec<Option<QueueItem>> = vec![None; total];
+    let mut parent_of: Vec<Option<usize>> = vec![None; total];
+    let mut children_of: Vec<Vec<usize>> = vec![Vec::new(); total];
+    let mut order_index: Vec<usize> = vec![usize::MAX; total];
+
+    // Stable order index by ascending priority
+    let t_sort = std::time::Instant::now();
+    flat_items.sort_by_key(|it| it.priority);
+    stats.sort_ms = t_sort.elapsed().as_millis() as u128;
+    let t_maps = std::time::Instant::now();
+    // Pre-reserve children_of capacities based on metrics to reduce reallocations
+    for id in 0..total {
+        let mut expected = 0usize;
+        if let Some(n) = metrics.get(id).and_then(|m| m.array_len) { expected = n; }
+        else if let Some(n) = metrics.get(id).and_then(|m| m.object_len) { expected = n; }
+        else if let Some(n) = metrics.get(id).and_then(|m| m.string_len) { expected = n; }
+        if expected > 0 { children_of[id].reserve(expected); }
+    }
+    let mut ids_by_order: Vec<usize> = Vec::with_capacity(flat_items.len());
+    let t_fill = std::time::Instant::now();
+    for (idx, it) in flat_items.iter().cloned().enumerate() {
+        let id = it.node_id.0;
+        order_index[id] = idx;
+        parent_of[id] = it.parent_id.0;
+        id_to_item_opt[id] = Some(it.clone());
+        if let Some(pid) = it.parent_id.0 {
+            children_of[pid].push(id);
+        }
+        ids_by_order.push(id);
+    }
+    stats.map_fill_ns = (std::time::Instant::now() - t_fill).as_nanos();
+    // Convert id_to_item to a dense Vec
+    let id_to_item: Vec<QueueItem> = id_to_item_opt.into_iter().map(|o| o.expect("missing queue item by id")).collect();
+    // Edge count
+    stats.children_edges_total = children_of.iter().map(|v| v.len()).sum();
+    stats.maps_ms = t_maps.elapsed().as_millis() as u128;
+
+    Ok(PQBuild { metrics, id_to_item, parent_of, children_of, order_index, ids_by_order, total_nodes: next_id, profile: stats })
+}
+
+pub fn build_priority_queue_capped(value: &Value, cap: usize) -> Result<PQBuild> {
+    let mut next_id = 0usize;
+    let mut flat_items: Vec<QueueItem> = Vec::new();
+    let mut metrics: Vec<NodeMetrics> = Vec::new();
+    let mut stats = BuildProfile::default();
+    let t_walk = std::time::Instant::now();
+    cumulative_walk(value, None, 0, None, None, &mut next_id, &mut flat_items, &mut metrics, true, false, 0u128, &mut stats, Some(cap))?;
     stats.walk_ms = t_walk.elapsed().as_millis() as u128;
     // Build arena-like Vecs
     let total = next_id;

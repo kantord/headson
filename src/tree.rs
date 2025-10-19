@@ -40,7 +40,14 @@ pub(crate) fn render_arena_with_marks(
     fn omitted_for(id: usize, kind: &NodeKind, kept: usize, metrics: &Vec<NodeMetrics>) -> Option<usize> {
         match kind {
             NodeKind::Array => metrics[id].array_len.and_then(|orig| if orig > kept { Some(orig - kept) } else { None }),
-            NodeKind::String => metrics[id].string_len.and_then(|orig| if orig > kept { Some(orig - kept) } else { None }),
+            NodeKind::String => {
+                if let Some(orig) = metrics[id].string_len {
+                    if orig > kept { Some(orig - kept) } else { None }
+                } else if metrics[id].string_truncated {
+                    // We know there are more chars beyond kept even if we didn't count them
+                    Some(1)
+                } else { None }
+            },
             NodeKind::Object => metrics[id].object_len.and_then(|orig| if orig > kept { Some(orig - kept) } else { None }),
             _ => None,
         }
