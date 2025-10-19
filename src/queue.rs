@@ -168,8 +168,28 @@ fn cumulative_walk(
                 let mut len = 0usize;
                 for (i, g) in UnicodeSegmentation::graphemes(s.as_str(), true).enumerate() {
                     len = i + 1;
-                    let ch_value = Value::String(g.to_string());
-                    cumulative_walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, false, true, score_u128, stats)?;
+                    // Inline fast-path for string character nodes to avoid constructing a serde_json::Value
+                    let child_id = *next_id;
+                    *next_id += 1;
+                    // Penalty for string chars: i + max(0, i-20)^2
+                    let extra = if i > 20 { let d = (i - 20) as u128; d * d } else { 0 };
+                    let char_penalty: u128 = (i as u128) + extra;
+                    let child_score = score_u128 + 1 + char_penalty;
+                    let priority: usize = if child_score > usize::MAX as u128 { usize::MAX } else { child_score as usize };
+                    let item = QueueItem {
+                        node_id: NodeId(child_id),
+                        parent_id: ParentId(Some(my_id)),
+                        kind: NodeKind::String,
+                        depth: depth + 1,
+                        index_in_array: Some(i),
+                        key_in_object: None,
+                        priority,
+                        value_repr: format!("\"{}\"", g),
+                    };
+                    out_items.push(item);
+                    if metrics.len() <= child_id { metrics.resize(child_id + 1, NodeMetrics::default()); }
+                    metrics[child_id].string_len = Some(1);
+                    stats.total_nodes += 1;
                     stats.string_chars += 1;
                 }
                 metrics[my_id].string_len = Some(len);
