@@ -34,7 +34,7 @@ fn jsonsuite_case(path: &Path) {
     if is_y(path) {
         if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
             if name == "y_number_minus_zero.json" || name == "y_number_negative_zero.json" {
-                // simd-json serde bridge may preserve -0.0 where serde_json prints 0; skip these two
+                // serde_json (original) may keep -0.0 as float while our parser yields integer 0; skip these two.
                 return;
             }
         }

@@ -147,7 +147,17 @@ pub(crate) fn render_arena_with_marks(
                     serde_json::to_string(&full).unwrap_or_else(|_| format!("\"{}\"", full))
                 }
             }
-            NodeKind::Number => it.number_value.clone().map(|n| n.to_string()).unwrap_or_else(|| "0".to_string()),
+            NodeKind::Number => {
+                if let Some(n) = it.number_value.as_ref() {
+                    if let Some(i) = n.as_i64() { return i.to_string(); }
+                    if let Some(u) = n.as_u64() { return u.to_string(); }
+                    if let Some(f) = n.as_f64() {
+                        if f == 0.0 { return "0.0".to_string(); }
+                        return n.to_string();
+                    }
+                }
+                "0".to_string()
+            },
             NodeKind::Bool => it.bool_value.map(|b| if b { "true".to_string() } else { "false".to_string() }).unwrap_or_else(|| "false".to_string()),
             NodeKind::Null => "null".to_string(),
         }
