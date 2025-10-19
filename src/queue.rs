@@ -1,6 +1,7 @@
 use anyhow::Result;
 use serde_json::Value;
 use unicode_segmentation::UnicodeSegmentation;
+use std::time::Instant;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct NodeId(pub usize);
@@ -37,6 +38,19 @@ pub struct NodeMetrics {
     pub string_len: Option<usize>,
 }
 
+#[derive(Default, Clone, Debug)]
+pub struct BuildProfile {
+    pub total_nodes: usize,
+    pub arrays: usize,
+    pub objects: usize,
+    pub strings: usize,
+    pub string_chars: usize,
+    pub string_enum_ns: u128,
+    pub walk_ms: u128,
+    pub sort_ms: u128,
+    pub maps_ms: u128,
+}
+
 #[derive(Clone, Debug)]
 pub struct PQBuild {
     pub metrics: std::collections::HashMap<usize, NodeMetrics>,
@@ -45,6 +59,7 @@ pub struct PQBuild {
     pub children_of: std::collections::HashMap<usize, Vec<usize>>,
     pub order_index: std::collections::HashMap<usize, usize>,
     pub total_nodes: usize,
+    pub profile: BuildProfile,
 }
 
 fn value_repr(value: &Value) -> String {
@@ -93,6 +108,7 @@ fn cumulative_walk(
     expand_strings: bool,
     is_string_child: bool,
     parent_score: u128,
+    stats: &mut BuildProfile,
 ) -> Result<usize> {
     let my_id = *next_id;
     *next_id += 1;
@@ -123,6 +139,7 @@ fn cumulative_walk(
         value_repr: value_repr(value),
     };
     out_items.push(item);
+    stats.total_nodes += 1;
 
     // Record metrics for this node
     let entry = metrics.entry(my_id).or_default();
@@ -130,23 +147,33 @@ fn cumulative_walk(
     match value {
         Value::Array(items) => {
             entry.array_len = Some(items.len());
+            stats.arrays += 1;
             for (i, item) in items.iter().enumerate() {
-                cumulative_walk(item, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, true, false, score_u128)?;
+                cumulative_walk(item, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, true, false, score_u128, stats)?;
             }
         }
         Value::Object(map) => {
             entry.object_len = Some(map.len());
+            stats.objects += 1;
             for (k, v) in map.iter() {
-                cumulative_walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, out_items, metrics, true, false, score_u128)?;
+                cumulative_walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, out_items, metrics, true, false, score_u128, stats)?;
             }
         }
         Value::String(s) => {
-            entry.string_len = Some(UnicodeSegmentation::graphemes(s.as_str(), true).count());
+            stats.strings += 1;
             if expand_strings {
+                let t_chars = Instant::now();
+                let mut len = 0usize;
                 for (i, g) in UnicodeSegmentation::graphemes(s.as_str(), true).enumerate() {
+                    len = i + 1;
                     let ch_value = Value::String(g.to_string());
-                    cumulative_walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, false, true, score_u128)?;
+                    cumulative_walk(&ch_value, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, false, true, score_u128, stats)?;
+                    stats.string_chars += 1;
                 }
+                entry.string_len = Some(len);
+                stats.string_enum_ns += t_chars.elapsed().as_nanos();
+            } else {
+                entry.string_len = Some(UnicodeSegmentation::graphemes(s.as_str(), true).count());
             }
         }
         _ => {}
@@ -159,7 +186,10 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     let mut next_id = 0usize;
     let mut flat_items: Vec<QueueItem> = Vec::new();
     let mut metrics: std::collections::HashMap<usize, NodeMetrics> = std::collections::HashMap::new();
-    cumulative_walk(value, None, 0, None, None, &mut next_id, &mut flat_items, &mut metrics, true, false, 0u128)?;
+    let mut stats = BuildProfile::default();
+    let t_walk = std::time::Instant::now();
+    cumulative_walk(value, None, 0, None, None, &mut next_id, &mut flat_items, &mut metrics, true, false, 0u128, &mut stats)?;
+    stats.walk_ms = t_walk.elapsed().as_millis() as u128;
     // Build arena-like maps
     let mut id_to_item = std::collections::HashMap::new();
     let mut parent_of = std::collections::HashMap::new();
@@ -167,7 +197,10 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     let mut order_index = std::collections::HashMap::new();
 
     // Stable order index by ascending priority
+    let t_sort = std::time::Instant::now();
     flat_items.sort_by_key(|it| it.priority);
+    stats.sort_ms = t_sort.elapsed().as_millis() as u128;
+    let t_maps = std::time::Instant::now();
     for (idx, it) in flat_items.iter().cloned().enumerate() {
         order_index.insert(it.node_id.0, idx);
         parent_of.insert(it.node_id.0, it.parent_id.0);
@@ -180,8 +213,9 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     for (_pid, kids) in children_of.iter_mut() {
         kids.sort_by_key(|cid| id_to_item.get(cid).and_then(|r| r.index_in_array).unwrap_or(usize::MAX));
     }
+    stats.maps_ms = t_maps.elapsed().as_millis() as u128;
 
-    Ok(PQBuild { metrics, id_to_item, parent_of, children_of, order_index, total_nodes: next_id })
+    Ok(PQBuild { metrics, id_to_item, parent_of, children_of, order_index, total_nodes: next_id, profile: stats })
 }
 
 #[cfg(test)]

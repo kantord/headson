@@ -40,6 +40,16 @@ pub fn headson(input: &str, config: RenderConfig, budget: usize) -> Result<Strin
     let out = best_render_under_char_budget(&pq_build, config.clone(), budget)?;
     let t3 = std::time::Instant::now();
     if do_prof {
+        let p = &pq_build.profile;
+        eprintln!(
+            "pq breakdown: walk={}ms (strings={}, chars={}, enum={}ms) sort={}ms maps={}ms",
+            p.walk_ms,
+            p.strings,
+            p.string_chars,
+            p.string_enum_ns / 1_000_000,
+            p.sort_ms,
+            p.maps_ms
+        );
         eprintln!(
             "timings: parse={}ms, pq={}ms, search+render={}ms, total={}ms",
             (t1 - t0).as_millis(),
