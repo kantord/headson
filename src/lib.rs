@@ -78,7 +78,7 @@ fn best_render_under_char_budget(pq_build: &PQBuild, config: RenderConfig, char_
     while lo <= hi {
         let mid = lo + (hi - lo) / 2;
         let t_build = std::time::Instant::now();
-        let tree = crate::tree::build_tree_with_marks(pq_build, mid, &mut marks, mark_gen)?;
+        let tree = crate::tree::build_tree_with_marks(pq_build, mid, &mut marks, mark_gen, do_prof)?;
         let t_render_start = std::time::Instant::now();
         let s = tree.serialize(&config);
         let t_end = std::time::Instant::now();

@@ -136,13 +136,21 @@ impl TreeNode {
 pub fn build_tree(pq_build: &PQBuild, budget: usize) -> Result<TreeNode> {
     // Fallback wrapper that builds with a fresh mark vector each time.
     let mut marks = vec![0u32; pq_build.total_nodes];
-    build_tree_with_marks(pq_build, budget, &mut marks, 1)
+    build_tree_with_marks(pq_build, budget, &mut marks, 1, false)
 }
 
-pub(crate) fn build_tree_with_marks(pq_build: &PQBuild, budget: usize, marks: &mut Vec<u32>, mark_gen: u32) -> Result<TreeNode> {
+pub(crate) fn build_tree_with_marks(
+    pq_build: &PQBuild,
+    budget: usize,
+    marks: &mut Vec<u32>,
+    mark_gen: u32,
+    profile: bool,
+) -> Result<TreeNode> {
+    let t_all_start = std::time::Instant::now();
     let metrics: &Vec<NodeMetrics> = &pq_build.metrics;
     if marks.len() < pq_build.total_nodes { marks.resize(pq_build.total_nodes, 0); }
     // Mark included nodes (order_index < budget) and their ancestors using generation marks
+    let t_mark = std::time::Instant::now();
     let mut stack: Vec<usize> = Vec::new();
     for (id, &ord) in pq_build.order_index.iter().enumerate() {
         if ord < budget {
@@ -154,6 +162,7 @@ pub(crate) fn build_tree_with_marks(pq_build: &PQBuild, budget: usize, marks: &m
             if marks[parent] != mark_gen { marks[parent] = mark_gen; stack.push(parent); }
         }
     }
+    let mark_ms = (std::time::Instant::now() - t_mark).as_millis();
 
     // Index by id
     #[derive(Clone, Debug)]
@@ -165,9 +174,12 @@ pub(crate) fn build_tree_with_marks(pq_build: &PQBuild, budget: usize, marks: &m
         number: Option<Number>,
     }
 
+    let t_recs = std::time::Instant::now();
     let mut recs: Vec<Option<Rec>> = vec![None; pq_build.total_nodes];
+    let mut included_count = 0usize;
     for id in 0..pq_build.total_nodes {
         if marks[id] == mark_gen {
+            included_count += 1;
             let it = &pq_build.id_to_item[id];
             let val = match it.kind {
                 NodeKind::String => Some(strip_quotes(&it.value_repr)),
@@ -182,16 +194,22 @@ pub(crate) fn build_tree_with_marks(pq_build: &PQBuild, budget: usize, marks: &m
             recs[id] = Some(Rec { kind: it.kind.clone(), index: it.index_in_array, key: it.key_in_object.clone(), value: val, number });
         }
     }
+    let recs_ms = (std::time::Instant::now() - t_recs).as_millis();
 
     // Build children lists using arena, filter to included
+    let t_children = std::time::Instant::now();
     let mut children: Vec<Vec<usize>> = vec![Vec::new(); pq_build.total_nodes];
+    let mut edges_kept = 0usize;
     for (pid, kids) in pq_build.children_of.iter().enumerate() {
-        children[pid] = kids
+        let kept = kids
             .iter()
             .copied()
             .filter(|&cid| marks[cid] == mark_gen)
             .collect::<Vec<_>>();
+        edges_kept += kept.len();
+        children[pid] = kept;
     }
+    let children_ms = (std::time::Instant::now() - t_children).as_millis();
 
     // Identify root (no parent)
     let root_id = (0..pq_build.total_nodes)
@@ -203,6 +221,9 @@ pub(crate) fn build_tree_with_marks(pq_build: &PQBuild, budget: usize, marks: &m
         recs: &Vec<Option<Rec>>,
         children: &Vec<Vec<usize>>,
         metrics: &Vec<NodeMetrics>,
+        nodes_built: &mut usize,
+        depth: usize,
+        max_depth: &mut usize,
     ) -> TreeNode {
         let rec = recs[id].as_ref().expect("missing rec");
         let kind = match rec.kind {
@@ -213,12 +234,14 @@ pub(crate) fn build_tree_with_marks(pq_build: &PQBuild, budget: usize, marks: &m
             NodeKind::Bool => TreeKind::Bool,
             NodeKind::Null => TreeKind::Null,
         };
+        *nodes_built += 1;
+        if depth > *max_depth { *max_depth = depth; }
+        // Children are already index-ordered in `children_of` (built during PQ),
+        // and filtering by marks preserves that order.
         let mut kids_ids = children.get(id).cloned().unwrap_or_default();
-        // Sort by index for array-like children
-        kids_ids.sort_by_key(|cid| recs[*cid].as_ref().and_then(|r| r.index).unwrap_or(usize::MAX));
         let kids = kids_ids
             .into_iter()
-            .map(|cid| to_tree(cid, recs, children, metrics))
+            .map(|cid| to_tree(cid, recs, children, metrics, nodes_built, depth + 1, max_depth))
             .collect::<Vec<_>>();
         // Compute omitted items for arrays/strings/objects using PQ metrics
         let omitted_items = match rec.kind {
@@ -255,7 +278,19 @@ pub(crate) fn build_tree_with_marks(pq_build: &PQBuild, budget: usize, marks: &m
         }
     }
 
-    Ok(to_tree(root_id, &recs, &children, metrics))
+    let t_tree = std::time::Instant::now();
+    let mut nodes_built = 0usize;
+    let mut max_depth = 0usize;
+    let tree = to_tree(root_id, &recs, &children, metrics, &mut nodes_built, 0, &mut max_depth);
+    let tree_ms = (std::time::Instant::now() - t_tree).as_millis();
+    if profile {
+        let total_ms = (std::time::Instant::now() - t_all_start).as_millis();
+        eprintln!(
+            "build_tree: mark={}ms, recs={}ms (included={}), children={}ms (edges={}), tree={}ms (nodes={}, max_depth={}), total={}ms",
+            mark_ms, recs_ms, included_count, children_ms, edges_kept, tree_ms, nodes_built, max_depth, total_ms
+        );
+    }
+    Ok(tree)
 }
 
 fn strip_quotes(s: &str) -> String {
