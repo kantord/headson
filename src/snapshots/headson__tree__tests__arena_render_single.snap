@@ -1,0 +1,7 @@
+---
+source: src/tree.rs
+expression: out
+---
+[
+  "ab"
+]

@@ -6,7 +6,7 @@ This README documents the actual behavior verified in the repository, the overal
 
 ## Overview
 
-- Pipeline: parse_json (serde_json) → build_priority_queue → binary search best k → build_tree(k) → TreeNode::serialize(RenderConfig).
+- Pipeline: parse_json (serde_json) → build_priority_queue → binary search best k → render directly from arena (Askama templates).
 - Output formats (Askama templates in `templates/`): `json`, `pseudo`, `js`.
 - Truncation is driven by a binary search over the number of included nodes; a render that fits within the given output-size budget is selected.
 - Profiling (`--profile`) prints timings to stderr for parse, PQ build, and probes, plus PQ internals.
@@ -39,8 +39,8 @@ High-level flow:
 1) Parse: `serde_json::from_str` into `serde_json::Value`.
 2) Priority queue build: single walk over the JSON to produce a flat list of items, cumulative scores, and per-node metrics.
 3) Node selection by binary search: search k ∈ [1, total_nodes] for the largest k that renders within the output-size budget.
-4) Tree reconstruction: include nodes with `order_index < k` plus their full ancestor closure; compute omitted counts using original sizes.
-5) Render: `TreeNode::serialize(RenderConfig)` delegates arrays/objects to Askama templates and handles string truncation.
+4) Inclusion marking: include nodes with `order_index < k` plus their full ancestor closure; compute omitted counts using original sizes.
+5) Render: arena-backed serializer delegates arrays/objects to Askama templates and handles string truncation.
 
 ### Priority Queue and Scoring
 
@@ -52,10 +52,9 @@ Each node gets a cumulative score: `score = parent_score + 1 + node_penalty`.
 
 The PQ is implemented as “Vec + sort”: nodes are walked once, collected with scores, then stably sorted by ascending priority to assign a global `order_index`. Per-node metrics (`NodeMetrics`) capture `array_len`, `object_len`, and `string_len` as needed.
 
-### Tree Reconstruction and Truncation
+### Inclusion and Truncation
 
 - Include all nodes where `order_index < k`, plus ensure all their ancestors are included (ancestor closure).
-- Build `TreeNode` with `TreeKind` variants: Array, Object, String, Number, Bool, Null.
 - Compute omitted counts per node using original lengths from `NodeMetrics` minus included children.
 
 ### Rendering
@@ -120,7 +119,7 @@ These changes cut PQ time and per-probe build time substantially on large inputs
 - `src/main.rs`: CLI argument parsing and I/O glue.
 - `src/lib.rs`: public API, orchestration, binary search over k, and profiling output.
 - `src/queue.rs`: PQ build, scoring, per-node metrics, and stable order assignment.
-- `src/tree.rs`: tree reconstruction, omitted counts, and serialization logic for nodes.
+- `src/tree.rs`: arena-backed serializer, inclusion marking, and omitted-count logic.
 - `src/render.rs`: Askama templates bindings and rendering helpers.
 - `templates/`: Askama templates for `json`, `pseudo`, and `js`.
 - `tests/`: E2E snapshots, JSON conformance tests, and fixtures.

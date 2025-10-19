@@ -5,7 +5,6 @@ mod queue;
 mod tree;
 mod render;
 pub use queue::{build_priority_queue, NodeId, ParentId, NodeKind, QueueItem, PQBuild};
-pub use tree::{build_tree, TreeKind, TreeNode};
 
 
 pub fn parse_json(input: &str, _budget: usize) -> Result<Value> {
@@ -78,17 +77,15 @@ fn best_render_under_char_budget(pq_build: &PQBuild, config: RenderConfig, char_
     while lo <= hi {
         let mid = lo + (hi - lo) / 2;
         let t_build = std::time::Instant::now();
-        let tree = crate::tree::build_tree_with_marks(pq_build, mid, &mut marks, mark_gen, do_prof)?;
-        let t_render_start = std::time::Instant::now();
-        let s = tree.serialize(&config);
+        let s = crate::tree::render_arena_with_marks(pq_build, mid, &mut marks, mark_gen, &config, do_prof)?;
         let t_end = std::time::Instant::now();
         mark_gen = mark_gen.wrapping_add(1).max(1); // avoid 0 sentinel and handle wrap
         if do_prof {
             eprintln!(
                 "probe k={}, build={}ms, render={}ms, size={}",
                 mid,
-                (t_render_start - t_build).as_millis(),
-                (t_end - t_render_start).as_millis(),
+                0,
+                (t_end - t_build).as_millis(),
                 s.len()
             );
         }
