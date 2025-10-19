@@ -185,12 +185,11 @@ pub(crate) fn render_arena_with_marks(
 mod tests {
     use super::*;
     use insta::assert_snapshot;
-    use serde_json::Value;
 
     #[test]
     fn arena_render_empty_array() {
-        let value: Value = serde_json::from_str("[]").unwrap();
-        let build = crate::build_priority_queue(&value).unwrap();
+        let arena = crate::stream_arena::build_stream_arena("[]", &crate::PQConfig::default()).unwrap();
+        let build = crate::build_priority_queue_from_arena(&arena, &crate::PQConfig::default()).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
         let out = render_arena_with_marks(&build, 10, &mut marks, 1, &crate::RenderConfig{ template: crate::OutputTemplate::Json, indent_unit: "  ".to_string(), space: " ".to_string(), profile: false }, false).unwrap();
         assert_snapshot!("arena_render_empty", out);
@@ -198,8 +197,8 @@ mod tests {
 
     #[test]
     fn arena_render_single_string_array() {
-        let value: Value = serde_json::from_str("[\"ab\"]").unwrap();
-        let build = crate::build_priority_queue(&value).unwrap();
+        let arena = crate::stream_arena::build_stream_arena("[\"ab\"]", &crate::PQConfig::default()).unwrap();
+        let build = crate::build_priority_queue_from_arena(&arena, &crate::PQConfig::default()).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
         let out = render_arena_with_marks(&build, 10, &mut marks, 1, &crate::RenderConfig{ template: crate::OutputTemplate::Json, indent_unit: "  ".to_string(), space: " ".to_string(), profile: false }, false).unwrap();
         assert_snapshot!("arena_render_single", out);
