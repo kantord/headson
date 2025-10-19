@@ -151,8 +151,9 @@ Default run (no args):
 
     bash scripts/bench_hyperfine.sh
 
-What it measures:
+What it measures (for multiple dataset sizes):
 
+- Scales: runs 1×, 10×, 100× of `HF_GEN_COUNT` (default base 200,000 → 200k, 2M, 20M items).
 - PIPE: generator → headson (live pipeline). Measures generator + parse/PQ/render.
 - FILE: generator → file → headson --input file. Measures parse/PQ/render + disk read.
 - GEN: generator → /dev/null. Measures pure generator cost.
@@ -160,13 +161,14 @@ What it measures:
 
 Outputs:
 
-- Results saved under `benchmarks/hyperfine/bench_*.json`.
-- The script prints the generated file size and, if `jq` is available, a short summary comparing PIPE vs FILE per budget (mean ms and delta).
+- Results saved under `benchmarks/hyperfine/bench_*.json` (per dataset size and scenario).
+- The script prints each generated file's size and, if `jq` is available, a short summary comparing PIPE vs FILE per budget (mean ms and delta) for each dataset.
 
 Tuning:
 
-- Change input size/seed: `HF_GEN_COUNT=500000 HF_GEN_SEED=123 bash scripts/bench_hyperfine.sh`
+- Change base input size/seed: `HF_GEN_COUNT=500000 HF_GEN_SEED=123 bash scripts/bench_hyperfine.sh`
 - Change budgets/template: `HF_BUDGETS=100,1000,10000 HF_TEMPLATE=pseudo bash scripts/bench_hyperfine.sh`
+- Change dataset scales: `HF_SCALES=1,5,20 bash scripts/bench_hyperfine.sh`
 - Stability: increase warmups or pin to a core: `HF_WARMUP=5 taskset -c 0 bash scripts/bench_hyperfine.sh`
 
 ## Known Issues and Limitations
