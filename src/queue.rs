@@ -51,6 +51,17 @@ pub struct BuildProfile {
     pub walk_ms: u128,
     pub sort_ms: u128,
     pub maps_ms: u128,
+    // Extra diagnostics
+    pub arrays_items_total: usize,
+    pub objects_props_total: usize,
+    pub max_array_len: usize,
+    pub max_object_len: usize,
+    pub max_string_len: usize,
+    pub long_strings_over_1k: usize,
+    pub long_strings_over_10k: usize,
+    pub children_edges_total: usize,
+    pub map_fill_ns: u128,
+    pub child_sort_ns: u128,
 }
 
 #[derive(Clone, Debug)]
@@ -134,6 +145,8 @@ fn cumulative_walk(
         Value::Array(items) => {
             metrics[my_id].array_len = Some(items.len());
             stats.arrays += 1;
+            stats.arrays_items_total += items.len();
+            if items.len() > stats.max_array_len { stats.max_array_len = items.len(); }
             for (i, item) in items.iter().enumerate() {
                 cumulative_walk(item, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, true, false, score_u128, stats)?;
             }
@@ -141,6 +154,8 @@ fn cumulative_walk(
         Value::Object(map) => {
             metrics[my_id].object_len = Some(map.len());
             stats.objects += 1;
+            stats.objects_props_total += map.len();
+            if map.len() > stats.max_object_len { stats.max_object_len = map.len(); }
             for (k, v) in map.iter() {
                 cumulative_walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, out_items, metrics, true, false, score_u128, stats)?;
             }
@@ -180,9 +195,15 @@ fn cumulative_walk(
                 }
                 metrics[my_id].string_len = Some(len);
                 stats.string_enum_ns += t_chars.elapsed().as_nanos();
+                if len > stats.max_string_len { stats.max_string_len = len; }
+                if len >= 1000 { stats.long_strings_over_1k += 1; }
+                if len >= 10_000 { stats.long_strings_over_10k += 1; }
             } else {
                 let count = UnicodeSegmentation::graphemes(s.as_str(), true).count();
                 metrics[my_id].string_len = Some(count);
+                if count > stats.max_string_len { stats.max_string_len = count; }
+                if count >= 1000 { stats.long_strings_over_1k += 1; }
+                if count >= 10_000 { stats.long_strings_over_10k += 1; }
             }
         }
         _ => {}
@@ -211,7 +232,16 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     flat_items.sort_by_key(|it| it.priority);
     stats.sort_ms = t_sort.elapsed().as_millis() as u128;
     let t_maps = std::time::Instant::now();
+    // Pre-reserve children_of capacities based on metrics to reduce reallocations
+    for id in 0..total {
+        let mut expected = 0usize;
+        if let Some(n) = metrics.get(id).and_then(|m| m.array_len) { expected = n; }
+        else if let Some(n) = metrics.get(id).and_then(|m| m.object_len) { expected = n; }
+        else if let Some(n) = metrics.get(id).and_then(|m| m.string_len) { expected = n; }
+        if expected > 0 { children_of[id].reserve(expected); }
+    }
     let mut ids_by_order: Vec<usize> = Vec::with_capacity(flat_items.len());
+    let t_fill = std::time::Instant::now();
     for (idx, it) in flat_items.iter().cloned().enumerate() {
         let id = it.node_id.0;
         order_index[id] = idx;
@@ -222,12 +252,11 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
         }
         ids_by_order.push(id);
     }
+    stats.map_fill_ns = (std::time::Instant::now() - t_fill).as_nanos();
     // Convert id_to_item to a dense Vec
     let id_to_item: Vec<QueueItem> = id_to_item_opt.into_iter().map(|o| o.expect("missing queue item by id")).collect();
-    // Ensure children are ordered by index_in_array when relevant
-    for kids in children_of.iter_mut() {
-        kids.sort_by_key(|cid| id_to_item[*cid].index_in_array.unwrap_or(usize::MAX));
-    }
+    // Edge count
+    stats.children_edges_total = children_of.iter().map(|v| v.len()).sum();
     stats.maps_ms = t_maps.elapsed().as_millis() as u128;
 
     Ok(PQBuild { metrics, id_to_item, parent_of, children_of, order_index, ids_by_order, total_nodes: next_id, profile: stats })

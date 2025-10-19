@@ -50,6 +50,15 @@ pub fn headson(input: &str, config: RenderConfig, budget: usize) -> Result<Strin
             p.maps_ms
         );
         eprintln!(
+            "pq details: arrays={} (items_total={}), objects={} (props_total={}), maxlens: array={}, object={}, string={}, long_strings(1k/10k)={}/{}, edges={}, fill={}ms, child_sort={}ms",
+            p.arrays, p.arrays_items_total, p.objects, p.objects_props_total,
+            p.max_array_len, p.max_object_len, p.max_string_len,
+            p.long_strings_over_1k, p.long_strings_over_10k,
+            p.children_edges_total,
+            p.map_fill_ns as u128 / 1_000_000,
+            p.child_sort_ns as u128 / 1_000_000,
+        );
+        eprintln!(
             "timings: parse={}ms, pq={}ms, search+render={}ms, total={}ms",
             (t1 - t0).as_millis(),
             (t2 - t1).as_millis(),
