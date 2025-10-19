@@ -6,7 +6,7 @@ This README documents the actual behavior verified in the repository, the overal
 
 ## Overview
 
-- Pipeline: parse_json (serde_json) → build_priority_queue → binary search best k → render directly from arena (Askama templates).
+- Pipeline: parse_json (simd-json via serde bridge) → build_priority_queue → binary search best k → render directly from arena (Askama templates).
 - Output formats (Askama templates in `templates/`): `json`, `pseudo`, `js`.
 - Truncation is driven by a binary search over the number of included nodes; a render that fits within the given output-size budget is selected.
 - Profiling (`--profile`) prints timings to stderr for parse, PQ build, and probes, plus PQ internals.
@@ -26,6 +26,7 @@ Flags:
 - `--indent <string>`: indentation unit (default: two spaces).
 - `--no-space`: remove the single space after `:` in objects. Arrays never add spaces after commas.
 - `--profile`: print timing breakdowns to stderr (parse, PQ build, probes; plus PQ internals).
+- `--string-cap <int>`: maximum graphemes to expand per string during PQ build (default: 500). Caps PQ work on long strings.
 
 Exit codes and I/O:
 
@@ -36,7 +37,7 @@ Exit codes and I/O:
 
 High-level flow:
 
-1) Parse: `serde_json::from_str` into `serde_json::Value`.
+1) Parse: `simd_json::serde::from_slice` into `serde_json::Value` (Stage 1 swap for faster parsing).
 2) Priority queue build (frontier): best‑first (min‑heap) expansion by cumulative score; builds just enough nodes for probing (no global full‑build/sort). Per‑node metrics capture sizes/truncation flags.
 3) Node selection by binary search: search k ∈ [1, total_nodes] for the largest k that renders within the output-size budget.
 4) Inclusion marking: include nodes with `order_index < k` plus their full ancestor closure; compute omitted counts using original sizes.
@@ -143,9 +144,10 @@ These changes cut PQ time and per-probe build time substantially on large inputs
 
 - JSON template truncation is not valid JSON: when content is omitted, the `json` templates include comments like `/* N more items */`. Tests avoid this by using a large budget (`-n 10000`) for conformance. If strict JSON is required under truncation, the templates must be adjusted to use JSON-native markers (e.g., strings) instead of comments.
 - Budget semantics: `-n/--budget` constrains the rendered output length in bytes, not the number of nodes. Internally we binary-search k (a node count) to fit the byte-length budget. Non-ASCII characters count by bytes, not grapheme clusters.
-- Performance hotspots: parsing dominates on multi‑GB inputs (serde_json). Frontier PQ + caps keep PQ cost relatively small.
+- Performance hotspots: parsing dominates on multi‑GB inputs (now using simd‑json’s serde bridge). Frontier PQ + caps keep PQ cost relatively small.
+- simd‑json serde differences: a few edge cases in the JSONTestSuite differ from serde_json (e.g., handling of certain malformed numbers and signed zeros). Tests skip these; see `tests/json_par_files.rs`.
 - Dependencies pruned: removed unused `priority-queue` crate.
-- Minor CLI polish: the `about` description is outdated relative to current functionality.
+ 
 - Object key ordering follows `serde_json::Map` iteration order; stability can depend on the upstream map implementation and input.
 
 ## Installation

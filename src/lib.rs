@@ -4,12 +4,16 @@ use serde_json::Value;
 mod queue;
 mod tree;
 mod render;
+mod stream_arena;
 pub use queue::{build_priority_queue, build_priority_queue_with_config, PQConfig, NodeId, ParentId, NodeKind, QueueItem, PQBuild};
 
 
 pub fn parse_json(input: &str, _budget: usize) -> Result<Value> {
-    let parsed_value: Value = serde_json::from_str(input)?;
-    Ok(parsed_value)
+    // Stage 1: swap serde_json for simd-json (serde bridge) for faster parsing.
+    // simd-json parses in-place, so we need a mutable buffer.
+    let mut bytes = input.as_bytes().to_vec();
+    let v: Value = simd_json::serde::from_slice(&mut bytes)?;
+    Ok(v)
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -72,9 +76,10 @@ pub fn headson(input: &str, config: RenderConfig, budget: usize) -> Result<Strin
 pub fn headson_with_cfg(input: &str, config: RenderConfig, pq_cfg: &PQConfig, budget: usize) -> Result<String> {
     let do_prof = config.profile;
     let t0 = std::time::Instant::now();
-    let parsed = parse_json(input, budget)?;
+    // Stage 2: streaming arena parse + frontier adapter
+    let arena = crate::stream_arena::build_stream_arena(input, pq_cfg)?;
     let t1 = std::time::Instant::now();
-    let pq_build = build_priority_queue_with_config(&parsed, pq_cfg)?;
+    let pq_build = queue::build_priority_queue_from_arena(&arena, pq_cfg)?;
     let t2 = std::time::Instant::now();
     let out = best_render_under_char_budget(&pq_build, config.clone(), budget)?;
     let t3 = std::time::Instant::now();

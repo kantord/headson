@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
 
 #[derive(Parser, Debug)]
-#[command(name = "headson", version, about = "Parse JSON from stdin and echo it")] 
+#[command(name = "headson", version, about = "Read JSON from stdin and render a prioritized, budget‑constrained preview")] 
 struct Cli {
     #[arg(short = 'n', long = "budget", default_value_t = 500)]
     budget: usize,
