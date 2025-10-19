@@ -1,0 +1,5 @@
+[build]
+# Enable CPU-specific instructions (e.g., AVX2) on the build machine for extra speed.
+# Override per-invocation with: RUSTFLAGS="-C target-cpu=native" cargo build --release
+rustflags = ["-C", "target-cpu=native"]
+

@@ -16,3 +16,12 @@ simd-json = { version = "0.13", features = ["serde_impl"] }
 insta = "1.40.0"
 assert_cmd = "2"
 test_each_file = "0.3"
+
+[profile.release]
+# Prioritize runtime speed for large inputs
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+incremental = false

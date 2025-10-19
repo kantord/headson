@@ -274,3 +274,17 @@ pub fn build_stream_arena(input: &str, cfg: &PQConfig) -> Result<StreamArena> {
     }
     Ok(cell.arena.into_inner())
 }
+
+// Variant that avoids copying: accepts owned bytes and parses in-place.
+pub fn build_stream_arena_from_bytes(mut bytes: Vec<u8>, cfg: &PQConfig) -> Result<StreamArena> {
+    let mut de = simd_json::Deserializer::from_slice(&mut bytes)?;
+    let cell = ArenaCell { arena: RefCell::new(StreamArena::default()), array_cap: cfg.array_max_items };
+    let root_id: usize = {
+        let seed = NodeSeed { cell: &cell };
+        seed.deserialize(&mut de)?
+    };
+    let mut arena = cell.arena.into_inner();
+    arena.root_id = root_id;
+    // Keep bytes alive by storing them as a String in the root string if needed is complex; we don't borrow slices here, so we can drop bytes.
+    Ok(arena)
+}

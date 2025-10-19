@@ -1,4 +1,5 @@
 use std::io::{self, Read};
+use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
@@ -18,6 +19,8 @@ struct Cli {
     profile: bool,
     #[arg(long = "string-cap", default_value_t = 500, help = "Maximum graphemes to expand per string in PQ build")]
     string_cap: usize,
+    #[arg(long = "input", help = "Read JSON directly from a file path instead of stdin")]
+    input: Option<PathBuf>,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -30,10 +33,14 @@ enum Template {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let mut buffer = String::new();
-    io::stdin()
-        .read_to_string(&mut buffer)
-        .context("failed to read from stdin")?;
+    // Read input either from a file path (pre-allocated) or from stdin (bytes).
+    let input_bytes: Vec<u8> = if let Some(path) = cli.input.as_ref() {
+        std::fs::read(path).with_context(|| format!("failed to read input file: {}", path.display()))?
+    } else {
+        let mut buf = Vec::new();
+        io::stdin().read_to_end(&mut buf).context("failed to read from stdin")?;
+        buf
+    };
 
     let template = match cli.template {
         Template::Json => headson::OutputTemplate::Json,
@@ -45,7 +52,7 @@ fn main() -> Result<()> {
     // Derive a conservative per-array cap from the budget: an array of N items
     // minimally needs about 2*N characters (item plus comma) to fit. So cap at budget/2.
     let pq_cfg = headson::PQConfig { max_string_graphemes: cli.string_cap, array_max_items: (cli.budget / 2).max(1) };
-    let output = headson::headson_with_cfg(&buffer, config, &pq_cfg, cli.budget)?;
+    let output = headson::headson_with_cfg_bytes(input_bytes, config, &pq_cfg, cli.budget)?;
     println!("{}", output);
 
     Ok(())
