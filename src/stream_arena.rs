@@ -28,7 +28,7 @@ pub struct SaNode {
 
 impl Default for SaNode {
     fn default() -> Self {
-        SaNode {
+        Self {
             kind: NodeKind::Null,
             number_value: None,
             bool_value: None,
@@ -63,7 +63,7 @@ struct NodeSeed<'a> {
     cell: &'a ArenaCell,
 }
 
-impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
+impl<'de> DeserializeSeed<'de> for NodeSeed<'_> {
     type Value = usize; // node id
 
     fn deserialize<D>(
@@ -76,7 +76,7 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
         struct NodeVisitor<'b> {
             c: &'b ArenaCell,
         }
-        impl<'de, 'b> Visitor<'de> for NodeVisitor<'b> {
+        impl<'de> Visitor<'de> for NodeVisitor<'_> {
             type Value = usize;
 
             fn expecting(
@@ -237,8 +237,7 @@ impl<'de, 'a> DeserializeSeed<'de> for NodeSeed<'a> {
                     }
                 }
                 // Consume rest but ignore, counting only
-                while let Some(_ignored) = seq.next_element::<IgnoredAny>()? {
-                    let _ = _ignored; // silence unused
+                while (seq.next_element::<IgnoredAny>()?).is_some() {
                     total += 1;
                 }
                 let children_start = {

@@ -20,5 +20,5 @@ jobs:
         with:
           components: clippy
 
-      - name: Run clippy (deny warnings)
-        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Run clippy (all+perf+cargo, deny warnings)
+        run: cargo clippy --all-targets --all-features -- -W clippy::all -W clippy::perf -W clippy::cargo -D warnings

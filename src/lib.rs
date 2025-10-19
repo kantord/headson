@@ -26,7 +26,7 @@ pub struct RenderConfig {
 
 pub fn headson(
     input: Vec<u8>,
-    config: RenderConfig,
+    config: &RenderConfig,
     pq_cfg: &PQConfig,
     budget: usize,
 ) -> Result<String> {
@@ -38,8 +38,7 @@ pub fn headson(
     let t1 = std::time::Instant::now();
     let pq_build = queue::build_priority_queue_from_arena(&arena, pq_cfg)?;
     let t2 = std::time::Instant::now();
-    let out =
-        best_render_under_char_budget(&pq_build, config.clone(), budget)?;
+    let out = best_render_under_char_budget(&pq_build, config, budget)?;
     let t3 = std::time::Instant::now();
     if do_prof {
         let p = &pq_build.profile;
@@ -71,7 +70,7 @@ pub fn headson(
 
 fn best_render_under_char_budget(
     pq_build: &PQBuild,
-    config: RenderConfig,
+    config: &RenderConfig,
     char_budget: usize,
 ) -> Result<String> {
     // Binary search the largest k in [1, total] whose render fits into char_budget
@@ -95,7 +94,7 @@ fn best_render_under_char_budget(
         let mid = lo + (hi - lo) / 2;
         let t_render = std::time::Instant::now();
         let s = crate::tree::render_arena_with_marks(
-            pq_build, mid, &mut marks, mark_gen, &config, do_prof,
+            pq_build, mid, &mut marks, mark_gen, config, do_prof,
         )?;
         let t_end = std::time::Instant::now();
         mark_gen = mark_gen.wrapping_add(1).max(1); // avoid 0 sentinel and handle wrap

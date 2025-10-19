@@ -11,7 +11,7 @@ fn indent(depth: usize, unit: &str) -> String {
 //
 // Marks use a generation counter: `marks[id] == mark_gen` means included.
 // This lets us reuse a single marks buffer across multiple probes without clearing.
-pub(crate) fn render_arena_with_marks(
+pub fn render_arena_with_marks(
     pq_build: &PQBuild,
     budget: usize,
     marks: &mut Vec<u32>,
@@ -42,7 +42,7 @@ pub(crate) fn render_arena_with_marks(
             }
         }
     }
-    let mark_ms = (std::time::Instant::now() - t_mark).as_millis();
+    let mark_ms = t_mark.elapsed().as_millis();
 
     // Identify root (no parent)
     let root_id = (0..pq_build.total_nodes)
@@ -118,7 +118,7 @@ pub(crate) fn render_arena_with_marks(
                                 children_pairs.push((i, rendered));
                             } else {
                                 children_pairs
-                                    .push((i, format!("{}{}", ind, rendered)));
+                                    .push((i, format!("{ind}{rendered}")));
                             }
                         }
                     }
@@ -152,9 +152,7 @@ pub(crate) fn render_arena_with_marks(
                                 .clone()
                                 .unwrap_or_default();
                             let key = serde_json::to_string(&raw_key)
-                                .unwrap_or_else(|_| {
-                                    format!("\"{}\"", raw_key)
-                                });
+                                .unwrap_or_else(|_| format!("\"{raw_key}\""));
                             let mut val = serialize_node(
                                 cid,
                                 pq,
@@ -211,12 +209,12 @@ pub(crate) fn render_arena_with_marks(
                         }
                         prefix.push_str(g);
                     }
-                    let truncated = format!("{}…", prefix);
+                    let truncated = format!("{prefix}…");
                     serde_json::to_string(&truncated)
-                        .unwrap_or_else(|_| format!("\"{}…\"", prefix))
+                        .unwrap_or_else(|_| format!("\"{prefix}…\""))
                 } else {
                     serde_json::to_string(&full)
-                        .unwrap_or_else(|_| format!("\"{}\"", full))
+                        .unwrap_or_else(|_| format!("\"{full}\""))
                 }
             }
             NodeKind::Number => {
@@ -238,14 +236,9 @@ pub(crate) fn render_arena_with_marks(
             }
             NodeKind::Bool => it
                 .bool_value
-                .map(|b| {
-                    if b {
-                        "true".to_string()
-                    } else {
-                        "false".to_string()
-                    }
-                })
-                .unwrap_or_else(|| "false".to_string()),
+                .map_or_else(|| "false".to_string(), |b| {
+                    if b { "true".to_string() } else { "false".to_string() }
+                }),
             NodeKind::Null => "null".to_string(),
         }
     }
@@ -263,12 +256,11 @@ pub(crate) fn render_arena_with_marks(
         &mut nodes_built,
         &mut max_depth,
     );
-    let render_ms = (std::time::Instant::now() - t_render).as_millis();
+    let render_ms = t_render.elapsed().as_millis();
     if profile {
-        let total_ms = (std::time::Instant::now() - t_all_start).as_millis();
+        let total_ms = t_all_start.elapsed().as_millis();
         eprintln!(
-            "arena_render: mark={}ms, render={}ms (nodes={}, max_depth={}), total={}ms",
-            mark_ms, render_ms, nodes_built, max_depth, total_ms
+            "arena_render: mark={mark_ms}ms, render={render_ms}ms (nodes={nodes_built}, max_depth={max_depth}), total={total_ms}ms",
         );
     }
     Ok(out)

@@ -83,7 +83,7 @@ fn main() -> Result<()> {
         max_string_graphemes: cli.string_cap,
         array_max_items: (cli.budget / 2).max(1),
     };
-    let output = headson::headson(input_bytes, config, &pq_cfg, cli.budget)?;
+    let output = headson::headson(input_bytes, &config, &pq_cfg, cli.budget)?;
     println!("{}", output);
 
     Ok(())

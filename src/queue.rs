@@ -278,7 +278,7 @@ pub fn build_priority_queue_from_arena(
                     }
                     // Sort lexicographically by key to match serde_json::Map default ordering in previous pipeline
                     items.sort_by(|a, b| a.0.cmp(&b.0));
-                    for (key, child_ar, _i) in items.into_iter() {
+                    for (key, child_ar, _i) in items {
                         let child_kind = arena.nodes[child_ar].kind.clone();
                         let child_pq = next_pq_id;
                         next_pq_id += 1;
@@ -384,7 +384,7 @@ pub fn build_priority_queue_from_arena(
             order_index[pid] = idx;
         }
     }
-    stats.children_edges_total = children_of.iter().map(|v| v.len()).sum();
+    stats.children_edges_total = children_of.iter().map(Vec::len).sum();
 
     Ok(PQBuild {
         metrics,
