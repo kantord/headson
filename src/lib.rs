@@ -65,8 +65,10 @@ fn best_render_under_char_budget(pq_build: &PQBuild, config: RenderConfig, char_
     // Binary search the largest k in [1, total] whose render fits into char_budget
     let total = pq_build.total_nodes;
     if total == 0 { return Ok(String::new()); }
+    if char_budget == 0 { return Ok(String::new()); }
     let mut lo = 1usize;
-    let mut hi = total;
+    // Each included node contributes at least some output; cap upper bound by budget.
+    let mut hi = total.min(char_budget.max(1));
     let mut best: Option<String> = None;
     let do_prof = config.profile;
 
@@ -96,4 +98,3 @@ fn best_render_under_char_budget(pq_build: &PQBuild, config: RenderConfig, char_
 
     Ok(best.unwrap_or_default())
 }
-
