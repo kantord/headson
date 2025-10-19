@@ -16,6 +16,8 @@ struct Cli {
     no_space: bool,
     #[arg(long = "profile", default_value_t = false, help = "Print timing breakdown to stderr")]
     profile: bool,
+    #[arg(long = "string-cap", default_value_t = 500, help = "Maximum graphemes to expand per string in PQ build")]
+    string_cap: usize,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -40,8 +42,8 @@ fn main() -> Result<()> {
     };
     let space = if cli.no_space { "".to_string() } else { " ".to_string() };
     let config = headson::RenderConfig { template, indent_unit: cli.indent.clone(), space, profile: cli.profile };
-
-    let output = headson::headson(&buffer, config, cli.budget)?;
+    let pq_cfg = headson::PQConfig { max_string_graphemes: cli.string_cap };
+    let output = headson::headson_with_cfg(&buffer, config, &pq_cfg, cli.budget)?;
     println!("{}", output);
 
     Ok(())

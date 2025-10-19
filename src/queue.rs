@@ -4,6 +4,15 @@ use unicode_segmentation::UnicodeSegmentation;
 use std::time::Instant;
 const MAX_STRING_ENUM: usize = 500;
 
+#[derive(Clone, Debug)]
+pub struct PQConfig {
+    pub max_string_graphemes: usize,
+}
+
+impl Default for PQConfig {
+    fn default() -> Self { Self { max_string_graphemes: MAX_STRING_ENUM } }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct NodeId(pub usize);
 
@@ -104,7 +113,7 @@ fn cumulative_walk(
     is_string_child: bool,
     parent_score: u128,
     stats: &mut BuildProfile,
-    cap: Option<usize>,
+    pq_cfg: &PQConfig,
 ) -> Result<usize> {
     let my_id = *next_id;
     *next_id += 1;
@@ -150,9 +159,9 @@ fn cumulative_walk(
             stats.arrays += 1;
             stats.arrays_items_total += items.len();
             if items.len() > stats.max_array_len { stats.max_array_len = items.len(); }
-            let limit = cap.unwrap_or(usize::MAX).min(items.len());
+            let limit = items.len();
             for (i, item) in items.iter().take(limit).enumerate() {
-                cumulative_walk(item, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, true, false, score_u128, stats, cap)?;
+                cumulative_walk(item, Some(my_id), depth + 1, Some(i), None, next_id, out_items, metrics, true, false, score_u128, stats, pq_cfg)?;
             }
         }
         Value::Object(map) => {
@@ -161,7 +170,7 @@ fn cumulative_walk(
             stats.objects_props_total += map.len();
             if map.len() > stats.max_object_len { stats.max_object_len = map.len(); }
             for (k, v) in map.iter() {
-                cumulative_walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, out_items, metrics, true, false, score_u128, stats, cap)?;
+                cumulative_walk(v, Some(my_id), depth + 1, None, Some(k.clone()), next_id, out_items, metrics, true, false, score_u128, stats, pq_cfg)?;
             }
         }
         Value::String(s) => {
@@ -170,7 +179,7 @@ fn cumulative_walk(
                 let t_chars = Instant::now();
                 let mut kept = 0usize;
                 // Hard cap for per-string grapheme expansion
-                let limit = cap.unwrap_or(usize::MAX).min(MAX_STRING_ENUM);
+                let limit = pq_cfg.max_string_graphemes.min(MAX_STRING_ENUM);
                 let mut iter = UnicodeSegmentation::graphemes(s.as_str(), true);
                 for (i, _g) in iter.by_ref().take(limit).enumerate() {
                     kept = i + 1;
@@ -230,7 +239,8 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     let mut metrics: Vec<NodeMetrics> = Vec::new();
     let mut stats = BuildProfile::default();
     let t_walk = std::time::Instant::now();
-    cumulative_walk(value, None, 0, None, None, &mut next_id, &mut flat_items, &mut metrics, true, false, 0u128, &mut stats, None)?;
+    let default_cfg = PQConfig::default();
+    cumulative_walk(value, None, 0, None, None, &mut next_id, &mut flat_items, &mut metrics, true, false, 0u128, &mut stats, &default_cfg)?;
     stats.walk_ms = t_walk.elapsed().as_millis() as u128;
     // Build arena-like Vecs
     let total = next_id;
@@ -274,13 +284,13 @@ pub fn build_priority_queue(value: &Value) -> Result<PQBuild> {
     Ok(PQBuild { metrics, id_to_item, parent_of, children_of, order_index, ids_by_order, total_nodes: next_id, profile: stats })
 }
 
-pub fn build_priority_queue_capped(value: &Value, cap: usize) -> Result<PQBuild> {
+pub fn build_priority_queue_with_config(value: &Value, cfg: &PQConfig) -> Result<PQBuild> {
     let mut next_id = 0usize;
     let mut flat_items: Vec<QueueItem> = Vec::new();
     let mut metrics: Vec<NodeMetrics> = Vec::new();
     let mut stats = BuildProfile::default();
     let t_walk = std::time::Instant::now();
-    cumulative_walk(value, None, 0, None, None, &mut next_id, &mut flat_items, &mut metrics, true, false, 0u128, &mut stats, Some(cap))?;
+    cumulative_walk(value, None, 0, None, None, &mut next_id, &mut flat_items, &mut metrics, true, false, 0u128, &mut stats, cfg)?;
     stats.walk_ms = t_walk.elapsed().as_millis() as u128;
     // Build arena-like Vecs
     let total = next_id;

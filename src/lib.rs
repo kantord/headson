@@ -4,7 +4,7 @@ use serde_json::Value;
 mod queue;
 mod tree;
 mod render;
-pub use queue::{build_priority_queue, build_priority_queue_capped, NodeId, ParentId, NodeKind, QueueItem, PQBuild};
+pub use queue::{build_priority_queue, build_priority_queue_with_config, PQConfig, NodeId, ParentId, NodeKind, QueueItem, PQBuild};
 
 
 pub fn parse_json(input: &str, _budget: usize) -> Result<Value> {
@@ -34,8 +34,47 @@ pub fn headson(input: &str, config: RenderConfig, budget: usize) -> Result<Strin
     let t0 = std::time::Instant::now();
     let parsed = parse_json(input, budget)?;
     let t1 = std::time::Instant::now();
-    // Use the output budget as a conservative per-parent cap to reduce PQ expansion
-    let pq_build = build_priority_queue_capped(&parsed, budget)?;
+    let pq_build = build_priority_queue(&parsed)?;
+    let t2 = std::time::Instant::now();
+    let out = best_render_under_char_budget(&pq_build, config.clone(), budget)?;
+    let t3 = std::time::Instant::now();
+    if do_prof {
+        let p = &pq_build.profile;
+        eprintln!(
+            "pq breakdown: walk={}ms (strings={}, chars={}, enum={}ms) sort={}ms maps={}ms",
+            p.walk_ms,
+            p.strings,
+            p.string_chars,
+            p.string_enum_ns / 1_000_000,
+            p.sort_ms,
+            p.maps_ms
+        );
+        eprintln!(
+            "pq details: arrays={} (items_total={}), objects={} (props_total={}), maxlens: array={}, object={}, string={}, long_strings(1k/10k)={}/{}, edges={}, fill={}ms, child_sort={}ms",
+            p.arrays, p.arrays_items_total, p.objects, p.objects_props_total,
+            p.max_array_len, p.max_object_len, p.max_string_len,
+            p.long_strings_over_1k, p.long_strings_over_10k,
+            p.children_edges_total,
+            p.map_fill_ns as u128 / 1_000_000,
+            p.child_sort_ns as u128 / 1_000_000,
+        );
+        eprintln!(
+            "timings: parse={}ms, pq={}ms, search+render={}ms, total={}ms",
+            (t1 - t0).as_millis(),
+            (t2 - t1).as_millis(),
+            (t3 - t2).as_millis(),
+            (t3 - t0).as_millis()
+        );
+    }
+    Ok(out)
+}
+
+pub fn headson_with_cfg(input: &str, config: RenderConfig, pq_cfg: &PQConfig, budget: usize) -> Result<String> {
+    let do_prof = config.profile;
+    let t0 = std::time::Instant::now();
+    let parsed = parse_json(input, budget)?;
+    let t1 = std::time::Instant::now();
+    let pq_build = build_priority_queue_with_config(&parsed, pq_cfg)?;
     let t2 = std::time::Instant::now();
     let out = best_render_under_char_budget(&pq_build, config.clone(), budget)?;
     let t3 = std::time::Instant::now();
