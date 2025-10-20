@@ -203,7 +203,7 @@ What it does:
 
 - Runs `cargo clippy` with cognitive complexity enabled and treats warnings as errors:
   - `cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::cognitive_complexity`
-  - The threshold is configured in `.clippy.toml` (`cognitive-complexity-threshold = 23`).
+  - The threshold is configured in `.clippy.toml` (`cognitive-complexity-threshold = 6`).
 - Runs `cargo fmt --all -- --check` before each commit and blocks if formatting differs.
 
 Manual runs:

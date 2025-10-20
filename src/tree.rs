@@ -99,6 +99,32 @@ pub fn render_arena_with_marks(
     }
 
     impl<'a> RenderScope<'a> {
+        fn count_kept_children(&self, id: usize) -> usize {
+            if let Some(kids) = self.pq.children_of.get(id) {
+                let mut kept = 0usize;
+                for &cid in kids {
+                    if self.marks[cid] == self.mark_gen {
+                        kept += 1;
+                    }
+                }
+                kept
+            } else {
+                0
+            }
+        }
+
+        fn take_graphemes_prefix(full: &str, kept: usize) -> String {
+            let mut prefix = String::new();
+            for (i, g) in
+                UnicodeSegmentation::graphemes(full, true).enumerate()
+            {
+                if i >= kept {
+                    break;
+                }
+                prefix.push_str(g);
+            }
+            prefix
+        }
         fn omitted_for(
             &self,
             id: usize,
@@ -203,35 +229,18 @@ pub fn render_arena_with_marks(
         }
 
         fn serialize_string(&mut self, id: usize) -> String {
-            let mut kept = 0usize;
-            if let Some(kids) = self.pq.children_of.get(id) {
-                for &cid in kids {
-                    if self.marks[cid] == self.mark_gen {
-                        kept += 1;
-                    }
-                }
-            }
+            let kept = self.count_kept_children(id);
             let it = &self.pq.id_to_item[id];
             let omitted = self.omitted_for(id, &it.kind, kept).unwrap_or(0);
             let full = it.string_value.clone().unwrap_or_default();
-            if omitted > 0 {
-                let mut prefix = String::new();
-                for (i, g) in
-                    UnicodeSegmentation::graphemes(full.as_str(), true)
-                        .enumerate()
-                {
-                    if i >= kept {
-                        break;
-                    }
-                    prefix.push_str(g);
-                }
-                let truncated = format!("{prefix}…");
-                serde_json::to_string(&truncated)
-                    .unwrap_or_else(|_| format!("\"{prefix}…\""))
-            } else {
-                serde_json::to_string(&full)
-                    .unwrap_or_else(|_| format!("\"{full}\""))
+            if omitted == 0 {
+                return serde_json::to_string(&full)
+                    .unwrap_or_else(|_| format!("\"{full}\""));
             }
+            let prefix = Self::take_graphemes_prefix(full.as_str(), kept);
+            let truncated = format!("{prefix}…");
+            serde_json::to_string(&truncated)
+                .unwrap_or_else(|_| format!("\"{prefix}…\""))
         }
 
         fn serialize_node(&mut self, id: usize, depth: usize) -> String {
