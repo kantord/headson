@@ -166,57 +166,210 @@ pub fn build_priority_order_from_arena(
     // Large enough to exceed any realistic budget while keeping memory bounded.
     let safety_cap: usize = 2_000_000;
 
-    // Helpers to keep complexity low inside the main loop.
-    #[allow(clippy::too_many_arguments)]
-    fn record_metrics_for(
-        kind: &NodeKind,
-        ar_id: usize,
-        arena: &StreamArena,
-        id: usize,
-        id_to_item: &[RankedNode],
-        metrics: &mut [NodeMetrics],
-        stats: &mut BuildProfile,
-        cfg: &PriorityConfig,
-    ) {
-        match kind {
-            NodeKind::Array => {
-                let alen = arena.nodes[ar_id]
-                    .array_len
-                    .unwrap_or(arena.nodes[ar_id].children_len);
-                metrics[id].array_len = Some(alen);
-                stats.arrays += 1;
-                stats.arrays_items_total += alen;
-                if alen > stats.max_array_len {
-                    stats.max_array_len = alen;
+    // Helper container with methods to reduce argument lists.
+    struct Scope<'a> {
+        arena: &'a StreamArena,
+        cfg: &'a PriorityConfig,
+        next_pq_id: &'a mut usize,
+        parent_of: &'a mut Vec<Option<usize>>,
+        children_of: &'a mut Vec<Vec<usize>>,
+        metrics: &'a mut Vec<NodeMetrics>,
+        id_to_item: &'a mut Vec<RankedNode>,
+        heap: &'a mut BinaryHeap<Reverse<Entry>>,
+        stats: &'a mut BuildProfile,
+        safety_cap: usize,
+    }
+
+    impl<'a> Scope<'a> {
+        fn record_metrics_for(
+            &mut self,
+            id: usize,
+            kind: &NodeKind,
+            ar_id: usize,
+        ) {
+            match kind {
+                NodeKind::Array => {
+                    let alen = self.arena.nodes[ar_id]
+                        .array_len
+                        .unwrap_or(self.arena.nodes[ar_id].children_len);
+                    self.metrics[id].array_len = Some(alen);
+                    self.stats.arrays += 1;
+                    self.stats.arrays_items_total += alen;
+                    if alen > self.stats.max_array_len {
+                        self.stats.max_array_len = alen;
+                    }
+                }
+                NodeKind::Object => {
+                    let olen = self.arena.nodes[ar_id]
+                        .object_len
+                        .unwrap_or(self.arena.nodes[ar_id].children_len);
+                    self.metrics[id].object_len = Some(olen);
+                    self.stats.objects += 1;
+                    self.stats.objects_props_total += olen;
+                    if olen > self.stats.max_object_len {
+                        self.stats.max_object_len = olen;
+                    }
+                }
+                NodeKind::String => {
+                    self.stats.strings += 1;
+                    let s = self.id_to_item[id]
+                        .string_value
+                        .as_deref()
+                        .unwrap_or("");
+                    let mut iter = UnicodeSegmentation::graphemes(s, true);
+                    let count = iter
+                        .by_ref()
+                        .take(self.cfg.max_string_graphemes)
+                        .count();
+                    self.metrics[id].string_len = Some(count);
+                    if iter.next().is_some() {
+                        self.metrics[id].string_truncated = true;
+                    }
+                    self.stats.string_chars += count;
+                    if count > self.stats.max_string_len {
+                        self.stats.max_string_len = count;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        fn expand_array_children(&mut self, entry: &Entry, ar_id: usize) {
+            let id = entry.pq_id;
+            let node = &self.arena.nodes[ar_id];
+            let kept = node.children_len;
+            for i in 0..kept {
+                let child_ar = self.arena.children[node.children_start + i];
+                let child_kind = self.arena.nodes[child_ar].kind.clone();
+                let child_pq = *self.next_pq_id;
+                *self.next_pq_id += 1;
+                self.parent_of.push(Some(id));
+                self.children_of.push(Vec::new());
+                self.metrics.push(NodeMetrics::default());
+                let extra = (i as u128).pow(3) * 1_000_000_000_000u128;
+                let score = entry.score + 1 + extra;
+                let cn = &self.arena.nodes[child_ar];
+                self.id_to_item.push(RankedNode {
+                    node_id: NodeId(child_pq),
+                    parent_id: ParentId(Some(id)),
+                    kind: child_kind.clone(),
+                    depth: entry.depth + 1,
+                    index_in_array: Some(i),
+                    key_in_object: None,
+                    priority: clamp_score(score),
+                    number_value: cn.number_value.clone(),
+                    bool_value: cn.bool_value,
+                    string_value: cn.string_value.clone(),
+                });
+                self.children_of[id].push(child_pq);
+                self.heap.push(Reverse(Entry {
+                    score,
+                    pq_id: child_pq,
+                    kind: child_kind,
+                    depth: entry.depth + 1,
+                    arena_node: Some(child_ar),
+                }));
+                self.stats.total_nodes += 1;
+                if *self.next_pq_id >= self.safety_cap {
+                    break;
                 }
             }
-            NodeKind::Object => {
-                let olen = arena.nodes[ar_id]
-                    .object_len
-                    .unwrap_or(arena.nodes[ar_id].children_len);
-                metrics[id].object_len = Some(olen);
-                stats.objects += 1;
-                stats.objects_props_total += olen;
-                if olen > stats.max_object_len {
-                    stats.max_object_len = olen;
+        }
+
+        fn expand_object_children(&mut self, entry: &Entry, ar_id: usize) {
+            let id = entry.pq_id;
+            let node = &self.arena.nodes[ar_id];
+            let mut items: Vec<(String, usize, usize)> =
+                Vec::with_capacity(node.children_len);
+            for i in 0..node.children_len {
+                let key = self.arena.obj_keys[node.obj_keys_start + i].clone();
+                let child_ar = self.arena.children[node.children_start + i];
+                items.push((key, child_ar, i));
+            }
+            items.sort_by(|a, b| a.0.cmp(&b.0));
+            for (key, child_ar, _i) in items {
+                let child_kind = self.arena.nodes[child_ar].kind.clone();
+                let child_pq = *self.next_pq_id;
+                *self.next_pq_id += 1;
+                self.parent_of.push(Some(id));
+                self.children_of.push(Vec::new());
+                self.metrics.push(NodeMetrics::default());
+                let score = entry.score + 1;
+                let cn = &self.arena.nodes[child_ar];
+                self.id_to_item.push(RankedNode {
+                    node_id: NodeId(child_pq),
+                    parent_id: ParentId(Some(id)),
+                    kind: child_kind.clone(),
+                    depth: entry.depth + 1,
+                    index_in_array: None,
+                    key_in_object: Some(key.clone()),
+                    priority: clamp_score(score),
+                    number_value: cn.number_value.clone(),
+                    bool_value: cn.bool_value,
+                    string_value: cn.string_value.clone(),
+                });
+                self.children_of[id].push(child_pq);
+                self.heap.push(Reverse(Entry {
+                    score,
+                    pq_id: child_pq,
+                    kind: child_kind,
+                    depth: entry.depth + 1,
+                    arena_node: Some(child_ar),
+                }));
+                self.stats.total_nodes += 1;
+                if *self.next_pq_id >= self.safety_cap {
+                    break;
                 }
             }
-            NodeKind::String => {
-                stats.strings += 1;
-                let s = id_to_item[id].string_value.as_deref().unwrap_or("");
-                let mut iter = UnicodeSegmentation::graphemes(s, true);
-                let count =
-                    iter.by_ref().take(cfg.max_string_graphemes).count();
-                metrics[id].string_len = Some(count);
-                if iter.next().is_some() {
-                    metrics[id].string_truncated = true;
-                }
-                stats.string_chars += count;
-                if count > stats.max_string_len {
-                    stats.max_string_len = count;
+        }
+
+        fn expand_string_children(&mut self, entry: &Entry) {
+            let id = entry.pq_id;
+            let s =
+                self.id_to_item[id].string_value.clone().unwrap_or_default();
+            let mut iter = UnicodeSegmentation::graphemes(s.as_str(), true);
+            for (i, _g) in iter
+                .by_ref()
+                .take(self.cfg.max_string_graphemes)
+                .enumerate()
+            {
+                let child_pq = *self.next_pq_id;
+                *self.next_pq_id += 1;
+                self.parent_of.push(Some(id));
+                self.children_of.push(Vec::new());
+                self.metrics.push(NodeMetrics::default());
+                let extra = if i > 20 {
+                    let d = (i - 20) as u128;
+                    d * d
+                } else {
+                    0
+                };
+                let score = entry.score + 1 + (i as u128) + extra;
+                self.id_to_item.push(RankedNode {
+                    node_id: NodeId(child_pq),
+                    parent_id: ParentId(Some(id)),
+                    kind: NodeKind::String,
+                    depth: entry.depth + 1,
+                    index_in_array: Some(i),
+                    key_in_object: None,
+                    priority: clamp_score(score),
+                    number_value: None,
+                    bool_value: None,
+                    string_value: None,
+                });
+                self.children_of[id].push(child_pq);
+                self.heap.push(Reverse(Entry {
+                    score,
+                    pq_id: child_pq,
+                    kind: NodeKind::String,
+                    depth: entry.depth + 1,
+                    arena_node: None,
+                }));
+                self.stats.total_nodes += 1;
+                if *self.next_pq_id >= self.safety_cap {
+                    break;
                 }
             }
-            _ => {}
         }
     }
 
@@ -228,243 +381,75 @@ pub fn build_priority_order_from_arena(
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn expand_array_children(
-        entry: &Entry,
-        ar_id: usize,
-        arena: &StreamArena,
-        next_pq_id: &mut usize,
-        parent_of: &mut Vec<Option<usize>>,
-        children_of: &mut Vec<Vec<usize>>,
-        metrics: &mut Vec<NodeMetrics>,
-        id_to_item: &mut Vec<RankedNode>,
-        heap: &mut BinaryHeap<Reverse<Entry>>,
-        stats: &mut BuildProfile,
-        safety_cap: usize,
-    ) {
-        let id = entry.pq_id;
-        let node = &arena.nodes[ar_id];
-        let kept = node.children_len;
-        for i in 0..kept {
-            let child_ar = arena.children[node.children_start + i];
-            let child_kind = arena.nodes[child_ar].kind.clone();
-            let child_pq = *next_pq_id;
-            *next_pq_id += 1;
-            parent_of.push(Some(id));
-            children_of.push(Vec::new());
-            metrics.push(NodeMetrics::default());
-            let extra = (i as u128).pow(3) * 1_000_000_000_000u128;
-            let score = entry.score + 1 + extra;
-            let cn = &arena.nodes[child_ar];
-            id_to_item.push(RankedNode {
-                node_id: NodeId(child_pq),
-                parent_id: ParentId(Some(id)),
-                kind: child_kind.clone(),
-                depth: entry.depth + 1,
-                index_in_array: Some(i),
-                key_in_object: None,
-                priority: clamp_score(score),
-                number_value: cn.number_value.clone(),
-                bool_value: cn.bool_value,
-                string_value: cn.string_value.clone(),
-            });
-            children_of[id].push(child_pq);
-            heap.push(Reverse(Entry {
-                score,
-                pq_id: child_pq,
-                kind: child_kind,
-                depth: entry.depth + 1,
-                arena_node: Some(child_ar),
-            }));
-            stats.total_nodes += 1;
-            if *next_pq_id >= safety_cap {
-                break;
-            }
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn expand_object_children(
-        entry: &Entry,
-        ar_id: usize,
-        arena: &StreamArena,
-        next_pq_id: &mut usize,
-        parent_of: &mut Vec<Option<usize>>,
-        children_of: &mut Vec<Vec<usize>>,
-        metrics: &mut Vec<NodeMetrics>,
-        id_to_item: &mut Vec<RankedNode>,
-        heap: &mut BinaryHeap<Reverse<Entry>>,
-        stats: &mut BuildProfile,
-        safety_cap: usize,
-    ) {
-        let id = entry.pq_id;
-        let node = &arena.nodes[ar_id];
-        let mut items: Vec<(String, usize, usize)> =
-            Vec::with_capacity(node.children_len);
-        for i in 0..node.children_len {
-            let key = arena.obj_keys[node.obj_keys_start + i].clone();
-            let child_ar = arena.children[node.children_start + i];
-            items.push((key, child_ar, i));
-        }
-        items.sort_by(|a, b| a.0.cmp(&b.0));
-        for (key, child_ar, _i) in items {
-            let child_kind = arena.nodes[child_ar].kind.clone();
-            let child_pq = *next_pq_id;
-            *next_pq_id += 1;
-            parent_of.push(Some(id));
-            children_of.push(Vec::new());
-            metrics.push(NodeMetrics::default());
-            let score = entry.score + 1;
-            let cn = &arena.nodes[child_ar];
-            id_to_item.push(RankedNode {
-                node_id: NodeId(child_pq),
-                parent_id: ParentId(Some(id)),
-                kind: child_kind.clone(),
-                depth: entry.depth + 1,
-                index_in_array: None,
-                key_in_object: Some(key.clone()),
-                priority: clamp_score(score),
-                number_value: cn.number_value.clone(),
-                bool_value: cn.bool_value,
-                string_value: cn.string_value.clone(),
-            });
-            children_of[id].push(child_pq);
-            heap.push(Reverse(Entry {
-                score,
-                pq_id: child_pq,
-                kind: child_kind,
-                depth: entry.depth + 1,
-                arena_node: Some(child_ar),
-            }));
-            stats.total_nodes += 1;
-            if *next_pq_id >= safety_cap {
-                break;
-            }
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn expand_string_children(
-        entry: &Entry,
-        id_to_item: &mut Vec<RankedNode>,
-        cfg: &PriorityConfig,
-        next_pq_id: &mut usize,
-        parent_of: &mut Vec<Option<usize>>,
-        children_of: &mut Vec<Vec<usize>>,
-        metrics: &mut Vec<NodeMetrics>,
-        heap: &mut BinaryHeap<Reverse<Entry>>,
-        stats: &mut BuildProfile,
-        safety_cap: usize,
-    ) {
-        let id = entry.pq_id;
-        let s = id_to_item[id].string_value.clone().unwrap_or_default();
-        let mut iter = UnicodeSegmentation::graphemes(s.as_str(), true);
-        for (i, _g) in iter.by_ref().take(cfg.max_string_graphemes).enumerate()
-        {
-            let child_pq = *next_pq_id;
-            *next_pq_id += 1;
-            parent_of.push(Some(id));
-            children_of.push(Vec::new());
-            metrics.push(NodeMetrics::default());
-            let extra = if i > 20 {
-                let d = (i - 20) as u128;
-                d * d
-            } else {
-                0
-            };
-            let score = entry.score + 1 + (i as u128) + extra;
-            id_to_item.push(RankedNode {
-                node_id: NodeId(child_pq),
-                parent_id: ParentId(Some(id)),
-                kind: NodeKind::String,
-                depth: entry.depth + 1,
-                index_in_array: Some(i),
-                key_in_object: None,
-                priority: clamp_score(score),
-                number_value: None,
-                bool_value: None,
-                string_value: None,
-            });
-            children_of[id].push(child_pq);
-            heap.push(Reverse(Entry {
-                score,
-                pq_id: child_pq,
-                kind: NodeKind::String,
-                depth: entry.depth + 1,
-                arena_node: None,
-            }));
-            stats.total_nodes += 1;
-            if *next_pq_id >= safety_cap {
-                break;
-            }
-        }
-    }
-
     while let Some(Reverse(entry)) = heap.pop() {
         let id = entry.pq_id;
         ids_by_order.push(id);
 
         if let Some(ar_id) = entry.arena_node {
-            record_metrics_for(
-                &entry.kind,
-                ar_id,
+            let mut scope = Scope {
                 arena,
-                id,
-                &id_to_item,
-                &mut metrics,
-                &mut stats,
                 cfg,
-            );
+                next_pq_id: &mut next_pq_id,
+                parent_of: &mut parent_of,
+                children_of: &mut children_of,
+                metrics: &mut metrics,
+                id_to_item: &mut id_to_item,
+                heap: &mut heap,
+                stats: &mut stats,
+                safety_cap,
+            };
+            scope.record_metrics_for(id, &entry.kind, ar_id);
         }
 
         match entry.kind.clone() {
             NodeKind::Array => {
                 if let Some(ar_id) = entry.arena_node {
-                    expand_array_children(
-                        &entry,
-                        ar_id,
+                    let mut scope = Scope {
                         arena,
-                        &mut next_pq_id,
-                        &mut parent_of,
-                        &mut children_of,
-                        &mut metrics,
-                        &mut id_to_item,
-                        &mut heap,
-                        &mut stats,
+                        cfg,
+                        next_pq_id: &mut next_pq_id,
+                        parent_of: &mut parent_of,
+                        children_of: &mut children_of,
+                        metrics: &mut metrics,
+                        id_to_item: &mut id_to_item,
+                        heap: &mut heap,
+                        stats: &mut stats,
                         safety_cap,
-                    );
+                    };
+                    scope.expand_array_children(&entry, ar_id);
                 }
             }
             NodeKind::Object => {
                 if let Some(ar_id) = entry.arena_node {
-                    expand_object_children(
-                        &entry,
-                        ar_id,
+                    let mut scope = Scope {
                         arena,
-                        &mut next_pq_id,
-                        &mut parent_of,
-                        &mut children_of,
-                        &mut metrics,
-                        &mut id_to_item,
-                        &mut heap,
-                        &mut stats,
+                        cfg,
+                        next_pq_id: &mut next_pq_id,
+                        parent_of: &mut parent_of,
+                        children_of: &mut children_of,
+                        metrics: &mut metrics,
+                        id_to_item: &mut id_to_item,
+                        heap: &mut heap,
+                        stats: &mut stats,
                         safety_cap,
-                    );
+                    };
+                    scope.expand_object_children(&entry, ar_id);
                 }
             }
             NodeKind::String => {
-                expand_string_children(
-                    &entry,
-                    &mut id_to_item,
+                let mut scope = Scope {
+                    arena,
                     cfg,
-                    &mut next_pq_id,
-                    &mut parent_of,
-                    &mut children_of,
-                    &mut metrics,
-                    &mut heap,
-                    &mut stats,
+                    next_pq_id: &mut next_pq_id,
+                    parent_of: &mut parent_of,
+                    children_of: &mut children_of,
+                    metrics: &mut metrics,
+                    id_to_item: &mut id_to_item,
+                    heap: &mut heap,
+                    stats: &mut stats,
                     safety_cap,
-                );
+                };
+                scope.expand_string_children(&entry);
             }
             _ => {}
         }
