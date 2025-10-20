@@ -1,5 +1,5 @@
 ---
-source: src/tree.rs
+source: src/serialization/mod.rs
 expression: out
 ---
 [

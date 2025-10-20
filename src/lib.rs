@@ -5,28 +5,13 @@ mod search;
 mod serialization;
 mod stream_arena;
 // templates moved under serialization
-mod tree;
+// tests that used to live under `tree` moved into serialization; no tree module
 pub use order::{
     NodeId, NodeKind, ParentId, PriorityConfig, PriorityOrder, RankedNode,
     build_priority_order_from_arena,
 };
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum OutputTemplate {
-    Json,
-    Pseudo,
-    Js,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RenderConfig {
-    pub template: OutputTemplate,
-    pub indent_unit: String,
-    pub space: String,
-    // Newline sequence to use in final output (e.g., "\n" or "").
-    // Currently applied as a post-process replacement on the rendered string.
-    pub newline: String,
-}
+pub use serialization::types::{OutputTemplate, RenderConfig};
 
 pub fn headson(
     input: Vec<u8>,
