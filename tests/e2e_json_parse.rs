@@ -32,4 +32,3 @@ fn e2e_json_is_parsable_for_all_budgets() {
         }
     }
 }
-

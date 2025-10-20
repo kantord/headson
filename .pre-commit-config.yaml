@@ -1,0 +1,16 @@
+repos:
+  - repo: local
+    hooks:
+      - id: rustfmt
+        name: rustfmt (check)
+        entry: cargo fmt --all -- --check
+        language: system
+        types: [rust]
+        pass_filenames: false
+      - id: rustfmt-fix
+        name: rustfmt (auto-fix)
+        entry: cargo fmt --all
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [manual]

@@ -189,6 +189,33 @@ Tuning:
 - Build from source: `cargo build --release`.
 - Run: `cat input.json | target/release/headson [flags]`.
 
+## Pre-commit Hooks (Formatting)
+
+This repo ships a pre-commit configuration to enforce Rust formatting on commits.
+
+Setup:
+
+- Ensure rustfmt is installed: `rustup component add rustfmt`
+- Install pre-commit (Python): `pip install pre-commit`
+- Install the Git hook in this repo: `pre-commit install`
+
+What it does:
+
+- Runs `cargo fmt --all -- --check` before each commit and blocks if formatting differs.
+
+Manual formatting:
+
+- Auto-fix via pre-commit (manual stage):
+  - `pre-commit run rustfmt-fix --all-files --hook-stage manual`
+- Run the check across the repo:
+  - `pre-commit run rustfmt --all-files`
+- Or run directly with Cargo:
+  - `cargo fmt --all`
+
+Notes:
+- The fix hook is configured with `stages: [manual]`, so it only runs when invoked with `--hook-stage manual`.
+- After auto-fix, re-stage files (`git add -A`) and re-run the check if committing immediately.
+
 ## Future Work
 
 - Make truncated `json` output strict JSON (no comments) while still conveying omitted counts.

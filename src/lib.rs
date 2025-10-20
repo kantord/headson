@@ -6,8 +6,7 @@ mod search;
 mod stream_arena;
 mod tree;
 pub use queue::{
-    NodeId, NodeKind, PQConfig, ParentId, QueueItem,
-    PriorityOrder, PQBuild,
+    NodeId, NodeKind, PQBuild, PQConfig, ParentId, PriorityOrder, QueueItem,
     build_priority_order_from_arena, build_priority_queue_from_arena,
 };
 
