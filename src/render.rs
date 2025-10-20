@@ -6,9 +6,7 @@ use askama::Template;
 pub struct JsonArray<'a> {
     pub children: &'a [(usize, String)],
     pub children_len: usize,
-    pub omitted: usize,
     pub indent0: &'a str,
-    pub indent1: &'a str,
 }
 
 #[derive(Template)]
@@ -16,7 +14,6 @@ pub struct JsonArray<'a> {
 pub struct JsonObject<'a> {
     pub children: &'a [(usize, (String, String))],
     pub children_len: usize,
-    pub omitted: usize,
     pub indent0: &'a str,
     pub indent1: &'a str,
     pub sp: &'a str,
@@ -85,9 +82,7 @@ pub fn render_array(template: OutputTemplate, ctx: &ArrayCtx) -> String {
         OutputTemplate::Json => JsonArray {
             children: &ctx.children,
             children_len: ctx.children_len,
-            omitted: ctx.omitted,
             indent0: &ctx.indent0,
-            indent1: &ctx.indent1,
         }
         .render()
         .unwrap(),
@@ -117,7 +112,6 @@ pub fn render_object(template: OutputTemplate, ctx: &ObjectCtx) -> String {
         OutputTemplate::Json => JsonObject {
             children: &ctx.children,
             children_len: ctx.children_len,
-            omitted: ctx.omitted,
             indent0: &ctx.indent0,
             indent1: &ctx.indent1,
             sp: &ctx.sp,

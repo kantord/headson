@@ -5,20 +5,26 @@ expression: stdout
 {
   "deep": [
     {
-      "a": []
+      "a": [
+        {
+          "b": [
+                        {}
+          ]
+        }
+      ]
     }
-    /* 1 more items */
   ],
   "matrix": [
-        []
-    /* 2 more items */
+    [
+      1
+    ]
   ],
   "objects": [
-        {}
-    /* 2 more items */
+    {
+      "k": "v1"
+    }
   ],
   "strings": [
-    "…"
-    /* 6 more items */
+    "one"
   ]
 }

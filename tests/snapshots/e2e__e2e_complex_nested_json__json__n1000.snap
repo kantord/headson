@@ -10,7 +10,6 @@ expression: stdout
     "tags": [
       "alpha",
       "beta"
-      /* 3 more items */
     ]
   },
   "users": [
@@ -28,14 +27,13 @@ expression: stdout
       "roles": [
         "admin",
         "editor"
-        /* 1 more items */
       ]
     },
     {
       "id": 2,
       "name": "Bob Builder",
       "profile": {
-        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ul…",
+        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
         "social": {
           "github": "bobbuilder",
           "twitter": "@buildWithBob",
@@ -43,8 +41,8 @@ expression: stdout
         }
       },
       "roles": [
-        "contributor"
-        /* 1 more items */
+        "contributor",
+        "viewer"
       ]
     }
   ]

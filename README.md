@@ -176,7 +176,7 @@ Tuning:
 
 ## Known Issues and Limitations
 
-- JSON template truncation is not valid JSON: when content is omitted, the `json` templates include comments like `/* N more items */`. Tests avoid this by using a large budget (`-n 10000`) for conformance. If strict JSON is required under truncation, the templates must be adjusted to use JSON-native markers (e.g., strings) instead of comments.
+- JSON template output is always valid JSON; when truncated, omitted entries/properties are simply not annotated in the JSON output (pseudo/js still show comments).
 - Budget semantics: `-n/--budget` constrains the rendered output length in bytes, not the number of nodes. Internally we binary-search k (a node count) to fit the byte-length budget. Non-ASCII characters count by bytes, not grapheme clusters.
 - Performance hotspots: parsing dominates on multi‑GB inputs (now using simd‑json’s serde bridge). Frontier PQ + caps keep PQ cost relatively small.
 - simd‑json serde differences: a few edge cases in the JSONTestSuite differ from serde_json (e.g., handling of certain malformed numbers and signed zeros). Tests skip these; see `tests/json_par_files.rs`.

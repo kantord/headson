@@ -23,6 +23,8 @@ fn compact_minifies_output() {
         trimmed,
         "{\"a\":[1,2,3],\"b\":{\"c\":1,\"d\":2}}".to_string()
     );
+    serde_json::from_str::<serde_json::Value>(&trimmed)
+        .expect("compact json should parse");
 }
 
 #[test]

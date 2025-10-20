@@ -5,8 +5,8 @@ expression: stdout
 {
   "meta": {
     "next": null,
-    "page": 1
-    /* 2 more properties */
+    "page": 1,
+    "pageSize": 20
   },
   "users": []
 }
