@@ -371,6 +371,34 @@ pub fn build_priority_order_from_arena(
                 }
             }
         }
+
+        fn process_entry(
+            &mut self,
+            entry: &Entry,
+            ids_by_order: &mut Vec<usize>,
+        ) {
+            let id = entry.pq_id;
+            ids_by_order.push(id);
+            if let Some(ar_id) = entry.arena_node {
+                self.record_metrics_for(id, &entry.kind, ar_id);
+            }
+            match entry.kind {
+                NodeKind::Array => {
+                    if let Some(ar_id) = entry.arena_node {
+                        self.expand_array_children(entry, ar_id);
+                    }
+                }
+                NodeKind::Object => {
+                    if let Some(ar_id) = entry.arena_node {
+                        self.expand_object_children(entry, ar_id);
+                    }
+                }
+                NodeKind::String => {
+                    self.expand_string_children(entry);
+                }
+                _ => {}
+            }
+        }
     }
 
     fn clamp_score(score: u128) -> usize {
@@ -382,77 +410,19 @@ pub fn build_priority_order_from_arena(
     }
 
     while let Some(Reverse(entry)) = heap.pop() {
-        let id = entry.pq_id;
-        ids_by_order.push(id);
-
-        if let Some(ar_id) = entry.arena_node {
-            let mut scope = Scope {
-                arena,
-                cfg,
-                next_pq_id: &mut next_pq_id,
-                parent_of: &mut parent_of,
-                children_of: &mut children_of,
-                metrics: &mut metrics,
-                id_to_item: &mut id_to_item,
-                heap: &mut heap,
-                stats: &mut stats,
-                safety_cap,
-            };
-            scope.record_metrics_for(id, &entry.kind, ar_id);
-        }
-
-        match entry.kind.clone() {
-            NodeKind::Array => {
-                if let Some(ar_id) = entry.arena_node {
-                    let mut scope = Scope {
-                        arena,
-                        cfg,
-                        next_pq_id: &mut next_pq_id,
-                        parent_of: &mut parent_of,
-                        children_of: &mut children_of,
-                        metrics: &mut metrics,
-                        id_to_item: &mut id_to_item,
-                        heap: &mut heap,
-                        stats: &mut stats,
-                        safety_cap,
-                    };
-                    scope.expand_array_children(&entry, ar_id);
-                }
-            }
-            NodeKind::Object => {
-                if let Some(ar_id) = entry.arena_node {
-                    let mut scope = Scope {
-                        arena,
-                        cfg,
-                        next_pq_id: &mut next_pq_id,
-                        parent_of: &mut parent_of,
-                        children_of: &mut children_of,
-                        metrics: &mut metrics,
-                        id_to_item: &mut id_to_item,
-                        heap: &mut heap,
-                        stats: &mut stats,
-                        safety_cap,
-                    };
-                    scope.expand_object_children(&entry, ar_id);
-                }
-            }
-            NodeKind::String => {
-                let mut scope = Scope {
-                    arena,
-                    cfg,
-                    next_pq_id: &mut next_pq_id,
-                    parent_of: &mut parent_of,
-                    children_of: &mut children_of,
-                    metrics: &mut metrics,
-                    id_to_item: &mut id_to_item,
-                    heap: &mut heap,
-                    stats: &mut stats,
-                    safety_cap,
-                };
-                scope.expand_string_children(&entry);
-            }
-            _ => {}
-        }
+        let mut scope = Scope {
+            arena,
+            cfg,
+            next_pq_id: &mut next_pq_id,
+            parent_of: &mut parent_of,
+            children_of: &mut children_of,
+            metrics: &mut metrics,
+            id_to_item: &mut id_to_item,
+            heap: &mut heap,
+            stats: &mut stats,
+            safety_cap,
+        };
+        scope.process_entry(&entry, &mut ids_by_order);
         if next_pq_id >= safety_cap {
             break;
         }
