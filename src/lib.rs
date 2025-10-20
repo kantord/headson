@@ -1,9 +1,9 @@
 use anyhow::Result;
 
 mod order;
-mod render;
 mod search;
 mod stream_arena;
+mod templates;
 mod tree;
 pub use order::{
     NodeId, NodeKind, ParentId, PriorityConfig, PriorityOrder, RankedNode,
