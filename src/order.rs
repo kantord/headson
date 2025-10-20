@@ -183,6 +183,46 @@ pub fn build_priority_order_from_arena(
     }
 
     impl<'a> Scope<'a> {
+        fn record_array_metrics(&mut self, id: usize, ar_id: usize) {
+            let alen = self.arena.nodes[ar_id]
+                .array_len
+                .unwrap_or(self.arena.nodes[ar_id].children_len);
+            self.metrics[id].array_len = Some(alen);
+            self.stats.arrays += 1;
+            self.stats.arrays_items_total += alen;
+            if alen > self.stats.max_array_len {
+                self.stats.max_array_len = alen;
+            }
+        }
+
+        fn record_object_metrics(&mut self, id: usize, ar_id: usize) {
+            let olen = self.arena.nodes[ar_id]
+                .object_len
+                .unwrap_or(self.arena.nodes[ar_id].children_len);
+            self.metrics[id].object_len = Some(olen);
+            self.stats.objects += 1;
+            self.stats.objects_props_total += olen;
+            if olen > self.stats.max_object_len {
+                self.stats.max_object_len = olen;
+            }
+        }
+
+        fn record_string_metrics(&mut self, id: usize) {
+            self.stats.strings += 1;
+            let s = self.id_to_item[id].string_value.as_deref().unwrap_or("");
+            let mut iter = UnicodeSegmentation::graphemes(s, true);
+            let count =
+                iter.by_ref().take(self.cfg.max_string_graphemes).count();
+            self.metrics[id].string_len = Some(count);
+            if iter.next().is_some() {
+                self.metrics[id].string_truncated = true;
+            }
+            self.stats.string_chars += count;
+            if count > self.stats.max_string_len {
+                self.stats.max_string_len = count;
+            }
+        }
+
         fn record_metrics_for(
             &mut self,
             id: usize,
@@ -190,48 +230,9 @@ pub fn build_priority_order_from_arena(
             ar_id: usize,
         ) {
             match kind {
-                NodeKind::Array => {
-                    let alen = self.arena.nodes[ar_id]
-                        .array_len
-                        .unwrap_or(self.arena.nodes[ar_id].children_len);
-                    self.metrics[id].array_len = Some(alen);
-                    self.stats.arrays += 1;
-                    self.stats.arrays_items_total += alen;
-                    if alen > self.stats.max_array_len {
-                        self.stats.max_array_len = alen;
-                    }
-                }
-                NodeKind::Object => {
-                    let olen = self.arena.nodes[ar_id]
-                        .object_len
-                        .unwrap_or(self.arena.nodes[ar_id].children_len);
-                    self.metrics[id].object_len = Some(olen);
-                    self.stats.objects += 1;
-                    self.stats.objects_props_total += olen;
-                    if olen > self.stats.max_object_len {
-                        self.stats.max_object_len = olen;
-                    }
-                }
-                NodeKind::String => {
-                    self.stats.strings += 1;
-                    let s = self.id_to_item[id]
-                        .string_value
-                        .as_deref()
-                        .unwrap_or("");
-                    let mut iter = UnicodeSegmentation::graphemes(s, true);
-                    let count = iter
-                        .by_ref()
-                        .take(self.cfg.max_string_graphemes)
-                        .count();
-                    self.metrics[id].string_len = Some(count);
-                    if iter.next().is_some() {
-                        self.metrics[id].string_truncated = true;
-                    }
-                    self.stats.string_chars += count;
-                    if count > self.stats.max_string_len {
-                        self.stats.max_string_len = count;
-                    }
-                }
+                NodeKind::Array => self.record_array_metrics(id, ar_id),
+                NodeKind::Object => self.record_object_metrics(id, ar_id),
+                NodeKind::String => self.record_string_metrics(id),
                 _ => {}
             }
         }

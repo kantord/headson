@@ -7,7 +7,41 @@ fn indent(depth: usize, unit: &str) -> String {
     unit.repeat(depth)
 }
 
+type ArrChildPair = (usize, String);
+type ObjChildPair = (usize, (String, String));
+
 // Helper: mark first k nodes by order and their ancestors; returns elapsed ms.
+fn push_first_k(
+    order_build: &PriorityOrder,
+    k: usize,
+    marks: &mut [u32],
+    mark_gen: u32,
+    stack: &mut Vec<usize>,
+) {
+    for &id in order_build.ids_by_order.iter().take(k) {
+        if marks[id] != mark_gen {
+            marks[id] = mark_gen;
+            stack.push(id);
+        }
+    }
+}
+
+fn mark_ancestors(
+    order_build: &PriorityOrder,
+    marks: &mut [u32],
+    mark_gen: u32,
+    stack: &mut Vec<usize>,
+) {
+    while let Some(id) = stack.pop() {
+        if let Some(parent) = order_build.parent_of[id] {
+            if marks[parent] != mark_gen {
+                marks[parent] = mark_gen;
+                stack.push(parent);
+            }
+        }
+    }
+}
+
 fn mark_k_and_ancestors(
     order_build: &PriorityOrder,
     k: usize,
@@ -16,21 +50,8 @@ fn mark_k_and_ancestors(
 ) -> u128 {
     let t = std::time::Instant::now();
     let mut stack: Vec<usize> = Vec::new();
-    for &id in order_build.ids_by_order.iter().take(k) {
-        if marks[id] != mark_gen {
-            marks[id] = mark_gen;
-            stack.push(id);
-        }
-    }
-    while let Some(id) = stack.pop() {
-        match order_build.parent_of[id] {
-            Some(parent) if marks[parent] != mark_gen => {
-                marks[parent] = mark_gen;
-                stack.push(parent);
-            }
-            _ => {}
-        }
-    }
+    push_first_k(order_build, k, marks, mark_gen, &mut stack);
+    mark_ancestors(order_build, marks, mark_gen, &mut stack);
     t.elapsed().as_millis()
 }
 
@@ -157,23 +178,7 @@ pub fn render_arena_with_marks(
 
         fn serialize_array(&mut self, id: usize, depth: usize) -> String {
             let cfg = self.cfg;
-            let mut children_pairs: Vec<(usize, String)> = Vec::new();
-            let mut kept = 0usize;
-            if let Some(kids) = self.pq.children_of.get(id) {
-                for (i, &cid) in kids.iter().enumerate() {
-                    if self.marks[cid] == self.mark_gen {
-                        kept += 1;
-                        let rendered = self.serialize_node(cid, depth + 1);
-                        let ind = indent(depth + 1, &cfg.indent_unit);
-                        if rendered.contains('\n') {
-                            children_pairs.push((i, rendered));
-                        } else {
-                            children_pairs
-                                .push((i, format!("{ind}{rendered}")));
-                        }
-                    }
-                }
-            }
+            let (children_pairs, kept) = self.gather_array_children(id, depth);
             let it = &self.pq.id_to_item[id];
             let omitted = self.omitted_for(id, &it.kind, kept).unwrap_or(0);
             if kept == 0 && omitted == 0 {
@@ -191,27 +196,8 @@ pub fn render_arena_with_marks(
 
         fn serialize_object(&mut self, id: usize, depth: usize) -> String {
             let cfg = self.cfg;
-            let mut children_pairs: Vec<(usize, (String, String))> =
-                Vec::new();
-            let mut kept = 0usize;
-            let ind = indent(depth + 1, &cfg.indent_unit);
-            if let Some(kids) = self.pq.children_of.get(id) {
-                for (i, &cid) in kids.iter().enumerate() {
-                    if self.marks[cid] == self.mark_gen {
-                        kept += 1;
-                        let child = &self.pq.id_to_item[cid];
-                        let raw_key =
-                            child.key_in_object.clone().unwrap_or_default();
-                        let key = serde_json::to_string(&raw_key)
-                            .unwrap_or_else(|_| format!("\"{raw_key}\""));
-                        let mut val = self.serialize_node(cid, depth + 1);
-                        if val.starts_with(&ind) {
-                            val = val[ind.len()..].to_string();
-                        }
-                        children_pairs.push((i, (key, val)));
-                    }
-                }
-            }
+            let (children_pairs, kept) =
+                self.gather_object_children(id, depth);
             let it = &self.pq.id_to_item[id];
             let omitted = self.omitted_for(id, &it.kind, kept).unwrap_or(0);
             if kept == 0 && omitted == 0 {
@@ -222,7 +208,7 @@ pub fn render_arena_with_marks(
                 children_len: kept,
                 omitted,
                 indent0: indent(depth, &cfg.indent_unit),
-                indent1: ind,
+                indent1: indent(depth + 1, &cfg.indent_unit),
                 sp: cfg.space.clone(),
             };
             render_object(cfg.template, &ctx)
@@ -253,34 +239,94 @@ pub fn render_arena_with_marks(
                 NodeKind::Array => self.serialize_array(id, depth),
                 NodeKind::Object => self.serialize_object(id, depth),
                 NodeKind::String => self.serialize_string(id),
-                NodeKind::Number => {
-                    if let Some(n) = it.number_value.as_ref() {
-                        if let Some(i) = n.as_i64() {
-                            return i.to_string();
-                        }
-                        if let Some(u) = n.as_u64() {
-                            return u.to_string();
-                        }
-                        if let Some(f) = n.as_f64() {
-                            if f == 0.0 {
-                                return "0.0".to_string();
-                            }
-                            return n.to_string();
-                        }
-                    }
-                    "0".to_string()
-                }
-                NodeKind::Bool => it.bool_value.map_or_else(
-                    || "false".to_string(),
-                    |b| {
-                        if b {
-                            "true".to_string()
-                        } else {
-                            "false".to_string()
-                        }
-                    },
-                ),
+                NodeKind::Number => self.serialize_number(id),
+                NodeKind::Bool => self.serialize_bool(id),
                 NodeKind::Null => "null".to_string(),
+            }
+        }
+
+        fn gather_array_children(
+            &mut self,
+            id: usize,
+            depth: usize,
+        ) -> (Vec<ArrChildPair>, usize) {
+            let cfg = self.cfg;
+            let mut children_pairs: Vec<ArrChildPair> = Vec::new();
+            let mut kept = 0usize;
+            if let Some(kids) = self.pq.children_of.get(id) {
+                for (i, &cid) in kids.iter().enumerate() {
+                    if self.marks[cid] != self.mark_gen {
+                        continue;
+                    }
+                    kept += 1;
+                    let rendered = self.serialize_node(cid, depth + 1);
+                    let ind = indent(depth + 1, &cfg.indent_unit);
+                    if rendered.contains('\n') {
+                        children_pairs.push((i, rendered));
+                    } else {
+                        children_pairs.push((i, format!("{ind}{rendered}")));
+                    }
+                }
+            }
+            (children_pairs, kept)
+        }
+
+        fn gather_object_children(
+            &mut self,
+            id: usize,
+            depth: usize,
+        ) -> (Vec<ObjChildPair>, usize) {
+            let cfg = self.cfg;
+            let mut children_pairs: Vec<ObjChildPair> = Vec::new();
+            let mut kept = 0usize;
+            let ind = indent(depth + 1, &cfg.indent_unit);
+            if let Some(kids) = self.pq.children_of.get(id) {
+                for (i, &cid) in kids.iter().enumerate() {
+                    if self.marks[cid] != self.mark_gen {
+                        continue;
+                    }
+                    kept += 1;
+                    let child = &self.pq.id_to_item[cid];
+                    let raw_key =
+                        child.key_in_object.clone().unwrap_or_default();
+                    let key = serde_json::to_string(&raw_key)
+                        .unwrap_or_else(|_| format!("\"{raw_key}\""));
+                    let mut val = self.serialize_node(cid, depth + 1);
+                    if val.starts_with(&ind) {
+                        val = val[ind.len()..].to_string();
+                    }
+                    children_pairs.push((i, (key, val)));
+                }
+            }
+            (children_pairs, kept)
+        }
+
+        fn serialize_number(&self, id: usize) -> String {
+            let it = &self.pq.id_to_item[id];
+            if let Some(n) = it.number_value.as_ref() {
+                if let Some(i) = n.as_i64() {
+                    return i.to_string();
+                }
+                if let Some(u) = n.as_u64() {
+                    return u.to_string();
+                }
+                if let Some(f) = n.as_f64() {
+                    return if f == 0.0 {
+                        "0.0".to_string()
+                    } else {
+                        n.to_string()
+                    };
+                }
+            }
+            "0".to_string()
+        }
+
+        fn serialize_bool(&self, id: usize) -> String {
+            let it = &self.pq.id_to_item[id];
+            match it.bool_value {
+                Some(true) => "true".to_string(),
+                Some(false) => "false".to_string(),
+                None => "false".to_string(),
             }
         }
     }

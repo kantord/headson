@@ -25,22 +25,27 @@ fn e2e_parametric() {
     let budgets = [10u32, 100u32, 250u32, 1000u32, 10000u32];
     for entry in fs::read_dir(dir).expect("list dir") {
         let entry = entry.unwrap();
-        if entry.file_type().unwrap().is_file() {
-            let name = entry.file_name().into_string().unwrap();
-            for &n in &budgets {
-                for tmpl in templates {
-                    let stdout = run_case(&entry.path(), tmpl, n);
-                    assert_snapshot!(
-                        format!(
-                            "e2e_{}__{}__n{}",
-                            name.replace('.', "_"),
-                            tmpl,
-                            n
-                        ),
-                        stdout
-                    );
-                }
-            }
+        if !entry.file_type().unwrap().is_file() {
+            continue;
+        }
+        let name = entry.file_name().into_string().unwrap();
+        assert_snapshots_for(&entry.path(), &name, &templates, &budgets);
+    }
+}
+
+fn assert_snapshots_for(
+    path: &Path,
+    name: &str,
+    templates: &[&str],
+    budgets: &[u32],
+) {
+    for &n in budgets {
+        for &tmpl in templates {
+            let stdout = run_case(path, tmpl, n);
+            assert_snapshot!(
+                format!("e2e_{}__{}__n{}", name.replace('.', "_"), tmpl, n),
+                stdout
+            );
         }
     }
 }
