@@ -1,9 +1,9 @@
 use anyhow::Result;
 
 mod order;
-mod search;
 mod serialization;
 mod stream_arena;
+mod utils;
 // templates moved under serialization
 // tests that used to live under `tree` moved into serialization; no tree module
 pub use order::{
@@ -56,7 +56,7 @@ fn find_largest_render_under_budget(
     let mut mark_gen: u32 = 1;
     let mut best_str: Option<String> = None;
 
-    let _ = crate::search::binary_search_max(lo, hi, |mid| {
+    let _ = crate::utils::search::binary_search_max(lo, hi, |mid| {
         let s = match crate::serialization::render_arena_with_marks(
             order_build,
             mid,
