@@ -16,4 +16,3 @@ pub(crate) fn binary_search_max(
     }
     best
 }
-

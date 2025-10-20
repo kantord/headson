@@ -19,7 +19,11 @@ struct Cli {
     indent: String,
     #[arg(long = "no-space", default_value_t = false)]
     no_space: bool,
-    #[arg(long = "no-newline", default_value_t = false, help = "Remove newlines in output (one-line)")]
+    #[arg(
+        long = "no-newline",
+        default_value_t = false,
+        help = "Remove newlines in output (one-line)"
+    )]
     no_newline: bool,
     #[arg(
         short = 'm',
@@ -86,7 +90,11 @@ fn main() -> Result<()> {
     } else {
         "\n".to_string()
     };
-    let indent_unit = if cli.compact { "".to_string() } else { cli.indent.clone() };
+    let indent_unit = if cli.compact {
+        "".to_string()
+    } else {
+        cli.indent.clone()
+    };
     let config = headson::RenderConfig {
         template,
         indent_unit,

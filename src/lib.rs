@@ -2,9 +2,9 @@ use anyhow::Result;
 
 mod queue;
 mod render;
+mod search;
 mod stream_arena;
 mod tree;
-mod search;
 pub use queue::{
     NodeId, NodeKind, PQBuild, PQConfig, ParentId, QueueItem,
     build_priority_queue_from_arena,
