@@ -122,128 +122,121 @@ pub fn render_arena_with_marks(
             }
         }
 
+        fn serialize_array(&mut self, id: usize, depth: usize) -> String {
+            let cfg = self.cfg;
+            let mut children_pairs: Vec<(usize, String)> = Vec::new();
+            let mut kept = 0usize;
+            if let Some(kids) = self.pq.children_of.get(id) {
+                for (i, &cid) in kids.iter().enumerate() {
+                    if self.marks[cid] == self.mark_gen {
+                        kept += 1;
+                        let rendered = self.serialize_node(cid, depth + 1);
+                        let ind = indent(depth + 1, &cfg.indent_unit);
+                        if rendered.contains('\n') {
+                            children_pairs.push((i, rendered));
+                        } else {
+                            children_pairs
+                                .push((i, format!("{ind}{rendered}")));
+                        }
+                    }
+                }
+            }
+            let it = &self.pq.id_to_item[id];
+            let omitted = self.omitted_for(id, &it.kind, kept).unwrap_or(0);
+            if kept == 0 && omitted == 0 {
+                return "[]".to_string();
+            }
+            let ctx = ArrayCtx {
+                children: children_pairs,
+                children_len: kept,
+                omitted,
+                indent0: indent(depth, &cfg.indent_unit),
+                indent1: indent(depth + 1, &cfg.indent_unit),
+            };
+            render_array(cfg.template, &ctx)
+        }
+
+        fn serialize_object(&mut self, id: usize, depth: usize) -> String {
+            let cfg = self.cfg;
+            let mut children_pairs: Vec<(usize, (String, String))> =
+                Vec::new();
+            let mut kept = 0usize;
+            let ind = indent(depth + 1, &cfg.indent_unit);
+            if let Some(kids) = self.pq.children_of.get(id) {
+                for (i, &cid) in kids.iter().enumerate() {
+                    if self.marks[cid] == self.mark_gen {
+                        kept += 1;
+                        let child = &self.pq.id_to_item[cid];
+                        let raw_key =
+                            child.key_in_object.clone().unwrap_or_default();
+                        let key = serde_json::to_string(&raw_key)
+                            .unwrap_or_else(|_| format!("\"{raw_key}\""));
+                        let mut val = self.serialize_node(cid, depth + 1);
+                        if val.starts_with(&ind) {
+                            val = val[ind.len()..].to_string();
+                        }
+                        children_pairs.push((i, (key, val)));
+                    }
+                }
+            }
+            let it = &self.pq.id_to_item[id];
+            let omitted = self.omitted_for(id, &it.kind, kept).unwrap_or(0);
+            if kept == 0 && omitted == 0 {
+                return "{}".to_string();
+            }
+            let ctx = ObjectCtx {
+                children: children_pairs,
+                children_len: kept,
+                omitted,
+                indent0: indent(depth, &cfg.indent_unit),
+                indent1: ind,
+                sp: cfg.space.clone(),
+            };
+            render_object(cfg.template, &ctx)
+        }
+
+        fn serialize_string(&mut self, id: usize) -> String {
+            let mut kept = 0usize;
+            if let Some(kids) = self.pq.children_of.get(id) {
+                for &cid in kids {
+                    if self.marks[cid] == self.mark_gen {
+                        kept += 1;
+                    }
+                }
+            }
+            let it = &self.pq.id_to_item[id];
+            let omitted = self.omitted_for(id, &it.kind, kept).unwrap_or(0);
+            let full = it.string_value.clone().unwrap_or_default();
+            if omitted > 0 {
+                let mut prefix = String::new();
+                for (i, g) in
+                    UnicodeSegmentation::graphemes(full.as_str(), true)
+                        .enumerate()
+                {
+                    if i >= kept {
+                        break;
+                    }
+                    prefix.push_str(g);
+                }
+                let truncated = format!("{prefix}…");
+                serde_json::to_string(&truncated)
+                    .unwrap_or_else(|_| format!("\"{prefix}…\""))
+            } else {
+                serde_json::to_string(&full)
+                    .unwrap_or_else(|_| format!("\"{full}\""))
+            }
+        }
+
         fn serialize_node(&mut self, id: usize, depth: usize) -> String {
             self.nodes_built += 1;
             if depth > self.max_depth {
                 self.max_depth = depth;
             }
             let it = &self.pq.id_to_item[id];
-            let cfg = self.cfg;
             match it.kind {
-                NodeKind::Array => {
-                    // Collect kept children (only those whose ids are marked).
-                    let mut children_pairs: Vec<(usize, String)> = Vec::new();
-                    let mut kept = 0usize;
-                    if let Some(kids) = self.pq.children_of.get(id) {
-                        for (i, &cid) in kids.iter().enumerate() {
-                            if self.marks[cid] == self.mark_gen {
-                                kept += 1;
-                                let rendered =
-                                    self.serialize_node(cid, depth + 1);
-                                let ind = indent(depth + 1, &cfg.indent_unit);
-                                if rendered.contains('\n') {
-                                    children_pairs.push((i, rendered));
-                                } else {
-                                    children_pairs
-                                        .push((i, format!("{ind}{rendered}")));
-                                }
-                            }
-                        }
-                    }
-                    let omitted =
-                        self.omitted_for(id, &it.kind, kept).unwrap_or(0);
-                    if kept == 0 && omitted == 0 {
-                        return "[]".to_string();
-                    }
-                    let ctx = ArrayCtx {
-                        children: children_pairs,
-                        children_len: kept,
-                        omitted,
-                        indent0: indent(depth, &cfg.indent_unit),
-                        indent1: indent(depth + 1, &cfg.indent_unit),
-                    };
-                    render_array(cfg.template, &ctx)
-                }
-                NodeKind::Object => {
-                    let mut children_pairs: Vec<(usize, (String, String))> =
-                        Vec::new();
-                    let mut kept = 0usize;
-                    let ind = indent(depth + 1, &cfg.indent_unit);
-                    if let Some(kids) = self.pq.children_of.get(id) {
-                        for (i, &cid) in kids.iter().enumerate() {
-                            if self.marks[cid] == self.mark_gen {
-                                kept += 1;
-                                let child = &self.pq.id_to_item[cid];
-                                let raw_key = child
-                                    .key_in_object
-                                    .clone()
-                                    .unwrap_or_default();
-                                let key = serde_json::to_string(&raw_key)
-                                    .unwrap_or_else(|_| {
-                                        format!("\"{raw_key}\"")
-                                    });
-                                let mut val =
-                                    self.serialize_node(cid, depth + 1);
-                                if val.starts_with(&ind) {
-                                    val = val[ind.len()..].to_string();
-                                }
-                                children_pairs.push((i, (key, val)));
-                            }
-                        }
-                    }
-                    let omitted =
-                        self.omitted_for(id, &it.kind, kept).unwrap_or(0);
-                    if kept == 0 && omitted == 0 {
-                        return "{}".to_string();
-                    }
-                    let ctx = ObjectCtx {
-                        children: children_pairs,
-                        children_len: kept,
-                        omitted,
-                        indent0: indent(depth, &cfg.indent_unit),
-                        indent1: ind,
-                        sp: cfg.space.clone(),
-                    };
-                    render_object(cfg.template, &ctx)
-                }
-                NodeKind::String => {
-                    // Strings are represented by the parent string node and a
-                    // sequence of synthetic children (one per grapheme) up to the
-                    // configured expansion cap. We count how many of those
-                    // synthetic children are kept (marked) and then slice the
-                    // prefix accordingly; if there are omitted graphemes, we add
-                    // an ellipsis.
-                    // Truncated? use children count to slice grapheme prefix
-                    let mut kept = 0usize;
-                    if let Some(kids) = self.pq.children_of.get(id) {
-                        for &cid in kids {
-                            if self.marks[cid] == self.mark_gen {
-                                kept += 1;
-                            }
-                        }
-                    }
-                    let omitted =
-                        self.omitted_for(id, &it.kind, kept).unwrap_or(0);
-                    let full = it.string_value.clone().unwrap_or_default();
-                    if omitted > 0 {
-                        let mut prefix = String::new();
-                        for (i, g) in
-                            UnicodeSegmentation::graphemes(full.as_str(), true)
-                                .enumerate()
-                        {
-                            if i >= kept {
-                                break;
-                            }
-                            prefix.push_str(g);
-                        }
-                        let truncated = format!("{prefix}…");
-                        serde_json::to_string(&truncated)
-                            .unwrap_or_else(|_| format!("\"{prefix}…\""))
-                    } else {
-                        serde_json::to_string(&full)
-                            .unwrap_or_else(|_| format!("\"{full}\""))
-                    }
-                }
+                NodeKind::Array => self.serialize_array(id, depth),
+                NodeKind::Object => self.serialize_object(id, depth),
+                NodeKind::String => self.serialize_string(id),
                 NodeKind::Number => {
                     if let Some(n) = it.number_value.as_ref() {
                         if let Some(i) = n.as_i64() {
