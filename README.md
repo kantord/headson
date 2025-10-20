@@ -9,7 +9,7 @@ This README documents the actual behavior verified in the repository, the overal
 - Pipeline: parse_json (simd-json via serde bridge) → build_priority_order → binary search best k → render directly from arena (Askama templates).
 - Output formats (Askama templates in `templates/`): `json`, `pseudo`, `js`.
 - Truncation is driven by a binary search over the number of included nodes; a render that fits within the given output-size budget is selected.
-- Profiling (`--profile`) prints timings to stderr for parse, PQ build, and probes, plus PQ internals.
+- Profiling (`--profile`) prints timings to stderr for parse, priority-order build, and probes, plus internal stats.
 
 ## CLI
 
@@ -27,8 +27,8 @@ Flags:
 - `--no-space`: remove the single space after `:` in objects. Arrays never add spaces after commas.
 - `--no-newline`: remove newlines from output (one-line rendering).
 - `-m, --compact`: compact output (no indentation, no spaces after colons, no newlines). Conflicts with `--indent`, `--no-space`, and `--no-newline`.
-- `--profile`: print timing breakdowns to stderr (parse, PQ build, probes; plus PQ internals).
-- `--string-cap <int>`: maximum graphemes to expand per string during PQ build (default: 500). Caps PQ work on long strings.
+- `--profile`: print timing breakdowns to stderr (parse, priority-order build, probes; plus internals).
+- `--string-cap <int>`: maximum graphemes to expand per string during priority-order build (default: 500). Caps work on long strings.
  - `--input <path>`: read JSON directly from a file instead of stdin.
 
 Exit codes and I/O:
@@ -54,7 +54,7 @@ Each node gets a cumulative score: `score = parent_score + 1 + node_penalty`.
 - Strings: characters are expanded as child nodes (via `unicode-segmentation` graphemes). For char at index i, `node_penalty = i + max(0, i − 20)^2`, favoring prefixes and discouraging scattered picks.
 - Others: `node_penalty = 0` (depth contributes via the `+1` per level).
 
-Frontier PQ build (default): a best‑first traversal yields `ids_by_order` directly without sorting all nodes. Per‑node metrics capture `array_len`, `object_len`, and `string_len` or `string_truncated` as needed.
+Frontier priority-order build (default): a best‑first traversal yields `ids_by_order` directly without sorting all nodes. Per‑node metrics capture `array_len`, `object_len`, and `string_len` or `string_truncated` as needed.
 
 ### Inclusion and Truncation
 
@@ -86,10 +86,10 @@ Additional details:
 - Arrays never include a space after commas; objects apply `space` after colons.
 - Strings are escaped via `serde_json`. When truncated, only a quoted kept prefix plus an ellipsis is rendered, ensuring prefix‑only semantics.
 
-### PQ caps (configurable)
+### Order Caps (configurable)
 
-- `--string-cap <n>`: hard cap on grapheme expansion per string during PQ build (default: 500). Prevents runaway work for very long strings. Rendering still shows prefix + ellipsis.
-- Array cap (derived from budget): per‑array expansion is capped at `budget / 2`, based on a conservative lower bound that an array of N items needs ~2N characters to fit. Arrays longer than this cannot fit within the budget, so we avoid walking/pushing those extra items during PQ.
+- `--string-cap <n>`: hard cap on grapheme expansion per string during priority-order build (default: 500). Prevents runaway work for very long strings. Rendering still shows prefix + ellipsis.
+- Array cap (derived from budget): per‑array expansion is capped at `budget / 2`, based on a conservative lower bound that an array of N items needs ~2N characters to fit. Arrays longer than this cannot fit within the budget, so we avoid walking/pushing those extra items during the priority‑order build.
 
 ## Testing
 
@@ -97,7 +97,7 @@ Additional details:
 - JSON conformance suite (`JSONTestSuite/test_parsing/`, test driver in `tests/json_par_files.rs`):
   - `y_*.json`: parse with serde, run `headson -f json -n 10000`, re-parse stdout as JSON and deep-compare equality.
   - `n_*.json`: serde rejects and CLI must fail with non-zero exit and non-empty stderr.
-- Unit snapshots for PQ and tree internals are in `src/snapshots/` and `tests/snapshots/`.
+- Unit snapshots for order and tree internals are in `src/snapshots/` and `tests/snapshots/`.
 
 Run tests: `cargo test`.
 
@@ -105,39 +105,39 @@ Run tests: `cargo test`.
 
 Enable profiling with `--profile` to print timings to stderr, e.g.:
 
-- PQ breakdown: `walk` (including string grapheme enumeration), `sort`, and `maps` (arena builds).
-- Overall timings: `parse`, `pq`, `search+render`, and `total`.
+- Order build breakdown: `walk` (including string grapheme enumeration) and `maps` (arena builds).
+- Overall timings: `parse`, `order`, `search+render`, and `total`.
 
 Observed characteristics and current hotspots:
 
 - String grapheme enumeration can dominate when there are many long strings.
 - Building maps (`id_to_item`, `parent_of`, `children_of`, `order_index`) is a non‑trivial cost (now using Vecs to reduce overhead). Per‑node child sorting was removed.
-- Rendering is typically negligible compared to PQ build and probe builds.
+- Rendering is typically negligible compared to the priority-order build and probe builds.
 
 Recent optimizations implemented:
-- Frontier (top‑K) PQ build (default in CLI): best‑first expansion by cumulative score (no full sort/build).
+- Frontier (top‑K) priority-order build (default in CLI): best‑first expansion by cumulative score (no full sort/build).
 - O(k) inclusion marking via `ids_by_order` for probes.
 - Arena-backed render (no intermediate tree allocations).
-- PQ arena switched from HashMaps to Vecs (id-indexed).
+- Order arena switched from HashMaps to Vecs (id-indexed).
 - Removed per-node child sorting (children already ordered in PQ phase).
 - String cap and micro‑opts (no per‑grapheme allocations; prefix slicing by grapheme count).
-- QueueItem stores typed values (number/bool/string); removed reparsing and `value_repr`.
+- RankedNode stores typed values (number/bool/string); removed reparsing and `value_repr`.
 
 Older optimizations:
-- PQ arena switched from HashMaps to Vecs (id-indexed), greatly reducing map overhead.
+- Order arena switched from HashMaps to Vecs (id-indexed), greatly reducing map overhead.
 - Inclusion marking uses a reusable generational bitset across probes (no per-probe clears).
 - Tree building switched to on-demand traversal from the arena (no per-probe filtered vectors).
 - Removed per-node child sorting during tree build (children already ordered in PQ phase).
 - String micro-optimizations: avoid per-grapheme string allocations; truncated strings use parent prefix slicing by grapheme count.
-- QueueItem stores typed values (number/bool/string); removed reparsing and `value_repr`.
+- RankedNode stores typed values (number/bool/string); removed reparsing and `value_repr`.
 
-These changes cut PQ time and per-probe build time substantially on large inputs.
+These changes cut priority‑order build time and per-probe build time substantially on large inputs.
 
 ## Repository Layout
 
 - `src/main.rs`: CLI argument parsing and I/O glue.
 - `src/lib.rs`: public API, orchestration, binary search over k, and profiling output.
-- `src/queue.rs`: PQ build, scoring, per-node metrics, and stable order assignment.
+- `src/order.rs`: Priority order build, scoring, per-node metrics, and stable order assignment.
 - `src/tree.rs`: arena-backed serializer, inclusion marking, and omitted-count logic.
 - `src/render.rs`: Askama templates bindings and rendering helpers.
 - `templates/`: Askama templates for `json`, `pseudo`, and `js`.
@@ -157,8 +157,8 @@ Default run (no args):
 What it measures (for multiple dataset sizes):
 
 - Scales: runs 1×, 10×, 100× of `HF_GEN_COUNT` (default base 200,000 → 200k, 2M, 20M items).
-- PIPE: generator → headson (live pipeline). Measures generator + parse/PQ/render.
-- FILE: generator → file → headson --input file. Measures parse/PQ/render + disk read.
+- PIPE: generator → headson (live pipeline). Measures generator + parse/order/render.
+- FILE: generator → file → headson --input file. Measures parse/order/render + disk read.
 - GEN: generator → /dev/null. Measures pure generator cost.
 - WRITE: generator → file. Measures write throughput (page-cache affected).
 

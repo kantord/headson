@@ -1,0 +1,6 @@
+---
+source: src/order.rs
+expression: "lines.join(\"\\n\")"
+---
+len=1
+RankedNode { node_id: NodeId(0), parent_id: ParentId(None), kind: Array, depth: 0, index_in_array: None, key_in_object: None, priority: 1, number_value: None, bool_value: None, string_value: None } prio=1

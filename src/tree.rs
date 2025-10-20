@@ -1,4 +1,4 @@
-use crate::queue::{NodeKind, NodeMetrics, PriorityOrder};
+use crate::order::{NodeKind, NodeMetrics, PriorityOrder};
 use crate::render::{ArrayCtx, ObjectCtx, render_array, render_object};
 use anyhow::Result;
 use unicode_segmentation::UnicodeSegmentation;
@@ -12,7 +12,7 @@ fn indent(depth: usize, unit: &str) -> String {
 // Marks use a generation counter: `marks[id] == mark_gen` means included.
 // This lets us reuse a single marks buffer across multiple probes without clearing.
 pub fn render_arena_with_marks(
-    pq_build: &PriorityOrder,
+    order_build: &PriorityOrder,
     budget: usize,
     marks: &mut Vec<u32>,
     mark_gen: u32,
@@ -20,22 +20,22 @@ pub fn render_arena_with_marks(
     profile: bool,
 ) -> Result<String> {
     let t_all_start = std::time::Instant::now();
-    if marks.len() < pq_build.total_nodes {
-        marks.resize(pq_build.total_nodes, 0);
+    if marks.len() < order_build.total_nodes {
+        marks.resize(order_build.total_nodes, 0);
     }
     // Mark included nodes (order_index < budget) and their ancestors using generation marks
     let t_mark = std::time::Instant::now();
     let mut stack: Vec<usize> = Vec::new();
-    let k = budget.min(pq_build.total_nodes);
+    let k = budget.min(order_build.total_nodes);
     // Mark first k nodes by order directly using ids_by_order (O(k))
-    for &id in pq_build.ids_by_order.iter().take(k) {
+    for &id in order_build.ids_by_order.iter().take(k) {
         if marks[id] != mark_gen {
             marks[id] = mark_gen;
             stack.push(id);
         }
     }
     while let Some(id) = stack.pop() {
-        match pq_build.parent_of[id] {
+        match order_build.parent_of[id] {
             Some(parent) if marks[parent] != mark_gen => {
                 marks[parent] = mark_gen;
                 stack.push(parent);
@@ -46,8 +46,8 @@ pub fn render_arena_with_marks(
     let mark_ms = t_mark.elapsed().as_millis();
 
     // Identify root (no parent)
-    let root_id = (0..pq_build.total_nodes)
-        .find(|&id| pq_build.parent_of[id].is_none())
+    let root_id = (0..order_build.total_nodes)
+        .find(|&id| order_build.parent_of[id].is_none())
         .ok_or_else(|| anyhow::anyhow!("no root in queue"))?;
 
     // Helpers for omitted counts
@@ -254,7 +254,7 @@ pub fn render_arena_with_marks(
     let mut max_depth = 0usize;
     let out = serialize_node(
         root_id,
-        pq_build,
+        order_build,
         marks,
         mark_gen,
         config,
@@ -281,12 +281,12 @@ mod tests {
     fn arena_render_empty_array() {
         let arena = crate::stream_arena::build_stream_arena(
             "[]",
-            &crate::PQConfig::default(),
+            &crate::PriorityConfig::default(),
         )
         .unwrap();
-        let build = crate::build_priority_queue_from_arena(
+        let build = crate::build_priority_order_from_arena(
             &arena,
-            &crate::PQConfig::default(),
+            &crate::PriorityConfig::default(),
         )
         .unwrap();
         let mut marks = vec![0u32; build.total_nodes];
@@ -312,12 +312,12 @@ mod tests {
     fn arena_render_single_string_array() {
         let arena = crate::stream_arena::build_stream_arena(
             "[\"ab\"]",
-            &crate::PQConfig::default(),
+            &crate::PriorityConfig::default(),
         )
         .unwrap();
-        let build = crate::build_priority_queue_from_arena(
+        let build = crate::build_priority_order_from_arena(
             &arena,
-            &crate::PQConfig::default(),
+            &crate::PriorityConfig::default(),
         )
         .unwrap();
         let mut marks = vec![0u32; build.total_nodes];

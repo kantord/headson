@@ -1,5 +1,5 @@
-use crate::queue::NodeKind;
-use crate::queue::PQConfig;
+use crate::order::NodeKind;
+use crate::order::PriorityConfig;
 use anyhow::Result;
 use serde::Deserializer;
 use serde::de::{DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor};
@@ -303,7 +303,10 @@ impl<'de> DeserializeSeed<'de> for NodeSeed<'_> {
 // Arrays are capped at `cfg.array_max_items` during parse; we still record the
 // total length to report omissions accurately later.
 #[cfg(test)]
-pub fn build_stream_arena(input: &str, cfg: &PQConfig) -> Result<StreamArena> {
+pub fn build_stream_arena(
+    input: &str,
+    cfg: &PriorityConfig,
+) -> Result<StreamArena> {
     // Use simd-json serde deserializer, parsing from a mutable buffer
     let mut bytes = input.as_bytes().to_vec();
     let mut de = simd_json::Deserializer::from_slice(&mut bytes)?;
@@ -325,7 +328,7 @@ pub fn build_stream_arena(input: &str, cfg: &PQConfig) -> Result<StreamArena> {
 // Variant that avoids copying: accepts owned bytes and parses in-place.
 pub fn build_stream_arena_from_bytes(
     mut bytes: Vec<u8>,
-    cfg: &PQConfig,
+    cfg: &PriorityConfig,
 ) -> Result<StreamArena> {
     let mut de = simd_json::Deserializer::from_slice(&mut bytes)?;
     let cell = ArenaCell {

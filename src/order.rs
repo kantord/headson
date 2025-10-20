@@ -6,12 +6,12 @@ use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
 #[derive(Clone, Debug)]
-pub struct PQConfig {
+pub struct PriorityConfig {
     pub max_string_graphemes: usize,
     pub array_max_items: usize,
 }
 
-impl Default for PQConfig {
+impl Default for PriorityConfig {
     fn default() -> Self {
         Self {
             max_string_graphemes: MAX_STRING_ENUM,
@@ -37,7 +37,7 @@ pub enum NodeKind {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct QueueItem {
+pub struct RankedNode {
     pub node_id: NodeId,
     pub parent_id: ParentId,
     pub kind: NodeKind,
@@ -78,7 +78,7 @@ pub struct BuildProfile {
 #[derive(Clone, Debug)]
 pub struct PriorityOrder {
     pub metrics: Vec<NodeMetrics>,
-    pub id_to_item: Vec<QueueItem>,
+    pub id_to_item: Vec<RankedNode>,
     pub parent_of: Vec<Option<usize>>, // parent_of[id] = parent id
     pub children_of: Vec<Vec<usize>>,  // children_of[id] = children ids
     pub order_index: Vec<usize>,       // order_index[id] = global order
@@ -87,19 +87,14 @@ pub struct PriorityOrder {
     pub profile: BuildProfile,
 }
 
-// Backwards compatibility alias
-pub type PQBuild = PriorityOrder;
-
-// value_repr removed; we now keep only typed values as needed.
-
-// legacy PQ build from serde_json::Value removed; streaming arena path is the default
+// No aliases; canonical names only
 
 // Frontier builder from streaming arena (Stage 2 adapter)
 use crate::stream_arena::StreamArena;
 
 pub fn build_priority_order_from_arena(
     arena: &StreamArena,
-    cfg: &PQConfig,
+    cfg: &PriorityConfig,
 ) -> Result<PriorityOrder> {
     #[derive(Clone)]
     struct Entry {
@@ -131,7 +126,7 @@ pub fn build_priority_order_from_arena(
     let mut stats = BuildProfile::default();
     let t_walk = std::time::Instant::now();
     let mut next_pq_id: usize = 0;
-    let mut id_to_item: Vec<QueueItem> = Vec::new();
+    let mut id_to_item: Vec<RankedNode> = Vec::new();
     let mut parent_of: Vec<Option<usize>> = Vec::new();
     let mut children_of: Vec<Vec<usize>> = Vec::new();
     let mut metrics: Vec<NodeMetrics> = Vec::new();
@@ -147,7 +142,7 @@ pub fn build_priority_order_from_arena(
     children_of.push(Vec::new());
     metrics.push(NodeMetrics::default());
     let n = &arena.nodes[root_ar];
-    id_to_item.push(QueueItem {
+    id_to_item.push(RankedNode {
         node_id: NodeId(root_pq),
         parent_id: ParentId(None),
         kind: root_kind.clone(),
@@ -237,7 +232,7 @@ pub fn build_priority_order_from_arena(
                         let extra = (i as u128).pow(3) * 1_000_000_000_000u128;
                         let score = entry.score + 1 + extra;
                         let cn = &arena.nodes[child_ar];
-                        id_to_item.push(QueueItem {
+                        id_to_item.push(RankedNode {
                             node_id: NodeId(child_pq),
                             parent_id: ParentId(Some(id)),
                             kind: child_kind.clone(),
@@ -290,7 +285,7 @@ pub fn build_priority_order_from_arena(
                         metrics.push(NodeMetrics::default());
                         let score = entry.score + 1;
                         let cn = &arena.nodes[child_ar];
-                        id_to_item.push(QueueItem {
+                        id_to_item.push(RankedNode {
                             node_id: NodeId(child_pq),
                             parent_id: ParentId(Some(id)),
                             kind: child_kind.clone(),
@@ -342,7 +337,7 @@ pub fn build_priority_order_from_arena(
                         0
                     };
                     let score = entry.score + 1 + (i as u128) + extra;
-                    id_to_item.push(QueueItem {
+                    id_to_item.push(RankedNode {
                         node_id: NodeId(child_pq),
                         parent_id: ParentId(Some(id)),
                         kind: NodeKind::String,
@@ -401,8 +396,7 @@ pub fn build_priority_order_from_arena(
     })
 }
 
-// Backwards compatibility alias
-pub use build_priority_order_from_arena as build_priority_queue_from_arena;
+// No alias; use `build_priority_order_from_arena`
 
 #[cfg(test)]
 mod tests {
@@ -410,15 +404,17 @@ mod tests {
     use insta::assert_snapshot;
 
     #[test]
-    fn pq_empty_array() {
+    fn order_empty_array() {
         let arena = crate::stream_arena::build_stream_arena(
             "[]",
-            &PQConfig::default(),
+            &PriorityConfig::default(),
         )
         .unwrap();
-        let build =
-            build_priority_queue_from_arena(&arena, &PQConfig::default())
-                .unwrap();
+        let build = build_priority_order_from_arena(
+            &arena,
+            &PriorityConfig::default(),
+        )
+        .unwrap();
         let mut items_sorted: Vec<_> = build.id_to_item.clone();
         items_sorted.sort_by_key(|it| {
             build
@@ -431,19 +427,21 @@ mod tests {
         for it in items_sorted {
             lines.push(format!("{:?} prio={}", it, it.priority));
         }
-        assert_snapshot!("pq_empty_array_queue", lines.join("\n"));
+        assert_snapshot!("order_empty_array_order", lines.join("\n"));
     }
 
     #[test]
-    fn pq_single_string_array() {
+    fn order_single_string_array() {
         let arena = crate::stream_arena::build_stream_arena(
             "[\"ab\"]",
-            &PQConfig::default(),
+            &PriorityConfig::default(),
         )
         .unwrap();
-        let build =
-            build_priority_queue_from_arena(&arena, &PQConfig::default())
-                .unwrap();
+        let build = build_priority_order_from_arena(
+            &arena,
+            &PriorityConfig::default(),
+        )
+        .unwrap();
         let mut items_sorted: Vec<_> = build.id_to_item.clone();
         items_sorted.sort_by_key(|it| {
             build
@@ -456,6 +454,6 @@ mod tests {
         for it in items_sorted {
             lines.push(format!("{:?} prio={}", it, it.priority));
         }
-        assert_snapshot!("pq_single_string_array_queue", lines.join("\n"));
+        assert_snapshot!("order_single_string_array_order", lines.join("\n"));
     }
 }

@@ -1,13 +1,13 @@
 use anyhow::Result;
 
-mod queue;
+mod order;
 mod render;
 mod search;
 mod stream_arena;
 mod tree;
-pub use queue::{
-    NodeId, NodeKind, PQBuild, PQConfig, ParentId, PriorityOrder, QueueItem,
-    build_priority_order_from_arena, build_priority_queue_from_arena,
+pub use order::{
+    NodeId, NodeKind, ParentId, PriorityConfig, PriorityOrder, RankedNode,
+    build_priority_order_from_arena,
 };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -31,27 +31,30 @@ pub struct RenderConfig {
 pub fn headson(
     input: Vec<u8>,
     config: &RenderConfig,
-    pq_cfg: &PQConfig,
+    priority_cfg: &PriorityConfig,
     budget: usize,
 ) -> Result<String> {
     let do_prof = config.profile;
     let t0 = std::time::Instant::now();
     // Streaming arena parse from owned bytes + frontier adapter
-    let arena =
-        crate::stream_arena::build_stream_arena_from_bytes(input, pq_cfg)?;
+    let arena = crate::stream_arena::build_stream_arena_from_bytes(
+        input,
+        priority_cfg,
+    )?;
     let t1 = std::time::Instant::now();
-    let pq_build = queue::build_priority_order_from_arena(&arena, pq_cfg)?;
+    let order_build =
+        order::build_priority_order_from_arena(&arena, priority_cfg)?;
     let t2 = std::time::Instant::now();
-    let out = find_largest_render_under_budget(&pq_build, config, budget)?;
+    let out = find_largest_render_under_budget(&order_build, config, budget)?;
     let t3 = std::time::Instant::now();
     if do_prof {
-        let p = &pq_build.profile;
+        let p = &order_build.profile;
         eprintln!(
-            "pq breakdown: walk={}ms (strings={}, chars={})",
+            "order breakdown: walk={}ms (strings={}, chars={})",
             p.walk_ms, p.strings, p.string_chars,
         );
         eprintln!(
-            "pq details: arrays={} (items_total={}), objects={} (props_total={}), maxlens: array={}, object={}, string={}, edges={}",
+            "order details: arrays={} (items_total={}), objects={} (props_total={}), maxlens: array={}, object={}, string={}, edges={}",
             p.arrays,
             p.arrays_items_total,
             p.objects,
@@ -62,7 +65,7 @@ pub fn headson(
             p.children_edges_total,
         );
         eprintln!(
-            "timings: parse={}ms, pq={}ms, search+render={}ms, total={}ms",
+            "timings: parse={}ms, order={}ms, search+render={}ms, total={}ms",
             (t1 - t0).as_millis(),
             (t2 - t1).as_millis(),
             (t3 - t2).as_millis(),
@@ -80,13 +83,13 @@ pub fn headson(
 }
 
 fn find_largest_render_under_budget(
-    pq_build: &PriorityOrder,
+    order_build: &PriorityOrder,
     config: &RenderConfig,
     char_budget: usize,
 ) -> Result<String> {
     // Binary search the largest k in [1, total] whose render
     // fits within `char_budget`.
-    let total = pq_build.total_nodes;
+    let total = order_build.total_nodes;
     if total == 0 || char_budget == 0 {
         return Ok(String::new());
     }
@@ -102,7 +105,12 @@ fn find_largest_render_under_budget(
     let _ = crate::search::binary_search_max(lo, hi, |mid| {
         let t_render = std::time::Instant::now();
         let s = match crate::tree::render_arena_with_marks(
-            pq_build, mid, &mut marks, mark_gen, config, do_prof,
+            order_build,
+            mid,
+            &mut marks,
+            mark_gen,
+            config,
+            do_prof,
         ) {
             Ok(v) => v,
             Err(_) => return false,

@@ -64,10 +64,10 @@ fn main() -> Result<()> {
 
     let input_bytes = get_input(cli.input.as_ref())?;
     let render_cfg = get_render_config_from(&cli);
-    let pq_cfg = get_priority_config_from(&cli);
+    let priority_cfg = get_priority_config_from(&cli);
 
     let output =
-        headson::headson(input_bytes, &render_cfg, &pq_cfg, cli.budget)?;
+        headson::headson(input_bytes, &render_cfg, &priority_cfg, cli.budget)?;
     println!("{}", output);
 
     Ok(())
@@ -116,10 +116,10 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
     }
 }
 
-fn get_priority_config_from(cli: &Cli) -> headson::PQConfig {
+fn get_priority_config_from(cli: &Cli) -> headson::PriorityConfig {
     // Derive a conservative per-array cap from the budget: an array of N items
     // minimally needs about 2*N characters (item plus comma) to fit. So cap at budget/2.
-    headson::PQConfig {
+    headson::PriorityConfig {
         max_string_graphemes: cli.string_cap,
         array_max_items: (cli.budget / 2).max(1),
     }
