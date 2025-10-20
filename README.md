@@ -26,6 +26,7 @@ Flags:
 - `--indent <string>`: indentation unit (default: two spaces).
 - `--no-space`: remove the single space after `:` in objects. Arrays never add spaces after commas.
 - `--no-newline`: remove newlines from output (one-line rendering).
+- `-m, --compact`: compact output (no indentation, no spaces after colons, no newlines). Conflicts with `--indent`, `--no-space`, and `--no-newline`.
 - `--profile`: print timing breakdowns to stderr (parse, PQ build, probes; plus PQ internals).
 - `--string-cap <int>`: maximum graphemes to expand per string during PQ build (default: 500). Caps PQ work on long strings.
  - `--input <path>`: read JSON directly from a file instead of stdin.

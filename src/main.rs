@@ -22,6 +22,14 @@ struct Cli {
     #[arg(long = "no-newline", default_value_t = false, help = "Remove newlines in output (one-line)")]
     no_newline: bool,
     #[arg(
+        short = 'm',
+        long = "compact",
+        default_value_t = false,
+        conflicts_with_all = ["no_space", "no_newline", "indent"],
+        help = "Compact output: disables indentation, spaces after colons, and newlines"
+    )]
+    compact: bool,
+    #[arg(
         long = "profile",
         default_value_t = false,
         help = "Print timing breakdown to stderr"
@@ -68,19 +76,20 @@ fn main() -> Result<()> {
         Template::Pseudo => headson::OutputTemplate::Pseudo,
         Template::Js => headson::OutputTemplate::Js,
     };
-    let space = if cli.no_space {
+    let space = if cli.compact || cli.no_space {
         "".to_string()
     } else {
         " ".to_string()
     };
-    let newline = if cli.no_newline {
+    let newline = if cli.compact || cli.no_newline {
         "".to_string()
     } else {
         "\n".to_string()
     };
+    let indent_unit = if cli.compact { "".to_string() } else { cli.indent.clone() };
     let config = headson::RenderConfig {
         template,
-        indent_unit: cli.indent.clone(),
+        indent_unit,
         space,
         newline,
         profile: cli.profile,
