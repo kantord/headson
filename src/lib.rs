@@ -6,8 +6,9 @@ mod search;
 mod stream_arena;
 mod tree;
 pub use queue::{
-    NodeId, NodeKind, PQBuild, PQConfig, ParentId, QueueItem,
-    build_priority_queue_from_arena,
+    NodeId, NodeKind, PQConfig, ParentId, QueueItem,
+    PriorityOrder, PQBuild,
+    build_priority_order_from_arena, build_priority_queue_from_arena,
 };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -40,7 +41,7 @@ pub fn headson(
     let arena =
         crate::stream_arena::build_stream_arena_from_bytes(input, pq_cfg)?;
     let t1 = std::time::Instant::now();
-    let pq_build = queue::build_priority_queue_from_arena(&arena, pq_cfg)?;
+    let pq_build = queue::build_priority_order_from_arena(&arena, pq_cfg)?;
     let t2 = std::time::Instant::now();
     let out = find_largest_render_under_budget(&pq_build, config, budget)?;
     let t3 = std::time::Instant::now();
@@ -80,7 +81,7 @@ pub fn headson(
 }
 
 fn find_largest_render_under_budget(
-    pq_build: &PQBuild,
+    pq_build: &PriorityOrder,
     config: &RenderConfig,
     char_budget: usize,
 ) -> Result<String> {

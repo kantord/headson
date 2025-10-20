@@ -76,7 +76,7 @@ pub struct BuildProfile {
 }
 
 #[derive(Clone, Debug)]
-pub struct PQBuild {
+pub struct PriorityOrder {
     pub metrics: Vec<NodeMetrics>,
     pub id_to_item: Vec<QueueItem>,
     pub parent_of: Vec<Option<usize>>, // parent_of[id] = parent id
@@ -87,6 +87,9 @@ pub struct PQBuild {
     pub profile: BuildProfile,
 }
 
+// Backwards compatibility alias
+pub type PQBuild = PriorityOrder;
+
 // value_repr removed; we now keep only typed values as needed.
 
 // legacy PQ build from serde_json::Value removed; streaming arena path is the default
@@ -94,10 +97,10 @@ pub struct PQBuild {
 // Frontier builder from streaming arena (Stage 2 adapter)
 use crate::stream_arena::StreamArena;
 
-pub fn build_priority_queue_from_arena(
+pub fn build_priority_order_from_arena(
     arena: &StreamArena,
     cfg: &PQConfig,
-) -> Result<PQBuild> {
+) -> Result<PriorityOrder> {
     #[derive(Clone)]
     struct Entry {
         score: u128,
@@ -386,7 +389,7 @@ pub fn build_priority_queue_from_arena(
     }
     stats.children_edges_total = children_of.iter().map(Vec::len).sum();
 
-    Ok(PQBuild {
+    Ok(PriorityOrder {
         metrics,
         id_to_item,
         parent_of,
@@ -397,6 +400,9 @@ pub fn build_priority_queue_from_arena(
         profile: stats,
     })
 }
+
+// Backwards compatibility alias
+pub use build_priority_order_from_arena as build_priority_queue_from_arena;
 
 #[cfg(test)]
 mod tests {

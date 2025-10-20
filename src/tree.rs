@@ -1,4 +1,4 @@
-use crate::queue::{NodeKind, NodeMetrics, PQBuild};
+use crate::queue::{NodeKind, NodeMetrics, PriorityOrder};
 use crate::render::{ArrayCtx, ObjectCtx, render_array, render_object};
 use anyhow::Result;
 use unicode_segmentation::UnicodeSegmentation;
@@ -12,7 +12,7 @@ fn indent(depth: usize, unit: &str) -> String {
 // Marks use a generation counter: `marks[id] == mark_gen` means included.
 // This lets us reuse a single marks buffer across multiple probes without clearing.
 pub fn render_arena_with_marks(
-    pq_build: &PQBuild,
+    pq_build: &PriorityOrder,
     budget: usize,
     marks: &mut Vec<u32>,
     mark_gen: u32,
@@ -82,7 +82,7 @@ pub fn render_arena_with_marks(
     #[allow(clippy::too_many_arguments)]
     fn serialize_node(
         id: usize,
-        pq: &PQBuild,
+        pq: &PriorityOrder,
         marks: &[u32],
         mark_gen: u32,
         cfg: &crate::RenderConfig,

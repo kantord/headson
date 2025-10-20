@@ -6,7 +6,7 @@ This README documents the actual behavior verified in the repository, the overal
 
 ## Overview
 
-- Pipeline: parse_json (simd-json via serde bridge) → build_priority_queue → binary search best k → render directly from arena (Askama templates).
+- Pipeline: parse_json (simd-json via serde bridge) → build_priority_order → binary search best k → render directly from arena (Askama templates).
 - Output formats (Askama templates in `templates/`): `json`, `pseudo`, `js`.
 - Truncation is driven by a binary search over the number of included nodes; a render that fits within the given output-size budget is selected.
 - Profiling (`--profile`) prints timings to stderr for parse, PQ build, and probes, plus PQ internals.
@@ -41,12 +41,12 @@ Exit codes and I/O:
 High-level flow:
 
 1) Parse: `simd_json::serde::from_slice` into `serde_json::Value` (Stage 1 swap for faster parsing).
-2) Priority queue build (frontier): best‑first (min‑heap) expansion by cumulative score; builds just enough nodes for probing (no global full‑build/sort). Per‑node metrics capture sizes/truncation flags.
+2) Priority order build (frontier): best‑first (min‑heap) expansion by cumulative score; builds just enough nodes for probing (no global full‑build/sort). Per‑node metrics capture sizes/truncation flags.
 3) Node selection by binary search: search k ∈ [1, total_nodes] for the largest k that renders within the output-size budget.
 4) Inclusion marking: include nodes with `order_index < k` plus their full ancestor closure; compute omitted counts using original sizes.
 5) Render: arena-backed serializer delegates arrays/objects to Askama templates and handles string truncation.
 
-### Priority Queue and Scoring
+### Priority Order and Scoring
 
 Each node gets a cumulative score: `score = parent_score + 1 + node_penalty`.
 
