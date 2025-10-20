@@ -4,7 +4,7 @@ mod order;
 mod search;
 mod serialization;
 mod stream_arena;
-mod templates;
+// templates moved under serialization
 mod tree;
 pub use order::{
     NodeId, NodeKind, ParentId, PriorityConfig, PriorityOrder, RankedNode,

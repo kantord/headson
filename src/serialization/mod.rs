@@ -1,5 +1,6 @@
 use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID};
-use crate::templates::{ArrayCtx, ObjectCtx, render_array, render_object};
+pub mod templates;
+use self::templates::{ArrayCtx, ObjectCtx, render_array, render_object};
 use anyhow::Result;
 use unicode_segmentation::UnicodeSegmentation;
 
