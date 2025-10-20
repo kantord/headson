@@ -1,4 +1,4 @@
-use crate::order::{NodeKind, NodeMetrics, PriorityOrder};
+use crate::order::{NodeKind, PriorityOrder};
 use crate::render::{ArrayCtx, ObjectCtx, render_array, render_object};
 use anyhow::Result;
 use unicode_segmentation::UnicodeSegmentation;
@@ -81,232 +81,217 @@ pub fn render_arena_with_marks(
         .find(|&id| order_build.parent_of[id].is_none())
         .ok_or_else(|| anyhow::anyhow!("no root in queue"))?;
 
-    // Helpers for omitted counts: given a kept child count for arrays/objects
-    // or grapheme count for strings, use recorded metrics to compute what was
-    // not included and surface that in the output (e.g., "+N items").
-    fn omitted_for(
-        id: usize,
-        kind: &NodeKind,
-        kept: usize,
-        metrics: &[NodeMetrics],
-    ) -> Option<usize> {
-        match kind {
-            NodeKind::Array => metrics[id].array_len.and_then(|orig| {
-                if orig > kept { Some(orig - kept) } else { None }
-            }),
-            NodeKind::String => {
-                if let Some(orig) = metrics[id].string_len {
-                    if orig > kept { Some(orig - kept) } else { None }
-                } else if metrics[id].string_truncated {
-                    // We know there are more chars beyond kept even if we didn't count them
-                    Some(1)
-                } else {
-                    None
-                }
-            }
-            NodeKind::Object => metrics[id].object_len.and_then(|orig| {
-                if orig > kept { Some(orig - kept) } else { None }
-            }),
-            _ => None,
-        }
+    // Phase 2: Use a small scope struct to keep state and reduce parameter lists.
+    struct RenderScope<'a> {
+        pq: &'a PriorityOrder,
+        marks: &'a [u32],
+        mark_gen: u32,
+        cfg: &'a crate::RenderConfig,
+        nodes_built: usize,
+        max_depth: usize,
     }
 
-    // Phase 2: Recursive serialization straight from the arena. Descend only
-    // into children that are marked for this generation.
-    #[allow(clippy::too_many_arguments)]
-    fn serialize_node(
-        id: usize,
-        pq: &PriorityOrder,
-        marks: &[u32],
-        mark_gen: u32,
-        cfg: &crate::RenderConfig,
-        depth: usize,
-        nodes_built: &mut usize,
-        max_depth: &mut usize,
-    ) -> String {
-        *nodes_built += 1;
-        if depth > *max_depth {
-            *max_depth = depth;
-        }
-        let it = &pq.id_to_item[id];
-        match it.kind {
-            NodeKind::Array => {
-                // Collect kept children (only those whose ids are marked).
-                let mut children_pairs: Vec<(usize, String)> = Vec::new();
-                let mut kept = 0usize;
-                if let Some(kids) = pq.children_of.get(id) {
-                    for (i, &cid) in kids.iter().enumerate() {
-                        if marks[cid] == mark_gen {
-                            kept += 1;
-                            let rendered = serialize_node(
-                                cid,
-                                pq,
-                                marks,
-                                mark_gen,
-                                cfg,
-                                depth + 1,
-                                nodes_built,
-                                max_depth,
-                            );
-                            let ind = indent(depth + 1, &cfg.indent_unit);
-                            if rendered.contains('\n') {
-                                children_pairs.push((i, rendered));
-                            } else {
-                                children_pairs
-                                    .push((i, format!("{ind}{rendered}")));
-                            }
-                        }
-                    }
+    impl<'a> RenderScope<'a> {
+        fn omitted_for(
+            &self,
+            id: usize,
+            kind: &NodeKind,
+            kept: usize,
+        ) -> Option<usize> {
+            match kind {
+                NodeKind::Array => {
+                    self.pq.metrics[id].array_len.and_then(|orig| {
+                        if orig > kept { Some(orig - kept) } else { None }
+                    })
                 }
-                let omitted =
-                    omitted_for(id, &it.kind, kept, &pq.metrics).unwrap_or(0);
-                if kept == 0 && omitted == 0 {
-                    return "[]".to_string();
-                }
-                let ctx = ArrayCtx {
-                    children: children_pairs,
-                    children_len: kept,
-                    omitted,
-                    indent0: indent(depth, &cfg.indent_unit),
-                    indent1: indent(depth + 1, &cfg.indent_unit),
-                };
-                render_array(cfg.template, &ctx)
-            }
-            NodeKind::Object => {
-                let mut children_pairs: Vec<(usize, (String, String))> =
-                    Vec::new();
-                let mut kept = 0usize;
-                let ind = indent(depth + 1, &cfg.indent_unit);
-                if let Some(kids) = pq.children_of.get(id) {
-                    for (i, &cid) in kids.iter().enumerate() {
-                        if marks[cid] == mark_gen {
-                            kept += 1;
-                            let child = &pq.id_to_item[cid];
-                            let raw_key = child
-                                .key_in_object
-                                .clone()
-                                .unwrap_or_default();
-                            let key = serde_json::to_string(&raw_key)
-                                .unwrap_or_else(|_| format!("\"{raw_key}\""));
-                            let mut val = serialize_node(
-                                cid,
-                                pq,
-                                marks,
-                                mark_gen,
-                                cfg,
-                                depth + 1,
-                                nodes_built,
-                                max_depth,
-                            );
-                            if val.starts_with(&ind) {
-                                val = val[ind.len()..].to_string();
-                            }
-                            children_pairs.push((i, (key, val)));
-                        }
-                    }
-                }
-                let omitted =
-                    omitted_for(id, &it.kind, kept, &pq.metrics).unwrap_or(0);
-                if kept == 0 && omitted == 0 {
-                    return "{}".to_string();
-                }
-                let ctx = ObjectCtx {
-                    children: children_pairs,
-                    children_len: kept,
-                    omitted,
-                    indent0: indent(depth, &cfg.indent_unit),
-                    indent1: ind,
-                    sp: cfg.space.clone(),
-                };
-                render_object(cfg.template, &ctx)
-            }
-            NodeKind::String => {
-                // Strings are represented by the parent string node and a
-                // sequence of synthetic children (one per grapheme) up to the
-                // configured expansion cap. We count how many of those
-                // synthetic children are kept (marked) and then slice the
-                // prefix accordingly; if there are omitted graphemes, we add
-                // an ellipsis.
-                // Truncated? use children count to slice grapheme prefix
-                let mut kept = 0usize;
-                if let Some(kids) = pq.children_of.get(id) {
-                    for &cid in kids {
-                        if marks[cid] == mark_gen {
-                            kept += 1;
-                        }
-                    }
-                }
-                let omitted =
-                    omitted_for(id, &it.kind, kept, &pq.metrics).unwrap_or(0);
-                let full = it.string_value.clone().unwrap_or_default();
-                if omitted > 0 {
-                    let mut prefix = String::new();
-                    for (i, g) in
-                        UnicodeSegmentation::graphemes(full.as_str(), true)
-                            .enumerate()
-                    {
-                        if i >= kept {
-                            break;
-                        }
-                        prefix.push_str(g);
-                    }
-                    let truncated = format!("{prefix}…");
-                    serde_json::to_string(&truncated)
-                        .unwrap_or_else(|_| format!("\"{prefix}…\""))
-                } else {
-                    serde_json::to_string(&full)
-                        .unwrap_or_else(|_| format!("\"{full}\""))
-                }
-            }
-            NodeKind::Number => {
-                if let Some(n) = it.number_value.as_ref() {
-                    if let Some(i) = n.as_i64() {
-                        return i.to_string();
-                    }
-                    if let Some(u) = n.as_u64() {
-                        return u.to_string();
-                    }
-                    if let Some(f) = n.as_f64() {
-                        if f == 0.0 {
-                            return "0.0".to_string();
-                        }
-                        return n.to_string();
-                    }
-                }
-                "0".to_string()
-            }
-            NodeKind::Bool => it.bool_value.map_or_else(
-                || "false".to_string(),
-                |b| {
-                    if b {
-                        "true".to_string()
+                NodeKind::String => {
+                    if let Some(orig) = self.pq.metrics[id].string_len {
+                        if orig > kept { Some(orig - kept) } else { None }
+                    } else if self.pq.metrics[id].string_truncated {
+                        Some(1)
                     } else {
-                        "false".to_string()
+                        None
                     }
-                },
-            ),
-            NodeKind::Null => "null".to_string(),
+                }
+                NodeKind::Object => {
+                    self.pq.metrics[id].object_len.and_then(|orig| {
+                        if orig > kept { Some(orig - kept) } else { None }
+                    })
+                }
+                _ => None,
+            }
+        }
+
+        fn serialize_node(&mut self, id: usize, depth: usize) -> String {
+            self.nodes_built += 1;
+            if depth > self.max_depth {
+                self.max_depth = depth;
+            }
+            let it = &self.pq.id_to_item[id];
+            let cfg = self.cfg;
+            match it.kind {
+                NodeKind::Array => {
+                    // Collect kept children (only those whose ids are marked).
+                    let mut children_pairs: Vec<(usize, String)> = Vec::new();
+                    let mut kept = 0usize;
+                    if let Some(kids) = self.pq.children_of.get(id) {
+                        for (i, &cid) in kids.iter().enumerate() {
+                            if self.marks[cid] == self.mark_gen {
+                                kept += 1;
+                                let rendered =
+                                    self.serialize_node(cid, depth + 1);
+                                let ind = indent(depth + 1, &cfg.indent_unit);
+                                if rendered.contains('\n') {
+                                    children_pairs.push((i, rendered));
+                                } else {
+                                    children_pairs
+                                        .push((i, format!("{ind}{rendered}")));
+                                }
+                            }
+                        }
+                    }
+                    let omitted =
+                        self.omitted_for(id, &it.kind, kept).unwrap_or(0);
+                    if kept == 0 && omitted == 0 {
+                        return "[]".to_string();
+                    }
+                    let ctx = ArrayCtx {
+                        children: children_pairs,
+                        children_len: kept,
+                        omitted,
+                        indent0: indent(depth, &cfg.indent_unit),
+                        indent1: indent(depth + 1, &cfg.indent_unit),
+                    };
+                    render_array(cfg.template, &ctx)
+                }
+                NodeKind::Object => {
+                    let mut children_pairs: Vec<(usize, (String, String))> =
+                        Vec::new();
+                    let mut kept = 0usize;
+                    let ind = indent(depth + 1, &cfg.indent_unit);
+                    if let Some(kids) = self.pq.children_of.get(id) {
+                        for (i, &cid) in kids.iter().enumerate() {
+                            if self.marks[cid] == self.mark_gen {
+                                kept += 1;
+                                let child = &self.pq.id_to_item[cid];
+                                let raw_key = child
+                                    .key_in_object
+                                    .clone()
+                                    .unwrap_or_default();
+                                let key = serde_json::to_string(&raw_key)
+                                    .unwrap_or_else(|_| {
+                                        format!("\"{raw_key}\"")
+                                    });
+                                let mut val =
+                                    self.serialize_node(cid, depth + 1);
+                                if val.starts_with(&ind) {
+                                    val = val[ind.len()..].to_string();
+                                }
+                                children_pairs.push((i, (key, val)));
+                            }
+                        }
+                    }
+                    let omitted =
+                        self.omitted_for(id, &it.kind, kept).unwrap_or(0);
+                    if kept == 0 && omitted == 0 {
+                        return "{}".to_string();
+                    }
+                    let ctx = ObjectCtx {
+                        children: children_pairs,
+                        children_len: kept,
+                        omitted,
+                        indent0: indent(depth, &cfg.indent_unit),
+                        indent1: ind,
+                        sp: cfg.space.clone(),
+                    };
+                    render_object(cfg.template, &ctx)
+                }
+                NodeKind::String => {
+                    // Strings are represented by the parent string node and a
+                    // sequence of synthetic children (one per grapheme) up to the
+                    // configured expansion cap. We count how many of those
+                    // synthetic children are kept (marked) and then slice the
+                    // prefix accordingly; if there are omitted graphemes, we add
+                    // an ellipsis.
+                    // Truncated? use children count to slice grapheme prefix
+                    let mut kept = 0usize;
+                    if let Some(kids) = self.pq.children_of.get(id) {
+                        for &cid in kids {
+                            if self.marks[cid] == self.mark_gen {
+                                kept += 1;
+                            }
+                        }
+                    }
+                    let omitted =
+                        self.omitted_for(id, &it.kind, kept).unwrap_or(0);
+                    let full = it.string_value.clone().unwrap_or_default();
+                    if omitted > 0 {
+                        let mut prefix = String::new();
+                        for (i, g) in
+                            UnicodeSegmentation::graphemes(full.as_str(), true)
+                                .enumerate()
+                        {
+                            if i >= kept {
+                                break;
+                            }
+                            prefix.push_str(g);
+                        }
+                        let truncated = format!("{prefix}…");
+                        serde_json::to_string(&truncated)
+                            .unwrap_or_else(|_| format!("\"{prefix}…\""))
+                    } else {
+                        serde_json::to_string(&full)
+                            .unwrap_or_else(|_| format!("\"{full}\""))
+                    }
+                }
+                NodeKind::Number => {
+                    if let Some(n) = it.number_value.as_ref() {
+                        if let Some(i) = n.as_i64() {
+                            return i.to_string();
+                        }
+                        if let Some(u) = n.as_u64() {
+                            return u.to_string();
+                        }
+                        if let Some(f) = n.as_f64() {
+                            if f == 0.0 {
+                                return "0.0".to_string();
+                            }
+                            return n.to_string();
+                        }
+                    }
+                    "0".to_string()
+                }
+                NodeKind::Bool => it.bool_value.map_or_else(
+                    || "false".to_string(),
+                    |b| {
+                        if b {
+                            "true".to_string()
+                        } else {
+                            "false".to_string()
+                        }
+                    },
+                ),
+                NodeKind::Null => "null".to_string(),
+            }
         }
     }
 
     let t_render = std::time::Instant::now();
-    let mut nodes_built = 0usize;
-    let mut max_depth = 0usize;
-    let out = serialize_node(
-        root_id,
-        order_build,
+    let mut scope = RenderScope {
+        pq: order_build,
         marks,
         mark_gen,
-        config,
-        0,
-        &mut nodes_built,
-        &mut max_depth,
-    );
+        cfg: config,
+        nodes_built: 0,
+        max_depth: 0,
+    };
+    let out = scope.serialize_node(root_id, 0);
     let render_ms = t_render.elapsed().as_millis();
     if profile {
         let total_ms = t_all_start.elapsed().as_millis();
         eprintln!(
-            "arena_render: mark={mark_ms}ms, render={render_ms}ms (nodes={nodes_built}, max_depth={max_depth}), total={total_ms}ms",
+            "arena_render: mark={mark_ms}ms, render={render_ms}ms (nodes={}, max_depth={}), total={total_ms}ms",
+            scope.nodes_built, scope.max_depth
         );
     }
     Ok(out)
