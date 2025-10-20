@@ -132,8 +132,8 @@ These changes cut priority‑order build time and per-probe build time substanti
 - `src/main.rs`: CLI argument parsing and I/O glue.
 - `src/lib.rs`: public API, orchestration, binary search over k.
 - `src/order.rs`: Priority order build, scoring, per-node metrics, and stable order assignment.
-- `src/tree.rs`: arena-backed serializer, inclusion marking, and omitted-count logic.
-- `src/render.rs`: code-based renderer with style switches for `json`, `pseudo`, and `js`.
+- `src/serialization/`: arena-backed serializer, inclusion marking, and omitted-count logic.
+- `src/templates/`: code-based renderer with style switches for `json`, `pseudo`, and `js`.
 - `tests/`: E2E snapshots, JSON conformance tests, and fixtures.
 - `JSONTestSuite/`: upstream test corpus used by the conformance tests.
 

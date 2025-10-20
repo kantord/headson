@@ -2,6 +2,7 @@ use anyhow::Result;
 
 mod order;
 mod search;
+mod serialization;
 mod stream_arena;
 mod templates;
 mod tree;
@@ -71,7 +72,7 @@ fn find_largest_render_under_budget(
     let mut best_str: Option<String> = None;
 
     let _ = crate::search::binary_search_max(lo, hi, |mid| {
-        let s = match crate::tree::render_arena_with_marks(
+        let s = match crate::serialization::render_arena_with_marks(
             order_build,
             mid,
             &mut marks,
