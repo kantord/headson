@@ -62,54 +62,65 @@ enum Template {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    let input_bytes = get_input(cli.input.as_ref())?;
+    let render_cfg = get_render_config_from(&cli);
+    let pq_cfg = get_priority_config_from(&cli);
+
+    let output =
+        headson::headson(input_bytes, &render_cfg, &pq_cfg, cli.budget)?;
+    println!("{}", output);
+
+    Ok(())
+}
+
+fn get_input(path: Option<&PathBuf>) -> Result<Vec<u8>> {
     // Read input either from a file path (pre-allocated) or from stdin (bytes).
-    let input_bytes: Vec<u8> = if let Some(path) = cli.input.as_ref() {
+    if let Some(path) = path {
         std::fs::read(path).with_context(|| {
             format!("failed to read input file: {}", path.display())
-        })?
+        })
     } else {
         let mut buf = Vec::new();
         io::stdin()
             .read_to_end(&mut buf)
             .context("failed to read from stdin")?;
-        buf
-    };
+        Ok(buf)
+    }
+}
 
+fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
     let template = match cli.template {
         Template::Json => headson::OutputTemplate::Json,
         Template::Pseudo => headson::OutputTemplate::Pseudo,
         Template::Js => headson::OutputTemplate::Js,
     };
-    let space = if cli.compact || cli.no_space {
-        "".to_string()
-    } else {
-        " ".to_string()
-    };
+    let space = if cli.compact || cli.no_space { "" } else { " " }.to_string();
     let newline = if cli.compact || cli.no_newline {
-        "".to_string()
+        ""
     } else {
-        "\n".to_string()
-    };
+        "\n"
+    }
+    .to_string();
     let indent_unit = if cli.compact {
-        "".to_string()
+        String::new()
     } else {
         cli.indent.clone()
     };
-    let config = headson::RenderConfig {
+
+    headson::RenderConfig {
         template,
         indent_unit,
         space,
         newline,
         profile: cli.profile,
-    };
+    }
+}
+
+fn get_priority_config_from(cli: &Cli) -> headson::PQConfig {
     // Derive a conservative per-array cap from the budget: an array of N items
     // minimally needs about 2*N characters (item plus comma) to fit. So cap at budget/2.
-    let pq_cfg = headson::PQConfig {
+    headson::PQConfig {
         max_string_graphemes: cli.string_cap,
         array_max_items: (cli.budget / 2).max(1),
-    };
-    let output = headson::headson(input_bytes, &config, &pq_cfg, cli.budget)?;
-    println!("{}", output);
-
-    Ok(())
+    }
 }
