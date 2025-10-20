@@ -19,6 +19,8 @@ struct Cli {
     indent: String,
     #[arg(long = "no-space", default_value_t = false)]
     no_space: bool,
+    #[arg(long = "no-newline", default_value_t = false, help = "Remove newlines in output (one-line)")]
+    no_newline: bool,
     #[arg(
         long = "profile",
         default_value_t = false,
@@ -71,10 +73,16 @@ fn main() -> Result<()> {
     } else {
         " ".to_string()
     };
+    let newline = if cli.no_newline {
+        "".to_string()
+    } else {
+        "\n".to_string()
+    };
     let config = headson::RenderConfig {
         template,
         indent_unit: cli.indent.clone(),
         space,
+        newline,
         profile: cli.profile,
     };
     // Derive a conservative per-array cap from the budget: an array of N items

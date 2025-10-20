@@ -22,6 +22,9 @@ pub struct RenderConfig {
     pub template: OutputTemplate,
     pub indent_unit: String,
     pub space: String,
+    // Newline sequence to use in final output (e.g., "\n" or "").
+    // Currently applied as a post-process replacement on the rendered string.
+    pub newline: String,
     pub profile: bool,
 }
 
@@ -66,6 +69,13 @@ pub fn headson(
             (t3 - t0).as_millis()
         );
     }
+    // Apply newline preference: allow replacing default "\n" with configured sequence
+    // (supports "" for one-line output).
+    let out = if config.newline != "\n" {
+        out.replace('\n', &config.newline)
+    } else {
+        out
+    };
     Ok(out)
 }
 

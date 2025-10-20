@@ -25,6 +25,7 @@ Flags:
 - `-f, --template <json|pseudo|js>`: output format/template.
 - `--indent <string>`: indentation unit (default: two spaces).
 - `--no-space`: remove the single space after `:` in objects. Arrays never add spaces after commas.
+- `--no-newline`: remove newlines from output (one-line rendering).
 - `--profile`: print timing breakdowns to stderr (parse, PQ build, probes; plus PQ internals).
 - `--string-cap <int>`: maximum graphemes to expand per string during PQ build (default: 500). Caps PQ work on long strings.
  - `--input <path>`: read JSON directly from a file instead of stdin.
@@ -66,6 +67,7 @@ Frontier PQ build (default): a best‑first traversal yields `ids_by_order` dire
 - `template: OutputTemplate` — one of `Json`, `Pseudo`, `Js`.
 - `indent_unit: String` — indent characters for each depth.
 - `space: String` — either `" "` or `""`; applied after colons in objects only.
+- `newline: String` — either `"\n"` or `""`; applied as a post-process replacement of default newlines.
 - `profile: bool` — enables stderr timing logs.
 
 Template semantics (in `templates/`):
