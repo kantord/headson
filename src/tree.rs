@@ -7,10 +7,40 @@ fn indent(depth: usize, unit: &str) -> String {
     unit.repeat(depth)
 }
 
-// Direct rendering from arena + marks, no TreeNode allocation.
-//
-// Marks use a generation counter: `marks[id] == mark_gen` means included.
-// This lets us reuse a single marks buffer across multiple probes without clearing.
+/// Render a budget-limited preview directly from the arena using inclusion marks.
+///
+/// How marks work
+/// - `marks` is a buffer indexed by node id. When `marks[id] == mark_gen`, that
+///   node is considered included for the current probe/render. Any other value
+///   means the node is excluded.
+/// - `mark_gen` is a monotonically increasing generation counter. Each probe
+///   increments it, so we can reuse the same `marks` vector without clearing it
+///   (an O(N) operation). Setting a node as included is just `marks[id] = mark_gen`.
+///
+/// Algorithm (two phases per probe)
+/// 1) Mark phase (O(k + ancestors)):
+///    - Take the first `k` node ids from `ids_by_order` (the global priority
+///      order previously built by `build_priority_order_from_arena`). Mark each
+///      of those nodes as included.
+///    - Walk up parent links to mark ancestors as included too. This guarantees
+///      tree integrity (no child appears without its parent in the output).
+/// 2) Serialize phase (O(kept_nodes)):
+///    - Starting from the root, traverse only into children whose ids are
+///      marked with the current `mark_gen`. Serialize each node according to
+///      the selected output style. For arrays/objects/strings, compute and print
+///      “omitted” counts using `NodeMetrics` (recorded during the order build)
+///      to indicate how many items/props/graphemes were not included.
+///
+/// Integration with search under a budget
+/// - Callers (see `find_largest_render_under_budget`) binary-search the `k`
+///   value to find the largest render that fits within the character budget.
+///   The generation-mark scheme makes repeated probes cheap because we avoid
+///   clearing marks and only render the currently included subset.
+///
+/// Notes
+/// - This function does not allocate a tree structure; it renders directly from
+///   the arena (`PriorityOrder` + `StreamArena`-derived structures), which keeps
+///   memory and CPU overhead low for repeated probes.
 pub fn render_arena_with_marks(
     order_build: &PriorityOrder,
     budget: usize,
@@ -23,11 +53,12 @@ pub fn render_arena_with_marks(
     if marks.len() < order_build.total_nodes {
         marks.resize(order_build.total_nodes, 0);
     }
-    // Mark included nodes (order_index < budget) and their ancestors using generation marks
+    // Phase 1: Mark the first `k` nodes (ids_by_order[..k]) and all their ancestors
+    // using the current generation counter.
     let t_mark = std::time::Instant::now();
     let mut stack: Vec<usize> = Vec::new();
     let k = budget.min(order_build.total_nodes);
-    // Mark first k nodes by order directly using ids_by_order (O(k))
+    // Mark first k nodes by order directly using ids_by_order (O(k)).
     for &id in order_build.ids_by_order.iter().take(k) {
         if marks[id] != mark_gen {
             marks[id] = mark_gen;
@@ -45,12 +76,14 @@ pub fn render_arena_with_marks(
     }
     let mark_ms = t_mark.elapsed().as_millis();
 
-    // Identify root (no parent)
+    // Identify root (node with no parent). There should be exactly one.
     let root_id = (0..order_build.total_nodes)
         .find(|&id| order_build.parent_of[id].is_none())
         .ok_or_else(|| anyhow::anyhow!("no root in queue"))?;
 
-    // Helpers for omitted counts
+    // Helpers for omitted counts: given a kept child count for arrays/objects
+    // or grapheme count for strings, use recorded metrics to compute what was
+    // not included and surface that in the output (e.g., "+N items").
     fn omitted_for(
         id: usize,
         kind: &NodeKind,
@@ -78,7 +111,8 @@ pub fn render_arena_with_marks(
         }
     }
 
-    // Recursive serialization straight from arena
+    // Phase 2: Recursive serialization straight from the arena. Descend only
+    // into children that are marked for this generation.
     #[allow(clippy::too_many_arguments)]
     fn serialize_node(
         id: usize,
@@ -97,7 +131,7 @@ pub fn render_arena_with_marks(
         let it = &pq.id_to_item[id];
         match it.kind {
             NodeKind::Array => {
-                // Collect kept children
+                // Collect kept children (only those whose ids are marked).
                 let mut children_pairs: Vec<(usize, String)> = Vec::new();
                 let mut kept = 0usize;
                 if let Some(kids) = pq.children_of.get(id) {
@@ -187,6 +221,12 @@ pub fn render_arena_with_marks(
                 render_object(cfg.template, &ctx)
             }
             NodeKind::String => {
+                // Strings are represented by the parent string node and a
+                // sequence of synthetic children (one per grapheme) up to the
+                // configured expansion cap. We count how many of those
+                // synthetic children are kept (marked) and then slice the
+                // prefix accordingly; if there are omitted graphemes, we add
+                // an ellipsis.
                 // Truncated? use children count to slice grapheme prefix
                 let mut kept = 0usize;
                 if let Some(kids) = pq.children_of.get(id) {
