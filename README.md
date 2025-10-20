@@ -94,7 +94,7 @@ Additional details:
 ## Testing
 
 - End-to-end snapshots (`tests/e2e.rs`, fixtures in `tests/e2e_inputs/`): run across all templates and budgets `10, 100, 250, 1000, 10000`.
-- JSON conformance suite (`JSONTestSuite/test_parsing/`, test driver in `tests/json_par_files.rs`):
+- JSON conformance suite (`JSONTestSuite/test_parsing/`, test driver in `tests/json_parse_files.rs`):
   - `y_*.json`: parse with serde, run `headson -f json -n 10000`, re-parse stdout as JSON and deep-compare equality.
   - `n_*.json`: serde rejects and CLI must fail with non-zero exit and non-empty stderr.
 - Unit snapshots for order and tree internals are in `src/snapshots/` and `tests/snapshots/`.
@@ -178,7 +178,7 @@ Tuning:
 - JSON template output is always valid JSON; when truncated, omitted entries/properties are simply not annotated in the JSON output (pseudo/js still show comments).
 - Budget semantics: `-n/--budget` constrains the rendered output length in bytes, not the number of nodes. Internally we binary-search k (a node count) to fit the byte-length budget. Non-ASCII characters count by bytes, not grapheme clusters.
 - Performance hotspots: parsing dominates on multi‑GB inputs (now using simd‑json’s serde bridge). Frontier PQ + caps keep PQ cost relatively small.
-- simd‑json serde differences: a few edge cases in the JSONTestSuite differ from serde_json (e.g., handling of certain malformed numbers and signed zeros). Tests skip these; see `tests/json_par_files.rs`.
+- simd‑json serde differences: a few edge cases in the JSONTestSuite differ from serde_json (e.g., handling of certain malformed numbers and signed zeros). Tests skip these; see `tests/json_parse_files.rs`.
 - Dependencies pruned: removed unused `priority-queue` crate.
  
 - Object key ordering follows `serde_json::Map` iteration order; stability can depend on the upstream map implementation and input.
