@@ -1,10 +1,37 @@
-use crate::order::{NodeKind, PriorityOrder};
+use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID};
 use crate::render::{ArrayCtx, ObjectCtx, render_array, render_object};
 use anyhow::Result;
 use unicode_segmentation::UnicodeSegmentation;
 
 fn indent(depth: usize, unit: &str) -> String {
     unit.repeat(depth)
+}
+
+// Helper: mark first k nodes by order and their ancestors; returns elapsed ms.
+fn mark_k_and_ancestors(
+    order_build: &PriorityOrder,
+    k: usize,
+    marks: &mut [u32],
+    mark_gen: u32,
+) -> u128 {
+    let t = std::time::Instant::now();
+    let mut stack: Vec<usize> = Vec::new();
+    for &id in order_build.ids_by_order.iter().take(k) {
+        if marks[id] != mark_gen {
+            marks[id] = mark_gen;
+            stack.push(id);
+        }
+    }
+    while let Some(id) = stack.pop() {
+        match order_build.parent_of[id] {
+            Some(parent) if marks[parent] != mark_gen => {
+                marks[parent] = mark_gen;
+                stack.push(parent);
+            }
+            _ => {}
+        }
+    }
+    t.elapsed().as_millis()
 }
 
 /// Render a budget-limited preview directly from the arena using inclusion marks.
@@ -55,31 +82,11 @@ pub fn render_arena_with_marks(
     }
     // Phase 1: Mark the first `k` nodes (ids_by_order[..k]) and all their ancestors
     // using the current generation counter.
-    let t_mark = std::time::Instant::now();
-    let mut stack: Vec<usize> = Vec::new();
     let k = budget.min(order_build.total_nodes);
-    // Mark first k nodes by order directly using ids_by_order (O(k)).
-    for &id in order_build.ids_by_order.iter().take(k) {
-        if marks[id] != mark_gen {
-            marks[id] = mark_gen;
-            stack.push(id);
-        }
-    }
-    while let Some(id) = stack.pop() {
-        match order_build.parent_of[id] {
-            Some(parent) if marks[parent] != mark_gen => {
-                marks[parent] = mark_gen;
-                stack.push(parent);
-            }
-            _ => {}
-        }
-    }
-    let mark_ms = t_mark.elapsed().as_millis();
+    let mark_ms = mark_k_and_ancestors(order_build, k, marks, mark_gen);
 
-    // Identify root (node with no parent). There should be exactly one.
-    let root_id = (0..order_build.total_nodes)
-        .find(|&id| order_build.parent_of[id].is_none())
-        .ok_or_else(|| anyhow::anyhow!("no root in queue"))?;
+    // Root PQ id is a fixed invariant (0).
+    let root_id = ROOT_PQ_ID;
 
     // Phase 2: Use a small scope struct to keep state and reduce parameter lists.
     struct RenderScope<'a> {

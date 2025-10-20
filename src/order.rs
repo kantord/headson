@@ -86,6 +86,8 @@ pub struct PriorityOrder {
     pub profile: BuildProfile,
 }
 
+pub const ROOT_PQ_ID: usize = 0;
+
 // No aliases; canonical names only
 
 // Frontier builder from streaming arena (Stage 2 adapter)
