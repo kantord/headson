@@ -57,23 +57,6 @@ pub struct NodeMetrics {
     pub string_truncated: bool,
 }
 
-#[derive(Default, Clone, Debug)]
-pub struct BuildProfile {
-    pub total_nodes: usize,
-    pub arrays: usize,
-    pub objects: usize,
-    pub strings: usize,
-    pub string_chars: usize,
-    pub walk_ms: u128,
-    // Extra diagnostics
-    pub arrays_items_total: usize,
-    pub objects_props_total: usize,
-    pub max_array_len: usize,
-    pub max_object_len: usize,
-    pub max_string_len: usize,
-    pub children_edges_total: usize,
-}
-
 #[derive(Clone, Debug)]
 pub struct PriorityOrder {
     pub metrics: Vec<NodeMetrics>,
@@ -83,7 +66,6 @@ pub struct PriorityOrder {
     pub order_index: Vec<usize>,       // order_index[id] = global order
     pub ids_by_order: Vec<usize>,      // ids sorted by ascending priority
     pub total_nodes: usize,
-    pub profile: BuildProfile,
 }
 
 pub const ROOT_PQ_ID: usize = 0;
@@ -124,7 +106,6 @@ pub fn build_priority_order_from_arena(
         }
     }
 
-    let mut stats = BuildProfile::default();
     let t_walk = std::time::Instant::now();
     let mut next_pq_id: usize = 0;
     let mut id_to_item: Vec<RankedNode> = Vec::new();
@@ -162,7 +143,7 @@ pub fn build_priority_order_from_arena(
         depth: 0,
         arena_node: Some(root_ar),
     }));
-    stats.total_nodes += 1;
+    // root counted implicitly via next_pq_id
 
     // Safety cap to prevent runaway expansion on adversarial inputs.
     // Large enough to exceed any realistic budget while keeping memory bounded.
@@ -178,7 +159,7 @@ pub fn build_priority_order_from_arena(
         metrics: &'a mut Vec<NodeMetrics>,
         id_to_item: &'a mut Vec<RankedNode>,
         heap: &'a mut BinaryHeap<Reverse<Entry>>,
-        stats: &'a mut BuildProfile,
+        // profiling/diagnostic counters removed
         safety_cap: usize,
     }
 
@@ -188,11 +169,6 @@ pub fn build_priority_order_from_arena(
                 .array_len
                 .unwrap_or(self.arena.nodes[ar_id].children_len);
             self.metrics[id].array_len = Some(alen);
-            self.stats.arrays += 1;
-            self.stats.arrays_items_total += alen;
-            if alen > self.stats.max_array_len {
-                self.stats.max_array_len = alen;
-            }
         }
 
         fn record_object_metrics(&mut self, id: usize, ar_id: usize) {
@@ -200,15 +176,9 @@ pub fn build_priority_order_from_arena(
                 .object_len
                 .unwrap_or(self.arena.nodes[ar_id].children_len);
             self.metrics[id].object_len = Some(olen);
-            self.stats.objects += 1;
-            self.stats.objects_props_total += olen;
-            if olen > self.stats.max_object_len {
-                self.stats.max_object_len = olen;
-            }
         }
 
         fn record_string_metrics(&mut self, id: usize) {
-            self.stats.strings += 1;
             let s = self.id_to_item[id].string_value.as_deref().unwrap_or("");
             let mut iter = UnicodeSegmentation::graphemes(s, true);
             let count =
@@ -216,10 +186,6 @@ pub fn build_priority_order_from_arena(
             self.metrics[id].string_len = Some(count);
             if iter.next().is_some() {
                 self.metrics[id].string_truncated = true;
-            }
-            self.stats.string_chars += count;
-            if count > self.stats.max_string_len {
-                self.stats.max_string_len = count;
             }
         }
 
@@ -272,7 +238,6 @@ pub fn build_priority_order_from_arena(
                     depth: entry.depth + 1,
                     arena_node: Some(child_ar),
                 }));
-                self.stats.total_nodes += 1;
                 if *self.next_pq_id >= self.safety_cap {
                     break;
                 }
@@ -319,7 +284,6 @@ pub fn build_priority_order_from_arena(
                     depth: entry.depth + 1,
                     arena_node: Some(child_ar),
                 }));
-                self.stats.total_nodes += 1;
                 if *self.next_pq_id >= self.safety_cap {
                     break;
                 }
@@ -368,7 +332,6 @@ pub fn build_priority_order_from_arena(
                     depth: entry.depth + 1,
                     arena_node: None,
                 }));
-                self.stats.total_nodes += 1;
                 if *self.next_pq_id >= self.safety_cap {
                     break;
                 }
@@ -422,7 +385,6 @@ pub fn build_priority_order_from_arena(
             metrics: &mut metrics,
             id_to_item: &mut id_to_item,
             heap: &mut heap,
-            stats: &mut stats,
             safety_cap,
         };
         scope.process_entry(&entry, &mut ids_by_order);
@@ -431,7 +393,7 @@ pub fn build_priority_order_from_arena(
         }
     }
 
-    stats.walk_ms = t_walk.elapsed().as_millis();
+    let _walk_ms = t_walk.elapsed().as_millis();
     let total = next_pq_id;
     let mut order_index: Vec<usize> = vec![usize::MAX; total];
     for (idx, &pid) in ids_by_order.iter().enumerate() {
@@ -439,7 +401,6 @@ pub fn build_priority_order_from_arena(
             order_index[pid] = idx;
         }
     }
-    stats.children_edges_total = children_of.iter().map(Vec::len).sum();
 
     Ok(PriorityOrder {
         metrics,
@@ -449,7 +410,6 @@ pub fn build_priority_order_from_arena(
         order_index,
         ids_by_order,
         total_nodes: total,
-        profile: stats,
     })
 }
 

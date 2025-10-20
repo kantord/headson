@@ -34,12 +34,6 @@ struct Cli {
     )]
     compact: bool,
     #[arg(
-        long = "profile",
-        default_value_t = false,
-        help = "Print timing breakdown to stderr"
-    )]
-    profile: bool,
-    #[arg(
         long = "string-cap",
         default_value_t = 500,
         help = "Maximum graphemes to expand per string in PQ build"
@@ -112,7 +106,6 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         indent_unit,
         space,
         newline,
-        profile: cli.profile,
     }
 }
 

@@ -9,7 +9,7 @@ This README documents the actual behavior verified in the repository, the overal
 - Pipeline: parse_json (simd-json via serde bridge) → build_priority_order → binary search best k → render directly from arena with a code-based renderer.
 - Output formats: `json`, `pseudo`, `js` (selected via a style switch in the renderer).
 - Truncation is driven by a binary search over the number of included nodes; a render that fits within the given output-size budget is selected.
-- Profiling (`--profile`) prints timings to stderr for parse, priority-order build, and probes, plus internal stats.
+ 
 
 ## CLI
 
@@ -27,7 +27,6 @@ Flags:
 - `--no-space`: remove the single space after `:` in objects. Arrays never add spaces after commas.
 - `--no-newline`: remove newlines from output (one-line rendering).
 - `-m, --compact`: compact output (no indentation, no spaces after colons, no newlines). Conflicts with `--indent`, `--no-space`, and `--no-newline`.
-- `--profile`: print timing breakdowns to stderr (parse, priority-order build, probes; plus internals).
 - `--string-cap <int>`: maximum graphemes to expand per string during priority-order build (default: 500). Caps work on long strings.
  - `--input <path>`: read JSON directly from a file instead of stdin.
 
@@ -69,7 +68,7 @@ Frontier priority-order build (default): a best‑first traversal yields `ids_by
 - `indent_unit: String` — indent characters for each depth.
 - `space: String` — either `" "` or `""`; applied after colons in objects only.
 - `newline: String` — either `"\n"` or `""`; applied as a post-process replacement of default newlines.
-- `profile: bool` — enables stderr timing logs.
+ 
 
 Rendering semantics by style:
 
@@ -101,12 +100,7 @@ Additional details:
 
 Run tests: `cargo test`.
 
-## Performance and Profiling
-
-Enable profiling with `--profile` to print timings to stderr, e.g.:
-
-- Order build breakdown: `walk` (including string grapheme enumeration) and `maps` (arena builds).
-- Overall timings: `parse`, `order`, `search+render`, and `total`.
+## Performance
 
 Observed characteristics and current hotspots:
 
@@ -136,7 +130,7 @@ These changes cut priority‑order build time and per-probe build time substanti
 ## Repository Layout
 
 - `src/main.rs`: CLI argument parsing and I/O glue.
-- `src/lib.rs`: public API, orchestration, binary search over k, and profiling output.
+- `src/lib.rs`: public API, orchestration, binary search over k.
 - `src/order.rs`: Priority order build, scoring, per-node metrics, and stable order assignment.
 - `src/tree.rs`: arena-backed serializer, inclusion marking, and omitted-count logic.
 - `src/render.rs`: code-based renderer with style switches for `json`, `pseudo`, and `js`.

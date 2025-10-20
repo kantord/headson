@@ -48,7 +48,7 @@ for scale in "${SCALES[@]}"; do
     --runs "$RUNS" \
     --export-json "$OUT_PIPE_JSON" \
     --parameter-list n "$BUDGETS_STR" \
-    "target/release/examples/genfixture --count $COUNT --seed $GEN_SEED | target/release/headson --profile -n {n} -f $TEMPLATE > /dev/null"
+    "target/release/examples/genfixture --count $COUNT --seed $GEN_SEED | target/release/headson -n {n} -f $TEMPLATE > /dev/null"
 
   # 2) File scenario
   echo "Generating file fixture ($COUNT items) at $EX_FILE ..."
@@ -66,7 +66,7 @@ for scale in "${SCALES[@]}"; do
     --runs "$RUNS" \
     --export-json "$OUT_FILE_JSON" \
     --parameter-list n "$BUDGETS_STR" \
-    'target/release/headson --profile --input '"$EX_FILE"' -n {n} -f '"$TEMPLATE"''
+    'target/release/headson --input '"$EX_FILE"' -n {n} -f '"$TEMPLATE"''
 
   # 3) Generator-only and write-only
   OUT_GEN_JSON="$OUT_DIR/bench_gen_${COUNT}_${STAMP}.json"

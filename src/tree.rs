@@ -47,12 +47,10 @@ fn mark_k_and_ancestors(
     k: usize,
     marks: &mut [u32],
     mark_gen: u32,
-) -> u128 {
-    let t = std::time::Instant::now();
+) {
     let mut stack: Vec<usize> = Vec::new();
     push_first_k(order_build, k, marks, mark_gen, &mut stack);
     mark_ancestors(order_build, marks, mark_gen, &mut stack);
-    t.elapsed().as_millis()
 }
 
 /// Render a budget-limited preview directly from the arena using inclusion marks.
@@ -95,16 +93,14 @@ pub fn render_arena_with_marks(
     marks: &mut Vec<u32>,
     mark_gen: u32,
     config: &crate::RenderConfig,
-    profile: bool,
 ) -> Result<String> {
-    let t_all_start = std::time::Instant::now();
     if marks.len() < order_build.total_nodes {
         marks.resize(order_build.total_nodes, 0);
     }
     // Phase 1: Mark the first `k` nodes (ids_by_order[..k]) and all their ancestors
     // using the current generation counter.
     let k = budget.min(order_build.total_nodes);
-    let mark_ms = mark_k_and_ancestors(order_build, k, marks, mark_gen);
+    mark_k_and_ancestors(order_build, k, marks, mark_gen);
 
     // Root PQ id is a fixed invariant (0).
     let root_id = ROOT_PQ_ID;
@@ -331,7 +327,6 @@ pub fn render_arena_with_marks(
         }
     }
 
-    let t_render = std::time::Instant::now();
     let mut scope = RenderScope {
         pq: order_build,
         marks,
@@ -341,14 +336,6 @@ pub fn render_arena_with_marks(
         max_depth: 0,
     };
     let out = scope.serialize_node(root_id, 0);
-    let render_ms = t_render.elapsed().as_millis();
-    if profile {
-        let total_ms = t_all_start.elapsed().as_millis();
-        eprintln!(
-            "arena_render: mark={mark_ms}ms, render={render_ms}ms (nodes={}, max_depth={}), total={total_ms}ms",
-            scope.nodes_built, scope.max_depth
-        );
-    }
     Ok(out)
 }
 
@@ -380,9 +367,7 @@ mod tests {
                 indent_unit: "  ".to_string(),
                 space: " ".to_string(),
                 newline: "\n".to_string(),
-                profile: false,
             },
-            false,
         )
         .unwrap();
         assert_snapshot!("arena_render_empty", out);
@@ -411,9 +396,7 @@ mod tests {
                 indent_unit: "  ".to_string(),
                 space: " ".to_string(),
                 newline: "\n".to_string(),
-                profile: false,
             },
-            false,
         )
         .unwrap();
         assert_snapshot!("arena_render_single", out);
