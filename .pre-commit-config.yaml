@@ -1,6 +1,12 @@
 repos:
   - repo: local
     hooks:
+      - id: clippy
+        name: clippy (cognitive complexity)
+        entry: bash -lc 'cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::cognitive_complexity'
+        language: system
+        types: [rust]
+        pass_filenames: false
       - id: rustfmt
         name: rustfmt (check)
         entry: cargo fmt --all -- --check

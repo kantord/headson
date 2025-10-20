@@ -188,28 +188,35 @@ Tuning:
 - Build from source: `cargo build --release`.
 - Run: `cat input.json | target/release/headson [flags]`.
 
-## Pre-commit Hooks (Formatting)
+## Pre-commit Hooks (Formatting & Linting)
 
-This repo ships a pre-commit configuration to enforce Rust formatting on commits.
+This repo ships a pre-commit configuration to enforce Rust formatting and Clippy lint checks (cognitive complexity) on commits.
 
 Setup:
 
 - Ensure rustfmt is installed: `rustup component add rustfmt`
+- Ensure clippy is installed: `rustup component add clippy`
 - Install pre-commit (Python): `pip install pre-commit`
 - Install the Git hook in this repo: `pre-commit install`
 
 What it does:
 
+- Runs `cargo clippy` with cognitive complexity enabled and treats warnings as errors:
+  - `cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::cognitive_complexity`
+  - The threshold is configured in `.clippy.toml` (`cognitive-complexity-threshold = 24`).
 - Runs `cargo fmt --all -- --check` before each commit and blocks if formatting differs.
 
-Manual formatting:
+Manual runs:
 
-- Auto-fix via pre-commit (manual stage):
+- Auto-fix formatting via pre-commit (manual stage):
   - `pre-commit run rustfmt-fix --all-files --hook-stage manual`
+- Run clippy across the workspace:
+  - `pre-commit run clippy --all-files`
 - Run the check across the repo:
   - `pre-commit run rustfmt --all-files`
 - Or run directly with Cargo:
   - `cargo fmt --all`
+  - `cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::cognitive_complexity`
 
 Notes:
 - The fix hook is configured with `stages: [manual]`, so it only runs when invoked with `--hook-stage manual`.
