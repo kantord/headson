@@ -31,56 +31,57 @@ fn is_n(path: &Path) -> bool {
 
 test_each_path! { in "JSONTestSuite/test_parsing" => jsonsuite_case }
 
+fn file_name_str(path: &Path) -> Option<&str> {
+    path.file_name().and_then(|s| s.to_str())
+}
+
+fn is_json_file(path: &Path) -> bool {
+    path.extension().map(|e| e == "json").unwrap_or(false)
+}
+
+fn should_skip_case(path: &Path) -> bool {
+    match file_name_str(path) {
+        // Known simd-json serde differences; see README.
+        Some("n_multidigit_number_then_00.json") => true,
+        // serde_json may keep -0.0 as float while ours yields integer 0; skip these positives.
+        Some("y_number_minus_zero.json")
+        | Some("y_number_negative_zero.json") => true,
+        _ => false,
+    }
+}
+
+fn verify_positive(path: &Path, input: &[u8]) {
+    let original: Value = serde_json::from_slice(input).expect("serde accept");
+    let (ok, out, _err) = run_cli(input);
+    assert!(ok, "cli should succeed: {}", path.display());
+    let reparsed: Value =
+        serde_json::from_slice(&out).expect("cli output valid json");
+    assert_eq!(original, reparsed, "roundtrip mismatch: {}", path.display());
+}
+
+fn verify_negative(path: &Path, input: &[u8]) {
+    assert!(
+        serde_json::from_slice::<Value>(input).is_err(),
+        "serde should reject: {}",
+        path.display()
+    );
+    let (ok, _out, err) = run_cli(input);
+    assert!(!ok, "cli should fail: {}", path.display());
+    assert!(
+        !String::from_utf8_lossy(&err).trim().is_empty(),
+        "stderr non-empty: {}",
+        path.display()
+    );
+}
+
 fn jsonsuite_case(path: &Path) {
-    if !path.extension().map(|e| e == "json").unwrap_or(false) {
+    if !is_json_file(path) || should_skip_case(path) {
         return;
     }
-
-    // Known simd-json serde differences: skip specific negatives that serde_json rejects
-    // but simd-json (serde bridge) may accept. We document this in README.
-    if matches!(
-        path.file_name().and_then(|s| s.to_str()),
-        Some(name) if name == "n_multidigit_number_then_00.json"
-    ) {
-        return;
-    }
-
     let input = fs::read(path).expect("read");
-
     if is_y(path) {
-        if matches!(
-            path.file_name().and_then(|s| s.to_str()),
-            Some(name)
-                if name == "y_number_minus_zero.json"
-                    || name == "y_number_negative_zero.json"
-        ) {
-            // serde_json (original) may keep -0.0 as float while our parser yields integer 0; skip these two.
-            return;
-        }
-        let original: Value =
-            serde_json::from_slice(&input).expect("serde accept");
-        let (ok, out, _err) = run_cli(&input);
-        assert!(ok, "cli should succeed: {}", path.display());
-        let reparsed: Value =
-            serde_json::from_slice(&out).expect("cli output valid json");
-        assert_eq!(
-            original,
-            reparsed,
-            "roundtrip mismatch: {}",
-            path.display()
-        );
+        verify_positive(path, &input);
     } else if is_n(path) {
-        assert!(
-            serde_json::from_slice::<Value>(&input).is_err(),
-            "serde should reject: {}",
-            path.display()
-        );
-        let (ok, _out, err) = run_cli(&input);
-        assert!(!ok, "cli should fail: {}", path.display());
-        assert!(
-            !String::from_utf8_lossy(&err).trim().is_empty(),
-            "stderr non-empty: {}",
-            path.display()
-        );
+        verify_negative(path, &input);
     }
 }
