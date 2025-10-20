@@ -4,6 +4,7 @@ mod queue;
 mod render;
 mod stream_arena;
 mod tree;
+mod search;
 pub use queue::{
     NodeId, NodeKind, PQBuild, PQConfig, ParentId, QueueItem,
     build_priority_queue_from_arena,
@@ -38,7 +39,7 @@ pub fn headson(
     let t1 = std::time::Instant::now();
     let pq_build = queue::build_priority_queue_from_arena(&arena, pq_cfg)?;
     let t2 = std::time::Instant::now();
-    let out = best_render_under_char_budget(&pq_build, config, budget)?;
+    let out = find_largest_render_under_budget(&pq_build, config, budget)?;
     let t3 = std::time::Instant::now();
     if do_prof {
         let p = &pq_build.profile;
@@ -68,51 +69,50 @@ pub fn headson(
     Ok(out)
 }
 
-fn best_render_under_char_budget(
+fn find_largest_render_under_budget(
     pq_build: &PQBuild,
     config: &RenderConfig,
     char_budget: usize,
 ) -> Result<String> {
-    // Binary search the largest k in [1, total] whose render fits into char_budget
+    // Binary search the largest k in [1, total] whose render
+    // fits within `char_budget`.
     let total = pq_build.total_nodes;
-    if total == 0 {
+    if total == 0 || char_budget == 0 {
         return Ok(String::new());
     }
-    if char_budget == 0 {
-        return Ok(String::new());
-    }
-    let mut lo = 1usize;
-    // Each included node contributes at least some output; cap upper bound by budget.
-    let mut hi = total.min(char_budget.max(1));
-    let mut best: Option<String> = None;
+    // Each included node contributes at least some output; cap hi by budget.
+    let lo = 1usize;
+    let hi = total.min(char_budget.max(1));
     let do_prof = config.profile;
     // Reusable inclusion marks to avoid clearing per probe
     let mut marks: Vec<u32> = vec![0; total];
     let mut mark_gen: u32 = 1;
+    let mut best_str: Option<String> = None;
 
-    while lo <= hi {
-        let mid = lo + (hi - lo) / 2;
+    let _ = crate::search::binary_search_max(lo, hi, |mid| {
         let t_render = std::time::Instant::now();
-        let s = crate::tree::render_arena_with_marks(
+        let s = match crate::tree::render_arena_with_marks(
             pq_build, mid, &mut marks, mark_gen, config, do_prof,
-        )?;
-        let t_end = std::time::Instant::now();
-        mark_gen = mark_gen.wrapping_add(1).max(1); // avoid 0 sentinel and handle wrap
+        ) {
+            Ok(v) => v,
+            Err(_) => return false,
+        };
+        mark_gen = mark_gen.wrapping_add(1).max(1);
         if do_prof {
             eprintln!(
                 "probe k={}, render_ms={}, size={}",
                 mid,
-                (t_end - t_render).as_millis(),
+                t_render.elapsed().as_millis(),
                 s.len()
             );
         }
         if s.len() <= char_budget {
-            best = Some(s);
-            lo = mid + 1;
+            best_str = Some(s);
+            true
         } else {
-            hi = mid.saturating_sub(1);
+            false
         }
-    }
+    });
 
-    Ok(best.unwrap_or_default())
+    Ok(best_str.unwrap_or_default())
 }
