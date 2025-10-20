@@ -6,8 +6,8 @@ This README documents the actual behavior verified in the repository, the overal
 
 ## Overview
 
-- Pipeline: parse_json (simd-json via serde bridge) → build_priority_order → binary search best k → render directly from arena (Askama templates).
-- Output formats (Askama templates in `templates/`): `json`, `pseudo`, `js`.
+- Pipeline: parse_json (simd-json via serde bridge) → build_priority_order → binary search best k → render directly from arena with a code-based renderer.
+- Output formats: `json`, `pseudo`, `js` (selected via a style switch in the renderer).
 - Truncation is driven by a binary search over the number of included nodes; a render that fits within the given output-size budget is selected.
 - Profiling (`--profile`) prints timings to stderr for parse, priority-order build, and probes, plus internal stats.
 
@@ -44,7 +44,7 @@ High-level flow:
 2) Priority order build (frontier): best‑first (min‑heap) expansion by cumulative score; builds just enough nodes for probing (no global full‑build/sort). Per‑node metrics capture sizes/truncation flags.
 3) Node selection by binary search: search k ∈ [1, total_nodes] for the largest k that renders within the output-size budget.
 4) Inclusion marking: include nodes with `order_index < k` plus their full ancestor closure; compute omitted counts using original sizes.
-5) Render: arena-backed serializer delegates arrays/objects to Askama templates and handles string truncation.
+5) Render: arena-backed serializer writes arrays/objects with a small style strategy and handles string truncation.
 
 ### Priority Order and Scoring
 
@@ -71,7 +71,7 @@ Frontier priority-order build (default): a best‑first traversal yields `ids_by
 - `newline: String` — either `"\n"` or `""`; applied as a post-process replacement of default newlines.
 - `profile: bool` — enables stderr timing logs.
 
-Template semantics (in `templates/`):
+Rendering semantics by style:
 
 - `json`:
   - Always valid JSON when nothing is omitted (i.e., budget large enough). Empty containers render as `[]` / `{}` compactly.
@@ -139,8 +139,7 @@ These changes cut priority‑order build time and per-probe build time substanti
 - `src/lib.rs`: public API, orchestration, binary search over k, and profiling output.
 - `src/order.rs`: Priority order build, scoring, per-node metrics, and stable order assignment.
 - `src/tree.rs`: arena-backed serializer, inclusion marking, and omitted-count logic.
-- `src/render.rs`: Askama templates bindings and rendering helpers.
-- `templates/`: Askama templates for `json`, `pseudo`, and `js`.
+- `src/render.rs`: code-based renderer with style switches for `json`, `pseudo`, and `js`.
 - `tests/`: E2E snapshots, JSON conformance tests, and fixtures.
 - `JSONTestSuite/`: upstream test corpus used by the conformance tests.
 
