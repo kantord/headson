@@ -281,12 +281,12 @@ mod tests {
     fn arena_render_empty_array() {
         let arena = crate::stream_arena::build_stream_arena(
             "[]",
-            &crate::PriorityConfig::default(),
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
         let build = crate::build_priority_order_from_arena(
             &arena,
-            &crate::PriorityConfig::default(),
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
         let mut marks = vec![0u32; build.total_nodes];
@@ -312,12 +312,12 @@ mod tests {
     fn arena_render_single_string_array() {
         let arena = crate::stream_arena::build_stream_arena(
             "[\"ab\"]",
-            &crate::PriorityConfig::default(),
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
         let build = crate::build_priority_order_from_arena(
             &arena,
-            &crate::PriorityConfig::default(),
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
         let mut marks = vec![0u32; build.total_nodes];

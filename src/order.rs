@@ -1,6 +1,5 @@
 use anyhow::Result;
 use unicode_segmentation::UnicodeSegmentation;
-const MAX_STRING_ENUM: usize = 500;
 
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -11,11 +10,11 @@ pub struct PriorityConfig {
     pub array_max_items: usize,
 }
 
-impl Default for PriorityConfig {
-    fn default() -> Self {
+impl PriorityConfig {
+    pub fn new(max_string_graphemes: usize, array_max_items: usize) -> Self {
         Self {
-            max_string_graphemes: MAX_STRING_ENUM,
-            array_max_items: usize::MAX,
+            max_string_graphemes,
+            array_max_items,
         }
     }
 }
@@ -407,12 +406,12 @@ mod tests {
     fn order_empty_array() {
         let arena = crate::stream_arena::build_stream_arena(
             "[]",
-            &PriorityConfig::default(),
+            &PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
         let build = build_priority_order_from_arena(
             &arena,
-            &PriorityConfig::default(),
+            &PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
         let mut items_sorted: Vec<_> = build.id_to_item.clone();
@@ -434,12 +433,12 @@ mod tests {
     fn order_single_string_array() {
         let arena = crate::stream_arena::build_stream_arena(
             "[\"ab\"]",
-            &PriorityConfig::default(),
+            &PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
         let build = build_priority_order_from_arena(
             &arena,
-            &PriorityConfig::default(),
+            &PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
         let mut items_sorted: Vec<_> = build.id_to_item.clone();
