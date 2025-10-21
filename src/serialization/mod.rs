@@ -2,7 +2,6 @@ use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID};
 pub mod templates;
 pub mod types;
 use self::templates::{ArrayCtx, ObjectCtx, render_array, render_object};
-use unicode_segmentation::UnicodeSegmentation;
 
 fn indent(depth: usize, unit: &str) -> String {
     unit.repeat(depth)
@@ -36,17 +35,6 @@ impl<'a> RenderScope<'a> {
         } else {
             0
         }
-    }
-
-    fn take_graphemes_prefix(full: &str, kept: usize) -> String {
-        let mut prefix = String::new();
-        for (i, g) in UnicodeSegmentation::graphemes(full, true).enumerate() {
-            if i >= kept {
-                break;
-            }
-            prefix.push_str(g);
-        }
-        prefix
     }
 
     fn omitted_for_string(&self, id: usize, kept: usize) -> Option<usize> {
@@ -145,13 +133,11 @@ impl<'a> RenderScope<'a> {
         let omitted = self.omitted_for(id, &node.kind, kept).unwrap_or(0);
         let full = node.string_value.clone().unwrap_or_default();
         if omitted == 0 {
-            return serde_json::to_string(&full)
-                .unwrap_or_else(|_| format!("\"{full}\""));
+            return crate::utils::json::json_string(&full);
         }
-        let prefix = Self::take_graphemes_prefix(full.as_str(), kept);
+        let prefix = crate::utils::text::take_n_graphemes(full.as_str(), kept);
         let truncated = format!("{prefix}…");
-        serde_json::to_string(&truncated)
-            .unwrap_or_else(|_| format!("\"{prefix}…\""))
+        crate::utils::json::json_string(&truncated)
     }
 
     fn serialize_number(&self, id: usize) -> String {
@@ -247,8 +233,7 @@ impl<'a> RenderScope<'a> {
                 kept += 1;
                 let child = &self.pq.id_to_item[child_id];
                 let raw_key = child.key_in_object.clone().unwrap_or_default();
-                let key = serde_json::to_string(&raw_key)
-                    .unwrap_or_else(|_| format!("\"{raw_key}\""));
+                let key = crate::utils::json::json_string(&raw_key);
                 let val = self.serialize_node(child_id, depth + 1, true);
                 children_pairs.push((i, (key, val)));
             }
@@ -258,47 +243,7 @@ impl<'a> RenderScope<'a> {
 }
 
 // Helper: mark first k nodes by order and their ancestors
-fn push_first_k(
-    order_build: &PriorityOrder,
-    k: usize,
-    marks: &mut [u32],
-    mark_gen: u32,
-    stack: &mut Vec<usize>,
-) {
-    for &id in order_build.ids_by_order.iter().take(k) {
-        if marks[id] != mark_gen {
-            marks[id] = mark_gen;
-            stack.push(id);
-        }
-    }
-}
-
-fn mark_ancestors(
-    order_build: &PriorityOrder,
-    marks: &mut [u32],
-    mark_gen: u32,
-    stack: &mut Vec<usize>,
-) {
-    while let Some(id) = stack.pop() {
-        if let Some(parent) = order_build.parent_of[id] {
-            if marks[parent] != mark_gen {
-                marks[parent] = mark_gen;
-                stack.push(parent);
-            }
-        }
-    }
-}
-
-fn mark_k_and_ancestors(
-    order_build: &PriorityOrder,
-    k: usize,
-    marks: &mut [u32],
-    mark_gen: u32,
-) {
-    let mut stack: Vec<usize> = Vec::new();
-    push_first_k(order_build, k, marks, mark_gen, &mut stack);
-    mark_ancestors(order_build, marks, mark_gen, &mut stack);
-}
+// Ancestor marking moved to utils::graph
 
 /// Render a budget-limited preview directly from the arena using inclusion marks.
 pub fn render_arena_with_marks(
@@ -313,7 +258,12 @@ pub fn render_arena_with_marks(
     }
     // Phase 1: Mark the first `k` nodes (ids_by_order[..k]) and all their ancestors
     let k = budget.min(order_build.total_nodes);
-    mark_k_and_ancestors(order_build, k, marks, mark_gen);
+    crate::utils::graph::mark_top_k_and_ancestors(
+        order_build,
+        k,
+        marks,
+        mark_gen,
+    );
 
     // Root PQ id is a fixed invariant (0).
     let root_id = ROOT_PQ_ID;

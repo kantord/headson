@@ -209,7 +209,9 @@ impl<'a> Scope<'a> {
                 depth: entry.depth + 1,
                 index_in_array: Some(i),
                 key_in_object: None,
-                priority: clamp_score(score),
+                priority: crate::utils::num::saturating_cast_u128_to_usize(
+                    score,
+                ),
                 number_value: child_node.number_value.clone(),
                 bool_value: child_node.bool_value,
                 string_value: child_node.string_value.clone(),
@@ -255,7 +257,9 @@ impl<'a> Scope<'a> {
                 depth: entry.depth + 1,
                 index_in_array: None,
                 key_in_object: Some(key.clone()),
-                priority: clamp_score(score),
+                priority: crate::utils::num::saturating_cast_u128_to_usize(
+                    score,
+                ),
                 number_value: child_node.number_value.clone(),
                 bool_value: child_node.bool_value,
                 string_value: child_node.string_value.clone(),
@@ -306,7 +310,9 @@ impl<'a> Scope<'a> {
                 depth: entry.depth + 1,
                 index_in_array: Some(i),
                 key_in_object: None,
-                priority: clamp_score(score),
+                priority: crate::utils::num::saturating_cast_u128_to_usize(
+                    score,
+                ),
                 number_value: None,
                 bool_value: None,
                 string_value: None,
@@ -350,14 +356,6 @@ impl<'a> Scope<'a> {
     }
 }
 
-fn clamp_score(score: u128) -> usize {
-    if score > usize::MAX as u128 {
-        usize::MAX
-    } else {
-        score as usize
-    }
-}
-
 pub fn build_priority_order_from_arena(
     arena: &StreamArena,
     config: &PriorityConfig,
@@ -387,7 +385,9 @@ pub fn build_priority_order_from_arena(
         depth: 0,
         index_in_array: None,
         key_in_object: None,
-        priority: clamp_score(ROOT_BASE_SCORE),
+        priority: crate::utils::num::saturating_cast_u128_to_usize(
+            ROOT_BASE_SCORE,
+        ),
         number_value: n.number_value.clone(),
         bool_value: n.bool_value,
         string_value: n.string_value.clone(),
