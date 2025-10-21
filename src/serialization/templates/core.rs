@@ -1,6 +1,10 @@
 use super::super::indent;
 use super::{ArrayCtx, ObjectCtx};
 
+// Shared rendering core for all templates.
+// - Style controls only empty/omitted decorations.
+// - Indentation and newlines come from ctx (depth, indent_unit, newline).
+// - When ctx.inline_open is true, no leading indent is emitted before the opener.
 pub trait Style {
     fn array_empty(open_indent: &str, ctx: &ArrayCtx) -> String;
     fn array_push_omitted(_out: &mut String, _ctx: &ArrayCtx) {}
@@ -33,6 +37,7 @@ fn push_object_items(out: &mut String, ctx: &ObjectCtx) {
     }
 }
 
+// Render an array using the shared control flow and style-specific decorations.
 pub fn render_array_with<S: Style>(ctx: &ArrayCtx) -> String {
     let base = indent(ctx.depth, &ctx.indent_unit);
     let open_indent = if ctx.inline_open { "" } else { &base };
@@ -50,6 +55,7 @@ pub fn render_array_with<S: Style>(ctx: &ArrayCtx) -> String {
     out
 }
 
+// Render an object using the shared control flow and style-specific decorations.
 pub fn render_object_with<S: Style>(ctx: &ObjectCtx) -> String {
     let base = indent(ctx.depth, &ctx.indent_unit);
     let open_indent = if ctx.inline_open { "" } else { &base };
