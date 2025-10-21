@@ -4,7 +4,14 @@
     clippy::print_stdout,
     clippy::print_stderr
 )]
-#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+#![cfg_attr(
+    test,
+    allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        reason = "tests may use unwrap/expect for brevity"
+    )
+)]
 
 use anyhow::Result;
 

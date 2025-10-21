@@ -4,9 +4,8 @@ pub fn render_array(ctx: &ArrayCtx) -> String {
     if ctx.children_len == 0 {
         if ctx.omitted > 0 {
             return format!("{}[ … ]", ctx.indent0);
-        } else {
-            return format!("{}[]", ctx.indent0);
         }
+        return format!("{}[]", ctx.indent0);
     }
     let mut out = String::new();
     out.push_str(&ctx.indent0);
@@ -32,9 +31,8 @@ pub fn render_object(ctx: &ObjectCtx) -> String {
     if ctx.children_len == 0 {
         if ctx.omitted > 0 {
             return format!("{}{{{}…{}}}", ctx.indent0, ctx.sp, ctx.sp);
-        } else {
-            return format!("{}{}", ctx.indent0, "{}");
         }
+        return format!("{}{}", ctx.indent0, "{}");
     }
     let mut out = String::new();
     out.push_str(&ctx.indent0);

@@ -1,13 +1,13 @@
 use assert_cmd::{Command, assert::Assert};
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
 pub fn run_stdout(input: &str, args: &[&str]) -> String {
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     let assert = cmd.args(args).write_stdin(input).assert().success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
 pub fn run_template_budget(
     input: &str,
     template: &str,
@@ -20,7 +20,7 @@ pub fn run_template_budget(
     run_stdout(input, &args)
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
 pub fn run_template_budget_assert(
     input: &str,
     template: &str,
@@ -34,7 +34,7 @@ pub fn run_template_budget_assert(
     cmd.args(args).write_stdin(input).assert()
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
 pub fn run_capture(input: &[u8], args: &[&str]) -> (bool, Vec<u8>, Vec<u8>) {
     let assert = Command::cargo_bin("headson")
         .unwrap()

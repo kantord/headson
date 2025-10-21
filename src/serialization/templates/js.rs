@@ -7,9 +7,8 @@ pub fn render_array(ctx: &ArrayCtx) -> String {
                 "{}[ /* {} more items */ ]",
                 ctx.indent0, ctx.omitted
             );
-        } else {
-            return format!("{}[ /* empty */ ]", ctx.indent0);
         }
+        return format!("{}[ /* empty */ ]", ctx.indent0);
     }
     let mut out = String::new();
     out.push_str(&ctx.indent0);
@@ -38,12 +37,8 @@ pub fn render_object(ctx: &ObjectCtx) -> String {
                 "{}{{{}/* {} more properties */{}}}",
                 ctx.indent0, ctx.sp, ctx.omitted, ctx.sp
             );
-        } else {
-            return format!(
-                "{}{{{}/* empty */{}}}",
-                ctx.indent0, ctx.sp, ctx.sp
-            );
         }
+        return format!("{}{{{}/* empty */{}}}", ctx.indent0, ctx.sp, ctx.sp);
     }
     let mut out = String::new();
     out.push_str(&ctx.indent0);
