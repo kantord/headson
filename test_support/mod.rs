@@ -33,3 +33,16 @@ pub fn run_template_budget_assert(
     args.extend_from_slice(extra);
     cmd.args(args).write_stdin(input).assert()
 }
+
+#[allow(dead_code)]
+pub fn run_capture(input: &[u8], args: &[&str]) -> (bool, Vec<u8>, Vec<u8>) {
+    let assert = Command::cargo_bin("headson")
+        .unwrap()
+        .args(args)
+        .write_stdin(input)
+        .assert();
+    let ok = assert.get_output().status.success();
+    let out = assert.get_output().stdout.clone();
+    let err = assert.get_output().stderr.clone();
+    (ok, out, err)
+}
