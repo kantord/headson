@@ -7,12 +7,9 @@ fn indent(depth: usize, unit: &str) -> String {
     unit.repeat(depth)
 }
 
-// No longer needed: indentation is handled by renderers with an `inline` flag
-
 type ArrayChildPair = (usize, String);
 type ObjectChildPair = (usize, (String, String));
 
-// Rendering scope extracted from the top-level function to reduce function length
 pub(crate) struct RenderScope<'a> {
     pq: &'a PriorityOrder,
     marks: &'a [u32],
@@ -231,9 +228,6 @@ impl<'a> RenderScope<'a> {
         (children_pairs, kept)
     }
 }
-
-// Helper: mark first k nodes by order and their ancestors
-// Ancestor marking moved to utils::graph
 
 /// Render a budget-limited preview directly from the arena using inclusion marks.
 pub fn render_arena_with_marks(

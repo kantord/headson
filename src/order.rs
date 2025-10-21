@@ -67,10 +67,7 @@ pub struct PriorityOrder {
 
 pub const ROOT_PQ_ID: usize = 0;
 
-// No aliases; canonical names only
-
-// Frontier builder from streaming arena (Stage 2 adapter)
-use crate::json_ingest::StreamArena;
+use crate::utils::arena::StreamArena;
 
 #[derive(Clone)]
 struct Entry {
@@ -419,8 +416,6 @@ pub fn build_priority_order_from_arena(
         total_nodes: total,
     })
 }
-
-// No alias; use `build_priority_order_from_arena`
 
 #[cfg(test)]
 mod tests {

@@ -19,8 +19,6 @@ mod json_ingest;
 mod order;
 mod serialization;
 mod utils;
-// templates moved under serialization
-// tests that used to live under `tree` moved into serialization; no tree module
 pub use order::{
     NodeId, NodeKind, ParentId, PriorityConfig, PriorityOrder, RankedNode,
     build_priority_order_from_arena,

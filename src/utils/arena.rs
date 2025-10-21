@@ -1,0 +1,40 @@
+use crate::order::NodeKind;
+
+#[derive(Debug, Default, Clone)]
+pub struct StreamArena {
+    pub nodes: Vec<ArenaNode>,
+    pub children: Vec<usize>,
+    pub obj_keys: Vec<String>,
+    pub root_id: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArenaNode {
+    pub kind: NodeKind,
+    pub number_value: Option<serde_json::Number>,
+    pub bool_value: Option<bool>,
+    pub string_value: Option<String>,
+    pub children_start: usize,
+    pub children_len: usize,
+    pub obj_keys_start: usize,
+    pub obj_keys_len: usize,
+    pub array_len: Option<usize>,
+    pub object_len: Option<usize>,
+}
+
+impl Default for ArenaNode {
+    fn default() -> Self {
+        Self {
+            kind: NodeKind::Null,
+            number_value: None,
+            bool_value: None,
+            string_value: None,
+            children_start: 0,
+            children_len: 0,
+            obj_keys_start: 0,
+            obj_keys_len: 0,
+            array_len: None,
+            object_len: None,
+        }
+    }
+}
