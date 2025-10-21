@@ -83,6 +83,22 @@ pub fn render_arena_with_marks(
     }
 
     impl<'a> RenderScope<'a> {
+        fn omitted_for_string(&self, id: usize, kept: usize) -> Option<usize> {
+            let m = &self.pq.metrics[id];
+            if let Some(orig) = m.string_len {
+                if orig > kept {
+                    return Some(orig - kept);
+                }
+                if m.string_truncated {
+                    return Some(1);
+                }
+                None
+            } else if m.string_truncated {
+                Some(1)
+            } else {
+                None
+            }
+        }
         fn count_kept_children(&self, id: usize) -> usize {
             if let Some(kids) = self.pq.children_of.get(id) {
                 let mut kept = 0usize;
@@ -122,15 +138,7 @@ pub fn render_arena_with_marks(
                         if orig > kept { Some(orig - kept) } else { None }
                     })
                 }
-                NodeKind::String => {
-                    if let Some(orig) = self.pq.metrics[id].string_len {
-                        if orig > kept { Some(orig - kept) } else { None }
-                    } else if self.pq.metrics[id].string_truncated {
-                        Some(1)
-                    } else {
-                        None
-                    }
-                }
+                NodeKind::String => self.omitted_for_string(id, kept),
                 NodeKind::Object => {
                     self.pq.metrics[id].object_len.and_then(|orig| {
                         if orig > kept { Some(orig - kept) } else { None }
