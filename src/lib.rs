@@ -15,9 +15,9 @@
 
 use anyhow::Result;
 
+mod json_ingest;
 mod order;
 mod serialization;
-mod stream_arena;
 mod utils;
 // templates moved under serialization
 // tests that used to live under `tree` moved into serialization; no tree module
@@ -35,7 +35,7 @@ pub fn headson(
     budget: usize,
 ) -> Result<String> {
     // Streaming arena parse from owned bytes + frontier adapter
-    let arena = crate::stream_arena::build_stream_arena_from_bytes(
+    let arena = crate::json_ingest::build_stream_arena_from_bytes(
         input,
         priority_cfg,
     )?;

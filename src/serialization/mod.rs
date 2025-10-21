@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn arena_render_empty_array() {
-        let arena = crate::stream_arena::build_stream_arena(
+        let arena = crate::json_ingest::build_stream_arena(
             "[]",
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -301,7 +301,7 @@ mod tests {
 
     #[test]
     fn arena_render_single_string_array() {
-        let arena = crate::stream_arena::build_stream_arena(
+        let arena = crate::json_ingest::build_stream_arena(
             "[\"ab\"]",
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )

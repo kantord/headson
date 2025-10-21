@@ -70,7 +70,7 @@ pub const ROOT_PQ_ID: usize = 0;
 // No aliases; canonical names only
 
 // Frontier builder from streaming arena (Stage 2 adapter)
-use crate::stream_arena::StreamArena;
+use crate::json_ingest::StreamArena;
 
 #[derive(Clone)]
 struct Entry {
@@ -429,7 +429,7 @@ mod tests {
 
     #[test]
     fn order_empty_array() {
-        let arena = crate::stream_arena::build_stream_arena(
+        let arena = crate::json_ingest::build_stream_arena(
             "[]",
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -459,7 +459,7 @@ mod tests {
 
     #[test]
     fn order_single_string_array() {
-        let arena = crate::stream_arena::build_stream_arena(
+        let arena = crate::json_ingest::build_stream_arena(
             "[\"ab\"]",
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
