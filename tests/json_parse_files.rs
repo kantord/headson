@@ -42,9 +42,9 @@ fn is_json_file(path: &Path) -> bool {
 fn should_skip_case(path: &Path) -> bool {
     match file_name_str(path) {
         // Known simd-json serde differences; see README.
-        Some("n_multidigit_number_then_00.json") => true,
+        Some("n_multidigit_number_then_00.json")
         // serde_json may keep -0.0 as float while ours yields integer 0; skip these positives.
-        Some("y_number_minus_zero.json")
+        | Some("y_number_minus_zero.json")
         | Some("y_number_negative_zero.json") => true,
         _ => false,
     }

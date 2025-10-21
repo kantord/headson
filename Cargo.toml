@@ -32,3 +32,22 @@ codegen-units = 1
 panic = "abort"
 strip = "symbols"
 incremental = false
+
+[lints.clippy]
+cognitive_complexity = "deny"
+too_many_lines = "deny"
+too_many_arguments = "deny"
+type_complexity = "deny"
+bool_comparison = "deny"
+branches_sharing_code = "deny"
+match_same_arms = "deny"
+if_same_then_else = "deny"
+needless_return = "deny"
+manual_map = "deny"
+manual_flatten = "deny"
+needless_borrow = "deny"
+needless_borrowed_reference = "deny"
+unnecessary_wraps = "deny"
+option_as_ref_deref = "deny"
+match_like_matches_macro = "deny"
+needless_bool = "deny"

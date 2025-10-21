@@ -1,12 +1,3 @@
-#![warn(
-    clippy::cognitive_complexity,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::bool_comparison,
-    clippy::branches_sharing_code
-)]
-
 use anyhow::Result;
 
 mod order;
@@ -35,7 +26,7 @@ pub fn headson(
     )?;
     let order_build =
         order::build_priority_order_from_arena(&arena, priority_cfg)?;
-    let out = find_largest_render_under_budget(&order_build, config, budget)?;
+    let out = find_largest_render_under_budget(&order_build, config, budget);
     // Apply newline preference: allow replacing default "\n" with configured sequence
     // (supports "" for one-line output).
     let out = if config.newline != "\n" {
@@ -50,12 +41,12 @@ fn find_largest_render_under_budget(
     order_build: &PriorityOrder,
     config: &RenderConfig,
     char_budget: usize,
-) -> Result<String> {
+) -> String {
     // Binary search the largest k in [1, total] whose render
     // fits within `char_budget`.
     let total = order_build.total_nodes;
     if total == 0 {
-        return Ok(String::new());
+        return String::new();
     }
     // Each included node contributes at least some output; cap hi by budget.
     let lo = 1usize;
@@ -66,16 +57,13 @@ fn find_largest_render_under_budget(
     let mut best_str: Option<String> = None;
 
     let _ = crate::utils::search::binary_search_max(lo, hi, |mid| {
-        let s = match crate::serialization::render_arena_with_marks(
+        let s = crate::serialization::render_arena_with_marks(
             order_build,
             mid,
             &mut marks,
             mark_gen,
             config,
-        ) {
-            Ok(v) => v,
-            Err(_) => return false,
-        };
+        );
         mark_gen = mark_gen.wrapping_add(1).max(1);
         if s.len() <= char_budget {
             best_str = Some(s);
@@ -86,17 +74,16 @@ fn find_largest_render_under_budget(
     });
 
     if let Some(s) = best_str {
-        Ok(s)
+        s
     } else {
         // Fallback: always render a single node (k=1) to produce the
         // shortest possible preview, even if it exceeds the byte budget.
-        let s = crate::serialization::render_arena_with_marks(
+        crate::serialization::render_arena_with_marks(
             order_build,
             1,
             &mut marks,
             mark_gen,
             config,
-        )?;
-        Ok(s)
+        )
     }
 }

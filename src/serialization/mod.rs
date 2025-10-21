@@ -2,7 +2,6 @@ use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID};
 pub mod templates;
 pub mod types;
 use self::templates::{ArrayCtx, ObjectCtx, render_array, render_object};
-use anyhow::Result;
 use unicode_segmentation::UnicodeSegmentation;
 
 fn indent(depth: usize, unit: &str) -> String {
@@ -163,8 +162,7 @@ impl<'a> RenderScope<'a> {
         let it = &self.pq.id_to_item[id];
         match it.bool_value {
             Some(true) => "true".to_string(),
-            Some(false) => "false".to_string(),
-            None => "false".to_string(),
+            Some(false) | None => "false".to_string(),
         }
     }
 
@@ -290,7 +288,7 @@ pub fn render_arena_with_marks(
     marks: &mut Vec<u32>,
     mark_gen: u32,
     config: &crate::RenderConfig,
-) -> Result<String> {
+) -> String {
     if marks.len() < order_build.total_nodes {
         marks.resize(order_build.total_nodes, 0);
     }
@@ -308,8 +306,7 @@ pub fn render_arena_with_marks(
         nodes_built: 0,
         max_depth: 0,
     };
-    let out = scope.serialize_node(root_id, 0);
-    Ok(out)
+    scope.serialize_node(root_id, 0)
 }
 
 #[cfg(test)]
@@ -341,8 +338,7 @@ mod tests {
                 space: " ".to_string(),
                 newline: "\n".to_string(),
             },
-        )
-        .unwrap();
+        );
         assert_snapshot!("arena_render_empty", out);
     }
 
@@ -370,8 +366,7 @@ mod tests {
                 space: " ".to_string(),
                 newline: "\n".to_string(),
             },
-        )
-        .unwrap();
+        );
         assert_snapshot!("arena_render_single", out);
     }
 }
