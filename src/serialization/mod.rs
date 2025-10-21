@@ -8,6 +8,8 @@ fn indent(depth: usize, unit: &str) -> String {
     unit.repeat(depth)
 }
 
+// No longer needed: indentation is handled by renderers with an `inline` flag
+
 type ArrChildPair = (usize, String);
 type ObjChildPair = (usize, (String, String));
 
@@ -86,7 +88,12 @@ impl<'a> RenderScope<'a> {
         }
     }
 
-    fn serialize_array(&mut self, id: usize, depth: usize) -> String {
+    fn serialize_array(
+        &mut self,
+        id: usize,
+        depth: usize,
+        inline: bool,
+    ) -> String {
         let cfg = self.cfg;
         let (children_pairs, kept) = self.gather_array_children(id, depth);
         let it = &self.pq.id_to_item[id];
@@ -98,14 +105,20 @@ impl<'a> RenderScope<'a> {
             children: children_pairs,
             children_len: kept,
             omitted,
-            indent0: indent(depth, &cfg.indent_unit),
-            indent1: indent(depth + 1, &cfg.indent_unit),
+            depth,
+            indent_unit: cfg.indent_unit.clone(),
+            inline_open: inline,
             nl: cfg.newline.clone(),
         };
         render_array(cfg.template, &ctx)
     }
 
-    fn serialize_object(&mut self, id: usize, depth: usize) -> String {
+    fn serialize_object(
+        &mut self,
+        id: usize,
+        depth: usize,
+        inline: bool,
+    ) -> String {
         let cfg = self.cfg;
         let (children_pairs, kept) = self.gather_object_children(id, depth);
         let it = &self.pq.id_to_item[id];
@@ -117,8 +130,9 @@ impl<'a> RenderScope<'a> {
             children: children_pairs,
             children_len: kept,
             omitted,
-            indent0: indent(depth, &cfg.indent_unit),
-            indent1: indent(depth + 1, &cfg.indent_unit),
+            depth,
+            indent_unit: cfg.indent_unit.clone(),
+            inline_open: inline,
             sp: cfg.space.clone(),
             nl: cfg.newline.clone(),
         };
@@ -168,15 +182,20 @@ impl<'a> RenderScope<'a> {
         }
     }
 
-    fn serialize_node(&mut self, id: usize, depth: usize) -> String {
+    fn serialize_node(
+        &mut self,
+        id: usize,
+        depth: usize,
+        inline: bool,
+    ) -> String {
         self.nodes_built += 1;
         if depth > self.max_depth {
             self.max_depth = depth;
         }
         let it = &self.pq.id_to_item[id];
         match it.kind {
-            NodeKind::Array => self.serialize_array(id, depth),
-            NodeKind::Object => self.serialize_object(id, depth),
+            NodeKind::Array => self.serialize_array(id, depth, inline),
+            NodeKind::Object => self.serialize_object(id, depth, inline),
             NodeKind::String => self.serialize_string(id),
             NodeKind::Number => self.serialize_number(id),
             NodeKind::Bool => self.serialize_bool(id),
@@ -198,7 +217,7 @@ impl<'a> RenderScope<'a> {
                     continue;
                 }
                 kept += 1;
-                let rendered = self.serialize_node(cid, depth + 1);
+                let rendered = self.serialize_node(cid, depth + 1, false);
                 let ind = indent(depth + 1, &cfg.indent_unit);
                 if !cfg.newline.is_empty() && rendered.contains(&cfg.newline) {
                     children_pairs.push((i, rendered));
@@ -215,10 +234,8 @@ impl<'a> RenderScope<'a> {
         id: usize,
         depth: usize,
     ) -> (Vec<ObjChildPair>, usize) {
-        let cfg = self.cfg;
         let mut children_pairs: Vec<ObjChildPair> = Vec::new();
         let mut kept = 0usize;
-        let ind = indent(depth + 1, &cfg.indent_unit);
         if let Some(kids) = self.pq.children_of.get(id) {
             for (i, &cid) in kids.iter().enumerate() {
                 if self.marks[cid] != self.mark_gen {
@@ -229,10 +246,7 @@ impl<'a> RenderScope<'a> {
                 let raw_key = child.key_in_object.clone().unwrap_or_default();
                 let key = serde_json::to_string(&raw_key)
                     .unwrap_or_else(|_| format!("\"{raw_key}\""));
-                let mut val = self.serialize_node(cid, depth + 1);
-                if val.starts_with(&ind) {
-                    val = val[ind.len()..].to_string();
-                }
+                let val = self.serialize_node(cid, depth + 1, true);
                 children_pairs.push((i, (key, val)));
             }
         }
@@ -308,7 +322,7 @@ pub fn render_arena_with_marks(
         nodes_built: 0,
         max_depth: 0,
     };
-    scope.serialize_node(root_id, 0)
+    scope.serialize_node(root_id, 0, false)
 }
 
 #[cfg(test)]

@@ -8,8 +8,9 @@ pub struct ArrayCtx {
     pub children: Vec<(usize, String)>,
     pub children_len: usize,
     pub omitted: usize,
-    pub indent0: String,
-    pub indent1: String,
+    pub depth: usize,
+    pub indent_unit: String,
+    pub inline_open: bool,
     pub nl: String,
 }
 
@@ -17,8 +18,9 @@ pub struct ObjectCtx {
     pub children: Vec<(usize, (String, String))>,
     pub children_len: usize,
     pub omitted: usize,
-    pub indent0: String,
-    pub indent1: String,
+    pub depth: usize,
+    pub indent_unit: String,
+    pub inline_open: bool,
     pub sp: String,
     pub nl: String,
 }
