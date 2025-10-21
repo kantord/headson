@@ -1,5 +1,6 @@
 use crate::OutputTemplate;
 
+pub mod core;
 pub mod js;
 pub mod json;
 pub mod pseudo;
