@@ -102,7 +102,38 @@ impl Ord for Entry {
     }
 }
 
+/// Hard ceiling on number of PQ nodes built to prevent degenerate inputs
+/// from blowing up memory/time while exploring the frontier.
 const SAFETY_CAP: usize = 2_000_000;
+
+// Priority scoring knobs
+//
+// We build a single global priority order by walking the parsed arena with a
+// min-heap over a monotonic "score". Lower scores come first in the order.
+// These constants shape how we interleave arrays/objects/strings during the walk.
+
+/// Root starts at a fixed minimal score so its children naturally follow.
+const ROOT_BASE_SCORE: u128 = 1;
+
+/// Small base increment so array children follow the parent.
+const ARRAY_CHILD_BASE_INCREMENT: u128 = 1;
+/// Strong cubic index term to bias earlier array items far ahead of later ones.
+/// The large multiplier ensures array index dominates depth ties.
+const ARRAY_INDEX_CUBIC_WEIGHT: u128 = 1_000_000_000_000;
+
+/// Small base increment so object properties appear right after their object.
+const OBJECT_CHILD_BASE_INCREMENT: u128 = 1;
+
+/// Base increment so string grapheme expansions follow their parent string.
+const STRING_CHILD_BASE_INCREMENT: u128 = 1;
+/// Linear weight to prefer earlier graphemes strongly.
+const STRING_CHILD_LINEAR_WEIGHT: u128 = 1;
+/// Index after which we penalize graphemes quadratically to de-prioritize
+/// very deep string expansions vs. structural nodes.
+const STRING_INDEX_INFLECTION: usize = 20;
+/// Quadratic penalty multiplier for string grapheme expansions beyond the
+/// inflection point.
+const STRING_INDEX_QUADRATIC_WEIGHT: u128 = 1;
 
 struct Scope<'a> {
     arena: &'a StreamArena,
@@ -167,8 +198,8 @@ impl<'a> Scope<'a> {
             self.parent_of.push(Some(id));
             self.children_of.push(Vec::new());
             self.metrics.push(NodeMetrics::default());
-            let extra = (i as u128).pow(3) * 1_000_000_000_000u128;
-            let score = entry.score + 1 + extra;
+            let extra = (i as u128).pow(3) * ARRAY_INDEX_CUBIC_WEIGHT;
+            let score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
             let cn = &self.arena.nodes[child_ar];
             self.id_to_item.push(RankedNode {
                 node_id: NodeId(child_pq),
@@ -214,7 +245,7 @@ impl<'a> Scope<'a> {
             self.parent_of.push(Some(id));
             self.children_of.push(Vec::new());
             self.metrics.push(NodeMetrics::default());
-            let score = entry.score + 1;
+            let score = entry.score + OBJECT_CHILD_BASE_INCREMENT;
             let cn = &self.arena.nodes[child_ar];
             self.id_to_item.push(RankedNode {
                 node_id: NodeId(child_pq),
@@ -256,13 +287,16 @@ impl<'a> Scope<'a> {
             self.parent_of.push(Some(id));
             self.children_of.push(Vec::new());
             self.metrics.push(NodeMetrics::default());
-            let extra = if i > 20 {
-                let d = (i - 20) as u128;
-                d * d
+            let extra = if i > STRING_INDEX_INFLECTION {
+                let d = (i - STRING_INDEX_INFLECTION) as u128;
+                d * d * STRING_INDEX_QUADRATIC_WEIGHT
             } else {
                 0
             };
-            let score = entry.score + 1 + (i as u128) + extra;
+            let score = entry.score
+                + STRING_CHILD_BASE_INCREMENT
+                + (i as u128) * STRING_CHILD_LINEAR_WEIGHT
+                + extra;
             self.id_to_item.push(RankedNode {
                 node_id: NodeId(child_pq),
                 parent_id: ParentId(Some(id)),
@@ -351,13 +385,13 @@ pub fn build_priority_order_from_arena(
         depth: 0,
         index_in_array: None,
         key_in_object: None,
-        priority: 1usize,
+        priority: clamp_score(ROOT_BASE_SCORE),
         number_value: n.number_value.clone(),
         bool_value: n.bool_value,
         string_value: n.string_value.clone(),
     });
     heap.push(Reverse(Entry {
-        score: 1,
+        score: ROOT_BASE_SCORE,
         pq_id: root_pq,
         kind: root_kind,
         depth: 0,
