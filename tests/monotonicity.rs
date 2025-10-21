@@ -53,8 +53,7 @@ fn assert_within_budget_or_min(
         } else {
             assert_eq!(
                 lens[i], min_len,
-                "should use minimal preview when budget < min_len (b={}, template={}, path={})",
-                b, template, path
+                "should use minimal preview when budget < min_len (b={b}, template={template}, path={path})",
             );
         }
     }

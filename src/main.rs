@@ -62,7 +62,7 @@ fn main() -> Result<()> {
 
     let output =
         headson::headson(input_bytes, &render_cfg, &priority_cfg, cli.budget)?;
-    println!("{}", output);
+    println!("{output}");
 
     Ok(())
 }

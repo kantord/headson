@@ -17,7 +17,7 @@ fn parse_js_object_omitted(out_js: &str) -> usize {
     let body = &trimmed[1..trimmed.len() - 1];
     let (_, comment) = body.split_once("/*").expect("has comment");
     let digits: String =
-        comment.chars().filter(|c| c.is_ascii_digit()).collect();
+        comment.chars().filter(char::is_ascii_digit).collect();
     digits.parse::<usize>().expect("parse omitted")
 }
 

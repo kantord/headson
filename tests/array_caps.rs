@@ -21,7 +21,7 @@ fn parse_js_kept_omitted(out_js: &str) -> (usize, usize) {
         left.bytes().filter(|&b| b == b',').count() + 1
     };
     let digits: String =
-        comment.chars().filter(|c| c.is_ascii_digit()).collect();
+        comment.chars().filter(char::is_ascii_digit).collect();
     let omitted = digits.parse::<usize>().expect("parse omitted");
     (kept, omitted)
 }
