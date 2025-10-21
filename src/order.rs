@@ -67,7 +67,7 @@ pub struct PriorityOrder {
 
 pub const ROOT_PQ_ID: usize = 0;
 
-use crate::utils::arena::StreamArena;
+use crate::utils::tree_arena::JsonTreeArena;
 
 #[derive(Clone)]
 struct Entry {
@@ -131,7 +131,7 @@ const STRING_INDEX_INFLECTION: usize = 20;
 const STRING_INDEX_QUADRATIC_WEIGHT: u128 = 1;
 
 struct Scope<'a> {
-    arena: &'a StreamArena,
+    arena: &'a JsonTreeArena,
     config: &'a PriorityConfig,
     next_pq_id: &'a mut usize,
     parent_of: &'a mut Vec<Option<usize>>,
@@ -348,7 +348,7 @@ impl<'a> Scope<'a> {
 }
 
 pub fn build_priority_order_from_arena(
-    arena: &StreamArena,
+    arena: &JsonTreeArena,
     config: &PriorityConfig,
 ) -> Result<PriorityOrder> {
     let t_walk = std::time::Instant::now();

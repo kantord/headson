@@ -1,15 +1,15 @@
 use crate::order::NodeKind;
 
 #[derive(Debug, Default, Clone)]
-pub struct StreamArena {
-    pub nodes: Vec<ArenaNode>,
+pub struct JsonTreeArena {
+    pub nodes: Vec<JsonTreeNode>,
     pub children: Vec<usize>,
     pub obj_keys: Vec<String>,
     pub root_id: usize,
 }
 
 #[derive(Debug, Clone)]
-pub struct ArenaNode {
+pub struct JsonTreeNode {
     pub kind: NodeKind,
     pub number_value: Option<serde_json::Number>,
     pub bool_value: Option<bool>,
@@ -22,7 +22,7 @@ pub struct ArenaNode {
     pub object_len: Option<usize>,
 }
 
-impl Default for ArenaNode {
+impl Default for JsonTreeNode {
     fn default() -> Self {
         Self {
             kind: NodeKind::Null,
