@@ -1,3 +1,11 @@
+#![deny(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::print_stdout,
+    clippy::print_stderr
+)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
+
 use anyhow::Result;
 
 mod order;
