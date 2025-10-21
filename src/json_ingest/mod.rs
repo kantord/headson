@@ -7,14 +7,14 @@ use anyhow::Result;
 use builder::JsonTreeBuilder;
 
 #[cfg(test)]
-pub fn build_stream_arena(
+pub fn build_json_tree_arena(
     input: &str,
     config: &PriorityConfig,
 ) -> Result<JsonTreeArena> {
-    build_stream_arena_from_bytes(input.as_bytes().to_vec(), config)
+    build_json_tree_arena_from_bytes(input.as_bytes().to_vec(), config)
 }
 
-pub fn build_stream_arena_from_bytes(
+pub fn build_json_tree_arena_from_bytes(
     mut bytes: Vec<u8>,
     config: &PriorityConfig,
 ) -> Result<JsonTreeArena> {
