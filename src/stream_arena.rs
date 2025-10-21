@@ -6,14 +6,14 @@ use serde::de::{DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor};
 
 #[derive(Debug, Default, Clone)]
 pub struct StreamArena {
-    pub nodes: Vec<SaNode>,
+    pub nodes: Vec<ArenaNode>,
     pub children: Vec<usize>,
     pub obj_keys: Vec<String>,
     pub root_id: usize,
 }
 
 #[derive(Debug, Clone)]
-pub struct SaNode {
+pub struct ArenaNode {
     pub kind: NodeKind,
     pub number_value: Option<serde_json::Number>,
     pub bool_value: Option<bool>,
@@ -26,7 +26,7 @@ pub struct SaNode {
     pub object_len: Option<usize>,
 }
 
-impl Default for SaNode {
+impl Default for ArenaNode {
     fn default() -> Self {
         Self {
             kind: NodeKind::Null,
@@ -54,7 +54,7 @@ impl ArenaCell {
     fn push_default(&self) -> usize {
         let mut a = self.arena.borrow_mut();
         let id = a.nodes.len();
-        a.nodes.push(SaNode::default());
+        a.nodes.push(ArenaNode::default());
         id
     }
 }
@@ -73,12 +73,12 @@ impl<'de> DeserializeSeed<'de> for NodeSeed<'_> {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(NodeVisitor { c: self.cell })
+        deserializer.deserialize_any(NodeVisitor { cell: self.cell })
     }
 }
 
 struct NodeVisitor<'b> {
-    c: &'b ArenaCell,
+    cell: &'b ArenaCell,
 }
 
 impl<'de> Visitor<'de> for NodeVisitor<'_> {
@@ -92,9 +92,9 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
     where
         E: serde::de::Error,
     {
-        let id = self.c.push_default();
+        let id = self.cell.push_default();
         {
-            let mut a = self.c.arena.borrow_mut();
+            let mut a = self.cell.arena.borrow_mut();
             let n = &mut a.nodes[id];
             n.kind = NodeKind::Bool;
             n.bool_value = Some(v);
@@ -106,9 +106,9 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
     where
         E: serde::de::Error,
     {
-        let id = self.c.push_default();
+        let id = self.cell.push_default();
         {
-            let mut a = self.c.arena.borrow_mut();
+            let mut a = self.cell.arena.borrow_mut();
             let n = &mut a.nodes[id];
             n.kind = NodeKind::Number;
             n.number_value = Some(serde_json::Number::from(v));
@@ -120,9 +120,9 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
     where
         E: serde::de::Error,
     {
-        let id = self.c.push_default();
+        let id = self.cell.push_default();
         {
-            let mut a = self.c.arena.borrow_mut();
+            let mut a = self.cell.arena.borrow_mut();
             let n = &mut a.nodes[id];
             n.kind = NodeKind::Number;
             n.number_value = Some(serde_json::Number::from(v));
@@ -134,9 +134,9 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
     where
         E: serde::de::Error,
     {
-        let id = self.c.push_default();
+        let id = self.cell.push_default();
         {
-            let mut a = self.c.arena.borrow_mut();
+            let mut a = self.cell.arena.borrow_mut();
             let n = &mut a.nodes[id];
             n.kind = NodeKind::Number;
             let num = serde_json::Number::from_f64(v)
@@ -150,9 +150,9 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
     where
         E: serde::de::Error,
     {
-        let id = self.c.push_default();
+        let id = self.cell.push_default();
         {
-            let mut a = self.c.arena.borrow_mut();
+            let mut a = self.cell.arena.borrow_mut();
             let n = &mut a.nodes[id];
             n.kind = NodeKind::String;
             n.string_value = Some(v.to_string());
@@ -164,9 +164,9 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
     where
         E: serde::de::Error,
     {
-        let id = self.c.push_default();
+        let id = self.cell.push_default();
         {
-            let mut a = self.c.arena.borrow_mut();
+            let mut a = self.cell.arena.borrow_mut();
             let n = &mut a.nodes[id];
             n.kind = NodeKind::String;
             n.string_value = Some(v);
@@ -178,9 +178,9 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
     where
         E: serde::de::Error,
     {
-        let id = self.c.push_default();
+        let id = self.cell.push_default();
         {
-            let mut a = self.c.arena.borrow_mut();
+            let mut a = self.cell.arena.borrow_mut();
             let n = &mut a.nodes[id];
             n.kind = NodeKind::Null;
         }
@@ -201,13 +201,13 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
     where
         A: SeqAccess<'de>,
     {
-        let id = self.c.push_default();
+        let id = self.cell.push_default();
         let mut local_children: Vec<usize> = Vec::new();
         let mut kept = 0usize;
         let mut total = 0usize;
-        while kept < self.c.array_cap {
+        while kept < self.cell.array_cap {
             let next = {
-                let seed = NodeSeed { cell: self.c };
+                let seed = NodeSeed { cell: self.cell };
                 seq.next_element_seed(seed)?
             };
             match next {
@@ -223,11 +223,11 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
             total += 1;
         }
         let children_start = {
-            let a = self.c.arena.borrow();
+            let a = self.cell.arena.borrow();
             a.children.len()
         };
         {
-            let mut a = self.c.arena.borrow_mut();
+            let mut a = self.cell.arena.borrow_mut();
             a.children.extend(local_children);
             let n = &mut a.nodes[id];
             n.kind = NodeKind::Array;
@@ -245,13 +245,13 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
     where
         A: MapAccess<'de>,
     {
-        let id = self.c.push_default();
+        let id = self.cell.push_default();
         let mut local_children: Vec<usize> = Vec::new();
         let mut local_keys: Vec<String> = Vec::new();
         let mut count = 0usize;
         while let Some(key) = map.next_key::<String>()? {
             let cid: usize = {
-                let seed = NodeSeed { cell: self.c };
+                let seed = NodeSeed { cell: self.cell };
                 map.next_value_seed(seed)?
             };
             local_children.push(cid);
@@ -259,11 +259,11 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
             count += 1;
         }
         let (children_start, obj_keys_start) = {
-            let a = self.c.arena.borrow();
+            let a = self.cell.arena.borrow();
             (a.children.len(), a.obj_keys.len())
         };
         {
-            let mut a = self.c.arena.borrow_mut();
+            let mut a = self.cell.arena.borrow_mut();
             a.children.extend(local_children);
             a.obj_keys.extend(local_keys);
             let n = &mut a.nodes[id];
@@ -279,19 +279,19 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
 }
 
 // Build a compact arena in a single pass using a serde Visitor.
-// Arrays are capped at `cfg.array_max_items` during parse; we still record the
+// Arrays are capped at `config.array_max_items` during parse; we still record the
 // total length to report omissions accurately later.
 #[cfg(test)]
 pub fn build_stream_arena(
     input: &str,
-    cfg: &PriorityConfig,
+    config: &PriorityConfig,
 ) -> Result<StreamArena> {
     // Use simd-json serde deserializer, parsing from a mutable buffer
     let mut bytes = input.as_bytes().to_vec();
     let mut de = simd_json::Deserializer::from_slice(&mut bytes)?;
     let cell = ArenaCell {
         arena: RefCell::new(StreamArena::default()),
-        array_cap: cfg.array_max_items,
+        array_cap: config.array_max_items,
     };
     let root_id: usize = {
         let seed = NodeSeed { cell: &cell };
@@ -307,12 +307,12 @@ pub fn build_stream_arena(
 // Variant that avoids copying: accepts owned bytes and parses in-place.
 pub fn build_stream_arena_from_bytes(
     mut bytes: Vec<u8>,
-    cfg: &PriorityConfig,
+    config: &PriorityConfig,
 ) -> Result<StreamArena> {
     let mut de = simd_json::Deserializer::from_slice(&mut bytes)?;
     let cell = ArenaCell {
         arena: RefCell::new(StreamArena::default()),
-        array_cap: cfg.array_max_items,
+        array_cap: config.array_max_items,
     };
     let root_id: usize = {
         let seed = NodeSeed { cell: &cell };

@@ -19,13 +19,13 @@ pub fn render_array(ctx: &ArrayCtx) -> String {
     let mut out = String::new();
     out.push_str(open_indent);
     out.push('[');
-    out.push_str(&ctx.nl);
+    out.push_str(&ctx.newline);
     for (i, (_, item)) in ctx.children.iter().enumerate() {
         out.push_str(item);
         if i + 1 < ctx.children_len {
             out.push(',');
         }
-        out.push_str(&ctx.nl);
+        out.push_str(&ctx.newline);
     }
     out.push_str(&base);
     out.push(']');
@@ -41,17 +41,17 @@ pub fn render_object(ctx: &ObjectCtx) -> String {
     let mut out = String::new();
     out.push_str(open_indent);
     out.push('{');
-    out.push_str(&ctx.nl);
+    out.push_str(&ctx.newline);
     for (i, (_, (k, v))) in ctx.children.iter().enumerate() {
         out.push_str(&indent(ctx.depth + 1, &ctx.indent_unit));
         out.push_str(k);
         out.push(':');
-        out.push_str(&ctx.sp);
+        out.push_str(&ctx.space);
         out.push_str(v);
         if i + 1 < ctx.children_len {
             out.push(',');
         }
-        out.push_str(&ctx.nl);
+        out.push_str(&ctx.newline);
     }
     out.push_str(&base);
     out.push('}');

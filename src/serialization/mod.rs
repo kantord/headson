@@ -10,15 +10,15 @@ fn indent(depth: usize, unit: &str) -> String {
 
 // No longer needed: indentation is handled by renderers with an `inline` flag
 
-type ArrChildPair = (usize, String);
-type ObjChildPair = (usize, (String, String));
+type ArrayChildPair = (usize, String);
+type ObjectChildPair = (usize, (String, String));
 
 // Rendering scope extracted from the top-level function to reduce function length
 pub(crate) struct RenderScope<'a> {
     pq: &'a PriorityOrder,
     marks: &'a [u32],
     mark_gen: u32,
-    cfg: &'a crate::RenderConfig,
+    config: &'a crate::RenderConfig,
     nodes_built: usize,
     max_depth: usize,
 }
@@ -94,10 +94,10 @@ impl<'a> RenderScope<'a> {
         depth: usize,
         inline: bool,
     ) -> String {
-        let cfg = self.cfg;
+        let config = self.config;
         let (children_pairs, kept) = self.gather_array_children(id, depth);
-        let it = &self.pq.id_to_item[id];
-        let omitted = self.omitted_for(id, &it.kind, kept).unwrap_or(0);
+        let node = &self.pq.id_to_item[id];
+        let omitted = self.omitted_for(id, &node.kind, kept).unwrap_or(0);
         if kept == 0 && omitted == 0 {
             return "[]".to_string();
         }
@@ -106,11 +106,11 @@ impl<'a> RenderScope<'a> {
             children_len: kept,
             omitted,
             depth,
-            indent_unit: cfg.indent_unit.clone(),
+            indent_unit: config.indent_unit.clone(),
             inline_open: inline,
-            nl: cfg.newline.clone(),
+            newline: config.newline.clone(),
         };
-        render_array(cfg.template, &ctx)
+        render_array(config.template, &ctx)
     }
 
     fn serialize_object(
@@ -119,10 +119,10 @@ impl<'a> RenderScope<'a> {
         depth: usize,
         inline: bool,
     ) -> String {
-        let cfg = self.cfg;
+        let config = self.config;
         let (children_pairs, kept) = self.gather_object_children(id, depth);
-        let it = &self.pq.id_to_item[id];
-        let omitted = self.omitted_for(id, &it.kind, kept).unwrap_or(0);
+        let node = &self.pq.id_to_item[id];
+        let omitted = self.omitted_for(id, &node.kind, kept).unwrap_or(0);
         if kept == 0 && omitted == 0 {
             return "{}".to_string();
         }
@@ -131,19 +131,19 @@ impl<'a> RenderScope<'a> {
             children_len: kept,
             omitted,
             depth,
-            indent_unit: cfg.indent_unit.clone(),
+            indent_unit: config.indent_unit.clone(),
             inline_open: inline,
-            sp: cfg.space.clone(),
-            nl: cfg.newline.clone(),
+            space: config.space.clone(),
+            newline: config.newline.clone(),
         };
-        render_object(cfg.template, &ctx)
+        render_object(config.template, &ctx)
     }
 
     fn serialize_string(&mut self, id: usize) -> String {
         let kept = self.count_kept_children(id);
-        let it = &self.pq.id_to_item[id];
-        let omitted = self.omitted_for(id, &it.kind, kept).unwrap_or(0);
-        let full = it.string_value.clone().unwrap_or_default();
+        let node = &self.pq.id_to_item[id];
+        let omitted = self.omitted_for(id, &node.kind, kept).unwrap_or(0);
+        let full = node.string_value.clone().unwrap_or_default();
         if omitted == 0 {
             return serde_json::to_string(&full)
                 .unwrap_or_else(|_| format!("\"{full}\""));
@@ -207,22 +207,25 @@ impl<'a> RenderScope<'a> {
         &mut self,
         id: usize,
         depth: usize,
-    ) -> (Vec<ArrChildPair>, usize) {
-        let cfg = self.cfg;
-        let mut children_pairs: Vec<ArrChildPair> = Vec::new();
+    ) -> (Vec<ArrayChildPair>, usize) {
+        let config = self.config;
+        let mut children_pairs: Vec<ArrayChildPair> = Vec::new();
         let mut kept = 0usize;
-        if let Some(kids) = self.pq.children_of.get(id) {
-            for (i, &cid) in kids.iter().enumerate() {
-                if self.marks[cid] != self.mark_gen {
+        if let Some(children_ids) = self.pq.children_of.get(id) {
+            for (i, &child_id) in children_ids.iter().enumerate() {
+                if self.marks[child_id] != self.mark_gen {
                     continue;
                 }
                 kept += 1;
-                let rendered = self.serialize_node(cid, depth + 1, false);
-                let ind = indent(depth + 1, &cfg.indent_unit);
-                if !cfg.newline.is_empty() && rendered.contains(&cfg.newline) {
+                let rendered = self.serialize_node(child_id, depth + 1, false);
+                let child_indent = indent(depth + 1, &config.indent_unit);
+                if !config.newline.is_empty()
+                    && rendered.contains(&config.newline)
+                {
                     children_pairs.push((i, rendered));
                 } else {
-                    children_pairs.push((i, format!("{ind}{rendered}")));
+                    children_pairs
+                        .push((i, format!("{child_indent}{rendered}")));
                 }
             }
         }
@@ -233,20 +236,20 @@ impl<'a> RenderScope<'a> {
         &mut self,
         id: usize,
         depth: usize,
-    ) -> (Vec<ObjChildPair>, usize) {
-        let mut children_pairs: Vec<ObjChildPair> = Vec::new();
+    ) -> (Vec<ObjectChildPair>, usize) {
+        let mut children_pairs: Vec<ObjectChildPair> = Vec::new();
         let mut kept = 0usize;
-        if let Some(kids) = self.pq.children_of.get(id) {
-            for (i, &cid) in kids.iter().enumerate() {
-                if self.marks[cid] != self.mark_gen {
+        if let Some(children_ids) = self.pq.children_of.get(id) {
+            for (i, &child_id) in children_ids.iter().enumerate() {
+                if self.marks[child_id] != self.mark_gen {
                     continue;
                 }
                 kept += 1;
-                let child = &self.pq.id_to_item[cid];
+                let child = &self.pq.id_to_item[child_id];
                 let raw_key = child.key_in_object.clone().unwrap_or_default();
                 let key = serde_json::to_string(&raw_key)
                     .unwrap_or_else(|_| format!("\"{raw_key}\""));
-                let val = self.serialize_node(cid, depth + 1, true);
+                let val = self.serialize_node(child_id, depth + 1, true);
                 children_pairs.push((i, (key, val)));
             }
         }
@@ -318,7 +321,7 @@ pub fn render_arena_with_marks(
         pq: order_build,
         marks,
         mark_gen,
-        cfg: config,
+        config,
         nodes_built: 0,
         max_depth: 0,
     };

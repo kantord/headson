@@ -11,7 +11,7 @@ pub struct ArrayCtx {
     pub depth: usize,
     pub indent_unit: String,
     pub inline_open: bool,
-    pub nl: String,
+    pub newline: String,
 }
 
 pub struct ObjectCtx {
@@ -21,8 +21,8 @@ pub struct ObjectCtx {
     pub depth: usize,
     pub indent_unit: String,
     pub inline_open: bool,
-    pub sp: String,
-    pub nl: String,
+    pub space: String,
+    pub newline: String,
 }
 
 pub fn render_array(template: OutputTemplate, ctx: &ArrayCtx) -> String {
