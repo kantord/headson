@@ -41,9 +41,7 @@ pub struct RankedNode {
     pub parent_id: ParentId,
     pub kind: NodeKind,
     pub depth: usize,
-    pub index_in_array: Option<usize>,
     pub key_in_object: Option<String>,
-    pub priority: usize,
     pub number_value: Option<serde_json::Number>,
     pub bool_value: Option<bool>,
     pub string_value: Option<String>,
@@ -63,7 +61,6 @@ pub struct PriorityOrder {
     pub id_to_item: Vec<RankedNode>,
     pub parent_of: Vec<Option<usize>>, // parent_of[id] = parent id
     pub children_of: Vec<Vec<usize>>,  // children_of[id] = children ids
-    pub order_index: Vec<usize>,       // order_index[id] = global order
     pub ids_by_order: Vec<usize>,      // ids sorted by ascending priority
     pub total_nodes: usize,
 }
@@ -79,8 +76,9 @@ use crate::stream_arena::StreamArena;
 struct Entry {
     score: u128,
     pq_id: usize,
-    kind: NodeKind,
     depth: usize,
+    // When present, we can read kind from the arena node.
+    // When None, this is a synthetic entry (currently only string grapheme).
     arena_node: Option<usize>,
 }
 impl PartialEq for Entry {
@@ -207,11 +205,7 @@ impl<'a> Scope<'a> {
                 parent_id: ParentId(Some(id)),
                 kind: child_kind.clone(),
                 depth: entry.depth + 1,
-                index_in_array: Some(i),
                 key_in_object: None,
-                priority: crate::utils::num::saturating_cast_u128_to_usize(
-                    score,
-                ),
                 number_value: child_node.number_value.clone(),
                 bool_value: child_node.bool_value,
                 string_value: child_node.string_value.clone(),
@@ -220,7 +214,6 @@ impl<'a> Scope<'a> {
             self.heap.push(Reverse(Entry {
                 score,
                 pq_id: child_pq,
-                kind: child_kind,
                 depth: entry.depth + 1,
                 arena_node: Some(child_arena_id),
             }));
@@ -255,11 +248,7 @@ impl<'a> Scope<'a> {
                 parent_id: ParentId(Some(id)),
                 kind: child_kind.clone(),
                 depth: entry.depth + 1,
-                index_in_array: None,
                 key_in_object: Some(key.clone()),
-                priority: crate::utils::num::saturating_cast_u128_to_usize(
-                    score,
-                ),
                 number_value: child_node.number_value.clone(),
                 bool_value: child_node.bool_value,
                 string_value: child_node.string_value.clone(),
@@ -268,7 +257,6 @@ impl<'a> Scope<'a> {
             self.heap.push(Reverse(Entry {
                 score,
                 pq_id: child_pq,
-                kind: child_kind,
                 depth: entry.depth + 1,
                 arena_node: Some(child_arena_id),
             }));
@@ -308,11 +296,7 @@ impl<'a> Scope<'a> {
                 parent_id: ParentId(Some(id)),
                 kind: NodeKind::String,
                 depth: entry.depth + 1,
-                index_in_array: Some(i),
                 key_in_object: None,
-                priority: crate::utils::num::saturating_cast_u128_to_usize(
-                    score,
-                ),
                 number_value: None,
                 bool_value: None,
                 string_value: None,
@@ -321,7 +305,6 @@ impl<'a> Scope<'a> {
             self.heap.push(Reverse(Entry {
                 score,
                 pq_id: child_pq,
-                kind: NodeKind::String,
                 depth: entry.depth + 1,
                 arena_node: None,
             }));
@@ -331,13 +314,16 @@ impl<'a> Scope<'a> {
         }
     }
 
-    fn process_entry(&mut self, entry: &Entry, ids_by_order: &mut Vec<usize>) {
-        let id = entry.pq_id;
-        ids_by_order.push(id);
+    fn resolve_kind(&self, entry: &Entry) -> NodeKind {
         if let Some(ar_id) = entry.arena_node {
-            self.record_metrics_for(id, &entry.kind, ar_id);
+            self.arena.nodes[ar_id].kind.clone()
+        } else {
+            NodeKind::String
         }
-        match entry.kind {
+    }
+
+    fn expand_for(&mut self, entry: &Entry, kind: &NodeKind) {
+        match kind {
             NodeKind::Array => {
                 if let Some(ar_id) = entry.arena_node {
                     self.expand_array_children(entry, ar_id);
@@ -348,11 +334,19 @@ impl<'a> Scope<'a> {
                     self.expand_object_children(entry, ar_id);
                 }
             }
-            NodeKind::String => {
-                self.expand_string_children(entry);
-            }
+            NodeKind::String => self.expand_string_children(entry),
             _ => {}
         }
+    }
+
+    fn process_entry(&mut self, entry: &Entry, ids_by_order: &mut Vec<usize>) {
+        let id = entry.pq_id;
+        ids_by_order.push(id);
+        let kind = self.resolve_kind(entry);
+        if let Some(ar_id) = entry.arena_node {
+            self.record_metrics_for(id, &kind, ar_id);
+        }
+        self.expand_for(entry, &kind);
     }
 }
 
@@ -381,13 +375,9 @@ pub fn build_priority_order_from_arena(
     id_to_item.push(RankedNode {
         node_id: NodeId(root_pq),
         parent_id: ParentId(None),
-        kind: root_kind.clone(),
+        kind: root_kind,
         depth: 0,
-        index_in_array: None,
         key_in_object: None,
-        priority: crate::utils::num::saturating_cast_u128_to_usize(
-            ROOT_BASE_SCORE,
-        ),
         number_value: n.number_value.clone(),
         bool_value: n.bool_value,
         string_value: n.string_value.clone(),
@@ -395,7 +385,6 @@ pub fn build_priority_order_from_arena(
     heap.push(Reverse(Entry {
         score: ROOT_BASE_SCORE,
         pq_id: root_pq,
-        kind: root_kind,
         depth: 0,
         arena_node: Some(root_ar),
     }));
@@ -421,19 +410,11 @@ pub fn build_priority_order_from_arena(
 
     let _walk_ms = t_walk.elapsed().as_millis();
     let total = next_pq_id;
-    let mut order_index: Vec<usize> = vec![usize::MAX; total];
-    for (idx, &pid) in ids_by_order.iter().enumerate() {
-        if pid < total {
-            order_index[pid] = idx;
-        }
-    }
-
     Ok(PriorityOrder {
         metrics,
         id_to_item,
         parent_of,
         children_of,
-        order_index,
         ids_by_order,
         total_nodes: total,
     })
@@ -459,16 +440,19 @@ mod tests {
         )
         .unwrap();
         let mut items_sorted: Vec<_> = build.id_to_item.clone();
+        // Build a transient mapping from id -> order index
+        let mut order_index = vec![usize::MAX; build.total_nodes];
+        for (idx, &pid) in build.ids_by_order.iter().enumerate() {
+            if pid < build.total_nodes {
+                order_index[pid] = idx;
+            }
+        }
         items_sorted.sort_by_key(|it| {
-            build
-                .order_index
-                .get(it.node_id.0)
-                .copied()
-                .unwrap_or(usize::MAX)
+            order_index.get(it.node_id.0).copied().unwrap_or(usize::MAX)
         });
         let mut lines = vec![format!("len={}", build.total_nodes)];
         for it in items_sorted {
-            lines.push(format!("{:?} prio={}", it, it.priority));
+            lines.push(format!("{it:?}"));
         }
         assert_snapshot!("order_empty_array_order", lines.join("\n"));
     }
@@ -486,16 +470,18 @@ mod tests {
         )
         .unwrap();
         let mut items_sorted: Vec<_> = build.id_to_item.clone();
+        let mut order_index = vec![usize::MAX; build.total_nodes];
+        for (idx, &pid) in build.ids_by_order.iter().enumerate() {
+            if pid < build.total_nodes {
+                order_index[pid] = idx;
+            }
+        }
         items_sorted.sort_by_key(|it| {
-            build
-                .order_index
-                .get(it.node_id.0)
-                .copied()
-                .unwrap_or(usize::MAX)
+            order_index.get(it.node_id.0).copied().unwrap_or(usize::MAX)
         });
         let mut lines = vec![format!("len={}", build.total_nodes)];
         for it in items_sorted {
-            lines.push(format!("{:?} prio={}", it, it.priority));
+            lines.push(format!("{it:?}"));
         }
         assert_snapshot!("order_single_string_array_order", lines.join("\n"));
     }

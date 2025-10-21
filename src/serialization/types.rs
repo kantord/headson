@@ -11,6 +11,6 @@ pub struct RenderConfig {
     pub indent_unit: String,
     pub space: String,
     // Newline sequence to use in final output (e.g., "\n" or "").
-    // Applied as a post-process replacement on the rendered string.
+    // Templates read this directly; no post-processing replacement.
     pub newline: String,
 }

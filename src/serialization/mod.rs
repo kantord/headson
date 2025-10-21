@@ -18,8 +18,6 @@ pub(crate) struct RenderScope<'a> {
     marks: &'a [u32],
     mark_gen: u32,
     config: &'a crate::RenderConfig,
-    nodes_built: usize,
-    max_depth: usize,
 }
 
 impl<'a> RenderScope<'a> {
@@ -149,12 +147,8 @@ impl<'a> RenderScope<'a> {
             if let Some(u) = n.as_u64() {
                 return u.to_string();
             }
-            if let Some(f) = n.as_f64() {
-                return if f == 0.0 {
-                    "0.0".to_string()
-                } else {
-                    n.to_string()
-                };
+            if n.as_f64().is_some() {
+                return n.to_string();
             }
         }
         "0".to_string()
@@ -174,10 +168,6 @@ impl<'a> RenderScope<'a> {
         depth: usize,
         inline: bool,
     ) -> String {
-        self.nodes_built += 1;
-        if depth > self.max_depth {
-            self.max_depth = depth;
-        }
         let it = &self.pq.id_to_item[id];
         match it.kind {
             NodeKind::Array => self.serialize_array(id, depth, inline),
@@ -272,8 +262,6 @@ pub fn render_arena_with_marks(
         marks,
         mark_gen,
         config,
-        nodes_built: 0,
-        max_depth: 0,
     };
     scope.serialize_node(root_id, 0, false)
 }

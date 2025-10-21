@@ -286,22 +286,8 @@ pub fn build_stream_arena(
     input: &str,
     config: &PriorityConfig,
 ) -> Result<StreamArena> {
-    // Use simd-json serde deserializer, parsing from a mutable buffer
-    let mut bytes = input.as_bytes().to_vec();
-    let mut de = simd_json::Deserializer::from_slice(&mut bytes)?;
-    let cell = ArenaCell {
-        arena: RefCell::new(StreamArena::default()),
-        array_cap: config.array_max_items,
-    };
-    let root_id: usize = {
-        let seed = NodeSeed { cell: &cell };
-        seed.deserialize(&mut de)?
-    };
-    {
-        let mut a = cell.arena.borrow_mut();
-        a.root_id = root_id;
-    }
-    Ok(cell.arena.into_inner())
+    // Delegate to the in-place bytes variant to avoid duplicate logic
+    build_stream_arena_from_bytes(input.as_bytes().to_vec(), config)
 }
 
 // Variant that avoids copying: accepts owned bytes and parses in-place.
