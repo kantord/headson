@@ -42,13 +42,6 @@ pub fn headson(
     let order_build =
         order::build_priority_order_from_arena(&arena, priority_cfg)?;
     let out = find_largest_render_under_budget(&order_build, config, budget);
-    // Apply newline preference: allow replacing default "\n" with configured sequence
-    // (supports "" for one-line output).
-    let out = if config.newline != "\n" {
-        out.replace('\n', &config.newline)
-    } else {
-        out
-    };
     Ok(out)
 }
 

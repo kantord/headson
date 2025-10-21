@@ -10,6 +10,7 @@ pub struct ArrayCtx {
     pub omitted: usize,
     pub indent0: String,
     pub indent1: String,
+    pub nl: String,
 }
 
 pub struct ObjectCtx {
@@ -19,6 +20,7 @@ pub struct ObjectCtx {
     pub indent0: String,
     pub indent1: String,
     pub sp: String,
+    pub nl: String,
 }
 
 pub fn render_array(template: OutputTemplate, ctx: &ArrayCtx) -> String {

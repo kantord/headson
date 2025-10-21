@@ -100,6 +100,7 @@ impl<'a> RenderScope<'a> {
             omitted,
             indent0: indent(depth, &cfg.indent_unit),
             indent1: indent(depth + 1, &cfg.indent_unit),
+            nl: cfg.newline.clone(),
         };
         render_array(cfg.template, &ctx)
     }
@@ -119,6 +120,7 @@ impl<'a> RenderScope<'a> {
             indent0: indent(depth, &cfg.indent_unit),
             indent1: indent(depth + 1, &cfg.indent_unit),
             sp: cfg.space.clone(),
+            nl: cfg.newline.clone(),
         };
         render_object(cfg.template, &ctx)
     }
@@ -198,7 +200,7 @@ impl<'a> RenderScope<'a> {
                 kept += 1;
                 let rendered = self.serialize_node(cid, depth + 1);
                 let ind = indent(depth + 1, &cfg.indent_unit);
-                if rendered.contains('\n') {
+                if !cfg.newline.is_empty() && rendered.contains(&cfg.newline) {
                     children_pairs.push((i, rendered));
                 } else {
                     children_pairs.push((i, format!("{ind}{rendered}")));
