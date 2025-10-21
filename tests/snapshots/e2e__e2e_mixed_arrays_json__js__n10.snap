@@ -2,4 +2,4 @@
 source: tests/e2e.rs
 expression: stdout
 ---
-
+{ /* 4 more properties */ }

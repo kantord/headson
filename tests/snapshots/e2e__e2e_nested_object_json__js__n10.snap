@@ -1,5 +1,6 @@
 ---
 source: tests/e2e.rs
+assertion_line: 45
 expression: stdout
 ---
-
+{ /* 2 more properties */ }

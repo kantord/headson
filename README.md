@@ -21,7 +21,7 @@ Usage examples:
 
 Flags:
 
-- `-n, --budget <int>`: output size budget in bytes. The program binary-searches the largest node count k whose rendered string length `s.len()` (bytes) is `<= budget`.
+ - `-n, --budget <int>`: output size budget in bytes. The program binary-searches the largest node count k whose rendered string length `s.len()` (bytes) is `<= budget`. If no render fits the budget, the tool falls back to rendering a single node (k = 1) to produce the shortest possible preview.
 - `-f, --template <json|pseudo|js>`: output format/template.
 - `--indent <string>`: indentation unit (default: two spaces).
 - `--no-space`: remove the single space after `:` in objects. Arrays never add spaces after commas.
@@ -70,19 +70,21 @@ Frontier priority-order build (default): a best‑first traversal yields `ids_by
 - `newline: String` — either `"\n"` or `""`; applied as a post-process replacement of default newlines.
  
 
-Rendering semantics by style:
+ Rendering semantics by style:
 
 - `json`:
   - Always valid JSON when nothing is omitted (i.e., budget large enough). Empty containers render as `[]` / `{}` compactly.
   - When truncated, the current templates render C-style comments with omitted counts (e.g., `/* N more items */`). This makes truncated JSON output not strictly valid JSON.
 - `pseudo`:
   - Uses ellipsis markers (`…`) for truncation; empty fully-truncated containers render single-line markers (`[ … ]`, `{ … }`).
-- `js`:
-  - Uses comments like `/* N more items */` and `/* empty */`; respects `--no-space` around braces for empty containers (e.g., `{/* empty */}`).
+ - `js`:
+  - Uses comments like `/* N more items */` / `/* N more properties */` when items are omitted due to truncation.
+  - Empty containers (no omissions) render as `[]` / `{}` just like JSON; when fully truncated (kept=0 but omissions exist) they render single-line comments (e.g., `[ /* N more items */ ]`, `{ /* N more properties */ }`).
 
 Additional details:
 
-- Arrays never include a space after commas; objects apply `space` after colons.
+ - Arrays never include a space after commas; objects apply `space` after colons.
+ - When budget is too small to fit any output, a single node is still rendered (k = 1). For example, objects render as `{}` for JSON/pseudo or `{ /* N more properties */ }` for JS if truncation occurred.
 - Strings are escaped via `serde_json`. When truncated, only a quoted kept prefix plus an ellipsis is rendered, ensuring prefix‑only semantics.
 
 ### Order Caps (configurable)

@@ -45,7 +45,7 @@ fn find_largest_render_under_budget(
     // Binary search the largest k in [1, total] whose render
     // fits within `char_budget`.
     let total = order_build.total_nodes;
-    if total == 0 || char_budget == 0 {
+    if total == 0 {
         return Ok(String::new());
     }
     // Each included node contributes at least some output; cap hi by budget.
@@ -76,5 +76,18 @@ fn find_largest_render_under_budget(
         }
     });
 
-    Ok(best_str.unwrap_or_default())
+    if let Some(s) = best_str {
+        Ok(s)
+    } else {
+        // Fallback: always render a single node (k=1) to produce the
+        // shortest possible preview, even if it exceeds the byte budget.
+        let s = crate::serialization::render_arena_with_marks(
+            order_build,
+            1,
+            &mut marks,
+            mark_gen,
+            config,
+        )?;
+        Ok(s)
+    }
 }
