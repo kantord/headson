@@ -66,6 +66,7 @@ struct NodeSeed<'a> {
 impl<'de> DeserializeSeed<'de> for NodeSeed<'_> {
     type Value = usize; // node id
 
+    #[allow(clippy::too_many_lines)]
     fn deserialize<D>(
         self,
         deserializer: D,

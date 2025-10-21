@@ -75,6 +75,7 @@ pub const ROOT_PQ_ID: usize = 0;
 // Frontier builder from streaming arena (Stage 2 adapter)
 use crate::stream_arena::StreamArena;
 
+#[allow(clippy::too_many_lines)]
 pub fn build_priority_order_from_arena(
     arena: &StreamArena,
     cfg: &PriorityConfig,

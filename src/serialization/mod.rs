@@ -56,6 +56,7 @@ fn mark_k_and_ancestors(
 }
 
 /// Render a budget-limited preview directly from the arena using inclusion marks.
+#[allow(clippy::too_many_lines)]
 pub fn render_arena_with_marks(
     order_build: &PriorityOrder,
     budget: usize,

@@ -1,3 +1,12 @@
+#![warn(
+    clippy::cognitive_complexity,
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::type_complexity,
+    clippy::bool_comparison,
+    clippy::branches_sharing_code
+)]
+
 use std::io::{self, Read};
 use std::path::PathBuf;
 
