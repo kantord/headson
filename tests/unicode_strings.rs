@@ -1,22 +1,15 @@
-use assert_cmd::Command;
+#[path = "../test_support/mod.rs"]
+mod util;
 
 fn run_truncated_string(input: &str, template: &str, cap: usize) -> String {
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let output = cmd
-        .args([
-            "-n",
-            "1000", // generous byte budget; truncation driven by --string-cap
-            "-f",
-            template,
-            "--string-cap",
-            &cap.to_string(),
-        ])
-        .write_stdin(input)
-        .output()
-        .expect("run");
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    // Root is a JSON string literal for these tests; parse to actual String
-    serde_json::from_str::<String>(&stdout)
+    let cap_s = cap.to_string();
+    let out = util::run_template_budget(
+        input,
+        template,
+        1000, // generous byte budget; truncation driven by --string-cap
+        &["--string-cap", &cap_s],
+    );
+    serde_json::from_str::<String>(&out)
         .expect("output should be a JSON string")
 }
 

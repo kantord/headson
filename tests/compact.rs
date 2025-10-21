@@ -1,11 +1,9 @@
-use assert_cmd::Command;
+#[path = "../test_support/mod.rs"]
+mod util;
+use assert_cmd::assert::Assert;
 
-fn run(input: &str, extra: &[&str]) -> assert_cmd::assert::Assert {
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
-    cmd.args(["-n", "1000", "-f", "json"])
-        .args(extra)
-        .write_stdin(input)
-        .assert()
+fn run(input: &str, extra: &[&str]) -> Assert {
+    util::run_template_budget_assert(input, "json", 1000, extra)
 }
 
 #[test]

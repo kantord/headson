@@ -1,27 +1,14 @@
-use assert_cmd::Command;
+#[path = "../test_support/mod.rs"]
+mod util;
+use std::fs;
 
-fn run_array_case(
-    len: usize,
-    template: &str,
-    budget: usize,
-    extra: &[&str],
-) -> String {
-    // Build a compact JSON array: [0,1,2,...]
-    let mut s = String::from("[");
-    for i in 0..len {
-        if i > 0 {
-            s.push(',');
-        }
-        s.push_str(&i.to_string());
-    }
-    s.push(']');
-
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let budget_s = budget.to_string();
-    let mut args = vec!["-n", &budget_s, "-f", template, "--compact"];
+fn run_array_case(template: &str, budget: usize, extra: &[&str]) -> String {
+    let s =
+        fs::read_to_string("tests/fixtures/explicit/array_numbers_50.json")
+            .expect("read fixture");
+    let mut args = vec!["--compact"];
     args.extend_from_slice(extra);
-    let assert = cmd.args(args).write_stdin(s).assert().success();
-    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+    util::run_template_budget(&s, template, budget, &args)
 }
 
 fn parse_js_kept_omitted(out_js: &str) -> (usize, usize) {
@@ -41,18 +28,17 @@ fn parse_js_kept_omitted(out_js: &str) -> (usize, usize) {
 
 #[test]
 fn array_truncated_js_kept_plus_omitted_equals_total() {
-    let len = 20usize;
+    let len = 50usize;
     let budget = 30usize; // parse cap = 15
-    let out_js = run_array_case(len, "js", budget, &[]);
+    let out_js = run_array_case("js", budget, &[]);
     let (kept, omitted) = parse_js_kept_omitted(&out_js);
     assert_eq!(kept + omitted, len, "kept+omitted must equal total");
 }
 
 #[test]
 fn array_truncated_pseudo_has_ellipsis() {
-    let len = 20usize;
     let budget = 30usize;
-    let out_pseudo = run_array_case(len, "pseudo", budget, &[]);
+    let out_pseudo = run_array_case("pseudo", budget, &[]);
     assert!(out_pseudo.starts_with('[') && out_pseudo.ends_with("]\n"));
     assert!(
         out_pseudo.contains('…'),
@@ -62,9 +48,8 @@ fn array_truncated_pseudo_has_ellipsis() {
 
 #[test]
 fn array_truncated_json_length_within_cap() {
-    let len = 20usize;
     let budget = 30usize;
-    let out_json = run_array_case(len, "json", budget, &[]);
+    let out_json = run_array_case("json", budget, &[]);
     let v: serde_json::Value =
         serde_json::from_str(&out_json).expect("json parse");
     let arr = v.as_array().expect("root array");

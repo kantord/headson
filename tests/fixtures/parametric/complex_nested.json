@@ -1,0 +1,37 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice Wonderland",
+      "roles": ["admin", "editor", "viewer"],
+      "profile": {
+        "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+        "social": {
+          "twitter": "@alice",
+          "github": "alice",
+          "web": "https://example.com/users/alice"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "Bob Builder",
+      "roles": ["contributor", "viewer"],
+      "profile": {
+        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+        "social": {
+          "twitter": "@buildWithBob",
+          "github": "bobbuilder",
+          "web": "https://bob.example.org"
+        }
+      }
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "pageSize": 20,
+    "next": null,
+    "tags": ["alpha", "beta", "gamma", "delta", "epsilon"]
+  }
+}
+

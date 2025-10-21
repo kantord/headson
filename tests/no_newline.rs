@@ -1,11 +1,8 @@
-use assert_cmd::Command;
+#[path = "../test_support/mod.rs"]
+mod util;
 
 fn run_with_flags(input: &str, template: &str, extra: &[&str]) -> String {
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let mut args = vec!["-n", "1000", "-f", template];
-    args.extend_from_slice(extra);
-    let output = cmd.args(args).write_stdin(input).output().expect("run");
-    String::from_utf8_lossy(&output.stdout).into_owned()
+    util::run_template_budget(input, template, 1000, extra)
 }
 
 #[test]
