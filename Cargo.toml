@@ -3,10 +3,20 @@ name = "headson"
 version = "0.1.0"
 edition = "2024"
 description = "Budget‑constrained JSON preview renderer"
-license = "MIT OR Apache-2.0"
+readme = "README.md"
+rust-version = "1.85.0"
+license = "MIT"
 repository = "https://github.com/kantord/headson"
+homepage = "https://github.com/kantord/headson"
+documentation = "https://docs.rs/headson"
 keywords = ["json", "cli", "render", "preview"]
 categories = ["command-line-utilities", "parsing"]
+include = [
+  "src/**",
+  "Cargo.toml",
+  "README.md",
+  "LICENSE*",
+]
 
 [dependencies]
 anyhow = "1.0.100"
