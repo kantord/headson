@@ -264,7 +264,7 @@ pub fn render_arena_with_marks(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::order::build_priority_order_from_arena;
+    use crate::order::build_order;
     use insta::assert_snapshot;
 
     #[test]
@@ -274,7 +274,7 @@ mod tests {
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
-        let build = build_priority_order_from_arena(
+        let build = build_order(
             &arena,
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -302,7 +302,7 @@ mod tests {
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
-        let build = build_priority_order_from_arena(
+        let build = build_order(
             &arena,
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )

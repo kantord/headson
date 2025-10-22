@@ -48,6 +48,27 @@ struct Scope<'a> {
 }
 
 impl<'a> Scope<'a> {
+    fn push_child_common(
+        &mut self,
+        entry: &Entry,
+        child_pq: usize,
+        arena_node: Option<usize>,
+        score: u128,
+        ranked: RankedNode,
+    ) {
+        let id = entry.pq_id;
+        self.parent.push(Some(NodeId(id)));
+        self.children.push(Vec::new());
+        self.metrics.push(NodeMetrics::default());
+        self.nodes.push(ranked);
+        self.children[id].push(NodeId(child_pq));
+        self.heap.push(Reverse(Entry {
+            score,
+            pq_id: child_pq,
+            depth: entry.depth + 1,
+            arena_node,
+        }));
+    }
     fn record_array_metrics(&mut self, id: usize, arena_id: usize) {
         let array_len = self.arena.nodes[arena_id]
             .array_len
@@ -88,7 +109,6 @@ impl<'a> Scope<'a> {
     }
 
     fn expand_array_children(&mut self, entry: &Entry, arena_id: usize) {
-        let id = entry.pq_id;
         let node = &self.arena.nodes[arena_id];
         let kept = node.children_len;
         for i in 0..kept {
@@ -96,27 +116,23 @@ impl<'a> Scope<'a> {
             let child_kind = self.arena.nodes[child_arena_id].kind;
             let child_pq = *self.next_pq_id;
             *self.next_pq_id += 1;
-            self.parent.push(Some(NodeId(id)));
-            self.children.push(Vec::new());
-            self.metrics.push(NodeMetrics::default());
             let extra = (i as u128).pow(3) * ARRAY_INDEX_CUBIC_WEIGHT;
             let score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
             let child_node = &self.arena.nodes[child_arena_id];
-            self.nodes.push(RankedNode {
-                node_id: NodeId(child_pq),
-                kind: child_kind,
-                key_in_object: None,
-                number_value: child_node.number_value.clone(),
-                bool_value: child_node.bool_value,
-                string_value: child_node.string_value.clone(),
-            });
-            self.children[id].push(NodeId(child_pq));
-            self.heap.push(Reverse(Entry {
+            self.push_child_common(
+                entry,
+                child_pq,
+                Some(child_arena_id),
                 score,
-                pq_id: child_pq,
-                depth: entry.depth + 1,
-                arena_node: Some(child_arena_id),
-            }));
+                RankedNode {
+                    node_id: NodeId(child_pq),
+                    kind: child_kind,
+                    key_in_object: None,
+                    number_value: child_node.number_value.clone(),
+                    bool_value: child_node.bool_value,
+                    string_value: child_node.string_value.clone(),
+                },
+            );
             if *self.next_pq_id >= self.safety_cap {
                 break;
             }
@@ -124,7 +140,6 @@ impl<'a> Scope<'a> {
     }
 
     fn expand_object_children(&mut self, entry: &Entry, arena_id: usize) {
-        let id = entry.pq_id;
         let node = &self.arena.nodes[arena_id];
         let mut items: Vec<(usize, usize)> =
             Vec::with_capacity(node.children_len);
@@ -140,26 +155,22 @@ impl<'a> Scope<'a> {
             let child_kind = self.arena.nodes[child_arena_id].kind;
             let child_pq = *self.next_pq_id;
             *self.next_pq_id += 1;
-            self.parent.push(Some(NodeId(id)));
-            self.children.push(Vec::new());
-            self.metrics.push(NodeMetrics::default());
             let score = entry.score + OBJECT_CHILD_BASE_INCREMENT;
             let child_node = &self.arena.nodes[child_arena_id];
-            self.nodes.push(RankedNode {
-                node_id: NodeId(child_pq),
-                kind: child_kind,
-                key_in_object: Some(self.arena.obj_keys[key_idx].clone()),
-                number_value: child_node.number_value.clone(),
-                bool_value: child_node.bool_value,
-                string_value: child_node.string_value.clone(),
-            });
-            self.children[id].push(NodeId(child_pq));
-            self.heap.push(Reverse(Entry {
+            self.push_child_common(
+                entry,
+                child_pq,
+                Some(child_arena_id),
                 score,
-                pq_id: child_pq,
-                depth: entry.depth + 1,
-                arena_node: Some(child_arena_id),
-            }));
+                RankedNode {
+                    node_id: NodeId(child_pq),
+                    kind: child_kind,
+                    key_in_object: Some(self.arena.obj_keys[key_idx].clone()),
+                    number_value: child_node.number_value.clone(),
+                    bool_value: child_node.bool_value,
+                    string_value: child_node.string_value.clone(),
+                },
+            );
             if *self.next_pq_id >= self.safety_cap {
                 break;
             }
@@ -175,9 +186,6 @@ impl<'a> Scope<'a> {
         for i in 0..count {
             let child_pq = *self.next_pq_id;
             *self.next_pq_id += 1;
-            self.parent.push(Some(NodeId(id)));
-            self.children.push(Vec::new());
-            self.metrics.push(NodeMetrics::default());
             let extra = if i > STRING_INDEX_INFLECTION {
                 let d = (i - STRING_INDEX_INFLECTION) as u128;
                 d * d * STRING_INDEX_QUADRATIC_WEIGHT
@@ -188,21 +196,20 @@ impl<'a> Scope<'a> {
                 + STRING_CHILD_BASE_INCREMENT
                 + (i as u128) * STRING_CHILD_LINEAR_WEIGHT
                 + extra;
-            self.nodes.push(RankedNode {
-                node_id: NodeId(child_pq),
-                kind: NodeKind::String,
-                key_in_object: None,
-                number_value: None,
-                bool_value: None,
-                string_value: None,
-            });
-            self.children[id].push(NodeId(child_pq));
-            self.heap.push(Reverse(Entry {
+            self.push_child_common(
+                entry,
+                child_pq,
+                None,
                 score,
-                pq_id: child_pq,
-                depth: entry.depth + 1,
-                arena_node: None,
-            }));
+                RankedNode {
+                    node_id: NodeId(child_pq),
+                    kind: NodeKind::String,
+                    key_in_object: None,
+                    number_value: None,
+                    bool_value: None,
+                    string_value: None,
+                },
+            );
             if *self.next_pq_id >= self.safety_cap {
                 break;
             }
@@ -249,7 +256,7 @@ impl<'a> Scope<'a> {
     }
 }
 
-pub fn build_priority_order_from_arena(
+pub fn build_order(
     arena: &JsonTreeArena,
     config: &PriorityConfig,
 ) -> Result<PriorityOrder> {
@@ -326,7 +333,7 @@ mod tests {
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
-        let build = super::build_priority_order_from_arena(
+        let build = super::build_order(
             &arena,
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -357,7 +364,7 @@ mod tests {
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
-        let build = super::build_priority_order_from_arena(
+        let build = super::build_order(
             &arena,
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )

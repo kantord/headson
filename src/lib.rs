@@ -20,8 +20,7 @@ mod order;
 mod serialization;
 mod utils;
 pub use order::{
-    NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode,
-    build_priority_order_from_arena,
+    NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
 };
 
 pub use serialization::types::{OutputTemplate, RenderConfig};
@@ -37,8 +36,7 @@ pub fn headson(
         input,
         priority_cfg,
     )?;
-    let order_build =
-        order::build_priority_order_from_arena(&arena, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
     let out = find_largest_render_under_budget(&order_build, config, budget);
     Ok(out)
 }
