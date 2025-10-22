@@ -52,7 +52,7 @@ impl<'a> RenderScope<'a> {
     fn omitted_for(
         &self,
         id: usize,
-        kind: &NodeKind,
+        kind: NodeKind,
         kept: usize,
     ) -> Option<usize> {
         match kind {
@@ -80,7 +80,7 @@ impl<'a> RenderScope<'a> {
         let config = self.config;
         let (children_pairs, kept) = self.gather_array_children(id, depth);
         let node = &self.pq.id_to_item[id];
-        let omitted = self.omitted_for(id, &node.kind, kept).unwrap_or(0);
+        let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         if kept == 0 && omitted == 0 {
             return "[]".to_string();
         }
@@ -105,7 +105,7 @@ impl<'a> RenderScope<'a> {
         let config = self.config;
         let (children_pairs, kept) = self.gather_object_children(id, depth);
         let node = &self.pq.id_to_item[id];
-        let omitted = self.omitted_for(id, &node.kind, kept).unwrap_or(0);
+        let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         if kept == 0 && omitted == 0 {
             return "{}".to_string();
         }
@@ -125,7 +125,7 @@ impl<'a> RenderScope<'a> {
     fn serialize_string(&mut self, id: usize) -> String {
         let kept = self.count_kept_children(id);
         let node = &self.pq.id_to_item[id];
-        let omitted = self.omitted_for(id, &node.kind, kept).unwrap_or(0);
+        let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         let full: &str = node.string_value.as_deref().unwrap_or("");
         if omitted == 0 {
             return crate::utils::json::json_string(full);
@@ -192,12 +192,12 @@ impl<'a> RenderScope<'a> {
                 kept += 1;
                 let rendered =
                     self.serialize_node(child_id.0, depth + 1, false);
-                let child_indent = indent(depth + 1, &config.indent_unit);
                 if !config.newline.is_empty()
                     && rendered.contains(&config.newline)
                 {
                     children_pairs.push((i, rendered));
                 } else {
+                    let child_indent = indent(depth + 1, &config.indent_unit);
                     children_pairs
                         .push((i, format!("{child_indent}{rendered}")));
                 }
