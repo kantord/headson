@@ -1,35 +1,35 @@
 use crate::order::{NodeId, PriorityOrder};
 
-/// Mark the first `k` nodes by global order and push them onto `stack`.
-pub(crate) fn mark_top_k_by_order(
+/// Seed the work stack by marking the first `k` nodes in global order.
+fn seed_stack_with_top_k(
     order: &PriorityOrder,
     k: usize,
     marks: &mut [u32],
     mark_gen: u32,
-    stack: &mut Vec<NodeId>,
+    work_stack: &mut Vec<NodeId>,
 ) {
     for &id in order.ids_by_order.iter().take(k) {
         let idx = id.0;
         if marks[idx] != mark_gen {
             marks[idx] = mark_gen;
-            stack.push(id);
+            work_stack.push(id);
         }
     }
 }
 
-/// Pop from `stack`, and for each node mark its parent; continue until empty.
-pub(crate) fn mark_ancestors_from_stack(
+/// Pop from the work stack; for each node mark its parent; continue until empty.
+fn propagate_marks_to_ancestors(
     parent_of: &[Option<NodeId>],
     marks: &mut [u32],
     mark_gen: u32,
-    stack: &mut Vec<NodeId>,
+    work_stack: &mut Vec<NodeId>,
 ) {
-    while let Some(id) = stack.pop() {
+    while let Some(id) = work_stack.pop() {
         let idx = id.0;
         match parent_of[idx] {
             Some(parent) if marks[parent.0] != mark_gen => {
                 marks[parent.0] = mark_gen;
-                stack.push(parent);
+                work_stack.push(parent);
             }
             _ => {}
         }
@@ -43,7 +43,12 @@ pub(crate) fn mark_top_k_and_ancestors(
     marks: &mut [u32],
     mark_gen: u32,
 ) {
-    let mut stack: Vec<NodeId> = Vec::new();
-    mark_top_k_by_order(order, k, marks, mark_gen, &mut stack);
-    mark_ancestors_from_stack(&order.parent_of, marks, mark_gen, &mut stack);
+    let mut work_stack: Vec<NodeId> = Vec::new();
+    seed_stack_with_top_k(order, k, marks, mark_gen, &mut work_stack);
+    propagate_marks_to_ancestors(
+        &order.parent_of,
+        marks,
+        mark_gen,
+        &mut work_stack,
+    );
 }
