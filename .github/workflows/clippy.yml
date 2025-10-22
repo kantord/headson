@@ -7,7 +7,7 @@ on:
 
 jobs:
   clippy:
-    name: Lint with Clippy
+    name: Pre-commit (Clippy + fmt)
     runs-on: ubuntu-latest
     env:
       RUSTFLAGS: -D warnings
@@ -20,5 +20,13 @@ jobs:
         with:
           components: clippy
 
-      - name: Run clippy (all+perf+cargo, deny warnings)
-        run: cargo clippy --all-targets --all-features -- -W clippy::all -W clippy::perf -W clippy::cargo -D warnings
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Run pre-commit on all files
+        run: pre-commit run --all-files

@@ -26,12 +26,12 @@ pub(crate) fn mark_ancestors_from_stack(
 ) {
     while let Some(id) = stack.pop() {
         let idx = id.0;
-        if let Some(parent) = parent_of[idx] {
-            let pidx = parent.0;
-            if marks[pidx] != mark_gen {
-                marks[pidx] = mark_gen;
+        match parent_of[idx] {
+            Some(parent) if marks[parent.0] != mark_gen => {
+                marks[parent.0] = mark_gen;
                 stack.push(parent);
             }
+            _ => {}
         }
     }
 }

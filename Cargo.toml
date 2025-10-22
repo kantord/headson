@@ -34,6 +34,9 @@ strip = "symbols"
 incremental = false
 
 [lints.clippy]
+cargo = { level = "deny", priority = -1 }
+all = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
 cognitive_complexity = "deny"
 too_many_lines = "deny"
 too_many_arguments = "deny"
