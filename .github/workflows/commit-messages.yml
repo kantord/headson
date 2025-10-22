@@ -1,33 +1,19 @@
-name: Semantic Pull Request
-
-permissions:
-  contents: read
-  pull-requests: write
+name: Lint PR
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, edited]
+    types:
+      - opened
+      - edited
+      - reopened
 
 jobs:
-  validate:
-    name: Validate PR title (squash only)
+  main:
+    name: Validate PR title
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     steps:
-      - uses: amannn/action-semantic-pull-request@v5
-        with:
-          types: |
-            build
-            chore
-            ci
-            docs
-            feat
-            fix
-            perf
-            refactor
-            revert
-            style
-            test
-          requireScope: false
-          wip: true
+      - uses: amannn/action-semantic-pull-request@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
