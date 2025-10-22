@@ -126,11 +126,11 @@ impl<'a> RenderScope<'a> {
         let kept = self.count_kept_children(id);
         let node = &self.pq.id_to_item[id];
         let omitted = self.omitted_for(id, &node.kind, kept).unwrap_or(0);
-        let full = node.string_value.clone().unwrap_or_default();
+        let full: &str = node.string_value.as_deref().unwrap_or("");
         if omitted == 0 {
-            return crate::utils::json::json_string(&full);
+            return crate::utils::json::json_string(full);
         }
-        let prefix = crate::utils::text::take_n_graphemes(full.as_str(), kept);
+        let prefix = crate::utils::text::take_n_graphemes(full, kept);
         let truncated = format!("{prefix}…");
         crate::utils::json::json_string(&truncated)
     }
