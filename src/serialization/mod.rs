@@ -104,12 +104,17 @@ impl<'a> RenderScope<'a> {
     ) -> String {
         let config = self.config;
         // Special-case: fileset root in Pseudo template → head-style sections
-        if id == ROOT_PQ_ID
-            && self.pq.is_fileset
-            && matches!(config.template, crate::OutputTemplate::Pseudo)
-            && !config.newline.is_empty()
+        if id == ROOT_PQ_ID && self.pq.is_fileset && !config.newline.is_empty()
         {
-            return self.serialize_fileset_root(depth);
+            match config.template {
+                crate::OutputTemplate::Pseudo => {
+                    return self.serialize_fileset_root_pseudo(depth);
+                }
+                crate::OutputTemplate::Js => {
+                    return self.serialize_fileset_root_js(depth);
+                }
+                _ => {}
+            }
         }
         let (children_pairs, kept) = self.gather_object_children(id, depth);
         let node = &self.pq.nodes[id];
@@ -238,7 +243,7 @@ impl<'a> RenderScope<'a> {
     }
 
     // Render multi-input fileset as head-style sections for Pseudo template.
-    fn serialize_fileset_root(&mut self, depth: usize) -> String {
+    fn serialize_fileset_root_pseudo(&mut self, depth: usize) -> String {
         let nl = &self.config.newline;
         let mut out = String::new();
         if let Some(children_ids) = self.pq.children.get(ROOT_PQ_ID) {
@@ -267,6 +272,41 @@ impl<'a> RenderScope<'a> {
                 // File content
                 let rendered = self.serialize_node(child_id.0, depth, false);
                 out.push_str(&rendered);
+            }
+        }
+        out
+    }
+
+    // Render multi-input fileset as head-style sections for JS template using
+    // line comments for file names. Ensure valid JS by terminating each section
+    // with a semicolon.
+    fn serialize_fileset_root_js(&mut self, depth: usize) -> String {
+        let nl = &self.config.newline;
+        let mut out = String::new();
+        if let Some(children_ids) = self.pq.children.get(ROOT_PQ_ID) {
+            let mut first = true;
+            for &child_id in children_ids.iter() {
+                if self.marks[child_id.0] != self.mark_gen {
+                    continue;
+                }
+                if !first {
+                    // blank line between sections
+                    out.push_str(nl);
+                    out.push_str(nl);
+                }
+                first = false;
+                let raw_key = self.pq.nodes[child_id.0]
+                    .key_in_object
+                    .as_deref()
+                    .unwrap_or("");
+                out.push_str(&indent(depth, &self.config.indent_unit));
+                out.push_str("// ");
+                out.push_str(raw_key);
+                out.push_str(nl);
+                let rendered = self.serialize_node(child_id.0, depth, false);
+                out.push_str(&rendered);
+                out.push(';');
+                out.push_str(nl);
             }
         }
         out
