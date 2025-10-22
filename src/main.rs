@@ -8,7 +8,7 @@ use clap::{Parser, ValueEnum};
 #[command(
     name = "headson",
     version,
-    about = "Read JSON from stdin and render a prioritized, budget‑constrained preview"
+    about = "Get a small but useful preview of a JSON file"
 )]
 struct Cli {
     #[arg(short = 'n', long = "budget", default_value_t = 500)]
@@ -22,7 +22,7 @@ struct Cli {
     #[arg(
         long = "no-newline",
         default_value_t = false,
-        help = "Remove newlines in output (one-line)"
+        help = "Do not add newlines in the output"
     )]
     no_newline: bool,
     #[arg(
@@ -30,19 +30,16 @@ struct Cli {
         long = "compact",
         default_value_t = false,
         conflicts_with_all = ["no_space", "no_newline", "indent"],
-        help = "Compact output: disables indentation, spaces after colons, and newlines"
+        help = "Compact output with no added whitespace. Not very human-readable."
     )]
     compact: bool,
     #[arg(
         long = "string-cap",
         default_value_t = 500,
-        help = "Maximum graphemes to expand per string in PQ build"
+        help = "Maximum string length to display"
     )]
     string_cap: usize,
-    #[arg(
-        long = "input",
-        help = "Read JSON directly from a file path instead of stdin"
-    )]
+    #[arg(long = "input", help = "Read JSON from a file instead of stdin")]
     input: Option<PathBuf>,
 }
 
