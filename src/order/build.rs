@@ -1,81 +1,10 @@
 use anyhow::Result;
-use unicode_segmentation::UnicodeSegmentation;
-
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+use unicode_segmentation::UnicodeSegmentation;
 
-#[derive(Clone, Debug)]
-pub struct PriorityConfig {
-    pub max_string_graphemes: usize,
-    pub array_max_items: usize,
-}
-
-impl PriorityConfig {
-    pub fn new(max_string_graphemes: usize, array_max_items: usize) -> Self {
-        Self {
-            max_string_graphemes,
-            array_max_items,
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub struct NodeId(pub usize);
-
-impl From<usize> for NodeId {
-    fn from(value: usize) -> Self {
-        NodeId(value)
-    }
-}
-
-impl From<NodeId> for usize {
-    fn from(value: NodeId) -> Self {
-        value.0
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum NodeKind {
-    Null,
-    Bool,
-    Number,
-    String,
-    Array,
-    Object,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct RankedNode {
-    pub node_id: NodeId,
-    pub kind: NodeKind,
-    pub key_in_object: Option<String>,
-    pub number_value: Option<serde_json::Number>,
-    pub bool_value: Option<bool>,
-    pub string_value: Option<String>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct NodeMetrics {
-    pub array_len: Option<usize>,
-    pub object_len: Option<usize>,
-    pub string_len: Option<usize>,
-    pub string_truncated: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct PriorityOrder {
-    pub metrics: Vec<NodeMetrics>,
-    pub nodes: Vec<RankedNode>,
-    // All ids in this structure are PQ ids (0..total_nodes).
-    // They correspond to `NodeId.0` in `RankedNode` for convenience when indexing.
-    pub parent: Vec<Option<NodeId>>, // parent[id] = parent id (PQ id)
-    pub children: Vec<Vec<NodeId>>,  // children[id] = children ids (PQ ids)
-    pub order: Vec<NodeId>, // ids sorted by ascending priority (PQ ids)
-    pub total_nodes: usize,
-}
-
-pub const ROOT_PQ_ID: usize = 0;
-
+use super::scoring::*;
+use super::types::*;
 use crate::utils::tree_arena::JsonTreeArena;
 
 #[derive(Clone)]
@@ -105,39 +34,6 @@ impl Ord for Entry {
             .then_with(|| self.pq_id.cmp(&other.pq_id))
     }
 }
-
-/// Hard ceiling on number of PQ nodes built to prevent degenerate inputs
-/// from blowing up memory/time while exploring the frontier.
-const SAFETY_CAP: usize = 2_000_000;
-
-// Priority scoring knobs
-//
-// We build a single global priority order by walking the parsed arena with a
-// min-heap over a monotonic "score". Lower scores come first in the order.
-// These constants shape how we interleave arrays/objects/strings during the walk.
-
-/// Root starts at a fixed minimal score so its children naturally follow.
-const ROOT_BASE_SCORE: u128 = 1;
-
-/// Small base increment so array children follow the parent.
-const ARRAY_CHILD_BASE_INCREMENT: u128 = 1;
-/// Strong cubic index term to bias earlier array items far ahead of later ones.
-/// The large multiplier ensures array index dominates depth ties.
-const ARRAY_INDEX_CUBIC_WEIGHT: u128 = 1_000_000_000_000;
-
-/// Small base increment so object properties appear right after their object.
-const OBJECT_CHILD_BASE_INCREMENT: u128 = 1;
-
-/// Base increment so string grapheme expansions follow their parent string.
-const STRING_CHILD_BASE_INCREMENT: u128 = 1;
-/// Linear weight to prefer earlier graphemes strongly.
-const STRING_CHILD_LINEAR_WEIGHT: u128 = 1;
-/// Index after which we penalize graphemes quadratically to de-prioritize
-/// very deep string expansions vs. structural nodes.
-const STRING_INDEX_INFLECTION: usize = 20;
-/// Quadratic penalty multiplier for string grapheme expansions beyond the
-/// inflection point.
-const STRING_INDEX_QUADRATIC_WEIGHT: u128 = 1;
 
 struct Scope<'a> {
     arena: &'a JsonTreeArena,
@@ -230,7 +126,6 @@ impl<'a> Scope<'a> {
     fn expand_object_children(&mut self, entry: &Entry, arena_id: usize) {
         let id = entry.pq_id;
         let node = &self.arena.nodes[arena_id];
-        // Collect pairs of (key_index_in_arena, child_arena_id) without cloning keys
         let mut items: Vec<(usize, usize)> =
             Vec::with_capacity(node.children_len);
         for i in 0..node.children_len {
@@ -238,11 +133,8 @@ impl<'a> Scope<'a> {
             let child_arena_id = self.arena.children[node.children_start + i];
             items.push((key_idx, child_arena_id));
         }
-        // Sort by key string lexicographically using borrowed &str
         items.sort_by(|a, b| {
-            let ka = &self.arena.obj_keys[a.0];
-            let kb = &self.arena.obj_keys[b.0];
-            ka.cmp(kb)
+            self.arena.obj_keys[a.0].cmp(&self.arena.obj_keys[b.0])
         });
         for (key_idx, child_arena_id) in items {
             let child_kind = self.arena.nodes[child_arena_id].kind;
@@ -361,7 +253,6 @@ pub fn build_priority_order_from_arena(
     arena: &JsonTreeArena,
     config: &PriorityConfig,
 ) -> Result<PriorityOrder> {
-    // Build the priority order by best-first expansion from the parsed arena.
     let mut next_pq_id: usize = 0;
     let mut nodes: Vec<RankedNode> = Vec::new();
     let mut parent: Vec<Option<NodeId>> = Vec::new();
@@ -393,7 +284,6 @@ pub fn build_priority_order_from_arena(
         depth: 0,
         arena_node: Some(root_ar),
     }));
-    // root counted implicitly via next_pq_id
 
     while let Some(Reverse(entry)) = heap.pop() {
         let mut scope = Scope {
@@ -436,7 +326,7 @@ mod tests {
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
-        let build = build_priority_order_from_arena(
+        let build = super::build_priority_order_from_arena(
             &arena,
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -467,7 +357,7 @@ mod tests {
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
-        let build = build_priority_order_from_arena(
+        let build = super::build_priority_order_from_arena(
             &arena,
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
