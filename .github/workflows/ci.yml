@@ -115,12 +115,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: >-
-          npx -y \
-          -p semantic-release \
-          -p @semantic-release/commit-analyzer \
-          -p @semantic-release/release-notes-generator \
-          -p @semantic-release/exec \
-          -p @semantic-release/git \
-          -p @semantic-release/github \
-          semantic-release
+        run: |
+          npx -y -p semantic-release \
+            -p @semantic-release/commit-analyzer \
+            -p @semantic-release/release-notes-generator \
+            -p @semantic-release/exec \
+            -p @semantic-release/git \
+            -p @semantic-release/github \
+            semantic-release
