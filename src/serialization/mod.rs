@@ -19,7 +19,7 @@ pub(crate) struct RenderScope<'a> {
 
 impl<'a> RenderScope<'a> {
     fn count_kept_children(&self, id: usize) -> usize {
-        if let Some(kids) = self.pq.children_of.get(id) {
+        if let Some(kids) = self.pq.children.get(id) {
             let mut kept = 0usize;
             for &cid in kids {
                 if self.marks[cid.0] == self.mark_gen {
@@ -79,7 +79,7 @@ impl<'a> RenderScope<'a> {
     ) -> String {
         let config = self.config;
         let (children_pairs, kept) = self.gather_array_children(id, depth);
-        let node = &self.pq.id_to_item[id];
+        let node = &self.pq.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         if kept == 0 && omitted == 0 {
             return "[]".to_string();
@@ -104,7 +104,7 @@ impl<'a> RenderScope<'a> {
     ) -> String {
         let config = self.config;
         let (children_pairs, kept) = self.gather_object_children(id, depth);
-        let node = &self.pq.id_to_item[id];
+        let node = &self.pq.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         if kept == 0 && omitted == 0 {
             return "{}".to_string();
@@ -124,7 +124,7 @@ impl<'a> RenderScope<'a> {
 
     fn serialize_string(&mut self, id: usize) -> String {
         let kept = self.count_kept_children(id);
-        let node = &self.pq.id_to_item[id];
+        let node = &self.pq.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         let full: &str = node.string_value.as_deref().unwrap_or("");
         if omitted == 0 {
@@ -136,7 +136,7 @@ impl<'a> RenderScope<'a> {
     }
 
     fn serialize_number(&self, id: usize) -> String {
-        let it = &self.pq.id_to_item[id];
+        let it = &self.pq.nodes[id];
         if let Some(n) = it.number_value.as_ref() {
             if let Some(i) = n.as_i64() {
                 return i.to_string();
@@ -152,7 +152,7 @@ impl<'a> RenderScope<'a> {
     }
 
     fn serialize_bool(&self, id: usize) -> String {
-        let it = &self.pq.id_to_item[id];
+        let it = &self.pq.nodes[id];
         match it.bool_value {
             Some(true) => "true".to_string(),
             Some(false) | None => "false".to_string(),
@@ -165,7 +165,7 @@ impl<'a> RenderScope<'a> {
         depth: usize,
         inline: bool,
     ) -> String {
-        let it = &self.pq.id_to_item[id];
+        let it = &self.pq.nodes[id];
         match it.kind {
             NodeKind::Array => self.serialize_array(id, depth, inline),
             NodeKind::Object => self.serialize_object(id, depth, inline),
@@ -184,7 +184,7 @@ impl<'a> RenderScope<'a> {
         let config = self.config;
         let mut children_pairs: Vec<ArrayChildPair> = Vec::new();
         let mut kept = 0usize;
-        if let Some(children_ids) = self.pq.children_of.get(id) {
+        if let Some(children_ids) = self.pq.children.get(id) {
             for (i, &child_id) in children_ids.iter().enumerate() {
                 if self.marks[child_id.0] != self.mark_gen {
                     continue;
@@ -213,13 +213,13 @@ impl<'a> RenderScope<'a> {
     ) -> (Vec<ObjectChildPair>, usize) {
         let mut children_pairs: Vec<ObjectChildPair> = Vec::new();
         let mut kept = 0usize;
-        if let Some(children_ids) = self.pq.children_of.get(id) {
+        if let Some(children_ids) = self.pq.children.get(id) {
             for (i, &child_id) in children_ids.iter().enumerate() {
                 if self.marks[child_id.0] != self.mark_gen {
                     continue;
                 }
                 kept += 1;
-                let child = &self.pq.id_to_item[child_id.0];
+                let child = &self.pq.nodes[child_id.0];
                 let raw_key = child.key_in_object.as_deref().unwrap_or("");
                 let key = crate::utils::json::json_string(raw_key);
                 let val = self.serialize_node(child_id.0, depth + 1, true);
@@ -241,7 +241,7 @@ pub fn render_arena_with_marks(
     if marks.len() < order_build.total_nodes {
         marks.resize(order_build.total_nodes, 0);
     }
-    // Phase 1: Mark the first `k` nodes (ids_by_order[..k]) and all their ancestors
+    // Phase 1: Mark the first `k` nodes (order[..k]) and all their ancestors
     let k = budget.min(order_build.total_nodes);
     crate::utils::graph::mark_top_k_and_ancestors(
         order_build,
@@ -264,6 +264,7 @@ pub fn render_arena_with_marks(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::order::build_priority_order_from_arena;
     use insta::assert_snapshot;
 
     #[test]
@@ -273,7 +274,7 @@ mod tests {
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
-        let build = crate::build_priority_order_from_arena(
+        let build = build_priority_order_from_arena(
             &arena,
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -301,7 +302,7 @@ mod tests {
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
-        let build = crate::build_priority_order_from_arena(
+        let build = build_priority_order_from_arena(
             &arena,
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )

@@ -65,12 +65,12 @@ pub struct NodeMetrics {
 #[derive(Clone, Debug)]
 pub struct PriorityOrder {
     pub metrics: Vec<NodeMetrics>,
-    pub id_to_item: Vec<RankedNode>,
+    pub nodes: Vec<RankedNode>,
     // All ids in this structure are PQ ids (0..total_nodes).
     // They correspond to `NodeId.0` in `RankedNode` for convenience when indexing.
-    pub parent_of: Vec<Option<NodeId>>, // parent_of[id] = parent id (PQ id)
-    pub children_of: Vec<Vec<NodeId>>, // children_of[id] = children ids (PQ ids)
-    pub ids_by_order: Vec<NodeId>, // ids sorted by ascending priority (PQ ids)
+    pub parent: Vec<Option<NodeId>>, // parent[id] = parent id (PQ id)
+    pub children: Vec<Vec<NodeId>>,  // children[id] = children ids (PQ ids)
+    pub order: Vec<NodeId>, // ids sorted by ascending priority (PQ ids)
     pub total_nodes: usize,
 }
 
@@ -143,10 +143,10 @@ struct Scope<'a> {
     arena: &'a JsonTreeArena,
     config: &'a PriorityConfig,
     next_pq_id: &'a mut usize,
-    parent_of: &'a mut Vec<Option<NodeId>>,
-    children_of: &'a mut Vec<Vec<NodeId>>,
+    parent: &'a mut Vec<Option<NodeId>>,
+    children: &'a mut Vec<Vec<NodeId>>,
     metrics: &'a mut Vec<NodeMetrics>,
-    id_to_item: &'a mut Vec<RankedNode>,
+    nodes: &'a mut Vec<RankedNode>,
     heap: &'a mut BinaryHeap<Reverse<Entry>>,
     safety_cap: usize,
 }
@@ -167,7 +167,7 @@ impl<'a> Scope<'a> {
     }
 
     fn record_string_metrics(&mut self, id: usize) {
-        let s = self.id_to_item[id].string_value.as_deref().unwrap_or("");
+        let s = self.nodes[id].string_value.as_deref().unwrap_or("");
         let mut iter = UnicodeSegmentation::graphemes(s, true);
         let count =
             iter.by_ref().take(self.config.max_string_graphemes).count();
@@ -200,13 +200,13 @@ impl<'a> Scope<'a> {
             let child_kind = self.arena.nodes[child_arena_id].kind;
             let child_pq = *self.next_pq_id;
             *self.next_pq_id += 1;
-            self.parent_of.push(Some(NodeId(id)));
-            self.children_of.push(Vec::new());
+            self.parent.push(Some(NodeId(id)));
+            self.children.push(Vec::new());
             self.metrics.push(NodeMetrics::default());
             let extra = (i as u128).pow(3) * ARRAY_INDEX_CUBIC_WEIGHT;
             let score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
             let child_node = &self.arena.nodes[child_arena_id];
-            self.id_to_item.push(RankedNode {
+            self.nodes.push(RankedNode {
                 node_id: NodeId(child_pq),
                 kind: child_kind,
                 key_in_object: None,
@@ -214,7 +214,7 @@ impl<'a> Scope<'a> {
                 bool_value: child_node.bool_value,
                 string_value: child_node.string_value.clone(),
             });
-            self.children_of[id].push(NodeId(child_pq));
+            self.children[id].push(NodeId(child_pq));
             self.heap.push(Reverse(Entry {
                 score,
                 pq_id: child_pq,
@@ -248,12 +248,12 @@ impl<'a> Scope<'a> {
             let child_kind = self.arena.nodes[child_arena_id].kind;
             let child_pq = *self.next_pq_id;
             *self.next_pq_id += 1;
-            self.parent_of.push(Some(NodeId(id)));
-            self.children_of.push(Vec::new());
+            self.parent.push(Some(NodeId(id)));
+            self.children.push(Vec::new());
             self.metrics.push(NodeMetrics::default());
             let score = entry.score + OBJECT_CHILD_BASE_INCREMENT;
             let child_node = &self.arena.nodes[child_arena_id];
-            self.id_to_item.push(RankedNode {
+            self.nodes.push(RankedNode {
                 node_id: NodeId(child_pq),
                 kind: child_kind,
                 key_in_object: Some(self.arena.obj_keys[key_idx].clone()),
@@ -261,7 +261,7 @@ impl<'a> Scope<'a> {
                 bool_value: child_node.bool_value,
                 string_value: child_node.string_value.clone(),
             });
-            self.children_of[id].push(NodeId(child_pq));
+            self.children[id].push(NodeId(child_pq));
             self.heap.push(Reverse(Entry {
                 score,
                 pq_id: child_pq,
@@ -276,15 +276,15 @@ impl<'a> Scope<'a> {
 
     fn expand_string_children(&mut self, entry: &Entry) {
         let id = entry.pq_id;
-        let full = self.id_to_item[id].string_value.as_deref().unwrap_or("");
+        let full = self.nodes[id].string_value.as_deref().unwrap_or("");
         let count = UnicodeSegmentation::graphemes(full, true)
             .take(self.config.max_string_graphemes)
             .count();
         for i in 0..count {
             let child_pq = *self.next_pq_id;
             *self.next_pq_id += 1;
-            self.parent_of.push(Some(NodeId(id)));
-            self.children_of.push(Vec::new());
+            self.parent.push(Some(NodeId(id)));
+            self.children.push(Vec::new());
             self.metrics.push(NodeMetrics::default());
             let extra = if i > STRING_INDEX_INFLECTION {
                 let d = (i - STRING_INDEX_INFLECTION) as u128;
@@ -296,7 +296,7 @@ impl<'a> Scope<'a> {
                 + STRING_CHILD_BASE_INCREMENT
                 + (i as u128) * STRING_CHILD_LINEAR_WEIGHT
                 + extra;
-            self.id_to_item.push(RankedNode {
+            self.nodes.push(RankedNode {
                 node_id: NodeId(child_pq),
                 kind: NodeKind::String,
                 key_in_object: None,
@@ -304,7 +304,7 @@ impl<'a> Scope<'a> {
                 bool_value: None,
                 string_value: None,
             });
-            self.children_of[id].push(NodeId(child_pq));
+            self.children[id].push(NodeId(child_pq));
             self.heap.push(Reverse(Entry {
                 score,
                 pq_id: child_pq,
@@ -363,11 +363,11 @@ pub fn build_priority_order_from_arena(
 ) -> Result<PriorityOrder> {
     // Build the priority order by best-first expansion from the parsed arena.
     let mut next_pq_id: usize = 0;
-    let mut id_to_item: Vec<RankedNode> = Vec::new();
-    let mut parent_of: Vec<Option<NodeId>> = Vec::new();
-    let mut children_of: Vec<Vec<NodeId>> = Vec::new();
+    let mut nodes: Vec<RankedNode> = Vec::new();
+    let mut parent: Vec<Option<NodeId>> = Vec::new();
+    let mut children: Vec<Vec<NodeId>> = Vec::new();
     let mut metrics: Vec<NodeMetrics> = Vec::new();
-    let mut ids_by_order: Vec<NodeId> = Vec::new();
+    let mut order: Vec<NodeId> = Vec::new();
     let mut heap: BinaryHeap<Reverse<Entry>> = BinaryHeap::new();
 
     // Seed root from arena
@@ -375,11 +375,11 @@ pub fn build_priority_order_from_arena(
     let root_kind = arena.nodes[root_ar].kind;
     let root_pq = next_pq_id;
     next_pq_id += 1;
-    parent_of.push(None);
-    children_of.push(Vec::new());
+    parent.push(None);
+    children.push(Vec::new());
     metrics.push(NodeMetrics::default());
     let n = &arena.nodes[root_ar];
-    id_to_item.push(RankedNode {
+    nodes.push(RankedNode {
         node_id: NodeId(root_pq),
         kind: root_kind,
         key_in_object: None,
@@ -400,14 +400,14 @@ pub fn build_priority_order_from_arena(
             arena,
             config,
             next_pq_id: &mut next_pq_id,
-            parent_of: &mut parent_of,
-            children_of: &mut children_of,
+            parent: &mut parent,
+            children: &mut children,
             metrics: &mut metrics,
-            id_to_item: &mut id_to_item,
+            nodes: &mut nodes,
             heap: &mut heap,
             safety_cap: SAFETY_CAP,
         };
-        scope.process_entry(&entry, &mut ids_by_order);
+        scope.process_entry(&entry, &mut order);
         if next_pq_id >= SAFETY_CAP {
             break;
         }
@@ -416,10 +416,10 @@ pub fn build_priority_order_from_arena(
     let total = next_pq_id;
     Ok(PriorityOrder {
         metrics,
-        id_to_item,
-        parent_of,
-        children_of,
-        ids_by_order,
+        nodes,
+        parent,
+        children,
+        order,
         total_nodes: total,
     })
 }
@@ -441,10 +441,10 @@ mod tests {
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
-        let mut items_sorted: Vec<_> = build.id_to_item.clone();
+        let mut items_sorted: Vec<_> = build.nodes.clone();
         // Build a transient mapping from id -> order index
         let mut order_index = vec![usize::MAX; build.total_nodes];
-        for (idx, &pid) in build.ids_by_order.iter().enumerate() {
+        for (idx, &pid) in build.order.iter().enumerate() {
             let pidx = pid.0;
             if pidx < build.total_nodes {
                 order_index[pidx] = idx;
@@ -472,9 +472,9 @@ mod tests {
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
-        let mut items_sorted: Vec<_> = build.id_to_item.clone();
+        let mut items_sorted: Vec<_> = build.nodes.clone();
         let mut order_index = vec![usize::MAX; build.total_nodes];
-        for (idx, &pid) in build.ids_by_order.iter().enumerate() {
+        for (idx, &pid) in build.order.iter().enumerate() {
             let pidx = pid.0;
             if pidx < build.total_nodes {
                 order_index[pidx] = idx;

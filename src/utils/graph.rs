@@ -8,7 +8,7 @@ fn seed_stack_with_top_k(
     mark_gen: u32,
     work_stack: &mut Vec<NodeId>,
 ) {
-    for &id in order.ids_by_order.iter().take(k) {
+    for &id in order.order.iter().take(k) {
         let idx = id.0;
         if marks[idx] != mark_gen {
             marks[idx] = mark_gen;
@@ -19,14 +19,14 @@ fn seed_stack_with_top_k(
 
 /// Pop from the work stack; for each node mark its parent; continue until empty.
 fn propagate_marks_to_ancestors(
-    parent_of: &[Option<NodeId>],
+    parent: &[Option<NodeId>],
     marks: &mut [u32],
     mark_gen: u32,
     work_stack: &mut Vec<NodeId>,
 ) {
     while let Some(id) = work_stack.pop() {
         let idx = id.0;
-        match parent_of[idx] {
+        match parent[idx] {
             Some(parent) if marks[parent.0] != mark_gen => {
                 marks[parent.0] = mark_gen;
                 work_stack.push(parent);
@@ -46,7 +46,7 @@ pub(crate) fn mark_top_k_and_ancestors(
     let mut work_stack: Vec<NodeId> = Vec::new();
     seed_stack_with_top_k(order, k, marks, mark_gen, &mut work_stack);
     propagate_marks_to_ancestors(
-        &order.parent_of,
+        &order.parent,
         marks,
         mark_gen,
         &mut work_stack,
