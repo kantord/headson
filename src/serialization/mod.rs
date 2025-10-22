@@ -22,7 +22,7 @@ impl<'a> RenderScope<'a> {
         if let Some(kids) = self.pq.children_of.get(id) {
             let mut kept = 0usize;
             for &cid in kids {
-                if self.marks[cid] == self.mark_gen {
+                if self.marks[cid.0] == self.mark_gen {
                     kept += 1;
                 }
             }
@@ -89,9 +89,9 @@ impl<'a> RenderScope<'a> {
             children_len: kept,
             omitted,
             depth,
-            indent_unit: config.indent_unit.clone(),
+            indent_unit: &config.indent_unit,
             inline_open: inline,
-            newline: config.newline.clone(),
+            newline: &config.newline,
         };
         render_array(config.template, &ctx)
     }
@@ -114,10 +114,10 @@ impl<'a> RenderScope<'a> {
             children_len: kept,
             omitted,
             depth,
-            indent_unit: config.indent_unit.clone(),
+            indent_unit: &config.indent_unit,
             inline_open: inline,
-            space: config.space.clone(),
-            newline: config.newline.clone(),
+            space: &config.space,
+            newline: &config.newline,
         };
         render_object(config.template, &ctx)
     }
@@ -186,11 +186,12 @@ impl<'a> RenderScope<'a> {
         let mut kept = 0usize;
         if let Some(children_ids) = self.pq.children_of.get(id) {
             for (i, &child_id) in children_ids.iter().enumerate() {
-                if self.marks[child_id] != self.mark_gen {
+                if self.marks[child_id.0] != self.mark_gen {
                     continue;
                 }
                 kept += 1;
-                let rendered = self.serialize_node(child_id, depth + 1, false);
+                let rendered =
+                    self.serialize_node(child_id.0, depth + 1, false);
                 let child_indent = indent(depth + 1, &config.indent_unit);
                 if !config.newline.is_empty()
                     && rendered.contains(&config.newline)
@@ -214,14 +215,14 @@ impl<'a> RenderScope<'a> {
         let mut kept = 0usize;
         if let Some(children_ids) = self.pq.children_of.get(id) {
             for (i, &child_id) in children_ids.iter().enumerate() {
-                if self.marks[child_id] != self.mark_gen {
+                if self.marks[child_id.0] != self.mark_gen {
                     continue;
                 }
                 kept += 1;
-                let child = &self.pq.id_to_item[child_id];
+                let child = &self.pq.id_to_item[child_id.0];
                 let raw_key = child.key_in_object.clone().unwrap_or_default();
                 let key = crate::utils::json::json_string(&raw_key);
-                let val = self.serialize_node(child_id, depth + 1, true);
+                let val = self.serialize_node(child_id.0, depth + 1, true);
                 children_pairs.push((i, (key, val)));
             }
         }

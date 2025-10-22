@@ -4,19 +4,19 @@ use super::{ArrayCtx, ObjectCtx};
 struct Json;
 
 impl Style for Json {
-    fn array_empty(open_indent: &str, _ctx: &ArrayCtx) -> String {
+    fn array_empty(open_indent: &str, _ctx: &ArrayCtx<'_>) -> String {
         format!("{open_indent}[]")
     }
 
-    fn object_empty(open_indent: &str, _ctx: &ObjectCtx) -> String {
+    fn object_empty(open_indent: &str, _ctx: &ObjectCtx<'_>) -> String {
         format!("{open_indent}{{}}")
     }
 }
 
-pub fn render_array(ctx: &ArrayCtx) -> String {
+pub fn render_array(ctx: &ArrayCtx<'_>) -> String {
     render_array_with::<Json>(ctx)
 }
 
-pub fn render_object(ctx: &ObjectCtx) -> String {
+pub fn render_object(ctx: &ObjectCtx<'_>) -> String {
     render_object_with::<Json>(ctx)
 }
