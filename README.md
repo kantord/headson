@@ -15,9 +15,9 @@ From source:
 
 ## Usage
 
-    headson [FLAGS] [INPUT]
+    headson [FLAGS] [INPUT...]
 
-- INPUT (optional): file path. If omitted, reads JSON from stdin.
+- INPUT (optional, repeatable): file path(s). If omitted, reads JSON from stdin. Currently only the first file is processed.
 - Prints the preview to stdout. On parse errors, exits non‑zero and prints an error to stderr.
 
 Common flags:
@@ -47,4 +47,3 @@ Examples:
 Show help:
 
     headson --help
-

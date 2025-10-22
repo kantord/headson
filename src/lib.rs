@@ -41,6 +41,21 @@ pub fn headson(
     Ok(out)
 }
 
+pub fn headson_many(
+    inputs: Vec<(String, Vec<u8>)>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budget: usize,
+) -> Result<String> {
+    let arena = crate::json_ingest::build_json_tree_arena_from_many(
+        inputs,
+        priority_cfg,
+    )?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    let out = find_largest_render_under_budget(&order_build, config, budget);
+    Ok(out)
+}
+
 fn find_largest_render_under_budget(
     order_build: &PriorityOrder,
     config: &RenderConfig,
