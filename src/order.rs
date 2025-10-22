@@ -35,7 +35,7 @@ impl From<NodeId> for usize {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct ParentId(pub Option<usize>);
+pub struct ParentId(pub Option<NodeId>);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum NodeKind {
@@ -213,7 +213,7 @@ impl<'a> Scope<'a> {
             let child_node = &self.arena.nodes[child_arena_id];
             self.id_to_item.push(RankedNode {
                 node_id: NodeId(child_pq),
-                parent_id: ParentId(Some(id)),
+                parent_id: ParentId(Some(NodeId(id))),
                 kind: child_kind,
                 depth: entry.depth + 1,
                 key_in_object: None,
@@ -262,7 +262,7 @@ impl<'a> Scope<'a> {
             let child_node = &self.arena.nodes[child_arena_id];
             self.id_to_item.push(RankedNode {
                 node_id: NodeId(child_pq),
-                parent_id: ParentId(Some(id)),
+                parent_id: ParentId(Some(NodeId(id))),
                 kind: child_kind,
                 depth: entry.depth + 1,
                 key_in_object: Some(self.arena.obj_keys[key_idx].clone()),
@@ -307,7 +307,7 @@ impl<'a> Scope<'a> {
                 + extra;
             self.id_to_item.push(RankedNode {
                 node_id: NodeId(child_pq),
-                parent_id: ParentId(Some(id)),
+                parent_id: ParentId(Some(NodeId(id))),
                 kind: NodeKind::String,
                 depth: entry.depth + 1,
                 key_in_object: None,

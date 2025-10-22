@@ -4,6 +4,6 @@ expression: "lines.join(\"\\n\")"
 ---
 len=4
 RankedNode { node_id: NodeId(0), parent_id: ParentId(None), kind: Array, depth: 0, key_in_object: None, number_value: None, bool_value: None, string_value: None }
-RankedNode { node_id: NodeId(1), parent_id: ParentId(Some(0)), kind: String, depth: 1, key_in_object: None, number_value: None, bool_value: None, string_value: Some("ab") }
-RankedNode { node_id: NodeId(2), parent_id: ParentId(Some(1)), kind: String, depth: 2, key_in_object: None, number_value: None, bool_value: None, string_value: None }
-RankedNode { node_id: NodeId(3), parent_id: ParentId(Some(1)), kind: String, depth: 2, key_in_object: None, number_value: None, bool_value: None, string_value: None }
+RankedNode { node_id: NodeId(1), parent_id: ParentId(Some(NodeId(0))), kind: String, depth: 1, key_in_object: None, number_value: None, bool_value: None, string_value: Some("ab") }
+RankedNode { node_id: NodeId(2), parent_id: ParentId(Some(NodeId(1))), kind: String, depth: 2, key_in_object: None, number_value: None, bool_value: None, string_value: None }
+RankedNode { node_id: NodeId(3), parent_id: ParentId(Some(NodeId(1))), kind: String, depth: 2, key_in_object: None, number_value: None, bool_value: None, string_value: None }
