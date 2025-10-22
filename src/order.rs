@@ -34,9 +34,6 @@ impl From<NodeId> for usize {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct ParentId(pub Option<NodeId>);
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum NodeKind {
     Null,
@@ -50,9 +47,7 @@ pub enum NodeKind {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RankedNode {
     pub node_id: NodeId,
-    pub parent_id: ParentId,
     pub kind: NodeKind,
-    pub depth: usize,
     pub key_in_object: Option<String>,
     pub number_value: Option<serde_json::Number>,
     pub bool_value: Option<bool>,
@@ -213,9 +208,7 @@ impl<'a> Scope<'a> {
             let child_node = &self.arena.nodes[child_arena_id];
             self.id_to_item.push(RankedNode {
                 node_id: NodeId(child_pq),
-                parent_id: ParentId(Some(NodeId(id))),
                 kind: child_kind,
-                depth: entry.depth + 1,
                 key_in_object: None,
                 number_value: child_node.number_value.clone(),
                 bool_value: child_node.bool_value,
@@ -262,9 +255,7 @@ impl<'a> Scope<'a> {
             let child_node = &self.arena.nodes[child_arena_id];
             self.id_to_item.push(RankedNode {
                 node_id: NodeId(child_pq),
-                parent_id: ParentId(Some(NodeId(id))),
                 kind: child_kind,
-                depth: entry.depth + 1,
                 key_in_object: Some(self.arena.obj_keys[key_idx].clone()),
                 number_value: child_node.number_value.clone(),
                 bool_value: child_node.bool_value,
@@ -307,9 +298,7 @@ impl<'a> Scope<'a> {
                 + extra;
             self.id_to_item.push(RankedNode {
                 node_id: NodeId(child_pq),
-                parent_id: ParentId(Some(NodeId(id))),
                 kind: NodeKind::String,
-                depth: entry.depth + 1,
                 key_in_object: None,
                 number_value: None,
                 bool_value: None,
@@ -372,7 +361,7 @@ pub fn build_priority_order_from_arena(
     arena: &JsonTreeArena,
     config: &PriorityConfig,
 ) -> Result<PriorityOrder> {
-    let t_walk = std::time::Instant::now();
+    // Build the priority order by best-first expansion from the parsed arena.
     let mut next_pq_id: usize = 0;
     let mut id_to_item: Vec<RankedNode> = Vec::new();
     let mut parent_of: Vec<Option<NodeId>> = Vec::new();
@@ -392,9 +381,7 @@ pub fn build_priority_order_from_arena(
     let n = &arena.nodes[root_ar];
     id_to_item.push(RankedNode {
         node_id: NodeId(root_pq),
-        parent_id: ParentId(None),
         kind: root_kind,
-        depth: 0,
         key_in_object: None,
         number_value: n.number_value.clone(),
         bool_value: n.bool_value,
@@ -426,7 +413,6 @@ pub fn build_priority_order_from_arena(
         }
     }
 
-    let _walk_ms = t_walk.elapsed().as_millis();
     let total = next_pq_id;
     Ok(PriorityOrder {
         metrics,

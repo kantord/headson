@@ -20,7 +20,7 @@ mod order;
 mod serialization;
 mod utils;
 pub use order::{
-    NodeId, NodeKind, ParentId, PriorityConfig, PriorityOrder, RankedNode,
+    NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode,
     build_priority_order_from_arena,
 };
 
