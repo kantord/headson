@@ -39,7 +39,7 @@ Exit codes and I/O:
 
 High-level flow:
 
-1) Parse: `simd_json::serde::from_slice` into `serde_json::Value` (Stage 1 swap for faster parsing).
+1) Parse: build a `JsonTreeArena` directly via a custom `DeserializeSeed`/Visitor over `simd_json`'s deserializer (no intermediate `serde_json::Value`). Arrays are capped during deserialization based on configuration to avoid walking items that cannot fit the budget.
 2) Priority order build (frontier): best‑first (min‑heap) expansion by cumulative score; builds just enough nodes for probing (no global full‑build/sort). Per‑node metrics capture sizes/truncation flags.
 3) Node selection by binary search: search k ∈ [1, total_nodes] for the largest k that renders within the output-size budget.
 4) Inclusion marking: include nodes with `order_index < k` plus their full ancestor closure; compute omitted counts using original sizes.
@@ -67,14 +67,14 @@ Frontier priority-order build (default): a best‑first traversal yields `ids_by
 - `template: OutputTemplate` — one of `Json`, `Pseudo`, `Js`.
 - `indent_unit: String` — indent characters for each depth.
 - `space: String` — either `" "` or `""`; applied after colons in objects only.
-- `newline: String` — either `"\n"` or `""`; applied as a post-process replacement of default newlines.
+- `newline: String` — either `"\n"` or `""`; templates read this directly and insert it between rendered lines.
  
 
  Rendering semantics by style:
 
 - `json`:
-  - Always valid JSON when nothing is omitted (i.e., budget large enough). Empty containers render as `[]` / `{}` compactly.
-  - When truncated, the current templates render C-style comments with omitted counts (e.g., `/* N more items */`). This makes truncated JSON output not strictly valid JSON.
+  - Always valid JSON. Empty containers render as `[]` / `{}` compactly.
+  - When truncated (budget-limited), output simply contains fewer elements/properties; no ellipsis or comments are added.
 - `pseudo`:
   - Uses ellipsis markers (`…`) for truncation; empty fully-truncated containers render single-line markers (`[ … ]`, `{ … }`).
  - `js`:
@@ -177,7 +177,7 @@ Tuning:
 - simd‑json serde differences: a few edge cases in the JSONTestSuite differ from serde_json (e.g., handling of certain malformed numbers and signed zeros). Tests skip these; see `tests/json_parse_files.rs`.
 - Dependencies pruned: removed unused `priority-queue` crate.
  
-- Object key ordering follows `serde_json::Map` iteration order; stability can depend on the upstream map implementation and input.
+- Object key ordering is deterministic: object properties are expanded in lexicographic (alphabetical) key order.
 
 ## Installation
 
@@ -220,7 +220,6 @@ Notes:
 
 ## Future Work
 
-- Make truncated `json` output strict JSON (no comments) while still conveying omitted counts.
 - Consider renaming `--budget` to clarify it is an output-size budget, or add a separate node-budget mode if needed.
-- Explore faster string handling and/or configurable string expansion (e.g., cap grapheme enumeration).
-- Optional early-stop writer for probe renders; flat edge arena (single children buffer + offsets); streaming/partial deserialization (e.g., custom Visitor to cap arrays during deserialization), or faster parsers (e.g., simd‑json) for parse-bound workloads.
+- Explore faster string handling and/or configurable string expansion.
+- Optional early-stop writer for probe renders; flat edge arena; additional streaming/partial deserialization techniques; or integrating faster parsers for parse-bound workloads.
