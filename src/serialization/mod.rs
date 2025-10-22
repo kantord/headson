@@ -220,8 +220,8 @@ impl<'a> RenderScope<'a> {
                 }
                 kept += 1;
                 let child = &self.pq.id_to_item[child_id.0];
-                let raw_key = child.key_in_object.clone().unwrap_or_default();
-                let key = crate::utils::json::json_string(&raw_key);
+                let raw_key = child.key_in_object.as_deref().unwrap_or("");
+                let key = crate::utils::json::json_string(raw_key);
                 let val = self.serialize_node(child_id.0, depth + 1, true);
                 children_pairs.push((i, (key, val)));
             }
