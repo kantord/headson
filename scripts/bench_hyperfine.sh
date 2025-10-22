@@ -66,7 +66,7 @@ for scale in "${SCALES[@]}"; do
     --runs "$RUNS" \
     --export-json "$OUT_FILE_JSON" \
     --parameter-list n "$BUDGETS_STR" \
-    'target/release/headson --input '"$EX_FILE"' -n {n} -f '"$TEMPLATE"''
+    'target/release/headson -n {n} -f '"$TEMPLATE"' '"$EX_FILE"''
 
   # 3) Generator-only and write-only
   OUT_GEN_JSON="$OUT_DIR/bench_gen_${COUNT}_${STAMP}.json"

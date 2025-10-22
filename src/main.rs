@@ -39,7 +39,7 @@ struct Cli {
         help = "Maximum string length to display"
     )]
     string_cap: usize,
-    #[arg(long = "input", help = "Read JSON from a file instead of stdin")]
+    #[arg(value_name = "INPUT", value_hint = clap::ValueHint::FilePath, help = "Optional file path. If omitted, reads JSON from stdin.")]
     input: Option<PathBuf>,
 }
 

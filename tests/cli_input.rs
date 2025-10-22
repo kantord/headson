@@ -11,7 +11,7 @@ fn run_with_input_path(
 ) -> (bool, String, String) {
     let budget_s = budget.to_string();
     let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let mut args = vec!["-n", &budget_s, "-f", template, "--input", path];
+    let mut args = vec!["-n", &budget_s, "-f", template, path];
     args.extend_from_slice(extra);
     let assert = cmd.args(args).assert();
     let ok = assert.get_output().status.success();

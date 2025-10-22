@@ -28,7 +28,7 @@ Flags:
 - `--no-newline`: remove newlines from output (one-line rendering).
 - `-m, --compact`: compact output (no indentation, no spaces after colons, no newlines). Conflicts with `--indent`, `--no-space`, and `--no-newline`.
 - `--string-cap <int>`: maximum graphemes to expand per string during priority-order build (default: 500). Caps work on long strings.
- - `--input <path>`: read JSON directly from a file instead of stdin.
+Positional input: pass a file path as the last argument to read from a file; if omitted, the program reads JSON from stdin.
 
 Exit codes and I/O:
 
@@ -153,7 +153,7 @@ What it measures (for multiple dataset sizes):
 
 - Scales: runs 1×, 10×, 100× of `HF_GEN_COUNT` (default base 200,000 → 200k, 2M, 20M items).
 - PIPE: generator → headson (live pipeline). Measures generator + parse/order/render.
-- FILE: generator → file → headson --input file. Measures parse/order/render + disk read.
+- FILE: generator → file → headson file. Measures parse/order/render + disk read.
 - GEN: generator → /dev/null. Measures pure generator cost.
 - WRITE: generator → file. Measures write throughput (page-cache affected).
 
