@@ -46,5 +46,30 @@ pub fn build_json_tree_arena_from_many(
     let root_id = builder.push_object_root(keys, child_ids);
     let mut arena = builder.finish();
     arena.root_id = root_id;
+    arena.is_fileset = true;
     Ok(arena)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fileset_marker_set_for_multi_inputs() {
+        let inputs = vec![
+            ("a.json".to_string(), b"{}".to_vec()),
+            ("b.json".to_string(), b"[]".to_vec()),
+        ];
+        let cfg = PriorityConfig::new(usize::MAX, usize::MAX);
+        let arena = build_json_tree_arena_from_many(inputs, &cfg).unwrap();
+        assert!(arena.is_fileset, "expected fileset marker true");
+    }
+
+    #[test]
+    fn fileset_marker_false_for_single_input() {
+        let cfg = PriorityConfig::new(usize::MAX, usize::MAX);
+        let arena =
+            build_json_tree_arena_from_bytes(b"{}".to_vec(), &cfg).unwrap();
+        assert!(!arena.is_fileset, "expected fileset marker false");
+    }
 }

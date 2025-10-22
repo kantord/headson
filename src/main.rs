@@ -59,14 +59,31 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let render_cfg = get_render_config_from(&cli);
+    // Priority config should reflect per-file budget semantics (array caps etc.).
     let priority_cfg = get_priority_config_from(&cli);
+    let input_count = if cli.inputs.is_empty() {
+        1
+    } else {
+        cli.inputs.len()
+    };
+    let effective_budget = cli.budget.saturating_mul(input_count);
 
     let output = if cli.inputs.len() <= 1 {
         let input_bytes = get_input_single(&cli.inputs)?;
-        headson::headson(input_bytes, &render_cfg, &priority_cfg, cli.budget)?
+        headson::headson(
+            input_bytes,
+            &render_cfg,
+            &priority_cfg,
+            effective_budget,
+        )?
     } else {
         let inputs = get_input_many(&cli.inputs)?;
-        headson::headson_many(inputs, &render_cfg, &priority_cfg, cli.budget)?
+        headson::headson_many(
+            inputs,
+            &render_cfg,
+            &priority_cfg,
+            effective_budget,
+        )?
     };
     println!("{output}");
 

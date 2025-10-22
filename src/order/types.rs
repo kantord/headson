@@ -56,6 +56,7 @@ pub struct PriorityOrder {
     pub children: Vec<Vec<NodeId>>,  // children[id] = children ids (PQ ids)
     pub order: Vec<NodeId>, // ids sorted by ascending priority (PQ ids)
     pub total_nodes: usize,
+    pub is_fileset: bool,
 }
 
 pub const ROOT_PQ_ID: usize = 0;

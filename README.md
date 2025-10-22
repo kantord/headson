@@ -22,7 +22,7 @@ From source:
 
 Common flags:
 
-- `-n, --budget <BYTES>`: output byte budget (default: 500)
+- `-n, --budget <BYTES>`: output byte budget (default: 500). When multiple input files are provided, the total budget equals `<BYTES> * number_of_inputs` (budget is per input).
 - `-f, --template <json|pseudo|js>`: output style (default: `pseudo`)
 - `-m, --compact`: no indentation, no spaces, no newlines
 - `--no-newline`: single line output

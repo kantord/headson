@@ -318,6 +318,7 @@ pub fn build_order(
         children,
         order,
         total_nodes: total,
+        is_fileset: arena.is_fileset,
     })
 }
 
