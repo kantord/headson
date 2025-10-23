@@ -49,7 +49,6 @@ impl<'a> RenderScope<'a> {
         nl: &str,
     ) {
         if total > kept && !nl.is_empty() {
-            // Ensure exactly one blank line before the summary
             let blanks = if out.ends_with(nl) { 1 } else { 2 };
             for _ in 0..blanks {
                 out.push_str(nl);
@@ -89,8 +88,6 @@ impl<'a> RenderScope<'a> {
         nl: &str,
     ) {
         if total > kept && !nl.is_empty() {
-            // Ensure exactly one blank line before the summary:
-            // strip any trailing newlines, then add nl + nl.
             while out.ends_with(nl) {
                 let new_len = out.len().saturating_sub(nl.len());
                 out.truncate(new_len);
@@ -99,7 +96,6 @@ impl<'a> RenderScope<'a> {
             out.push_str(nl);
             out.push_str(&indent(depth, &self.config.indent_unit));
             out.push_str(&format!("==> {} more files <==", total - kept));
-            // Do not append a trailing newline after the summary.
         }
     }
     fn count_kept_children(&self, id: usize) -> usize {
@@ -398,7 +394,6 @@ impl<'a> RenderScope<'a> {
                 continue;
             }
             if kept > 0 {
-                // exactly one blank line between sections
                 out.push_str(nl);
             }
             kept += 1;

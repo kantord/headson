@@ -11,7 +11,7 @@ use clap::{Parser, ValueEnum};
     about = "Get a small but useful preview of a JSON file"
 )]
 struct Cli {
-    #[arg(short = 'n', long = "budget", conflicts_with = "global_limit")]
+    #[arg(short = 'n', long = "budget", conflicts_with = "global_budget")]
     budget: Option<usize>,
     #[arg(short = 'f', long = "template", value_enum, default_value_t = Template::Pseudo)]
     template: Template,
@@ -41,12 +41,12 @@ struct Cli {
     string_cap: usize,
     #[arg(
         short = 'N',
-        long = "global-limit",
+        long = "global-budget",
         value_name = "BYTES",
         conflicts_with = "budget",
-        help = "Total output budget across all inputs (mutually exclusive with --budget)"
+        help = "Total output budget across all inputs; useful to keep multiple files within a fixed overall output size (may omit entire files)."
     )]
-    global_limit: Option<usize>,
+    global_budget: Option<usize>,
     #[arg(
         value_name = "INPUT",
         value_hint = clap::ValueHint::FilePath,
@@ -72,7 +72,7 @@ fn main() -> Result<()> {
     } else {
         cli.inputs.len()
     };
-    let effective_budget = if let Some(g) = cli.global_limit {
+    let effective_budget = if let Some(g) = cli.global_budget {
         g
     } else {
         let per_file = cli.budget.unwrap_or(500);

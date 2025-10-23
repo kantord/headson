@@ -23,7 +23,7 @@ From source:
 Common flags:
 
 - `-n, --budget <BYTES>`: per‑file output budget. When multiple input files are provided, the total budget equals `<BYTES> * number_of_inputs`.
-- `-N, --global-limit <BYTES>`: total output budget across all inputs. Mutually exclusive with `--budget`. With multiple files, low limits may omit entire files from the output.
+- `-N, --global-budget <BYTES>`: total output budget across all inputs. Useful when you want a fixed-size preview across many files (may omit entire files). Mutually exclusive with `--budget`.
 - `-f, --template <json|pseudo|js>`: output style (default: `pseudo`)
 - `-m, --compact`: no indentation, no spaces, no newlines
 - `--no-newline`: single line output
@@ -36,7 +36,7 @@ Notes:
 - With multiple input files:
   - JSON template outputs a single JSON object keyed by the input file paths.
   - Pseudo and JS templates render file sections with human-readable headers.
-  - Using `--global-limit` may truncate or omit entire files to respect the total budget.
+  - Using `--global-budget` may truncate or omit entire files to respect the total budget.
 
 Examples:
 
@@ -56,7 +56,7 @@ Examples:
 
       headson -f json a.json b.json
 
-- Global limit across files:
+- Global limit across files (fixed total size across all files):
 
       headson -N 400 -f json a.json b.json
 
