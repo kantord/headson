@@ -16,6 +16,11 @@ classifiers = [
 ]
 keywords = ["json", "preview", "summarize", "cli", "bindings"]
 
+[project.optional-dependencies]
+test = [
+  "pytest>=7",
+]
+
 [tool.maturin]
 # Build the extension module from the Rust crate at ./python/Cargo.toml
 manifest-path = "python/Cargo.toml"
