@@ -17,7 +17,7 @@ From source:
 
     headson [FLAGS] [INPUT...]
 
-- INPUT (optional, repeatable): file path(s). If omitted, reads JSON from stdin. Currently only the first file is processed.
+- INPUT (optional, repeatable): file path(s). If omitted, reads JSON from stdin. Multiple input files are supported.
 - Prints the preview to stdout. On parse errors, exits non‑zero and prints an error to stderr.
 
 Common flags:
@@ -29,6 +29,12 @@ Common flags:
 - `--no-space`: no space after `:` in objects
 - `--indent <STR>`: indentation unit (default: two spaces)
 - `--string-cap <N>`: max graphemes to consider per string (default: 500)
+
+Notes:
+
+- With multiple input files:
+  - JSON template outputs a single JSON object keyed by the input file paths.
+  - Pseudo and JS templates render file sections with human-readable headers.
 
 Examples:
 

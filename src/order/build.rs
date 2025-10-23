@@ -45,6 +45,7 @@ struct Scope<'a> {
     nodes: &'a mut Vec<RankedNode>,
     heap: &'a mut BinaryHeap<Reverse<Entry>>,
     safety_cap: usize,
+    object_type: &'a mut Vec<ObjectType>,
 }
 
 impl<'a> Scope<'a> {
@@ -61,6 +62,9 @@ impl<'a> Scope<'a> {
         self.children.push(Vec::new());
         self.metrics.push(NodeMetrics::default());
         self.nodes.push(ranked);
+        // Children created from parsing regular JSON are standard objects/arrays/etc.
+        // If child is an object, default to Object type.
+        self.object_type.push(ObjectType::Object);
         self.children[id].push(NodeId(child_pq));
         self.heap.push(Reverse(Entry {
             score,
@@ -266,6 +270,7 @@ pub fn build_order(
     let mut children: Vec<Vec<NodeId>> = Vec::new();
     let mut metrics: Vec<NodeMetrics> = Vec::new();
     let mut order: Vec<NodeId> = Vec::new();
+    let mut object_type: Vec<ObjectType> = Vec::new();
     let mut heap: BinaryHeap<Reverse<Entry>> = BinaryHeap::new();
 
     // Seed root from arena
@@ -285,6 +290,13 @@ pub fn build_order(
         bool_value: n.bool_value,
         string_value: n.string_value.clone(),
     });
+    // Root object type: mark fileset root specially, otherwise Object.
+    let root_ot = if arena.is_fileset {
+        ObjectType::Fileset
+    } else {
+        ObjectType::Object
+    };
+    object_type.push(root_ot);
     heap.push(Reverse(Entry {
         score: ROOT_BASE_SCORE,
         pq_id: root_pq,
@@ -303,6 +315,7 @@ pub fn build_order(
             nodes: &mut nodes,
             heap: &mut heap,
             safety_cap: SAFETY_CAP,
+            object_type: &mut object_type,
         };
         scope.process_entry(&entry, &mut order);
         if next_pq_id >= SAFETY_CAP {
@@ -318,7 +331,7 @@ pub fn build_order(
         children,
         order,
         total_nodes: total,
-        is_fileset: arena.is_fileset,
+        object_type,
     })
 }
 

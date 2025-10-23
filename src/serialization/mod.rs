@@ -1,3 +1,4 @@
+use crate::order::types::ObjectType;
 use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID};
 pub mod templates;
 pub mod types;
@@ -103,8 +104,10 @@ impl<'a> RenderScope<'a> {
         inline: bool,
     ) -> String {
         let config = self.config;
-        // Special-case: fileset root in Pseudo template → head-style sections
-        if id == ROOT_PQ_ID && self.pq.is_fileset && !config.newline.is_empty()
+        // Special-case: fileset root in Pseudo/JS templates → head-style sections
+        if id == ROOT_PQ_ID
+            && self.pq.object_type.get(id) == Some(&ObjectType::Fileset)
+            && !config.newline.is_empty()
         {
             match config.template {
                 crate::OutputTemplate::Pseudo => {
