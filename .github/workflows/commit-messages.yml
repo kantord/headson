@@ -1,4 +1,4 @@
-name: Lint PR title
+name: Commitlint
 
 on:
   pull_request_target:
@@ -6,28 +6,15 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write   # needed if you set wip: true (updates PR status)
-  statuses: write        # sets a check status
+  pull-requests: write   # allow the action to comment on PRs
+  statuses: write        # allow the action to set a check status
 
 jobs:
-  semantic-pr:
+  commitlint:
+    name: Lint commits and PR title
     runs-on: ubuntu-latest
     steps:
-      - uses: amannn/action-semantic-pull-request@v6
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run commitlint on PR
+        uses: wagoid/commitlint-github-action@v6
         with:
-          wip: true
-          requireScope: false
-          types: |
-            build
-            chore
-            ci
-            docs
-            feat
-            fix
-            perf
-            refactor
-            revert
-            style
-            test
+          helpURL: https://www.conventionalcommits.org/en/v1.0.0/
