@@ -35,6 +35,24 @@ fn count_js_headers(out: &str) -> usize {
         .count()
 }
 
+fn find_js_summary_output(
+    paths: &[&str],
+    budgets: &[usize],
+    extra: &[&str],
+) -> Option<(String, usize)> {
+    for &b in budgets {
+        let out = run_js_with_limit(paths, b, extra);
+        let omitted = paths.len().saturating_sub(count_js_headers(&out));
+        if omitted > 0 {
+            let summary = format!("/* {omitted} more files */");
+            if out.contains(&summary) {
+                return Some((out, omitted));
+            }
+        }
+    }
+    None
+}
+
 fn run_pseudo_with_limit(paths: &[&str], limit: usize) -> String {
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     let limit_s = limit.to_string();
@@ -138,21 +156,22 @@ fn js_fileset_summary_shows_more_files_with_newlines() {
         "tests/fixtures/explicit/string_escaping.json",
     ];
     let budgets = [20usize, 40, 60, 80, 100, 120];
-    let mut found = false;
-    for b in budgets {
-        let out = run_js_with_limit(&paths, b, &[]);
-        let omitted = paths.len().saturating_sub(count_js_headers(&out));
-        if omitted > 0 {
-            let summary = format!("/* {omitted} more files */");
-            assert!(
-                out.contains(&summary),
-                "expected fileset summary: {summary}\nactual:\n{out}"
-            );
-            found = true;
-            break;
-        }
+    let (out, omitted) = find_js_summary_output(&paths, &budgets, &[])
+        .expect("expected some budget to omit files and show summary");
+    let summary = format!("/* {omitted} more files */");
+    // Ensure exactly one blank line before the summary
+    let trimmed = out.trim_end_matches('\n');
+    if let Some(pos) = trimmed.rfind(&summary) {
+        let before = &trimmed[..pos];
+        assert!(
+            before.ends_with("\n\n"),
+            "expected exactly one blank line before JS summary"
+        );
+        assert!(
+            !before.ends_with("\n\n\n"),
+            "should not have more than one blank line before JS summary"
+        );
     }
-    assert!(found, "expected some budget to omit files and show summary");
 }
 
 #[test]

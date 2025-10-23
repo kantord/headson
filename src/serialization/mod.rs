@@ -49,6 +49,11 @@ impl<'a> RenderScope<'a> {
         nl: &str,
     ) {
         if total > kept && !nl.is_empty() {
+            // Ensure exactly one blank line before the summary
+            let blanks = if out.ends_with(nl) { 1 } else { 2 };
+            for _ in 0..blanks {
+                out.push_str(nl);
+            }
             out.push_str(&indent(depth, &self.config.indent_unit));
             out.push_str(&format!("/* {} more files */", total - kept));
             out.push_str(nl);
@@ -393,7 +398,7 @@ impl<'a> RenderScope<'a> {
                 continue;
             }
             if kept > 0 {
-                out.push_str(nl);
+                // exactly one blank line between sections
                 out.push_str(nl);
             }
             kept += 1;
