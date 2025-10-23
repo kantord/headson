@@ -1,4 +1,4 @@
-name: semantic-pr
+name: Lint PR title
 
 on:
   pull_request_target:
@@ -6,17 +6,19 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
-  statuses: write
+  pull-requests: write   # needed if you set wip: true (updates PR status)
+  statuses: write        # sets a check status
 
 jobs:
-  semantic:
+  semantic-pr:
     runs-on: ubuntu-latest
     steps:
-      - uses: amannn/action-semantic-pull-request@v5
+      - uses: amannn/action-semantic-pull-request@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          wip: true
+          requireScope: false
           types: |
             build
             chore
@@ -29,5 +31,3 @@ jobs:
             revert
             style
             test
-          requireScope: false
-          wip: true
