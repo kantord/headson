@@ -26,6 +26,8 @@ fn no_newline_flag_makes_single_line() {
             "expected single-line output for {tmpl}, got: {single:?}"
         );
 
+        // Only long flag is supported for this option.
+
         if tmpl == "json" {
             serde_json::from_str::<serde_json::Value>(&multi)
                 .expect("json (multi) should parse");
