@@ -11,8 +11,8 @@ use clap::{Parser, ValueEnum};
     about = "Get a small but useful preview of a JSON file"
 )]
 struct Cli {
-    #[arg(short = 'n', long = "budget", default_value_t = 500)]
-    budget: usize,
+    #[arg(short = 'n', long = "budget", conflicts_with = "global_budget")]
+    budget: Option<usize>,
     #[arg(short = 'f', long = "template", value_enum, default_value_t = Template::Pseudo)]
     template: Template,
     #[arg(long = "indent", default_value = "  ")]
@@ -40,6 +40,14 @@ struct Cli {
     )]
     string_cap: usize,
     #[arg(
+        short = 'N',
+        long = "global-budget",
+        value_name = "BYTES",
+        conflicts_with = "budget",
+        help = "Total output budget across all inputs; useful to keep multiple files within a fixed overall output size (may omit entire files)."
+    )]
+    global_budget: Option<usize>,
+    #[arg(
         value_name = "INPUT",
         value_hint = clap::ValueHint::FilePath,
         num_args = 0..,
@@ -59,13 +67,20 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let render_cfg = get_render_config_from(&cli);
-    let priority_cfg = get_priority_config_from(&cli);
     let input_count = if cli.inputs.is_empty() {
         1
     } else {
         cli.inputs.len()
     };
-    let effective_budget = cli.budget.saturating_mul(input_count);
+    let effective_budget = if let Some(g) = cli.global_budget {
+        g
+    } else {
+        let per_file = cli.budget.unwrap_or(500);
+        per_file.saturating_mul(input_count)
+    };
+    // Derive a per-file baseline for priority heuristics to avoid over-pruning.
+    let per_file_for_priority = (effective_budget / input_count).max(1);
+    let priority_cfg = get_priority_config(per_file_for_priority, &cli);
 
     let output = if cli.inputs.len() <= 1 {
         let input_bytes = get_input_single(&cli.inputs)?;
@@ -142,7 +157,10 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
     }
 }
 
-fn get_priority_config_from(cli: &Cli) -> headson::PriorityConfig {
+fn get_priority_config(
+    per_file_budget: usize,
+    cli: &Cli,
+) -> headson::PriorityConfig {
     // Optimization: derive a conservative per‑array expansion cap from the output
     // budget to avoid allocating/walking items that could never appear in the
     // final preview. As a simple lower bound, an array of N items needs ~2*N
@@ -151,6 +169,6 @@ fn get_priority_config_from(cli: &Cli) -> headson::PriorityConfig {
     // output semantics.
     headson::PriorityConfig {
         max_string_graphemes: cli.string_cap,
-        array_max_items: (cli.budget / 2).max(1),
+        array_max_items: (per_file_budget / 2).max(1),
     }
 }
