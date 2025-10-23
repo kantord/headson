@@ -27,8 +27,13 @@ impl Style for Js {
 
     fn object_empty(open_indent: &str, ctx: &ObjectCtx<'_>) -> String {
         if ctx.omitted > 0 {
+            let label = if ctx.fileset_root {
+                "files"
+            } else {
+                "properties"
+            };
             return format!(
-                "{open_indent}{{{space}/* {n} more properties */{space}}}",
+                "{open_indent}{{{space}/* {n} more {label} */{space}}}",
                 n = ctx.omitted,
                 space = ctx.space
             );
@@ -42,8 +47,13 @@ impl Style for Js {
     fn object_push_omitted(out: &mut String, ctx: &ObjectCtx<'_>) {
         if ctx.omitted > 0 {
             out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
+            let label = if ctx.fileset_root {
+                "files"
+            } else {
+                "properties"
+            };
             out.push_str(&format!(
-                "/* {} more properties */{}",
+                "/* {} more {label} */{}",
                 ctx.omitted, ctx.newline
             ));
         }

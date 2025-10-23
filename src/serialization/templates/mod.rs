@@ -24,6 +24,7 @@ pub struct ObjectCtx<'a> {
     pub inline_open: bool,
     pub space: &'a str,
     pub newline: &'a str,
+    pub fileset_root: bool,
 }
 
 pub fn render_array(template: OutputTemplate, ctx: &ArrayCtx<'_>) -> String {

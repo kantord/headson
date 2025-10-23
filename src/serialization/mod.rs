@@ -19,6 +19,41 @@ pub(crate) struct RenderScope<'a> {
 }
 
 impl<'a> RenderScope<'a> {
+    fn append_js_fileset_section(
+        &mut self,
+        out: &mut String,
+        depth: usize,
+        child_pq_id: usize,
+        nl: &str,
+    ) {
+        let raw_key = self.pq.nodes[child_pq_id]
+            .key_in_object
+            .as_deref()
+            .unwrap_or("");
+        out.push_str(&indent(depth, &self.config.indent_unit));
+        out.push_str("// ");
+        out.push_str(raw_key);
+        out.push_str(nl);
+        let rendered = self.serialize_node(child_pq_id, depth, false);
+        out.push_str(&rendered);
+        out.push(';');
+        out.push_str(nl);
+    }
+
+    fn append_js_fileset_summary(
+        &self,
+        out: &mut String,
+        depth: usize,
+        kept: usize,
+        total: usize,
+        nl: &str,
+    ) {
+        if total > kept && !nl.is_empty() {
+            out.push_str(&indent(depth, &self.config.indent_unit));
+            out.push_str(&format!("/* {} more files */", total - kept));
+            out.push_str(nl);
+        }
+    }
     fn count_kept_children(&self, id: usize) -> usize {
         if let Some(kids) = self.pq.children.get(id) {
             let mut kept = 0usize;
@@ -134,6 +169,8 @@ impl<'a> RenderScope<'a> {
             inline_open: inline,
             space: &config.space,
             newline: &config.newline,
+            fileset_root: id == ROOT_PQ_ID
+                && self.pq.object_type.get(id) == Some(&ObjectType::Fileset),
         };
         render_object(config.template, &ctx)
     }
@@ -286,33 +323,41 @@ impl<'a> RenderScope<'a> {
     fn serialize_fileset_root_js(&mut self, depth: usize) -> String {
         let nl = &self.config.newline;
         let mut out = String::new();
-        if let Some(children_ids) = self.pq.children.get(ROOT_PQ_ID) {
-            let mut first = true;
-            for &child_id in children_ids.iter() {
-                if self.marks[child_id.0] != self.mark_gen {
-                    continue;
-                }
-                if !first {
-                    // blank line between sections
-                    out.push_str(nl);
-                    out.push_str(nl);
-                }
-                first = false;
-                let raw_key = self.pq.nodes[child_id.0]
-                    .key_in_object
-                    .as_deref()
-                    .unwrap_or("");
-                out.push_str(&indent(depth, &self.config.indent_unit));
-                out.push_str("// ");
-                out.push_str(raw_key);
+        let Some(children_ids) = self.pq.children.get(ROOT_PQ_ID) else {
+            return out;
+        };
+        let kept =
+            self.render_js_fileset_sections(&mut out, depth, children_ids, nl);
+        let total = self
+            .pq
+            .metrics
+            .get(ROOT_PQ_ID)
+            .and_then(|m| m.object_len)
+            .unwrap_or(children_ids.len());
+        self.append_js_fileset_summary(&mut out, depth, kept, total, nl);
+        out
+    }
+
+    fn render_js_fileset_sections(
+        &mut self,
+        out: &mut String,
+        depth: usize,
+        children_ids: &[crate::order::NodeId],
+        nl: &str,
+    ) -> usize {
+        let mut kept = 0usize;
+        for &child_id in children_ids.iter() {
+            if self.marks[child_id.0] != self.mark_gen {
+                continue;
+            }
+            if kept > 0 {
                 out.push_str(nl);
-                let rendered = self.serialize_node(child_id.0, depth, false);
-                out.push_str(&rendered);
-                out.push(';');
                 out.push_str(nl);
             }
+            kept += 1;
+            self.append_js_fileset_section(out, depth, child_id.0, nl);
         }
-        out
+        kept
     }
 }
 

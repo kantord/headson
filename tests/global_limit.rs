@@ -18,6 +18,23 @@ fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
     (ok, out, err)
 }
 
+fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
+    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let limit_s = limit.to_string();
+    let mut args = vec!["-f", "js", "-N", &limit_s];
+    args.extend_from_slice(extra);
+    args.extend_from_slice(paths);
+    let assert = cmd.args(args).assert();
+    assert!(assert.get_output().status.success());
+    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+}
+
+fn count_js_headers(out: &str) -> usize {
+    out.lines()
+        .filter(|l| l.trim_start().starts_with("// "))
+        .count()
+}
+
 #[test]
 fn global_limit_can_omit_entire_files() {
     let paths = [
@@ -44,4 +61,53 @@ fn budget_and_global_limit_conflict() {
         .args(["-f", "json", "-n", "200", "-N", "100", paths[0]])
         .assert();
     assert!(!assert.get_output().status.success(), "should fail");
+}
+
+#[test]
+fn js_fileset_summary_shows_more_files_with_newlines() {
+    let paths = [
+        "tests/fixtures/explicit/array_numbers_50.json",
+        "tests/fixtures/explicit/object_small.json",
+        "tests/fixtures/explicit/string_escaping.json",
+    ];
+    let budgets = [20usize, 40, 60, 80, 100, 120];
+    let mut found = false;
+    for b in budgets {
+        let out = run_js_with_limit(&paths, b, &[]);
+        let omitted = paths.len().saturating_sub(count_js_headers(&out));
+        if omitted > 0 {
+            let summary = format!("/* {omitted} more files */");
+            assert!(
+                out.contains(&summary),
+                "expected fileset summary: {summary}\nactual:\n{out}"
+            );
+            found = true;
+            break;
+        }
+    }
+    assert!(found, "expected some budget to omit files and show summary");
+}
+
+#[test]
+fn js_fileset_omission_uses_files_label_with_no_newline() {
+    // Force object-style fileset rendering by disabling newlines.
+    let paths = [
+        "tests/fixtures/explicit/array_numbers_50.json",
+        "tests/fixtures/explicit/object_small.json",
+        "tests/fixtures/explicit/string_escaping.json",
+    ];
+    let budgets = [40usize, 60, 80, 100, 120];
+    let mut found = false;
+    for b in budgets {
+        let out = run_js_with_limit(&paths, b, &["--no-newline"]);
+        if out.contains("more files") {
+            assert!(
+                !out.contains("more properties"),
+                "should not use 'properties' label for fileset root"
+            );
+            found = true;
+            break;
+        }
+    }
+    assert!(found, "expected 'more files' label under some small budget");
 }
