@@ -1,20 +1,17 @@
-name: Commitlint
-
-on:
-  pull_request_target:
-    types: [opened, edited, synchronize, reopened]
+name: 'Lint PR'
 
 permissions:
-  contents: read
-  pull-requests: write   # allow the action to comment on PRs
-  statuses: write        # allow the action to set a check status
+  pull-requests: write
 
 jobs:
-  commitlint:
-    name: Lint commits and PR title
+  main:
+    name: Validate PR title
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     steps:
-      - name: Run commitlint on PR
-        uses: wagoid/commitlint-github-action@v6
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          helpURL: https://www.conventionalcommits.org/en/v1.0.0/
+          wip: true
