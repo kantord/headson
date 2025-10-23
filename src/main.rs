@@ -59,7 +59,6 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let render_cfg = get_render_config_from(&cli);
-    // Priority config should reflect per-file budget semantics (array caps etc.).
     let priority_cfg = get_priority_config_from(&cli);
     let input_count = if cli.inputs.is_empty() {
         1
