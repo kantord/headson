@@ -1,0 +1,23 @@
+[build-system]
+requires = ["maturin>=1.6,<2"]
+build-backend = "maturin"
+
+[project]
+name = "headson"
+version = "0.1.0"
+description = "Budget‑constrained JSON preview renderer (Python bindings)"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Rust",
+  "Operating System :: OS Independent",
+]
+keywords = ["json", "preview", "summarize", "cli", "bindings"]
+
+[tool.maturin]
+# Build the extension module from the Rust crate at ./python/Cargo.toml
+manifest-path = "python/Cargo.toml"
+module-name = "headson"
+strip = true
