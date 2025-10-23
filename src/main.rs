@@ -43,7 +43,7 @@ struct Cli {
         value_name = "INPUT",
         value_hint = clap::ValueHint::FilePath,
         num_args = 0..,
-        help = "Optional file paths. If omitted, reads JSON from stdin. Currently only the first file is processed."
+        help = "Optional file paths. If omitted, reads JSON from stdin. Multiple input files are supported."
     )]
     inputs: Vec<PathBuf>,
 }

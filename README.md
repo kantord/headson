@@ -50,6 +50,10 @@ Examples:
 
       headson -f json -m data.json
 
+- Multiple files (JSON template produces an object keyed by paths):
+
+      headson -f json a.json b.json
+
 Show help:
 
     headson --help
