@@ -54,6 +54,49 @@ impl<'a> RenderScope<'a> {
             out.push_str(nl);
         }
     }
+
+    fn append_pseudo_fileset_section(
+        &mut self,
+        out: &mut String,
+        depth: usize,
+        child_pq_id: usize,
+        nl: &str,
+    ) {
+        let raw_key = self.pq.nodes[child_pq_id]
+            .key_in_object
+            .as_deref()
+            .unwrap_or("");
+        out.push_str(&indent(depth, &self.config.indent_unit));
+        out.push_str("==> ");
+        out.push_str(raw_key);
+        out.push_str(" <==");
+        out.push_str(nl);
+        let rendered = self.serialize_node(child_pq_id, depth, false);
+        out.push_str(&rendered);
+    }
+
+    fn append_pseudo_fileset_summary(
+        &self,
+        out: &mut String,
+        depth: usize,
+        kept: usize,
+        total: usize,
+        nl: &str,
+    ) {
+        if total > kept && !nl.is_empty() {
+            // Ensure exactly one blank line before the summary:
+            // strip any trailing newlines, then add nl + nl.
+            while out.ends_with(nl) {
+                let new_len = out.len().saturating_sub(nl.len());
+                out.truncate(new_len);
+            }
+            out.push_str(nl);
+            out.push_str(nl);
+            out.push_str(&indent(depth, &self.config.indent_unit));
+            out.push_str(&format!("==> {} more files <==", total - kept));
+            // Do not append a trailing newline after the summary.
+        }
+    }
     fn count_kept_children(&self, id: usize) -> usize {
         if let Some(kids) = self.pq.children.get(id) {
             let mut kept = 0usize;
@@ -287,32 +330,31 @@ impl<'a> RenderScope<'a> {
         let nl = &self.config.newline;
         let mut out = String::new();
         if let Some(children_ids) = self.pq.children.get(ROOT_PQ_ID) {
-            let mut first = true;
+            let mut kept = 0usize;
             for &child_id in children_ids.iter() {
                 if self.marks[child_id.0] != self.mark_gen {
                     continue;
                 }
-                if !first {
+                if kept > 0 {
                     // ensure an empty line between files regardless of whether
                     // previous section ended with a newline
                     out.push_str(nl);
                     out.push_str(nl);
                 }
-                first = false;
-                // Header line
-                let raw_key = self.pq.nodes[child_id.0]
-                    .key_in_object
-                    .as_deref()
-                    .unwrap_or("");
-                out.push_str(&indent(depth, &self.config.indent_unit));
-                out.push_str("==> ");
-                out.push_str(raw_key);
-                out.push_str(" <==");
-                out.push_str(nl);
-                // File content
-                let rendered = self.serialize_node(child_id.0, depth, false);
-                out.push_str(&rendered);
+                kept += 1;
+                self.append_pseudo_fileset_section(
+                    &mut out, depth, child_id.0, nl,
+                );
             }
+            let total = self
+                .pq
+                .metrics
+                .get(ROOT_PQ_ID)
+                .and_then(|m| m.object_len)
+                .unwrap_or(children_ids.len());
+            self.append_pseudo_fileset_summary(
+                &mut out, depth, kept, total, nl,
+            );
         }
         out
     }
