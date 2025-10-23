@@ -27,6 +27,18 @@ impl JsonTreeBuilder {
         self.arena.into_inner()
     }
 
+    // Create an object node from provided keys and child ids and return its id.
+    pub(crate) fn push_object_root(
+        &self,
+        keys: Vec<String>,
+        children: Vec<usize>,
+    ) -> usize {
+        let id = self.push_default();
+        let count = keys.len().min(children.len());
+        self.finish_object(id, count, children, keys);
+        id
+    }
+
     fn push_default(&self) -> usize {
         let mut a = self.arena.borrow_mut();
         let id = a.nodes.len();

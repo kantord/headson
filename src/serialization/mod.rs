@@ -1,3 +1,4 @@
+use crate::order::types::ObjectType;
 use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID};
 pub mod templates;
 pub mod types;
@@ -103,6 +104,21 @@ impl<'a> RenderScope<'a> {
         inline: bool,
     ) -> String {
         let config = self.config;
+        // Special-case: fileset root in Pseudo/JS templates → head-style sections
+        if id == ROOT_PQ_ID
+            && self.pq.object_type.get(id) == Some(&ObjectType::Fileset)
+            && !config.newline.is_empty()
+        {
+            match config.template {
+                crate::OutputTemplate::Pseudo => {
+                    return self.serialize_fileset_root_pseudo(depth);
+                }
+                crate::OutputTemplate::Js => {
+                    return self.serialize_fileset_root_js(depth);
+                }
+                _ => {}
+            }
+        }
         let (children_pairs, kept) = self.gather_object_children(id, depth);
         let node = &self.pq.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
@@ -227,6 +243,76 @@ impl<'a> RenderScope<'a> {
             }
         }
         (children_pairs, kept)
+    }
+
+    // Render multi-input fileset as head-style sections for Pseudo template.
+    fn serialize_fileset_root_pseudo(&mut self, depth: usize) -> String {
+        let nl = &self.config.newline;
+        let mut out = String::new();
+        if let Some(children_ids) = self.pq.children.get(ROOT_PQ_ID) {
+            let mut first = true;
+            for &child_id in children_ids.iter() {
+                if self.marks[child_id.0] != self.mark_gen {
+                    continue;
+                }
+                if !first {
+                    // ensure an empty line between files regardless of whether
+                    // previous section ended with a newline
+                    out.push_str(nl);
+                    out.push_str(nl);
+                }
+                first = false;
+                // Header line
+                let raw_key = self.pq.nodes[child_id.0]
+                    .key_in_object
+                    .as_deref()
+                    .unwrap_or("");
+                out.push_str(&indent(depth, &self.config.indent_unit));
+                out.push_str("==> ");
+                out.push_str(raw_key);
+                out.push_str(" <==");
+                out.push_str(nl);
+                // File content
+                let rendered = self.serialize_node(child_id.0, depth, false);
+                out.push_str(&rendered);
+            }
+        }
+        out
+    }
+
+    // Render multi-input fileset as head-style sections for JS template using
+    // line comments for file names. Ensure valid JS by terminating each section
+    // with a semicolon.
+    fn serialize_fileset_root_js(&mut self, depth: usize) -> String {
+        let nl = &self.config.newline;
+        let mut out = String::new();
+        if let Some(children_ids) = self.pq.children.get(ROOT_PQ_ID) {
+            let mut first = true;
+            for &child_id in children_ids.iter() {
+                if self.marks[child_id.0] != self.mark_gen {
+                    continue;
+                }
+                if !first {
+                    // blank line between sections
+                    out.push_str(nl);
+                    out.push_str(nl);
+                }
+                first = false;
+                let raw_key = self.pq.nodes[child_id.0]
+                    .key_in_object
+                    .as_deref()
+                    .unwrap_or("");
+                out.push_str(&indent(depth, &self.config.indent_unit));
+                out.push_str("// ");
+                out.push_str(raw_key);
+                out.push_str(nl);
+                let rendered = self.serialize_node(child_id.0, depth, false);
+                out.push_str(&rendered);
+                out.push(';');
+                out.push_str(nl);
+            }
+        }
+        out
     }
 }
 

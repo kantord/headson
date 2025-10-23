@@ -39,8 +39,13 @@ struct Cli {
         help = "Maximum string length to display"
     )]
     string_cap: usize,
-    #[arg(value_name = "INPUT", value_hint = clap::ValueHint::FilePath, help = "Optional file path. If omitted, reads JSON from stdin.")]
-    input: Option<PathBuf>,
+    #[arg(
+        value_name = "INPUT",
+        value_hint = clap::ValueHint::FilePath,
+        num_args = 0..,
+        help = "Optional file paths. If omitted, reads JSON from stdin. Multiple input files are supported."
+    )]
+    inputs: Vec<PathBuf>,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -53,20 +58,40 @@ enum Template {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let input_bytes = get_input(cli.input.as_ref())?;
     let render_cfg = get_render_config_from(&cli);
     let priority_cfg = get_priority_config_from(&cli);
+    let input_count = if cli.inputs.is_empty() {
+        1
+    } else {
+        cli.inputs.len()
+    };
+    let effective_budget = cli.budget.saturating_mul(input_count);
 
-    let output =
-        headson::headson(input_bytes, &render_cfg, &priority_cfg, cli.budget)?;
+    let output = if cli.inputs.len() <= 1 {
+        let input_bytes = get_input_single(&cli.inputs)?;
+        headson::headson(
+            input_bytes,
+            &render_cfg,
+            &priority_cfg,
+            effective_budget,
+        )?
+    } else {
+        let inputs = get_input_many(&cli.inputs)?;
+        headson::headson_many(
+            inputs,
+            &render_cfg,
+            &priority_cfg,
+            effective_budget,
+        )?
+    };
     println!("{output}");
 
     Ok(())
 }
 
-fn get_input(path: Option<&PathBuf>) -> Result<Vec<u8>> {
-    // Read input either from a file path (pre-allocated) or from stdin (bytes).
-    if let Some(path) = path {
+fn get_input_single(paths: &[PathBuf]) -> Result<Vec<u8>> {
+    // Read input from first file path when provided, otherwise from stdin.
+    if let Some(path) = paths.first() {
         std::fs::read(path).with_context(|| {
             format!("failed to read input file: {}", path.display())
         })
@@ -77,6 +102,17 @@ fn get_input(path: Option<&PathBuf>) -> Result<Vec<u8>> {
             .context("failed to read from stdin")?;
         Ok(buf)
     }
+}
+
+fn get_input_many(paths: &[PathBuf]) -> Result<Vec<(String, Vec<u8>)>> {
+    let mut out: Vec<(String, Vec<u8>)> = Vec::with_capacity(paths.len());
+    for path in paths.iter() {
+        let bytes = std::fs::read(path).with_context(|| {
+            format!("failed to read input file: {}", path.display())
+        })?;
+        out.push((path.display().to_string(), bytes));
+    }
+    Ok(out)
 }
 
 fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {

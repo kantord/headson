@@ -28,6 +28,12 @@ pub enum NodeKind {
     Object,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum ObjectType {
+    Object,
+    Fileset,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct RankedNode {
     pub node_id: NodeId,
@@ -56,6 +62,7 @@ pub struct PriorityOrder {
     pub children: Vec<Vec<NodeId>>,  // children[id] = children ids (PQ ids)
     pub order: Vec<NodeId>, // ids sorted by ascending priority (PQ ids)
     pub total_nodes: usize,
+    pub object_type: Vec<ObjectType>,
 }
 
 pub const ROOT_PQ_ID: usize = 0;

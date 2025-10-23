@@ -15,20 +15,26 @@ From source:
 
 ## Usage
 
-    headson [FLAGS] [INPUT]
+    headson [FLAGS] [INPUT...]
 
-- INPUT (optional): file path. If omitted, reads JSON from stdin.
+- INPUT (optional, repeatable): file path(s). If omitted, reads JSON from stdin. Multiple input files are supported.
 - Prints the preview to stdout. On parse errors, exits non‑zero and prints an error to stderr.
 
 Common flags:
 
-- `-n, --budget <BYTES>`: output byte budget (default: 500)
+- `-n, --budget <BYTES>`: output byte budget (default: 500). When multiple input files are provided, the total budget equals `<BYTES> * number_of_inputs` (budget is per input).
 - `-f, --template <json|pseudo|js>`: output style (default: `pseudo`)
 - `-m, --compact`: no indentation, no spaces, no newlines
 - `--no-newline`: single line output
 - `--no-space`: no space after `:` in objects
 - `--indent <STR>`: indentation unit (default: two spaces)
 - `--string-cap <N>`: max graphemes to consider per string (default: 500)
+
+Notes:
+
+- With multiple input files:
+  - JSON template outputs a single JSON object keyed by the input file paths.
+  - Pseudo and JS templates render file sections with human-readable headers.
 
 Examples:
 
@@ -44,7 +50,10 @@ Examples:
 
       headson -f json -m data.json
 
+- Multiple files (JSON template produces an object keyed by paths):
+
+      headson -f json a.json b.json
+
 Show help:
 
     headson --help
-
