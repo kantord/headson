@@ -19,6 +19,8 @@ Install for development:
 
 ```
 pipx install maturin
-maturin develop -m python/pyproject.toml
+# Run from the repository root; the root pyproject.toml points to python/Cargo.toml
+maturin develop -m pyproject.toml
+# Or simply:
+# maturin develop
 ```
-
