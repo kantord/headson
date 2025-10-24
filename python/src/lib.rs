@@ -2,8 +2,6 @@ use anyhow::{bail, Result};
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
-// Import core crate items via the renamed dependency to avoid name collisions
-// with this cdylib crate (also named "headson" for Python module purposes).
 use headson_core::{OutputTemplate, RenderConfig, PriorityConfig};
 
 fn to_template(s: &str) -> Result<OutputTemplate> {
