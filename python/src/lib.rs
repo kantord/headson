@@ -1,13 +1,16 @@
 use anyhow::{bail, Context, Result};
 use pyo3::exceptions::{PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyBytes, PyDict, PyList};
+use pyo3::types::{PyBytes, PyDict, PyList};
+// Import core crate items via the renamed dependency to avoid name collisions
+// with this cdylib crate (also named "headson" for Python module purposes).
+use headson_core::{OutputTemplate, RenderConfig, PriorityConfig};
 
-fn to_template(s: &str) -> Result<headson::OutputTemplate> {
+fn to_template(s: &str) -> Result<OutputTemplate> {
     match s.to_ascii_lowercase().as_str() {
-        "json" => Ok(headson::OutputTemplate::Json),
-        "pseudo" | "ps" => Ok(headson::OutputTemplate::Pseudo),
-        "js" | "javascript" => Ok(headson::OutputTemplate::Js),
+        "json" => Ok(OutputTemplate::Json),
+        "pseudo" | "ps" => Ok(OutputTemplate::Pseudo),
+        "js" | "javascript" => Ok(OutputTemplate::Js),
         _ => bail!("unknown template: {} (expected 'json' | 'pseudo' | 'js')", s),
     }
 }
@@ -18,7 +21,7 @@ fn render_config(
     indent: Option<&str>,
     no_space: bool,
     no_newline: bool,
-) -> Result<headson::RenderConfig> {
+) -> Result<RenderConfig> {
     let t = to_template(template)?;
     let space = if compact || no_space { "" } else { " " }.to_string();
     let newline = if compact || no_newline { "" } else { "\n" }.to_string();
@@ -27,7 +30,7 @@ fn render_config(
     } else {
         indent.unwrap_or("  ").to_string()
     };
-    Ok(headson::RenderConfig {
+    Ok(RenderConfig {
         template: t,
         indent_unit,
         space,
@@ -35,8 +38,8 @@ fn render_config(
     })
 }
 
-fn priority_config(per_file_budget: usize, string_cap: usize) -> headson::PriorityConfig {
-    headson::PriorityConfig {
+fn priority_config(per_file_budget: usize, string_cap: usize) -> PriorityConfig {
+    PriorityConfig {
         max_string_graphemes: string_cap,
         array_max_items: (per_file_budget / 2).max(1),
     }
@@ -50,7 +53,7 @@ fn to_pyerr(e: anyhow::Error) -> PyErr {
 #[pyo3(signature = (data, *, template="pseudo", budget=None, global_budget=None, compact=false, indent="  ", no_space=false, no_newline=false, string_cap=500))]
 fn summarize_bytes(
     py: Python<'_>,
-    data: &PyBytes,
+    data: Bound<PyBytes>,
     template: &str,
     budget: Option<usize>,
     global_budget: Option<usize>,
@@ -67,14 +70,14 @@ fn summarize_bytes(
     let per_file_for_priority = effective_budget.max(1);
     let prio = priority_config(per_file_for_priority, string_cap);
     let input = data.as_bytes().to_vec();
-    py.allow_threads(|| headson::headson(input, &cfg, &prio, effective_budget).map_err(to_pyerr))
+    py.allow_threads(|| headson_core::headson(input, &cfg, &prio, effective_budget).map_err(to_pyerr))
 }
 
 #[pyfunction]
 #[pyo3(signature = (paths, *, template="pseudo", budget=None, global_budget=None, compact=false, indent="  ", no_space=false, no_newline=false, string_cap=500))]
 fn summarize_files(
     py: Python<'_>,
-    paths: &PyList,
+    paths: Bound<PyList>,
     template: &str,
     budget: Option<usize>,
     global_budget: Option<usize>,
@@ -113,14 +116,14 @@ fn summarize_files(
         inputs.push((path_str, bytes));
     }
 
-    py.allow_threads(|| headson::headson_many(inputs, &cfg, &prio, effective_budget).map_err(to_pyerr))
+    py.allow_threads(|| headson_core::headson_many(inputs, &cfg, &prio, effective_budget).map_err(to_pyerr))
 }
 
 #[pyfunction]
 #[pyo3(signature = (items, *, template="pseudo", budget=None, global_budget=None, compact=false, indent="  ", no_space=false, no_newline=false, string_cap=500))]
 fn summarize_texts(
     py: Python<'_>,
-    items: &PyList,
+    items: Bound<PyList>,
     template: &str,
     budget: Option<usize>,
     global_budget: Option<usize>,
@@ -145,13 +148,13 @@ fn summarize_texts(
     for item in items.iter() {
         if let Ok(d) = item.downcast::<PyDict>() {
             let path: String = d
-                .get_item("path")
+                .get_item("path")?
                 .ok_or_else(|| PyValueError::new_err("item missing 'path'"))?
                 .extract()
                 .map_err(|_| PyTypeError::new_err("'path' must be str"))?;
             // content may be str or bytes
             let content_obj = d
-                .get_item("content")
+                .get_item("content")?
                 .ok_or_else(|| PyValueError::new_err("item missing 'content'"))?;
             let bytes: Vec<u8> = if let Ok(s) = content_obj.extract::<&str>() {
                 s.as_bytes().to_vec()
@@ -166,14 +169,13 @@ fn summarize_texts(
         }
     }
 
-    py.allow_threads(|| headson::headson_many(inputs, &cfg, &prio, effective_budget).map_err(to_pyerr))
+    py.allow_threads(|| headson_core::headson_many(inputs, &cfg, &prio, effective_budget).map_err(to_pyerr))
 }
 
 #[pymodule]
-fn headson(_py: Python, m: &PyModule) -> PyResult<()> {
+fn headson(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(summarize_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(summarize_files, m)?)?;
     m.add_function(wrap_pyfunction!(summarize_texts, m)?)?;
     Ok(())
 }
-

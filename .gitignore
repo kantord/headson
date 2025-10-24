@@ -25,3 +25,5 @@ benchmarks/
 examples/bench_fixture.json
 examples/bench_write_tmp.json
 examples/bench_*.json
+
+*.pyc

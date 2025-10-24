@@ -26,3 +26,8 @@ test = [
 manifest-path = "python/Cargo.toml"
 module-name = "headson"
 strip = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]

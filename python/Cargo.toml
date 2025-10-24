@@ -11,5 +11,6 @@ crate-type = ["cdylib"]
 [dependencies]
 anyhow = "1"
 pyo3 = { version = "0.22", features = ["extension-module"] }
-headson = { path = ".." }
-
+# Rename the dependency on the Rust crate to avoid name clash with this
+# cdylib crate (Python module also named "headson").
+headson_core = { package = "headson", path = ".." }
