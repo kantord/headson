@@ -27,3 +27,17 @@ examples/bench_write_tmp.json
 examples/bench_*.json
 
 *.pyc
+
+# Python / uv virtualenv and caches
+.venv/
+.uv_cache/
+__pycache__/
+.pytest_cache/
+*.pyo
+*.so
+*.dylib
+*.egg-info/
+*.pyd
+
+# macOS noise
+.DS_Store

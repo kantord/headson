@@ -1,26 +1,34 @@
 # headson Python bindings
 
-This package exposes the core `headson` JSON preview renderer to Python.
+Minimal Python API for the `headson` JSON preview renderer.
 
-Example:
+Currently exported function:
+
+- `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None) -> str`
+  - `template`: one of `"json" | "pseudo" | "js"`.
+  - `character_budget`: maximum output size in characters (defaults to 500 if not set).
+
+Examples:
 
 ```python
 import headson
 
-print(headson.summarize_bytes(b'{"a": 1, "b": [1,2,3]}', template="pseudo"))
-print(headson.summarize_files(["sample.json"], template="js", global_budget=10_000))
-print(headson.summarize_texts([
-    {"path": "a.json", "content": "{\"a\": 1}"},
-    {"path": "b.json", "content": "{\"b\": [1,2,3]}"},
-]))
+print(headson.summarize('{"a": 1, "b": [1,2,3]}', template="pseudo", character_budget=80))
+print(headson.summarize('{"a": 1, "b": {"c": 2}}', template="json", character_budget=10_000))
+arr = ','.join(str(i) for i in range(100))
+print(headson.summarize('{"arr": [' + arr + ']}', template="js", character_budget=60))
 ```
 
 Install for development:
 
 ```
 pipx install maturin
-# Run from the repository root; the root pyproject.toml points to python/Cargo.toml
+# Option A: maturin directly
 maturin develop -m pyproject.toml
-# Or simply:
-# maturin develop
+
+# Option B: uv (recommended for dev)
+uv add --dev maturin pytest
+uv sync
+uv run --no-sync maturin develop -r
+uv run --no-sync pytest -q
 ```

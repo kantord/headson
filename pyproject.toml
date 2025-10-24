@@ -26,6 +26,7 @@ test = [
 manifest-path = "python/Cargo.toml"
 module-name = "headson"
 strip = true
+python-source = "python"
 
 [dependency-groups]
 dev = [
