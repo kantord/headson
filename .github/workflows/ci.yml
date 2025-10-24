@@ -107,6 +107,12 @@ jobs:
       - name: Sync Python deps (dev)
         run: uv sync --locked
 
+      - name: Ruff lint
+        run: uv run --no-sync ruff check .
+
+      - name: Ruff format check
+        run: uv run --no-sync ruff format --check .
+
       - name: Build extension (maturin develop)
         run: uv run --no-sync maturin develop -r
 
