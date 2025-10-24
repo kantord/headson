@@ -88,3 +88,33 @@ jobs:
         run: cargo fmt --all -- --check
 
   # Release handled by release-plz workflow
+
+  python-tests:
+    name: Python bindings (pytest)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Sync Python deps (dev)
+        run: uv sync --locked
+
+      - name: Ruff lint
+        run: uv run --no-sync ruff check .
+
+      - name: Ruff format check
+        run: uv run --no-sync ruff format --check .
+
+      - name: Build extension (maturin develop)
+        run: uv run --no-sync maturin develop -r
+
+      - name: Run pytest
+        run: uv run --no-sync pytest -q
