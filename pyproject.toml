@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "headson"
-version = "0.2.1"
+version = "0.2.2"
 description = "Budget‑constrained JSON preview renderer (Python bindings)"
 readme = "README.md"
 requires-python = ">=3.8"
