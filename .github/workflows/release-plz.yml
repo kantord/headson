@@ -105,7 +105,8 @@ jobs:
             echo "Version mismatch after sync: root=${ROOT_VER} pyproject=${PY_VER} python/Cargo.toml=${PY_CRATE_VER}" >&2
             exit 1
           fi
-
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
       - name: Update Python lockfile
         shell: bash
         run: |
@@ -123,7 +124,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           command: sdist
-          args: --locked
+          # no --locked for sdist (not supported by maturin)
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
