@@ -74,15 +74,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ROOT_VER=$(sed -n 's/^version\s*=\s*"\(.*\)"/\1/p' Cargo.toml | head -n1)
+          ROOT_VER=$(awk -F '"' '/^version[[:space:]]*=/ {print $2; exit}' Cargo.toml || true)
           if [ -z "${ROOT_VER}" ]; then
             echo "Failed to extract version from Cargo.toml" >&2
             exit 1
           fi
           echo "Using version: ${ROOT_VER}"
-          sed -i -E "0,/^version\s*=\s*\".*\"/s//version = \"${ROOT_VER}\"/" python/Cargo.toml
-          sed -i -E "0,/^version\s*=\s*\".*\"/s//version = \"${ROOT_VER}\"/" pyproject.toml
+          if [ "${RUNNER_OS:-}" = "macOS" ]; then SED_INPLACE=(-i ''); else SED_INPLACE=(-i); fi
+          sed "${SED_INPLACE[@]}" -E "0,/^version[[:space:]]*=[[:space:]]*\".*\"/s//version = \"${ROOT_VER}\"/" python/Cargo.toml
+          sed "${SED_INPLACE[@]}" -E "0,/^version[[:space:]]*=[[:space:]]*\".*\"/s//version = \"${ROOT_VER}\"/" pyproject.toml
           echo "Synced versions in python/Cargo.toml and pyproject.toml"
+          # Assert drift is gone
+          PY_VER=$(awk -F '"' '/^version[[:space:]]*=/ {print $2; exit}' pyproject.toml)
+          PY_CRATE_VER=$(awk -F '"' '/^version[[:space:]]*=/ {print $2; exit}' python/Cargo.toml)
+          if [ "${ROOT_VER}" != "${PY_VER}" ] || [ "${ROOT_VER}" != "${PY_CRATE_VER}" ]; then
+            echo "Version mismatch after sync: root=${ROOT_VER} pyproject=${PY_VER} python/Cargo.toml=${PY_CRATE_VER}" >&2
+            exit 1
+          fi
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1

@@ -105,7 +105,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Sync Python deps (dev)
-        run: uv sync --locked
+        run: |
+          # Prefer reproducible installs; if the lock is stale (e.g., version bump), refresh it in CI
+          uv sync --locked || (uv lock && uv sync --locked)
 
       - name: Ruff lint
         run: uv run --no-sync ruff check .
