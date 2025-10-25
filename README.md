@@ -20,12 +20,11 @@ From source:
 
 ## Features
 
-- Budgeted output: guarantees the preview stays within a chosen character budget.
-- Three output styles: `json` (machine‑readable), `pseudo` (human‑friendly), `js` (JavaScript‑like).
-- Multiple inputs: preview many files at once with a shared or per‑file budget.
-- Fast: uses a streaming arena parser and SIMD‑accelerated JSON ingestion.
-- CLI and libraries: usable from the terminal, Rust, and Python.
-- Tail mode: prefer the end of arrays when truncating (`--tail` or `tail=True` in Python). Strings are unaffected; JSON output remains strict.
+- *Budgeted output*: specify exactly how much JSON you want to see
+- *Multiple output formats* : `json` (machine‑readable), `pseudo` (human‑friendly), `js` (valid JavaScript, most detailed metadata).
+- *Multiple inputs*: preview many files at once with a shared or per‑file budget.
+- *Fast*: can process gigabyte-scale files in seconds (mostly disk-constrained)
+- *Available as a CLI app and as a Python library*
 
 ## Shell Mental Model
 
