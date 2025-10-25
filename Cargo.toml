@@ -1,6 +1,6 @@
 [package]
 name = "headson"
-version = "0.2.3"
+version = "0.2.5"
 edition = "2024"
 description = "Budget‑constrained JSON preview renderer"
 readme = "README.md"
@@ -24,15 +24,16 @@ clap = { version = "4.5.49", features = ["derive"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 unicode-segmentation = "1.12.0"
-simd-json = { version = "0.13", features = ["serde_impl"] }
+simd-json = { version = "0.17", features = ["serde_impl"] }
+content_inspector = "0.2"
 
 [dev-dependencies]
 insta = "1.40.0"
 assert_cmd = "2"
 test_each_file = "0.3"
-fake = "2"
-rand = "0.8"
-rand_chacha = "0.3"
+rand = "0.9"
+rand_chacha = "0.9"
+tempfile = "3"
 
 [profile.release]
 # Prioritize runtime speed for large inputs
@@ -92,3 +93,6 @@ implicit_hasher = "deny"
 uninlined_format_args = "deny"
 float_cmp = "deny"
 float_cmp_const = "deny"
+
+[lints.rust]
+dead_code = "warn"

@@ -41,3 +41,7 @@ __pycache__/
 
 # macOS noise
 .DS_Store
+
+# Coverage artifacts
+coverage/
+lcov.info

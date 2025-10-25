@@ -52,7 +52,7 @@ fn summarize(
     let per_file_for_priority = budget.max(1);
     let prio = priority_config(per_file_for_priority);
     let input = text.as_bytes().to_vec();
-    py.allow_threads(|| headson_core::headson(input, &cfg, &prio, budget).map_err(to_pyerr))
+    py.detach(|| headson_core::headson(input, &cfg, &prio, budget).map_err(to_pyerr))
 }
 
 #[pymodule]

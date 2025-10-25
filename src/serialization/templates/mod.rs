@@ -1,9 +1,9 @@
 use crate::OutputTemplate;
 
-pub mod core;
-pub mod js;
-pub mod json;
-pub mod pseudo;
+mod core;
+mod js;
+mod json;
+mod pseudo;
 
 pub struct ArrayCtx<'a> {
     pub children: Vec<(usize, String)>,

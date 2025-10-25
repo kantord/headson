@@ -1,4 +1,4 @@
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use serde::Serialize;
 use std::io::{self, Write};
@@ -60,13 +60,12 @@ fn main() -> anyhow::Result<()> {
     // Deterministic RNG
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
 
-    // Use the `fake` crate to generate a deterministic single-word name.
-    // We avoid locale-dependent or unicode-heavy generators to keep output stable.
-    use fake::Fake;
-    use fake::faker::lorem::en::Word;
-
     for i in 0..count {
-        let name: String = Word().fake_with_rng(&mut rng);
+        let len = rng.random_range(5..=10);
+        let mut name = String::with_capacity(len);
+        for _ in 0..len {
+            name.push(rng.random_range(b'a'..=b'z') as char);
+        }
         let url = format!("{}{}{}", base_url, i + 1, "/");
         let it = Item { name, url };
         serde_json::to_writer(&mut w, &it)?;
