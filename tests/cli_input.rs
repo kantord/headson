@@ -3,6 +3,20 @@ mod util;
 use assert_cmd::Command;
 use std::fs::{self, File};
 use std::io::Write;
+use std::path::Path;
+
+fn create_subdir(path: &Path) {
+    fs::create_dir(path).expect("mkdir");
+}
+
+fn write_binary_file(path: &Path) {
+    let mut f = File::create(path).expect("create bin");
+    f.write_all(&[0, 159, 146, 150, 0, 0]).expect("write bin");
+}
+
+fn write_json_file(path: &Path, contents: &[u8]) {
+    fs::write(path, contents).expect("write json");
+}
 
 fn run_with_input_path(
     path: &str,
@@ -49,20 +63,15 @@ fn unreadable_file_path_errors_with_stderr() {
 fn directories_and_binary_files_are_ignored_with_notices() {
     let tmpdir = tempfile::tempdir().expect("tmpdir");
 
-    // Create a subdirectory to be ignored
     let dir_path = tmpdir.path().join("subdir");
-    fs::create_dir(&dir_path).expect("mkdir");
+    create_subdir(&dir_path);
 
-    // Create a binary file (write some non-text bytes)
     let bin_path = tmpdir.path().join("bin.dat");
-    let mut f = File::create(&bin_path).expect("create bin");
-    f.write_all(&[0, 159, 146, 150, 0, 0]).expect("write bin");
+    write_binary_file(&bin_path);
 
-    // Create a valid JSON file which should be included
     let json_path = tmpdir.path().join("data.json");
-    fs::write(&json_path, b"{\"a\":1}").expect("write json");
+    write_json_file(&json_path, b"{\"a\":1}");
 
-    // Run CLI with all three paths
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     let assert = cmd
         .args([
@@ -76,7 +85,6 @@ fn directories_and_binary_files_are_ignored_with_notices() {
         ])
         .assert();
 
-    // Should succeed, produce output for the JSON file, and print notices to stderr
     let ok = assert.get_output().status.success();
     let out = String::from_utf8_lossy(&assert.get_output().stdout);
     let err = String::from_utf8_lossy(&assert.get_output().stderr);
@@ -97,12 +105,10 @@ fn directories_and_binary_files_are_ignored_with_notices() {
 fn only_ignored_inputs_result_in_empty_output_and_notices() {
     let tmpdir = tempfile::tempdir().expect("tmpdir");
 
-    // Create a subdirectory and a binary file; no valid JSON files
     let dir_path = tmpdir.path().join("subdir");
-    fs::create_dir(&dir_path).expect("mkdir");
+    create_subdir(&dir_path);
     let bin_path = tmpdir.path().join("bin.dat");
-    let mut f = File::create(&bin_path).expect("create bin");
-    f.write_all(&[0, 159, 146, 150, 0, 0]).expect("write bin");
+    write_binary_file(&bin_path);
 
     // Case 1: single ignored path -> falls into included == 0 branch, empty output
     let mut cmd1 = Command::cargo_bin("headson").expect("bin");
