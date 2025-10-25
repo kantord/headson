@@ -1,0 +1,26 @@
+name: Unused Deps
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  udeps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up nightly toolchain
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-udeps
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-udeps
+
+      - name: Run cargo-udeps (release, all targets)
+        run: |
+          cargo udeps --workspace --all-targets --all-features --release
+
