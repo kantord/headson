@@ -8,7 +8,7 @@ fn seed_stack_with_top_k(
     render_id: u32,
     work_stack: &mut Vec<NodeId>,
 ) {
-    for &id in order.order.iter().take(k) {
+    for &id in order.by_priority.iter().take(k) {
         let idx = id.0;
         if inclusion_flags[idx] != render_id {
             inclusion_flags[idx] = render_id;
