@@ -57,7 +57,7 @@ struct Cli {
         value_name = "INPUT",
         value_hint = clap::ValueHint::FilePath,
         num_args = 0..,
-        help = "Optional file paths. If omitted, reads JSON from stdin. Multiple input files are supported."
+        help = "Optional file paths. If omitted, reads JSON from stdin. Multiple input files are supported. Directories and binary files are ignored with a notice on stderr."
     )]
     inputs: Vec<PathBuf>,
 }
@@ -120,7 +120,7 @@ fn run_from_paths(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
 ) -> Result<(String, IgnoreNotices)> {
-    let (entries, ignored) = get_input_many(&cli.inputs)?;
+    let (entries, ignored) = ingest_paths(&cli.inputs)?;
     let included = entries.len();
     let input_count = included.max(1);
     let eff = compute_effective_budget(cli, input_count);
@@ -145,8 +145,9 @@ fn read_stdin() -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-fn read_file_with_nul_check(path: &Path) -> Result<Result<Vec<u8>, ()>> {
-    // First-chunk sniff for NUL; if none, read the rest without checks.
+fn sniff_then_read_text(path: &Path) -> Result<Option<Vec<u8>>> {
+    // Inspect the first chunk with content_inspector; if it looks binary, skip.
+    // Otherwise, read the remainder without further inspection for speed.
     const CHUNK: usize = 64 * 1024;
     let file = File::open(path).with_context(|| {
         format!("failed to open input file: {}", path.display())
@@ -159,10 +160,10 @@ fn read_file_with_nul_check(path: &Path) -> Result<Result<Vec<u8>, ()>> {
         format!("failed to read input file: {}", path.display())
     })?;
     if n == 0 {
-        return Ok(Ok(Vec::new()));
+        return Ok(Some(Vec::new()));
     }
     if matches!(inspect(&first[..n]), ContentType::BINARY) {
-        return Ok(Err(()));
+        return Ok(None);
     }
 
     // Preallocate buffer: first chunk + estimated remainder (capped)
@@ -176,10 +177,10 @@ fn read_file_with_nul_check(path: &Path) -> Result<Result<Vec<u8>, ()>> {
     reader.read_to_end(&mut buf).with_context(|| {
         format!("failed to read input file: {}", path.display())
     })?;
-    Ok(Ok(buf))
+    Ok(Some(buf))
 }
 
-fn get_input_many(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
+fn ingest_paths(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
     let mut out: InputEntries = Vec::with_capacity(paths.len());
     let mut ignored: IgnoreNotices = Vec::new();
     for path in paths.iter() {
@@ -190,7 +191,7 @@ fn get_input_many(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
                 continue;
             }
         }
-        if let Ok(bytes) = read_file_with_nul_check(path)? {
+        if let Some(bytes) = sniff_then_read_text(path)? {
             out.push((display, bytes))
         } else {
             ignored.push(format!("Ignored binary file: {display}"));

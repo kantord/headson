@@ -37,6 +37,7 @@ Notes:
   - JSON template outputs a single JSON object keyed by the input file paths.
   - Pseudo and JS templates render file sections with human-readable headers.
   - Using `--global-budget` may truncate or omit entire files to respect the total budget.
+ - When passing file paths, directories and binary files are ignored; a notice is printed to stderr for each (e.g., `Ignored binary file: ./path/to/file`). Stdin mode reads the stream as-is.
 
 Examples:
 
