@@ -1,4 +1,4 @@
-use crate::order::types::ObjectType;
+use crate::order::ObjectType;
 use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID};
 pub mod templates;
 pub mod types;

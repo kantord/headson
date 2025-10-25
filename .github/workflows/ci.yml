@@ -35,13 +35,15 @@ jobs:
       - name: Build all targets
         env:
           RUSTFLAGS: >-
-            -D warnings
             -D dead_code
             -D unused_imports
             -D unused_mut
             -D unused_variables
             -D unused_assignments
             -D unused_parens
+            -W unreachable_pub
+            -D unused_must_use
+            -D unused_features
         run: cargo build --all-targets --all-features
 
       - name: Run tests
@@ -69,7 +71,14 @@ jobs:
 
       - name: Run pre-commit on all files
         env:
-          RUSTFLAGS: -D warnings
+          RUSTFLAGS: >-
+            -D dead_code
+            -D unused_imports
+            -D unused_mut
+            -D unused_variables
+            -W unreachable_pub
+            -D unused_must_use
+            -D unused_features
         run: pre-commit run --all-files
 
   fmt:

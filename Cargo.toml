@@ -25,6 +25,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 unicode-segmentation = "1.12.0"
 simd-json = { version = "0.13", features = ["serde_impl"] }
+content_inspector = "0.2"
 
 [dev-dependencies]
 insta = "1.40.0"
@@ -33,6 +34,7 @@ test_each_file = "0.3"
 fake = "2"
 rand = "0.8"
 rand_chacha = "0.3"
+tempfile = "3"
 
 [profile.release]
 # Prioritize runtime speed for large inputs

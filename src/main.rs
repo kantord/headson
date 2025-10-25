@@ -1,8 +1,14 @@
+use std::fs::File;
 use std::io::{self, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
+use content_inspector::{ContentType, inspect};
+
+type InputEntry = (String, Vec<u8>);
+type InputEntries = Vec<InputEntry>;
+type IgnoreNotices = Vec<String>;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -51,7 +57,7 @@ struct Cli {
         value_name = "INPUT",
         value_hint = clap::ValueHint::FilePath,
         num_args = 0..,
-        help = "Optional file paths. If omitted, reads JSON from stdin. Multiple input files are supported."
+        help = "Optional file paths. If omitted, reads JSON from stdin. Multiple input files are supported. Directories and binary files are ignored with a notice on stderr."
     )]
     inputs: Vec<PathBuf>,
 }
@@ -67,67 +73,132 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let render_cfg = get_render_config_from(&cli);
-    let input_count = if cli.inputs.is_empty() {
-        1
+    let (output, ignore_notices) = if cli.inputs.is_empty() {
+        (run_from_stdin(&cli, &render_cfg)?, Vec::new())
     } else {
-        cli.inputs.len()
-    };
-    let effective_budget = if let Some(g) = cli.global_budget {
-        g
-    } else {
-        let per_file = cli.budget.unwrap_or(500);
-        per_file.saturating_mul(input_count)
-    };
-    // Derive a per-file baseline for priority heuristics to avoid over-pruning.
-    let per_file_for_priority = (effective_budget / input_count).max(1);
-    let priority_cfg = get_priority_config(per_file_for_priority, &cli);
-
-    let output = if cli.inputs.len() <= 1 {
-        let input_bytes = get_input_single(&cli.inputs)?;
-        headson::headson(
-            input_bytes,
-            &render_cfg,
-            &priority_cfg,
-            effective_budget,
-        )?
-    } else {
-        let inputs = get_input_many(&cli.inputs)?;
-        headson::headson_many(
-            inputs,
-            &render_cfg,
-            &priority_cfg,
-            effective_budget,
-        )?
+        run_from_paths(&cli, &render_cfg)?
     };
     println!("{output}");
+
+    for notice in ignore_notices {
+        eprintln!("{notice}");
+    }
 
     Ok(())
 }
 
-fn get_input_single(paths: &[PathBuf]) -> Result<Vec<u8>> {
-    // Read input from first file path when provided, otherwise from stdin.
-    if let Some(path) = paths.first() {
-        std::fs::read(path).with_context(|| {
-            format!("failed to read input file: {}", path.display())
-        })
+fn compute_effective_budget(cli: &Cli, input_count: usize) -> usize {
+    if let Some(g) = cli.global_budget {
+        g
     } else {
-        let mut buf = Vec::new();
-        io::stdin()
-            .read_to_end(&mut buf)
-            .context("failed to read from stdin")?;
-        Ok(buf)
+        let per_file = cli.budget.unwrap_or(500);
+        per_file.saturating_mul(input_count)
     }
 }
 
-fn get_input_many(paths: &[PathBuf]) -> Result<Vec<(String, Vec<u8>)>> {
-    let mut out: Vec<(String, Vec<u8>)> = Vec::with_capacity(paths.len());
-    for path in paths.iter() {
-        let bytes = std::fs::read(path).with_context(|| {
-            format!("failed to read input file: {}", path.display())
-        })?;
-        out.push((path.display().to_string(), bytes));
+fn compute_priority(
+    cli: &Cli,
+    effective_budget: usize,
+    input_count: usize,
+) -> headson::PriorityConfig {
+    let per_file_for_priority = (effective_budget / input_count.max(1)).max(1);
+    get_priority_config(per_file_for_priority, cli)
+}
+
+fn run_from_stdin(
+    cli: &Cli,
+    render_cfg: &headson::RenderConfig,
+) -> Result<String> {
+    let input_bytes = read_stdin()?;
+    let input_count = 1usize;
+    let eff = compute_effective_budget(cli, input_count);
+    let prio = compute_priority(cli, eff, input_count);
+    headson::headson(input_bytes, render_cfg, &prio, eff)
+}
+
+fn run_from_paths(
+    cli: &Cli,
+    render_cfg: &headson::RenderConfig,
+) -> Result<(String, IgnoreNotices)> {
+    let (entries, ignored) = ingest_paths(&cli.inputs)?;
+    let included = entries.len();
+    let input_count = included.max(1);
+    let eff = compute_effective_budget(cli, input_count);
+    let prio = compute_priority(cli, eff, input_count);
+    if cli.inputs.len() > 1 {
+        let out = headson::headson_many(entries, render_cfg, &prio, eff)?;
+        Ok((out, ignored))
+    } else if included == 0 {
+        Ok((String::new(), ignored))
+    } else {
+        let bytes = entries.into_iter().next().unwrap().1;
+        let out = headson::headson(bytes, render_cfg, &prio, eff)?;
+        Ok((out, ignored))
     }
-    Ok(out)
+}
+
+fn read_stdin() -> Result<Vec<u8>> {
+    let mut buf = Vec::new();
+    io::stdin()
+        .read_to_end(&mut buf)
+        .context("failed to read from stdin")?;
+    Ok(buf)
+}
+
+fn sniff_then_read_text(path: &Path) -> Result<Option<Vec<u8>>> {
+    // Inspect the first chunk with content_inspector; if it looks binary, skip.
+    // Otherwise, read the remainder without further inspection for speed.
+    const CHUNK: usize = 64 * 1024;
+    let file = File::open(path).with_context(|| {
+        format!("failed to open input file: {}", path.display())
+    })?;
+    let meta_len = file.metadata().ok().map(|m| m.len());
+    let mut reader = io::BufReader::with_capacity(CHUNK, file);
+
+    let mut first = [0u8; CHUNK];
+    let n = reader.read(&mut first).with_context(|| {
+        format!("failed to read input file: {}", path.display())
+    })?;
+    if n == 0 {
+        return Ok(Some(Vec::new()));
+    }
+    if matches!(inspect(&first[..n]), ContentType::BINARY) {
+        return Ok(None);
+    }
+
+    // Preallocate buffer: first chunk + estimated remainder (capped)
+    let mut buf = Vec::with_capacity(
+        n + meta_len
+            .map(|m| m.saturating_sub(n as u64) as usize)
+            .unwrap_or(0)
+            .min(8 * 1024 * 1024),
+    );
+    buf.extend_from_slice(&first[..n]);
+    reader.read_to_end(&mut buf).with_context(|| {
+        format!("failed to read input file: {}", path.display())
+    })?;
+    Ok(Some(buf))
+}
+
+fn ingest_paths(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
+    let mut out: InputEntries = Vec::with_capacity(paths.len());
+    let mut ignored: IgnoreNotices = Vec::new();
+    for path in paths.iter() {
+        let display = path.display().to_string();
+        if let Ok(meta) = std::fs::metadata(path) {
+            if meta.is_dir() {
+                ignored.push(format!("Ignored directory: {display}"));
+                continue;
+            }
+        }
+        if let Some(bytes) = sniff_then_read_text(path)? {
+            out.push((display, bytes))
+        } else {
+            ignored.push(format!("Ignored binary file: {display}"));
+            continue;
+        }
+    }
+    Ok((out, ignored))
 }
 
 fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {

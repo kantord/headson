@@ -60,10 +60,10 @@ impl Style for Js {
     }
 }
 
-pub fn render_array(ctx: &ArrayCtx<'_>) -> String {
+pub(super) fn render_array(ctx: &ArrayCtx<'_>) -> String {
     render_array_with::<Js>(ctx)
 }
 
-pub fn render_object(ctx: &ObjectCtx<'_>) -> String {
+pub(super) fn render_object(ctx: &ObjectCtx<'_>) -> String {
     render_object_with::<Js>(ctx)
 }
