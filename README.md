@@ -26,13 +26,13 @@ From source:
 - *Fast*: can process gigabyte-scale files in seconds (mostly disk-constrained)
 - *Available as a CLI app and as a Python library*
 
-## Shell Mental Model
+## Fits into command line workflows
 
 If you’re comfortable with tools like `head` and `tail`, use `headson` when you want a quick, structured peek into a JSON file without dumping the entire thing.
 
-- `head`/`tail` operate on bytes/lines and may cut JSON mid‑token.
-- `jq` prints valid JSON but typically the entire document unless you craft filters.
-- `headson` is like head/tail for trees: it keeps structure, shows representative content, and fits the result to a budget. Use `--tail` to prefer array ends when that’s more informative.
+- `head`/`tail` operate on bytes/lines - their output is not optimized for tree structures
+- `jq` you need to craft filters to preview large JSON files
+- `headson` is like head/tail for trees: zero config but it keeps structure and represents content as much as possible 
 
 ## Usage
 
@@ -75,32 +75,6 @@ Quick one‑liners:
 - Glance at a file, JavaScript‑style comments for omissions:
 
       headson -n 400 -f js data.json
-
-Examples:
-
-- Read from stdin with defaults:
-
-      cat data.json | headson
-
-- Read from file, JS style, 200‑byte budget:
-
-      headson -n 200 -f js data.json
-
-- JSON style, compact:
-
-      headson -f json -m data.json
-
-- Multiple files (JSON template produces an object keyed by paths):
-
-      headson -f json a.json b.json
-
-- Global limit across files (fixed total size across all files):
-
-      headson -N 400 -f json a.json b.json
-
-- Prefer the tail of arrays (arrays only; JSON stays strict):
-
-      headson -n 400 --tail -f pseudo data.json
 
 Show help:
 
@@ -172,63 +146,6 @@ print(
     )
 )
 ```
-
-Developer install for the Python module (requires Rust):
-
-```
-pipx install maturin
-maturin develop -m pyproject.toml -r
-```
-
-Alternatively with `uv`:
-
-```
-uv add --dev maturin pytest
-uv sync
-uv run --no-sync maturin develop -r
-uv run --no-sync pytest -q
-```
-
-Note: Wheels are currently built for specific CPython versions. Migrating to abi3 (stable ABI across Python 3.x) is being considered to broaden compatibility.
-
-## Rust Library
-
-You can also use `headson` as a Rust library.
-
-```rust
-use headson::{RenderConfig, OutputTemplate, PriorityConfig};
-
-fn main() -> anyhow::Result<()> {
-    let cfg = RenderConfig {
-        template: OutputTemplate::Pseudo,
-        indent_unit: "  ".into(),
-        space: " ".into(),
-        newline: "\n".into(),
-        prefer_tail_arrays: true,
-    };
-    let prio = PriorityConfig { max_string_graphemes: 500, array_max_items: 64, prefer_tail_arrays: true };
-    let json = br#"{"a": [1, 2, 3], "b": {"c": 4}}"#.to_vec();
-    let out = headson::headson(json, &cfg, &prio, 500)?;
-    println!("{}", out);
-    Ok(())
-}
-```
-
-For multiple files, collect `(path, bytes)` pairs and call `headson::headson_many` with a global budget.
-
-## Development
-
-- Rust: `cargo test` runs unit and snapshot tests.
-- Python: tests live in `tests_py/`. With `uv`: `uv run pytest -q`.
-- Lint/format: `cargo clippy`, `cargo fmt`, and `ruff` for Python.
-
-## Releases
-
-Releases to crates.io and PyPI are automated via GitHub Actions:
-
-- Versioning and release PRs are handled by `release-plz`.
-- After a Rust release is created, Python wheels are built with `maturin` and published via PyPI Trusted Publishing (OIDC).
-- The Rust crate and Python package share the same version to keep APIs in sync.
 
 ## License
 
