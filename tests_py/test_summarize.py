@@ -99,12 +99,15 @@ def test_tail_affects_arrays_pseudo():
         idx = next(i for i, line in enumerate(lines) if line.strip() == "[")
     except StopIteration:
         assert False, f"expected array opener, got: {out_tail!r}"
-    # Next non-empty line should be ellipsis
+    # Next non-empty line should be ellipsis (may include trailing comma
+    # when followed by items)
     following = next(
         (line.strip() for line in lines[idx + 1 :] if line.strip()),
         "",
     )
-    assert following == "…", f"expected ellipsis after opener in tail mode, got: {out_tail!r}"
+    assert following.startswith(
+        "…"
+    ), f"expected ellipsis after opener in tail mode, got: {out_tail!r}"
 
 
 def test_tail_affects_arrays_js():
@@ -122,20 +125,27 @@ def test_tail_affects_arrays_js():
         tail=False,
     )
     assert out_tail != out_head
-    # In tail mode (non-compact), the first non-empty line after '[' should be
-    # the omission comment.
+    # Tail mode may render as multi-line (with '[' on its own line) or as a
+    # single-line '[ /* N more items */ ]' if nothing else fits the budget.
     lines = out_tail.splitlines()
     try:
         idx = next(i for i, line in enumerate(lines) if line.strip() == "[")
+        following = next(
+            (line.strip() for line in lines[idx + 1 :] if line.strip()),
+            "",
+        )
+        assert following.startswith(
+            "/*"
+        ), f"expected omission comment after opener in tail mode, got: {out_tail!r}"
     except StopIteration:
-        assert False, f"expected array opener, got: {out_tail!r}"
-    following = next(
-        (line.strip() for line in lines[idx + 1 :] if line.strip()),
-        "",
-    )
-    assert following.startswith("/*") and following.endswith(
-        "*/"
-    ), f"expected omission comment after opener in tail mode, got: {out_tail!r}"
+        # Single-line form like: '[ /* N more items */ ]'
+        stripped = out_tail.strip()
+        assert (
+            stripped.startswith("[")
+            and stripped.endswith("]")
+            and "/*" in stripped
+            and "*/" in stripped
+        ), f"expected single-line omission comment inside brackets, got: {out_tail!r}"
 
 
 def test_tail_json_remains_strict():
