@@ -106,6 +106,13 @@ jobs:
             exit 1
           fi
 
+      - name: Update Python lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Ensure python/Cargo.lock reflects the new crate version and dependencies
+          cargo update --manifest-path python/Cargo.toml
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
