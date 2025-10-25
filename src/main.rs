@@ -4,6 +4,10 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
 
+type InputEntry = (String, Vec<u8>);
+type InputEntries = Vec<InputEntry>;
+type IgnoreNotices = Vec<String>;
+
 #[derive(Parser, Debug)]
 #[command(
     name = "headson",
@@ -63,27 +67,28 @@ enum Template {
     Js,
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "top-level CLI orchestration keeps control flow clear; extracted helpers would be noisy here"
+)]
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let render_cfg = get_render_config_from(&cli);
-    let input_count = if cli.inputs.is_empty() {
-        1
-    } else {
-        cli.inputs.len()
-    };
-    let effective_budget = if let Some(g) = cli.global_budget {
-        g
-    } else {
-        let per_file = cli.budget.unwrap_or(500);
-        per_file.saturating_mul(input_count)
-    };
-    // Derive a per-file baseline for priority heuristics to avoid over-pruning.
-    let per_file_for_priority = (effective_budget / input_count).max(1);
-    let priority_cfg = get_priority_config(per_file_for_priority, &cli);
+    let mut ignore_notices: IgnoreNotices = Vec::new();
 
-    let output = if cli.inputs.len() <= 1 {
+    let output = if cli.inputs.is_empty() {
+        // Stdin mode
         let input_bytes = get_input_single(&cli.inputs)?;
+        let input_count = 1usize;
+        let effective_budget = if let Some(g) = cli.global_budget {
+            g
+        } else {
+            let per_file = cli.budget.unwrap_or(500);
+            per_file.saturating_mul(input_count)
+        };
+        let per_file_for_priority = (effective_budget / input_count).max(1);
+        let priority_cfg = get_priority_config(per_file_for_priority, &cli);
         headson::headson(
             input_bytes,
             &render_cfg,
@@ -91,15 +96,43 @@ fn main() -> Result<()> {
             effective_budget,
         )?
     } else {
-        let inputs = get_input_many(&cli.inputs)?;
-        headson::headson_many(
-            inputs,
-            &render_cfg,
-            &priority_cfg,
-            effective_budget,
-        )?
+        // Paths mode (single or multiple): skip dirs/binaries uniformly.
+        let (entries, ignored) = get_input_many(&cli.inputs)?;
+        ignore_notices = ignored;
+        let included = entries.len();
+        let input_count = included.max(1);
+        let effective_budget = if let Some(g) = cli.global_budget {
+            g
+        } else {
+            let per_file = cli.budget.unwrap_or(500);
+            per_file.saturating_mul(input_count)
+        };
+        let per_file_for_priority = (effective_budget / input_count).max(1);
+        let priority_cfg = get_priority_config(per_file_for_priority, &cli);
+        if cli.inputs.len() > 1 {
+            headson::headson_many(
+                entries,
+                &render_cfg,
+                &priority_cfg,
+                effective_budget,
+            )?
+        } else if included == 0 {
+            String::new()
+        } else {
+            let bytes = entries.into_iter().next().unwrap().1;
+            headson::headson(
+                bytes,
+                &render_cfg,
+                &priority_cfg,
+                effective_budget,
+            )?
+        }
     };
     println!("{output}");
+
+    for notice in ignore_notices {
+        eprintln!("{notice}");
+    }
 
     Ok(())
 }
@@ -119,15 +152,35 @@ fn get_input_single(paths: &[PathBuf]) -> Result<Vec<u8>> {
     }
 }
 
-fn get_input_many(paths: &[PathBuf]) -> Result<Vec<(String, Vec<u8>)>> {
-    let mut out: Vec<(String, Vec<u8>)> = Vec::with_capacity(paths.len());
-    for path in paths.iter() {
-        let bytes = std::fs::read(path).with_context(|| {
-            format!("failed to read input file: {}", path.display())
-        })?;
-        out.push((path.display().to_string(), bytes));
+fn looks_binary(bytes: &[u8]) -> bool {
+    // Heuristic: JSON is UTF-8; treat non-UTF8 or NUL-containing data as binary.
+    if bytes.contains(&0) {
+        return true;
     }
-    Ok(out)
+    std::str::from_utf8(bytes).is_err()
+}
+
+fn get_input_many(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
+    let mut out: InputEntries = Vec::with_capacity(paths.len());
+    let mut ignored: IgnoreNotices = Vec::new();
+    for path in paths.iter() {
+        let display = path.display().to_string();
+        if let Ok(meta) = std::fs::metadata(path) {
+            if meta.is_dir() {
+                ignored.push(format!("Ignored directory: {display}"));
+                continue;
+            }
+        }
+        let bytes = std::fs::read(path).with_context(|| {
+            format!("failed to read input file: {display}")
+        })?;
+        if looks_binary(&bytes) {
+            ignored.push(format!("Ignored binary file: {display}"));
+            continue;
+        }
+        out.push((display, bytes));
+    }
+    Ok((out, ignored))
 }
 
 fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
