@@ -68,66 +68,14 @@ enum Template {
     Js,
 }
 
-#[allow(
-    clippy::cognitive_complexity,
-    reason = "top-level CLI orchestration keeps control flow clear; extracted helpers would be noisy here"
-)]
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let render_cfg = get_render_config_from(&cli);
-    let mut ignore_notices: IgnoreNotices = Vec::new();
-
-    let output = if cli.inputs.is_empty() {
-        // Stdin mode
-        let input_bytes = get_input_single(&cli.inputs)?;
-        let input_count = 1usize;
-        let effective_budget = if let Some(g) = cli.global_budget {
-            g
-        } else {
-            let per_file = cli.budget.unwrap_or(500);
-            per_file.saturating_mul(input_count)
-        };
-        let per_file_for_priority = (effective_budget / input_count).max(1);
-        let priority_cfg = get_priority_config(per_file_for_priority, &cli);
-        headson::headson(
-            input_bytes,
-            &render_cfg,
-            &priority_cfg,
-            effective_budget,
-        )?
+    let (output, ignore_notices) = if cli.inputs.is_empty() {
+        (run_from_stdin(&cli, &render_cfg)?, Vec::new())
     } else {
-        // Paths mode (single or multiple): skip dirs/binaries uniformly.
-        let (entries, ignored) = get_input_many(&cli.inputs)?;
-        ignore_notices = ignored;
-        let included = entries.len();
-        let input_count = included.max(1);
-        let effective_budget = if let Some(g) = cli.global_budget {
-            g
-        } else {
-            let per_file = cli.budget.unwrap_or(500);
-            per_file.saturating_mul(input_count)
-        };
-        let per_file_for_priority = (effective_budget / input_count).max(1);
-        let priority_cfg = get_priority_config(per_file_for_priority, &cli);
-        if cli.inputs.len() > 1 {
-            headson::headson_many(
-                entries,
-                &render_cfg,
-                &priority_cfg,
-                effective_budget,
-            )?
-        } else if included == 0 {
-            String::new()
-        } else {
-            let bytes = entries.into_iter().next().unwrap().1;
-            headson::headson(
-                bytes,
-                &render_cfg,
-                &priority_cfg,
-                effective_budget,
-            )?
-        }
+        run_from_paths(&cli, &render_cfg)?
     };
     println!("{output}");
 
@@ -136,6 +84,56 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn compute_effective_budget(cli: &Cli, input_count: usize) -> usize {
+    if let Some(g) = cli.global_budget {
+        g
+    } else {
+        let per_file = cli.budget.unwrap_or(500);
+        per_file.saturating_mul(input_count)
+    }
+}
+
+fn compute_priority(
+    cli: &Cli,
+    effective_budget: usize,
+    input_count: usize,
+) -> headson::PriorityConfig {
+    let per_file_for_priority = (effective_budget / input_count.max(1)).max(1);
+    get_priority_config(per_file_for_priority, cli)
+}
+
+fn run_from_stdin(
+    cli: &Cli,
+    render_cfg: &headson::RenderConfig,
+) -> Result<String> {
+    let input_bytes = get_input_single(&[])?;
+    let input_count = 1usize;
+    let eff = compute_effective_budget(cli, input_count);
+    let prio = compute_priority(cli, eff, input_count);
+    headson::headson(input_bytes, render_cfg, &prio, eff)
+}
+
+fn run_from_paths(
+    cli: &Cli,
+    render_cfg: &headson::RenderConfig,
+) -> Result<(String, IgnoreNotices)> {
+    let (entries, ignored) = get_input_many(&cli.inputs)?;
+    let included = entries.len();
+    let input_count = included.max(1);
+    let eff = compute_effective_budget(cli, input_count);
+    let prio = compute_priority(cli, eff, input_count);
+    if cli.inputs.len() > 1 {
+        let out = headson::headson_many(entries, render_cfg, &prio, eff)?;
+        Ok((out, ignored))
+    } else if included == 0 {
+        Ok((String::new(), ignored))
+    } else {
+        let bytes = entries.into_iter().next().unwrap().1;
+        let out = headson::headson(bytes, render_cfg, &prio, eff)?;
+        Ok((out, ignored))
+    }
 }
 
 fn get_input_single(paths: &[PathBuf]) -> Result<Vec<u8>> {
@@ -154,27 +152,36 @@ fn get_input_single(paths: &[PathBuf]) -> Result<Vec<u8>> {
 }
 
 fn read_file_with_nul_check(path: &Path) -> Result<Result<Vec<u8>, ()>> {
-    // Read the file while checking for NUL bytes. If a NUL is seen, treat as binary
-    // and stop early to avoid unnecessary I/O/CPU.
+    // First-chunk sniff for NUL; if none, read the rest without checks.
+    const CHUNK: usize = 64 * 1024;
     let file = File::open(path).with_context(|| {
         format!("failed to open input file: {}", path.display())
     })?;
-    let mut reader = io::BufReader::with_capacity(64 * 1024, file);
-    let mut buf = Vec::new();
-    let mut chunk = [0u8; 64 * 1024];
-    loop {
-        let n = reader.read(&mut chunk).with_context(|| {
-            format!("failed to read input file: {}", path.display())
-        })?;
-        if n == 0 {
-            break;
-        }
-        // If chunk contains NUL, consider it binary and stop reading further.
-        if memchr::memchr(0, &chunk[..n]).is_some() {
-            return Ok(Err(()));
-        }
-        buf.extend_from_slice(&chunk[..n]);
+    let meta_len = file.metadata().ok().map(|m| m.len());
+    let mut reader = io::BufReader::with_capacity(CHUNK, file);
+
+    let mut first = [0u8; CHUNK];
+    let n = reader.read(&mut first).with_context(|| {
+        format!("failed to read input file: {}", path.display())
+    })?;
+    if n == 0 {
+        return Ok(Ok(Vec::new()));
     }
+    if memchr::memchr(0, &first[..n]).is_some() {
+        return Ok(Err(()));
+    }
+
+    // Preallocate buffer: first chunk + estimated remainder (capped)
+    let mut buf = Vec::with_capacity(
+        n + meta_len
+            .map(|m| m.saturating_sub(n as u64) as usize)
+            .unwrap_or(0)
+            .min(8 * 1024 * 1024),
+    );
+    buf.extend_from_slice(&first[..n]);
+    reader.read_to_end(&mut buf).with_context(|| {
+        format!("failed to read input file: {}", path.display())
+    })?;
     Ok(Ok(buf))
 }
 
