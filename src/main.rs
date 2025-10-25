@@ -109,7 +109,7 @@ fn run_from_stdin(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
 ) -> Result<String> {
-    let input_bytes = get_input_single(&[])?;
+    let input_bytes = read_stdin()?;
     let input_count = 1usize;
     let eff = compute_effective_budget(cli, input_count);
     let prio = compute_priority(cli, eff, input_count);
@@ -137,19 +137,12 @@ fn run_from_paths(
     }
 }
 
-fn get_input_single(paths: &[PathBuf]) -> Result<Vec<u8>> {
-    // Read input from first file path when provided, otherwise from stdin.
-    if let Some(path) = paths.first() {
-        std::fs::read(path).with_context(|| {
-            format!("failed to read input file: {}", path.display())
-        })
-    } else {
-        let mut buf = Vec::new();
-        io::stdin()
-            .read_to_end(&mut buf)
-            .context("failed to read from stdin")?;
-        Ok(buf)
-    }
+fn read_stdin() -> Result<Vec<u8>> {
+    let mut buf = Vec::new();
+    io::stdin()
+        .read_to_end(&mut buf)
+        .context("failed to read from stdin")?;
+    Ok(buf)
 }
 
 fn read_file_with_nul_check(path: &Path) -> Result<Result<Vec<u8>, ()>> {
