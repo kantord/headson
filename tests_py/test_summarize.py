@@ -44,3 +44,48 @@ def test_exact_string_output_json_template():
     text = '"hello"'
     out = headson.summarize(text, template="json", character_budget=100)
     assert out == '"hello"'
+
+
+def test_tail_affects_arrays_pseudo():
+    # Use a raw array to simplify assertions about leading markers.
+    text = "[" + ",".join(str(i) for i in range(50)) + "]"
+    out_tail = headson.summarize(text, template="pseudo", character_budget=30, tail=True)
+    out_head = headson.summarize(text, template="pseudo", character_budget=30, tail=False)
+    assert out_tail != out_head
+    # In tail mode (non-compact by default), the first non-empty line after '['
+    # should be the omission marker.
+    lines = out_tail.splitlines()
+    # Find index of opener '[' line
+    try:
+        idx = next(i for i, line in enumerate(lines) if line.strip() == "[")
+    except StopIteration:
+        assert False, f"expected array opener, got: {out_tail!r}"
+    # Next non-empty line should be ellipsis
+    following = next((line.strip() for line in lines[idx + 1 :] if line.strip()), "")
+    assert following == "…", f"expected ellipsis after opener in tail mode, got: {out_tail!r}"
+
+
+def test_tail_affects_arrays_js():
+    text = "[" + ",".join(str(i) for i in range(50)) + "]"
+    out_tail = headson.summarize(text, template="js", character_budget=30, tail=True)
+    out_head = headson.summarize(text, template="js", character_budget=30, tail=False)
+    assert out_tail != out_head
+    # In tail mode (non-compact), the first non-empty line after '[' should be
+    # the omission comment.
+    lines = out_tail.splitlines()
+    try:
+        idx = next(i for i, line in enumerate(lines) if line.strip() == "[")
+    except StopIteration:
+        assert False, f"expected array opener, got: {out_tail!r}"
+    following = next((line.strip() for line in lines[idx + 1 :] if line.strip()), "")
+    assert following.startswith("/*") and following.endswith(
+        "*/"
+    ), f"expected omission comment after opener in tail mode, got: {out_tail!r}"
+
+
+def test_tail_json_remains_strict():
+    text = "[" + ",".join(str(i) for i in range(50)) + "]"
+    out = headson.summarize(text, template="json", character_budget=30, tail=True)
+    # Valid JSON and no visual omission markers.
+    json.loads(out)
+    assert "…" not in out and "/*" not in out
