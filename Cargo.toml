@@ -31,9 +31,8 @@ content_inspector = "0.2"
 insta = "1.40.0"
 assert_cmd = "2"
 test_each_file = "0.3"
-fake = "2"
-rand = "0.8"
-rand_chacha = "0.3"
+rand = "0.9"
+rand_chacha = "0.9"
 tempfile = "3"
 
 [profile.release]

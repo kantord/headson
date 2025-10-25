@@ -8,9 +8,12 @@ on:
 
 jobs:
   coverage:
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -22,13 +25,22 @@ jobs:
         with:
           tool: cargo-llvm-cov
 
-      - name: Compute coverage (summary + lcov)
+      - name: Generate Codecov JSON
         run: |
-          cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info --summary-only
+          cargo llvm-cov --all-features --workspace --codecov --output-path codecov.json
 
       - name: Generate HTML report (no re-run)
         run: |
           cargo llvm-cov --all-features --workspace --no-run --html
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: codecov.json
+          flags: rust
+          fail_ci_if_error: true
+          verbose: true
 
       - name: Upload HTML report
         uses: actions/upload-artifact@v4
