@@ -12,5 +12,3 @@ pub(crate) fn take_n_graphemes(s: &str, n: usize) -> String {
     }
     out
 }
-
-// Note: For future tail string support, consider adding a take_last_n_graphemes helper.

@@ -56,7 +56,7 @@ struct Cli {
     #[arg(
         long = "tail",
         default_value_t = false,
-        help = "Prefer the end of strings when truncating. Arrays unaffected for now."
+        help = "Prefer the end of arrays when truncating. Strings unaffected; JSON stays strict."
     )]
     tail: bool,
     #[arg(
