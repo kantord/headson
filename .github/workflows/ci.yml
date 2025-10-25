@@ -119,7 +119,7 @@ jobs:
           uv sync --group dev --locked || (uv lock && uv sync --group dev --locked)
 
       - name: Ruff lint
-        run: uv run --no-sync ruff --config pyproject.toml check .
+        run: uv run --no-sync ruff check --config pyproject.toml .
 
       - name: Ruff format check
         run: uv run --no-sync ruff format --config pyproject.toml --check .
