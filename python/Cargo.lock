@@ -184,7 +184,7 @@ dependencies = [
 
 [[package]]
 name = "headson"
-version = "0.2.1"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "clap",
@@ -196,7 +196,7 @@ dependencies = [
 
 [[package]]
 name = "headson-python"
-version = "0.2.1"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "headson",
