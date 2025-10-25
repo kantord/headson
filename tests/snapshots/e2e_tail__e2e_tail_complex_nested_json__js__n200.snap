@@ -11,6 +11,6 @@ expression: stdout
   },
   "users": [
     /* 1 more items */,
-        { /* 4 more properties */ }
+    { /* 4 more properties */ }
   ]
 }

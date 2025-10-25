@@ -11,11 +11,14 @@ expression: stdout
   ],
   "matrix": [
     …,
-        [ … ]
+    [
+      …,
+      9
+    ]
   ],
   "objects": [
     …,
-        { … }
+    { … }
   ],
   "strings": [
     …,
