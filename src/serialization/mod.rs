@@ -599,4 +599,45 @@ mod tests {
         );
         assert_snapshot!("arena_render_single", out);
     }
+
+    #[test]
+    fn arena_render_object_partial_js() {
+        // Object with three properties; render top_k small so only one child is kept.
+        let arena = crate::json_ingest::build_json_tree_arena(
+            "{\"a\":1,\"b\":2,\"c\":3}",
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let build = build_order(
+            &arena,
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let mut flags = vec![0u32; build.total_nodes];
+        // top_k=2 → root object + first property
+        let out = render_top_k(
+            &build,
+            2,
+            &mut flags,
+            1,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Js,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+            },
+        );
+        // Should be a valid JS object with one property and an omitted summary.
+        assert!(out.starts_with("{\n"));
+        assert!(
+            out.contains("/* 2 more properties */"),
+            "missing omitted summary: {out:?}"
+        );
+        assert!(
+            out.contains("\"a\": 1")
+                || out.contains("\"b\": 2")
+                || out.contains("\"c\": 3")
+        );
+    }
 }
