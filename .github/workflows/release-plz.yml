@@ -70,6 +70,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Sync Python versions from Cargo.toml
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT_VER=$(sed -n 's/^version\s*=\s*"\(.*\)"/\1/p' Cargo.toml | head -n1)
+          if [ -z "${ROOT_VER}" ]; then
+            echo "Failed to extract version from Cargo.toml" >&2
+            exit 1
+          fi
+          echo "Using version: ${ROOT_VER}"
+          sed -i -E "0,/^version\s*=\s*\".*\"/s//version = \"${ROOT_VER}\"/" python/Cargo.toml
+          sed -i -E "0,/^version\s*=\s*\".*\"/s//version = \"${ROOT_VER}\"/" pyproject.toml
+          echo "Synced versions in python/Cargo.toml and pyproject.toml"
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
