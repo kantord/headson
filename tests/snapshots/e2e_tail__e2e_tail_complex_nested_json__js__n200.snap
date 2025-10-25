@@ -1,0 +1,16 @@
+---
+source: tests/e2e_tail.rs
+expression: stdout
+---
+{
+  "meta": {
+    "next": null,
+    "page": 1,
+    "pageSize": 20,
+    "tags": [ /* 5 more items */ ]
+  },
+  "users": [
+    /* 1 more items */
+        { /* 4 more properties */ }
+  ]
+}
