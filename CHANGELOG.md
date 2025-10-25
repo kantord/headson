@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5](https://github.com/kantord/headson/compare/v0.2.4...v0.2.5) - 2025-10-25
+
+### Fixed
+
+- *(deps)* update rust crate simd-json to 0.17 ([#50](https://github.com/kantord/headson/pull/50))
+
+### Other
+
+- *(deps)* update rust crate rand to 0.9 ([#40](https://github.com/kantord/headson/pull/40))
+- avoid unused code and dependencies ([#43](https://github.com/kantord/headson/pull/43))
+
 ## [0.2.4](https://github.com/kantord/headson/compare/v0.2.3...v0.2.4) - 2025-10-25
 
 ### Fixed
