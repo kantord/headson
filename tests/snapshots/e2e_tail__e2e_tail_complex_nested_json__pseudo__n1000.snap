@@ -8,7 +8,7 @@ expression: stdout
     "page": 1,
     "pageSize": 20,
     "tags": [
-      …
+      …,
       "delta",
       "epsilon"
     ]
@@ -18,7 +18,7 @@ expression: stdout
       "id": 1,
       "name": "Alice Wonderland",
       "profile": {
-        "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+        "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliq…",
         "social": {
           "github": "alice",
           "twitter": "@alice",
@@ -26,7 +26,7 @@ expression: stdout
         }
       },
       "roles": [
-        …
+        …,
         "viewer"
       ]
     },

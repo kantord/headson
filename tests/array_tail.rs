@@ -33,3 +33,29 @@ fn array_tail_js_comment_first() {
         "expected output to start with '[/*' in tail mode (js): {out:?}"
     );
 }
+
+#[test]
+fn array_tail_pseudo_leading_marker_has_comma() {
+    // Non-compact to inspect individual lines; expect comma after leading ellipsis.
+    let s =
+        fs::read_to_string("tests/fixtures/explicit/array_numbers_50.json")
+            .expect("read fixture");
+    let out = util::run_template_budget(&s, "pseudo", 40, &["--tail"]);
+    assert!(
+        out.contains("\n  …,\n"),
+        "expected leading ellipsis with trailing comma in pseudo: {out:?}"
+    );
+}
+
+#[test]
+fn array_tail_js_leading_marker_has_comma() {
+    // Non-compact; leading JS omission comment should end with a comma when items follow.
+    let s =
+        fs::read_to_string("tests/fixtures/explicit/array_numbers_50.json")
+            .expect("read fixture");
+    let out = util::run_template_budget(&s, "js", 40, &["--tail"]);
+    assert!(
+        out.contains("\n  /*") && out.contains("*/,\n"),
+        "expected trailing comma after omission comment in js: {out:?}"
+    );
+}

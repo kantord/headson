@@ -19,6 +19,29 @@ fn run_case_with_tail(path: &Path, template: &str, n: u32) -> String {
     String::from_utf8_lossy(&output.stdout).into_owned()
 }
 
+fn assert_tail_snapshots_for(
+    dir: &Path,
+    name: &str,
+    budgets: &[u32],
+    templates: &[&str],
+) {
+    let path = dir.join(name);
+    for &n in budgets {
+        for &tmpl in templates {
+            let stdout = run_case_with_tail(&path, tmpl, n);
+            assert_snapshot!(
+                format!(
+                    "e2e_tail_{}__{}__n{}",
+                    name.replace('.', "_"),
+                    tmpl,
+                    n
+                ),
+                stdout
+            );
+        }
+    }
+}
+
 #[test]
 fn e2e_tail_parametric_targeted() {
     let dir = Path::new("tests/fixtures/parametric");
@@ -28,27 +51,19 @@ fn e2e_tail_parametric_targeted() {
         "mixed_arrays.json",
         "complex_nested.json",
     ];
-    // Focus budgets to keep snapshots concise.
-    let budgets = [30u32, 200u32];
+    // Focus budgets to keep snapshots concise. For complex_nested, also
+    // include a larger budget (1000) to exercise deeper tail formatting used
+    // in existing snapshots.
+    let budgets_base = [30u32, 200u32];
     // Tail affects visual markers in Pseudo/JS; JSON remains strict JSON and is
     // verified separately below.
     let templates = ["pseudo", "js"];
     for name in files {
-        let path = dir.join(name);
-        for &n in &budgets {
-            for &tmpl in &templates {
-                let stdout = run_case_with_tail(&path, tmpl, n);
-                assert_snapshot!(
-                    format!(
-                        "e2e_tail_{}__{}__n{}",
-                        name.replace('.', "_"),
-                        tmpl,
-                        n
-                    ),
-                    stdout
-                );
-            }
+        let mut budgets: Vec<u32> = budgets_base.to_vec();
+        if name == "complex_nested.json" {
+            budgets.push(1000);
         }
+        assert_tail_snapshots_for(dir, name, &budgets, &templates);
     }
 }
 
