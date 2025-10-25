@@ -125,8 +125,8 @@ impl<'a> Scope<'a> {
             } else {
                 i
             };
-            let extra =
-                (idx_for_priority as u128).pow(3) * ARRAY_INDEX_CUBIC_WEIGHT;
+            let ii = idx_for_priority as u128;
+            let extra = ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT;
             let score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
             let child_node = &self.arena.nodes[child_arena_id];
             self.push_child_common(
