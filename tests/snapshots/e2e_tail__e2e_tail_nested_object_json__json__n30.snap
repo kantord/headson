@@ -1,0 +1,8 @@
+---
+source: tests/e2e_tail.rs
+expression: stdout
+---
+{
+  "a": {},
+  "d": []
+}

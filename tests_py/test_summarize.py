@@ -1,4 +1,5 @@
 import json
+
 import headson
 import pytest
 
@@ -14,33 +15,147 @@ def test_summarize_json_roundtrip():
 
 @pytest.mark.parametrize("template", ["json", "pseudo", "js"])
 def test_summarize_budget_affects_length(template):
-    text = '{"arr": [' + ",".join(str(i) for i in range(100)) + "]}"
-    out_small = headson.summarize(text, template=template, character_budget=40)
-    out_large = headson.summarize(text, template=template, character_budget=400)
+    text = json.dumps({"arr": list(range(100))})
+    out_small = headson.summarize(
+        text,
+        template=template,
+        character_budget=40,
+    )
+    out_large = headson.summarize(
+        text,
+        template=template,
+        character_budget=400,
+    )
     assert len(out_small) <= len(out_large)
 
 
 def test_summarize_budget_only_kw():
-    text = '{"x": [1,2,3,4,5,6,7,8,9]}'
-    out_10 = headson.summarize(text, template="json", character_budget=10)
-    out_100 = headson.summarize(text, template="json", character_budget=100)
+    text = json.dumps({"x": [1, 2, 3, 4, 5, 6, 7, 8, 9]})
+    out_10 = headson.summarize(
+        text,
+        template="json",
+        character_budget=10,
+    )
+    out_100 = headson.summarize(
+        text,
+        template="json",
+        character_budget=100,
+    )
     assert len(out_10) <= len(out_100)
 
 
 def test_pseudo_shows_ellipsis_on_truncation():
-    text = '{"arr": [' + ",".join(str(i) for i in range(50)) + "]}"
-    out = headson.summarize(text, template="pseudo", character_budget=30)
+    text = json.dumps({"arr": list(range(50))})
+    out = headson.summarize(
+        text,
+        template="pseudo",
+        character_budget=30,
+    )
     assert "…" in out
 
 
 def test_js_shows_comment_on_truncation():
-    text = '{"arr": [' + ",".join(str(i) for i in range(50)) + "]}"
-    out = headson.summarize(text, template="js", character_budget=30)
+    text = json.dumps({"arr": list(range(50))})
+    out = headson.summarize(
+        text,
+        template="js",
+        character_budget=30,
+    )
     assert "/*" in out and "more" in out
 
 
 def test_exact_string_output_json_template():
     # Exact output check for simple string input
     text = '"hello"'
-    out = headson.summarize(text, template="json", character_budget=100)
+    out = headson.summarize(
+        text,
+        template="json",
+        character_budget=100,
+    )
     assert out == '"hello"'
+
+
+def test_tail_affects_arrays_pseudo():
+    # Use a raw array to simplify assertions about leading markers.
+    text = json.dumps(list(range(50)))
+    out_tail = headson.summarize(
+        text,
+        template="pseudo",
+        character_budget=30,
+        tail=True,
+    )
+    out_head = headson.summarize(
+        text,
+        template="pseudo",
+        character_budget=30,
+        tail=False,
+    )
+    assert out_tail != out_head
+    # In tail mode (non-compact by default), the first non-empty line after '['
+    # should be the omission marker.
+    lines = out_tail.splitlines()
+    # Find index of opener '[' line
+    try:
+        idx = next(i for i, line in enumerate(lines) if line.strip() == "[")
+    except StopIteration:
+        assert False, f"expected array opener, got: {out_tail!r}"
+    # Next non-empty line should be ellipsis (may include trailing comma
+    # when followed by items)
+    following = next(
+        (line.strip() for line in lines[idx + 1 :] if line.strip()),
+        "",
+    )
+    assert following.startswith(
+        "…"
+    ), f"expected ellipsis after opener in tail mode, got: {out_tail!r}"
+
+
+def test_tail_affects_arrays_js():
+    text = json.dumps(list(range(50)))
+    out_tail = headson.summarize(
+        text,
+        template="js",
+        character_budget=30,
+        tail=True,
+    )
+    out_head = headson.summarize(
+        text,
+        template="js",
+        character_budget=30,
+        tail=False,
+    )
+    assert out_tail != out_head
+    # Tail mode may render as multi-line (with '[' on its own line) or as a
+    # single-line '[ /* N more items */ ]' if nothing else fits the budget.
+    lines = out_tail.splitlines()
+    try:
+        idx = next(i for i, line in enumerate(lines) if line.strip() == "[")
+        following = next(
+            (line.strip() for line in lines[idx + 1 :] if line.strip()),
+            "",
+        )
+        assert following.startswith(
+            "/*"
+        ), f"expected omission comment after opener in tail mode, got: {out_tail!r}"
+    except StopIteration:
+        # Single-line form like: '[ /* N more items */ ]'
+        stripped = out_tail.strip()
+        assert (
+            stripped.startswith("[")
+            and stripped.endswith("]")
+            and "/*" in stripped
+            and "*/" in stripped
+        ), f"expected single-line omission comment inside brackets, got: {out_tail!r}"
+
+
+def test_tail_json_remains_strict():
+    text = json.dumps(list(range(50)))
+    out = headson.summarize(
+        text,
+        template="json",
+        character_budget=30,
+        tail=True,
+    )
+    # Valid JSON and no visual omission markers.
+    json.loads(out)
+    assert "…" not in out and "/*" not in out

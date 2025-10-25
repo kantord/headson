@@ -1,0 +1,22 @@
+---
+source: tests/e2e_tail.rs
+expression: stdout
+---
+{
+  "a": {
+    "b": [
+      "x",
+      "y",
+      "z"
+    ],
+    "c": 1
+  },
+  "d": [
+    {
+      "k": "v"
+    },
+    {
+      "k": "w"
+    }
+  ]
+}
