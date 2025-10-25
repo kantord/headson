@@ -70,20 +70,22 @@ fn find_largest_render_under_budget(
     // Each included node contributes at least some output; cap hi by budget.
     let lo = 1usize;
     let hi = total.min(char_budget.max(1));
-    // Reusable inclusion marks to avoid clearing per probe
-    let mut marks: Vec<u32> = vec![0; total];
-    let mut mark_gen: u32 = 1;
+    // Reuse render-inclusion flags across render attempts to avoid clearing the vector.
+    // A node participates in the current render attempt when inclusion_flags[id] == render_set_id.
+    let mut inclusion_flags: Vec<u32> = vec![0; total];
+    // Each render attempt bumps this non-zero identifier to create a fresh inclusion set.
+    let mut render_set_id: u32 = 1;
     let mut best_str: Option<String> = None;
 
     let _ = crate::utils::search::binary_search_max(lo, hi, |mid| {
-        let s = crate::serialization::render_arena_with_marks(
+        let s = crate::serialization::render_top_k(
             order_build,
             mid,
-            &mut marks,
-            mark_gen,
+            &mut inclusion_flags,
+            render_set_id,
             config,
         );
-        mark_gen = mark_gen.wrapping_add(1).max(1);
+        render_set_id = render_set_id.wrapping_add(1).max(1);
         if s.len() <= char_budget {
             best_str = Some(s);
             true
@@ -97,11 +99,11 @@ fn find_largest_render_under_budget(
     } else {
         // Fallback: always render a single node (k=1) to produce the
         // shortest possible preview, even if it exceeds the byte budget.
-        crate::serialization::render_arena_with_marks(
+        crate::serialization::render_top_k(
             order_build,
             1,
-            &mut marks,
-            mark_gen,
+            &mut inclusion_flags,
+            render_set_id,
             config,
         )
     }

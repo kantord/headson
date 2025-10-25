@@ -12,9 +12,15 @@ type ArrayChildPair = (usize, String);
 type ObjectChildPair = (usize, (String, String));
 
 pub(crate) struct RenderScope<'a> {
-    pq: &'a PriorityOrder,
-    marks: &'a [u32],
-    mark_gen: u32,
+    // Priority-ordered view of the parsed JSON tree.
+    order: &'a PriorityOrder,
+    // Per-node inclusion flag: a node is included in the current render attempt
+    // when inclusion_flags[node_id] == render_set_id. This avoids clearing the
+    // vector between render attempts by bumping render_set_id each time.
+    inclusion_flags: &'a [u32],
+    // Identifier for the current inclusion set (render pass).
+    render_set_id: u32,
+    // Rendering configuration (template, whitespace, etc.).
     config: &'a crate::RenderConfig,
 }
 
@@ -59,7 +65,7 @@ impl<'a> RenderScope<'a> {
         child_pq_id: usize,
         nl: &str,
     ) {
-        let raw_key = self.pq.nodes[child_pq_id]
+        let raw_key = self.order.nodes[child_pq_id]
             .key_in_object
             .as_deref()
             .unwrap_or("");
@@ -99,7 +105,7 @@ impl<'a> RenderScope<'a> {
         child_pq_id: usize,
         nl: &str,
     ) {
-        let raw_key = self.pq.nodes[child_pq_id]
+        let raw_key = self.order.nodes[child_pq_id]
             .key_in_object
             .as_deref()
             .unwrap_or("");
@@ -132,10 +138,10 @@ impl<'a> RenderScope<'a> {
         }
     }
     fn count_kept_children(&self, id: usize) -> usize {
-        if let Some(kids) = self.pq.children.get(id) {
+        if let Some(kids) = self.order.children.get(id) {
             let mut kept = 0usize;
             for &cid in kids {
-                if self.marks[cid.0] == self.mark_gen {
+                if self.inclusion_flags[cid.0] == self.render_set_id {
                     kept += 1;
                 }
             }
@@ -146,7 +152,7 @@ impl<'a> RenderScope<'a> {
     }
 
     fn omitted_for_string(&self, id: usize, kept: usize) -> Option<usize> {
-        let m = &self.pq.metrics[id];
+        let m = &self.order.metrics[id];
         if let Some(orig) = m.string_len {
             if orig > kept {
                 return Some(orig - kept);
@@ -170,13 +176,13 @@ impl<'a> RenderScope<'a> {
     ) -> Option<usize> {
         match kind {
             NodeKind::Array => {
-                self.pq.metrics[id].array_len.and_then(|orig| {
+                self.order.metrics[id].array_len.and_then(|orig| {
                     if orig > kept { Some(orig - kept) } else { None }
                 })
             }
             NodeKind::String => self.omitted_for_string(id, kept),
             NodeKind::Object => {
-                self.pq.metrics[id].object_len.and_then(|orig| {
+                self.order.metrics[id].object_len.and_then(|orig| {
                     if orig > kept { Some(orig - kept) } else { None }
                 })
             }
@@ -192,7 +198,7 @@ impl<'a> RenderScope<'a> {
     ) -> String {
         let config = self.config;
         let (children_pairs, kept) = self.gather_array_children(id, depth);
-        let node = &self.pq.nodes[id];
+        let node = &self.order.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         if kept == 0 && omitted == 0 {
             return "[]".to_string();
@@ -219,7 +225,7 @@ impl<'a> RenderScope<'a> {
         let config = self.config;
         // Special-case: fileset root in Pseudo/JS templates → head-style sections
         if id == ROOT_PQ_ID
-            && self.pq.object_type.get(id) == Some(&ObjectType::Fileset)
+            && self.order.object_type.get(id) == Some(&ObjectType::Fileset)
             && !config.newline.is_empty()
         {
             match config.template {
@@ -233,7 +239,7 @@ impl<'a> RenderScope<'a> {
             }
         }
         let (children_pairs, kept) = self.gather_object_children(id, depth);
-        let node = &self.pq.nodes[id];
+        let node = &self.order.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         if kept == 0 && omitted == 0 {
             return "{}".to_string();
@@ -248,14 +254,15 @@ impl<'a> RenderScope<'a> {
             space: &config.space,
             newline: &config.newline,
             fileset_root: id == ROOT_PQ_ID
-                && self.pq.object_type.get(id) == Some(&ObjectType::Fileset),
+                && self.order.object_type.get(id)
+                    == Some(&ObjectType::Fileset),
         };
         render_object(config.template, &ctx)
     }
 
     fn serialize_string(&mut self, id: usize) -> String {
         let kept = self.count_kept_children(id);
-        let node = &self.pq.nodes[id];
+        let node = &self.order.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         let full: &str = node.string_value.as_deref().unwrap_or("");
         if omitted == 0 {
@@ -267,7 +274,7 @@ impl<'a> RenderScope<'a> {
     }
 
     fn serialize_number(&self, id: usize) -> String {
-        let it = &self.pq.nodes[id];
+        let it = &self.order.nodes[id];
         if let Some(n) = it.number_value.as_ref() {
             if let Some(i) = n.as_i64() {
                 return i.to_string();
@@ -283,7 +290,7 @@ impl<'a> RenderScope<'a> {
     }
 
     fn serialize_bool(&self, id: usize) -> String {
-        let it = &self.pq.nodes[id];
+        let it = &self.order.nodes[id];
         match it.bool_value {
             Some(true) => "true".to_string(),
             Some(false) | None => "false".to_string(),
@@ -296,7 +303,7 @@ impl<'a> RenderScope<'a> {
         depth: usize,
         inline: bool,
     ) -> String {
-        let it = &self.pq.nodes[id];
+        let it = &self.order.nodes[id];
         match it.kind {
             NodeKind::Array => self.serialize_array(id, depth, inline),
             NodeKind::Object => self.serialize_object(id, depth, inline),
@@ -314,13 +321,13 @@ impl<'a> RenderScope<'a> {
     ) -> (Vec<ArrayChildPair>, usize) {
         let mut children_pairs: Vec<ArrayChildPair> = Vec::new();
         let mut kept = 0usize;
-        if let Some(children_ids) = self.pq.children.get(id) {
+        if let Some(children_ids) = self.order.children.get(id) {
             for (i, &child_id) in children_ids.iter().enumerate() {
-                if self.marks[child_id.0] != self.mark_gen {
+                if self.inclusion_flags[child_id.0] != self.render_set_id {
                     continue;
                 }
                 kept += 1;
-                let child_kind = self.pq.nodes[child_id.0].kind;
+                let child_kind = self.order.nodes[child_id.0].kind;
                 let rendered =
                     self.serialize_node(child_id.0, depth + 1, false);
                 self.push_array_child_line(
@@ -342,13 +349,13 @@ impl<'a> RenderScope<'a> {
     ) -> (Vec<ObjectChildPair>, usize) {
         let mut children_pairs: Vec<ObjectChildPair> = Vec::new();
         let mut kept = 0usize;
-        if let Some(children_ids) = self.pq.children.get(id) {
+        if let Some(children_ids) = self.order.children.get(id) {
             for (i, &child_id) in children_ids.iter().enumerate() {
-                if self.marks[child_id.0] != self.mark_gen {
+                if self.inclusion_flags[child_id.0] != self.render_set_id {
                     continue;
                 }
                 kept += 1;
-                let child = &self.pq.nodes[child_id.0];
+                let child = &self.order.nodes[child_id.0];
                 let raw_key = child.key_in_object.as_deref().unwrap_or("");
                 let key = crate::utils::json::json_string(raw_key);
                 let val = self.serialize_node(child_id.0, depth + 1, true);
@@ -362,10 +369,10 @@ impl<'a> RenderScope<'a> {
     fn serialize_fileset_root_pseudo(&mut self, depth: usize) -> String {
         let nl = &self.config.newline;
         let mut out = String::new();
-        if let Some(children_ids) = self.pq.children.get(ROOT_PQ_ID) {
+        if let Some(children_ids) = self.order.children.get(ROOT_PQ_ID) {
             let mut kept = 0usize;
             for &child_id in children_ids.iter() {
-                if self.marks[child_id.0] != self.mark_gen {
+                if self.inclusion_flags[child_id.0] != self.render_set_id {
                     continue;
                 }
                 if kept > 0 {
@@ -380,7 +387,7 @@ impl<'a> RenderScope<'a> {
                 );
             }
             let total = self
-                .pq
+                .order
                 .metrics
                 .get(ROOT_PQ_ID)
                 .and_then(|m| m.object_len)
@@ -398,13 +405,13 @@ impl<'a> RenderScope<'a> {
     fn serialize_fileset_root_js(&mut self, depth: usize) -> String {
         let nl = &self.config.newline;
         let mut out = String::new();
-        let Some(children_ids) = self.pq.children.get(ROOT_PQ_ID) else {
+        let Some(children_ids) = self.order.children.get(ROOT_PQ_ID) else {
             return out;
         };
         let kept =
             self.render_js_fileset_sections(&mut out, depth, children_ids, nl);
         let total = self
-            .pq
+            .order
             .metrics
             .get(ROOT_PQ_ID)
             .and_then(|m| m.object_len)
@@ -422,7 +429,7 @@ impl<'a> RenderScope<'a> {
     ) -> usize {
         let mut kept = 0usize;
         for &child_id in children_ids.iter() {
-            if self.marks[child_id.0] != self.mark_gen {
+            if self.inclusion_flags[child_id.0] != self.render_set_id {
                 continue;
             }
             if kept > 0 {
@@ -435,36 +442,62 @@ impl<'a> RenderScope<'a> {
     }
 }
 
-/// Render a budget-limited preview directly from the arena using inclusion marks.
-pub fn render_arena_with_marks(
+/// Prepare a render set by including the first `top_k` nodes by priority
+/// and all of their ancestors so the output remains structurally valid.
+pub fn prepare_render_set_top_k_and_ancestors(
     order_build: &PriorityOrder,
-    budget: usize,
-    marks: &mut Vec<u32>,
-    mark_gen: u32,
-    config: &crate::RenderConfig,
-) -> String {
-    if marks.len() < order_build.total_nodes {
-        marks.resize(order_build.total_nodes, 0);
+    top_k: usize,
+    inclusion_flags: &mut Vec<u32>,
+    render_id: u32,
+) {
+    if inclusion_flags.len() < order_build.total_nodes {
+        inclusion_flags.resize(order_build.total_nodes, 0);
     }
-    // Phase 1: Mark the first `k` nodes (order[..k]) and all their ancestors
-    let k = budget.min(order_build.total_nodes);
+    let k = top_k.min(order_build.total_nodes);
     crate::utils::graph::mark_top_k_and_ancestors(
         order_build,
         k,
-        marks,
-        mark_gen,
+        inclusion_flags,
+        render_id,
     );
+}
 
+/// Render using a previously prepared render set (inclusion flags matching `render_id`).
+pub fn render_from_render_set(
+    order_build: &PriorityOrder,
+    inclusion_flags: &[u32],
+    render_id: u32,
+    config: &crate::RenderConfig,
+) -> String {
     // Root PQ id is a fixed invariant (0).
     let root_id = ROOT_PQ_ID;
     let mut scope = RenderScope {
-        pq: order_build,
-        marks,
-        mark_gen,
+        order: order_build,
+        inclusion_flags,
+        render_set_id: render_id,
         config,
     };
     scope.serialize_node(root_id, 0, false)
 }
+
+/// Convenience: prepare the render set for `top_k` nodes and render in one call.
+pub fn render_top_k(
+    order_build: &PriorityOrder,
+    top_k: usize,
+    inclusion_flags: &mut Vec<u32>,
+    render_id: u32,
+    config: &crate::RenderConfig,
+) -> String {
+    prepare_render_set_top_k_and_ancestors(
+        order_build,
+        top_k,
+        inclusion_flags,
+        render_id,
+    );
+    render_from_render_set(order_build, inclusion_flags, render_id, config)
+}
+
+//
 
 #[cfg(test)]
 mod tests {
@@ -485,7 +518,7 @@ mod tests {
         )
         .unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_arena_with_marks(
+        let out = render_top_k(
             &build,
             10,
             &mut marks,
@@ -516,7 +549,7 @@ mod tests {
         )
         .unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_arena_with_marks(
+        let out = render_top_k(
             &build,
             usize::MAX,
             &mut marks,
@@ -551,7 +584,7 @@ mod tests {
         )
         .unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_arena_with_marks(
+        let out = render_top_k(
             &build,
             10,
             &mut marks,
@@ -565,5 +598,46 @@ mod tests {
             },
         );
         assert_snapshot!("arena_render_single", out);
+    }
+
+    #[test]
+    fn arena_render_object_partial_js() {
+        // Object with three properties; render top_k small so only one child is kept.
+        let arena = crate::json_ingest::build_json_tree_arena(
+            "{\"a\":1,\"b\":2,\"c\":3}",
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let build = build_order(
+            &arena,
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let mut flags = vec![0u32; build.total_nodes];
+        // top_k=2 → root object + first property
+        let out = render_top_k(
+            &build,
+            2,
+            &mut flags,
+            1,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Js,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+            },
+        );
+        // Should be a valid JS object with one property and an omitted summary.
+        assert!(out.starts_with("{\n"));
+        assert!(
+            out.contains("/* 2 more properties */"),
+            "missing omitted summary: {out:?}"
+        );
+        assert!(
+            out.contains("\"a\": 1")
+                || out.contains("\"b\": 2")
+                || out.contains("\"c\": 3")
+        );
     }
 }

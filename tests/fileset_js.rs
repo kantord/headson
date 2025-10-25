@@ -51,3 +51,17 @@ fn js_fileset_compact_shows_inline_omitted_summary() {
         "expected inline summary: {out:?}"
     );
 }
+
+#[test]
+fn js_fileset_summary_leads_with_two_blank_lines_when_no_sections() {
+    // With an extremely small budget, no file sections are included (kept=0)
+    // but we still render a summary. The JS fileset summary should start with
+    // two blank lines to visually separate it when there was no preceding newline.
+    let p1 = "tests/fixtures/explicit/object_small.json";
+    let p2 = "tests/fixtures/explicit/array_numbers_50.json";
+    let out = run_js(&[p1, p2], 1);
+    assert!(
+        out.starts_with("\n\n/*"),
+        "expected two leading newlines before summary, got: {out:?}"
+    );
+}
