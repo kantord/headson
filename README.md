@@ -1,6 +1,10 @@
 # headson
 
-Budget‑constrained, structure‑preserving previews for JSON files and streams — quick peeks that stay readable under a strict character budget.
+Head/tail for JSON — but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict character budget.
+
+Available as:
+- CLI (see [Usage](#usage))
+- Python library (see [Python Bindings](#python-bindings))
 
 Links: crates.io (Rust): https://crates.io/crates/headson · docs.rs: https://docs.rs/headson · PyPI (Python): https://pypi.org/project/headson/
 
@@ -15,11 +19,6 @@ From source:
     cargo build --release
     target/release/headson --help
 
-Python (wheels for CPython 3.10–3.12 on Linux/macOS/Windows; others build from source):
-
-    pip install headson
-
-To build the Python module from source you need a Rust toolchain (and a recent pip/maturin). On Linux you may also need system build tools.
 
 ## Features
 
@@ -28,18 +27,15 @@ To build the Python module from source you need a Rust toolchain (and a recent p
 - Multiple inputs: preview many files at once with a shared or per‑file budget.
 - Fast: uses a streaming arena parser and SIMD‑accelerated JSON ingestion.
 - CLI and libraries: usable from the terminal, Rust, and Python.
+- Tail mode: prefer the end of arrays when truncating (`--tail` or `tail=True` in Python). Strings are unaffected; JSON output remains strict.
 
 ## Shell Mental Model
 
 If you’re comfortable with tools like `head` and `tail`, use `headson` when you want a quick, structured peek into a JSON file without dumping the entire thing.
 
-- `head` gives the first N lines/bytes, but it can break JSON in the middle of a token.
-- `jq` prints valid JSON, but it prints the whole document unless you add filtering.
-- `headson` picks a small but useful subset that fits a character budget and preserves structure, so you can scan the shape and some sample values quickly.
-
-Why not `jq -c . file.json | head -c 200`?
-- That can cut tokens mid‑way → invalid JSON or unreadable fragments.
-- `headson` ensures the preview remains structured; arrays/objects may be truncated with ellipses/comments, but the result is still readable (and valid JSON when using the `json` template).
+- `head`/`tail` operate on bytes/lines and may cut JSON mid‑token.
+- `jq` prints valid JSON but typically the entire document unless you craft filters.
+- `headson` is like head/tail for trees: it keeps structure, shows representative content, and fits the result to a budget. Use `--tail` to prefer array ends when that’s more informative.
 
 ## Usage
 
