@@ -78,7 +78,7 @@ fn find_largest_render_under_budget(
     let mut best_str: Option<String> = None;
 
     let _ = crate::utils::search::binary_search_max(lo, hi, |mid| {
-        let s = crate::serialization::render_arena_with_marks(
+        let s = crate::serialization::render_top_k(
             order_build,
             mid,
             &mut inclusion_flags,
@@ -99,7 +99,7 @@ fn find_largest_render_under_budget(
     } else {
         // Fallback: always render a single node (k=1) to produce the
         // shortest possible preview, even if it exceeds the byte budget.
-        crate::serialization::render_arena_with_marks(
+        crate::serialization::render_top_k(
             order_build,
             1,
             &mut inclusion_flags,

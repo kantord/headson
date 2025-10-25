@@ -442,36 +442,62 @@ impl<'a> RenderScope<'a> {
     }
 }
 
-/// Render a budget-limited preview directly from the arena using inclusion marks.
-pub fn render_arena_with_marks(
+/// Prepare a render set by including the first `top_k` nodes by priority
+/// and all of their ancestors so the output remains structurally valid.
+pub fn prepare_render_set_top_k_and_ancestors(
     order_build: &PriorityOrder,
-    budget: usize,
+    top_k: usize,
     inclusion_flags: &mut Vec<u32>,
-    render_set_id: u32,
-    config: &crate::RenderConfig,
-) -> String {
+    render_id: u32,
+) {
     if inclusion_flags.len() < order_build.total_nodes {
         inclusion_flags.resize(order_build.total_nodes, 0);
     }
-    // Phase 1: Mark the first `k` nodes (order[..k]) and all their ancestors
-    let k = budget.min(order_build.total_nodes);
+    let k = top_k.min(order_build.total_nodes);
     crate::utils::graph::mark_top_k_and_ancestors(
         order_build,
         k,
         inclusion_flags,
-        render_set_id,
+        render_id,
     );
+}
 
+/// Render using a previously prepared render set (inclusion flags matching `render_id`).
+pub fn render_from_render_set(
+    order_build: &PriorityOrder,
+    inclusion_flags: &[u32],
+    render_id: u32,
+    config: &crate::RenderConfig,
+) -> String {
     // Root PQ id is a fixed invariant (0).
     let root_id = ROOT_PQ_ID;
     let mut scope = RenderScope {
         order: order_build,
         inclusion_flags,
-        render_set_id,
+        render_set_id: render_id,
         config,
     };
     scope.serialize_node(root_id, 0, false)
 }
+
+/// Convenience: prepare the render set for `top_k` nodes and render in one call.
+pub fn render_top_k(
+    order_build: &PriorityOrder,
+    top_k: usize,
+    inclusion_flags: &mut Vec<u32>,
+    render_id: u32,
+    config: &crate::RenderConfig,
+) -> String {
+    prepare_render_set_top_k_and_ancestors(
+        order_build,
+        top_k,
+        inclusion_flags,
+        render_id,
+    );
+    render_from_render_set(order_build, inclusion_flags, render_id, config)
+}
+
+//
 
 #[cfg(test)]
 mod tests {
@@ -492,7 +518,7 @@ mod tests {
         )
         .unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_arena_with_marks(
+        let out = render_top_k(
             &build,
             10,
             &mut marks,
@@ -523,7 +549,7 @@ mod tests {
         )
         .unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_arena_with_marks(
+        let out = render_top_k(
             &build,
             usize::MAX,
             &mut marks,
@@ -558,7 +584,7 @@ mod tests {
         )
         .unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_arena_with_marks(
+        let out = render_top_k(
             &build,
             10,
             &mut marks,
