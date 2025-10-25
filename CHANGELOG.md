@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0](https://github.com/kantord/headson/compare/v0.2.5...v0.3.0) - 2025-10-25
+
+### Added
+
+- add --tail flag ([#58](https://github.com/kantord/headson/pull/58))
+
+### Other
+
+- simplify readme ([#65](https://github.com/kantord/headson/pull/65))
+- update features section in README.md ([#64](https://github.com/kantord/headson/pull/64))
+- remove links section from README ([#63](https://github.com/kantord/headson/pull/63))
+- improve readme ([#33](https://github.com/kantord/headson/pull/33))
+
 ## [0.2.5](https://github.com/kantord/headson/compare/v0.2.4...v0.2.5) - 2025-10-25
 
 ### Fixed
