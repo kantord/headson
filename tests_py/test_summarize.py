@@ -100,7 +100,10 @@ def test_tail_affects_arrays_pseudo():
     except StopIteration:
         assert False, f"expected array opener, got: {out_tail!r}"
     # Next non-empty line should be ellipsis
-    following = next((line.strip() for line in lines[idx + 1 :] if line.strip()), "")
+    following = next(
+        (line.strip() for line in lines[idx + 1 :] if line.strip()),
+        "",
+    )
     assert following == "…", f"expected ellipsis after opener in tail mode, got: {out_tail!r}"
 
 
@@ -126,7 +129,10 @@ def test_tail_affects_arrays_js():
         idx = next(i for i, line in enumerate(lines) if line.strip() == "[")
     except StopIteration:
         assert False, f"expected array opener, got: {out_tail!r}"
-    following = next((line.strip() for line in lines[idx + 1 :] if line.strip()), "")
+    following = next(
+        (line.strip() for line in lines[idx + 1 :] if line.strip()),
+        "",
+    )
     assert following.startswith("/*") and following.endswith(
         "*/"
     ), f"expected omission comment after opener in tail mode, got: {out_tail!r}"
