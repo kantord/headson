@@ -58,6 +58,7 @@ Common flags:
 - `--no-space`: no space after `:` in objects
 - `--indent <STR>`: indentation unit (default: two spaces)
 - `--string-cap <N>`: max graphemes to consider per string (default: 500)
+- `--tail`: prefer the end of arrays when truncating. Strings are unaffected. In `pseudo`/`js` templates the omission marker appears at the start; `json` remains strict JSON with no annotations.
 
 Notes:
 
@@ -103,6 +104,10 @@ Examples:
 - Global limit across files (fixed total size across all files):
 
       headson -N 400 -f json a.json b.json
+
+- Prefer the tail of arrays (arrays only; JSON stays strict):
+
+      headson -n 400 --tail -f pseudo data.json
 
 Show help:
 
