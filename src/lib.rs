@@ -70,9 +70,10 @@ fn find_largest_render_under_budget(
     // Each included node contributes at least some output; cap hi by budget.
     let lo = 1usize;
     let hi = total.min(char_budget.max(1));
-    // Reusable inclusion flags to avoid clearing per probe.
+    // Reuse render-inclusion flags across render attempts to avoid clearing the vector.
+    // A node participates in the current render attempt when inclusion_flags[id] == render_set_id.
     let mut inclusion_flags: Vec<u32> = vec![0; total];
-    // Each render probe uses a new non-zero identifier for the inclusion set.
+    // Each render attempt bumps this non-zero identifier to create a fresh inclusion set.
     let mut render_set_id: u32 = 1;
     let mut best_str: Option<String> = None;
 

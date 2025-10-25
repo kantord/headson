@@ -14,9 +14,9 @@ type ObjectChildPair = (usize, (String, String));
 pub(crate) struct RenderScope<'a> {
     // Priority-ordered view of the parsed JSON tree.
     order: &'a PriorityOrder,
-    // Per-node inclusion flag: a node is included in the current render
-    // if inclusion_flags[node_id] == render_set_id. This avoids clearing
-    // the vector between render probes by bumping the render_set_id.
+    // Per-node inclusion flag: a node is included in the current render attempt
+    // when inclusion_flags[node_id] == render_set_id. This avoids clearing the
+    // vector between render attempts by bumping render_set_id each time.
     inclusion_flags: &'a [u32],
     // Identifier for the current inclusion set (render pass).
     render_set_id: u32,
