@@ -94,3 +94,6 @@ implicit_hasher = "deny"
 uninlined_format_args = "deny"
 float_cmp = "deny"
 float_cmp_const = "deny"
+
+[lints.rust]
+dead_code = "warn"
