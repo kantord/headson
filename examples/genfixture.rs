@@ -61,7 +61,6 @@ fn main() -> anyhow::Result<()> {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
 
     for i in 0..count {
-        // Deterministic ASCII lowercase "word" 5–10 chars
         let len = rng.random_range(5..=10);
         let mut name = String::with_capacity(len);
         for _ in 0..len {
