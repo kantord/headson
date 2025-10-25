@@ -4,6 +4,7 @@ use serde_json;
 pub struct PriorityConfig {
     pub max_string_graphemes: usize,
     pub array_max_items: usize,
+    pub prefer_tail_arrays: bool,
 }
 
 impl PriorityConfig {
@@ -11,6 +12,7 @@ impl PriorityConfig {
         Self {
             max_string_graphemes,
             array_max_items,
+            prefer_tail_arrays: false,
         }
     }
 }

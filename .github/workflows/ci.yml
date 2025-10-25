@@ -116,13 +116,13 @@ jobs:
       - name: Sync Python deps (dev)
         run: |
           # Prefer reproducible installs; if the lock is stale (e.g., version bump), refresh it in CI
-          uv sync --locked || (uv lock && uv sync --locked)
+          uv sync --group dev --locked || (uv lock && uv sync --group dev --locked)
 
       - name: Ruff lint
-        run: uv run --no-sync ruff check .
+        run: uv run --no-sync ruff --config pyproject.toml check .
 
       - name: Ruff format check
-        run: uv run --no-sync ruff format --check .
+        run: uv run --no-sync ruff format --config pyproject.toml --check .
 
       - name: Build extension (maturin develop)
         run: uv run --no-sync maturin develop -r

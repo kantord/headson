@@ -19,6 +19,39 @@ pub(crate) struct RenderScope<'a> {
 }
 
 impl<'a> RenderScope<'a> {
+    fn render_has_newline(&self, s: &str) -> bool {
+        let nl = &self.config.newline;
+        if nl.is_empty() {
+            return false;
+        }
+        if nl == "\n" {
+            return s.as_bytes().contains(&b'\n');
+        }
+        s.contains(nl)
+    }
+
+    fn push_array_child_line(
+        &self,
+        out: &mut Vec<ArrayChildPair>,
+        index: usize,
+        child_kind: NodeKind,
+        depth: usize,
+        rendered: String,
+    ) {
+        if self.render_has_newline(&rendered) {
+            out.push((index, rendered));
+            return;
+        }
+        match child_kind {
+            NodeKind::Array | NodeKind::Object => {
+                out.push((index, rendered));
+            }
+            _ => {
+                let child_indent = indent(depth + 1, &self.config.indent_unit);
+                out.push((index, format!("{child_indent}{rendered}")));
+            }
+        }
+    }
     fn append_js_fileset_section(
         &mut self,
         out: &mut String,
@@ -172,6 +205,7 @@ impl<'a> RenderScope<'a> {
             indent_unit: &config.indent_unit,
             inline_open: inline,
             newline: &config.newline,
+            omitted_at_start: config.prefer_tail_arrays,
         };
         render_array(config.template, &ctx)
     }
@@ -278,7 +312,6 @@ impl<'a> RenderScope<'a> {
         id: usize,
         depth: usize,
     ) -> (Vec<ArrayChildPair>, usize) {
-        let config = self.config;
         let mut children_pairs: Vec<ArrayChildPair> = Vec::new();
         let mut kept = 0usize;
         if let Some(children_ids) = self.pq.children.get(id) {
@@ -287,17 +320,16 @@ impl<'a> RenderScope<'a> {
                     continue;
                 }
                 kept += 1;
+                let child_kind = self.pq.nodes[child_id.0].kind;
                 let rendered =
                     self.serialize_node(child_id.0, depth + 1, false);
-                if !config.newline.is_empty()
-                    && rendered.contains(&config.newline)
-                {
-                    children_pairs.push((i, rendered));
-                } else {
-                    let child_indent = indent(depth + 1, &config.indent_unit);
-                    children_pairs
-                        .push((i, format!("{child_indent}{rendered}")));
-                }
+                self.push_array_child_line(
+                    &mut children_pairs,
+                    i,
+                    child_kind,
+                    depth,
+                    rendered,
+                );
             }
         }
         (children_pairs, kept)
@@ -463,6 +495,7 @@ mod tests {
                 indent_unit: "  ".to_string(),
                 space: " ".to_string(),
                 newline: "\n".to_string(),
+                prefer_tail_arrays: false,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -491,6 +524,7 @@ mod tests {
                 indent_unit: "  ".to_string(),
                 space: " ".to_string(),
                 newline: "\n".to_string(),
+                prefer_tail_arrays: false,
             },
         );
         assert_snapshot!("arena_render_single", out);

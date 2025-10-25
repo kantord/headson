@@ -8,7 +8,7 @@ expression: stdout
     "c": 1
   },
   "d": [
-        { … }
+    { … }
     …
   ]
 }

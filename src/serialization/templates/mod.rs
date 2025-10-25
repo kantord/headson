@@ -13,6 +13,7 @@ pub struct ArrayCtx<'a> {
     pub indent_unit: &'a str,
     pub inline_open: bool,
     pub newline: &'a str,
+    pub omitted_at_start: bool,
 }
 
 pub struct ObjectCtx<'a> {

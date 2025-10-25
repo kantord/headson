@@ -1,0 +1,11 @@
+---
+source: tests/e2e_tail.rs
+expression: stdout
+---
+[
+  1,
+  2,
+  3,
+  4,
+  5
+]

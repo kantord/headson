@@ -1,0 +1,27 @@
+---
+source: tests/e2e_tail.rs
+expression: stdout
+---
+{
+  "deep": [
+    …,
+    {
+      "a": [ … ]
+    }
+  ],
+  "matrix": [
+    …,
+    [
+      …,
+      9
+    ]
+  ],
+  "objects": [
+    …,
+    { … }
+  ],
+  "strings": [
+    …,
+    "…"
+  ]
+}

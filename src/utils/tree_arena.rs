@@ -6,9 +6,8 @@ pub struct JsonTreeArena {
     pub children: Vec<usize>,
     pub obj_keys: Vec<String>,
     pub root_id: usize,
-    // Marks that the root is a synthetic wrapper object representing a fileset
-    // (multi-input ingest). Rendering remains standard JSON; this is an
-    // internal marker for future behaviors.
+    // True when root is a synthetic wrapper object for multi-input ingest.
+    // Rendering remains standard JSON; used to select fileset-specific headers.
     pub is_fileset: bool,
 }
 

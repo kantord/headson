@@ -16,6 +16,9 @@ impl Style for Pseudo {
         if ctx.omitted > 0 {
             out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
             out.push('…');
+            if ctx.children_len > 0 && ctx.omitted_at_start {
+                out.push(',');
+            }
             out.push_str(ctx.newline);
         }
     }

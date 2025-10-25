@@ -1,0 +1,5 @@
+---
+source: tests/e2e_tail.rs
+expression: stdout
+---
+{ /* 2 more properties */ }

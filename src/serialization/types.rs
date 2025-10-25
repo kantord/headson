@@ -13,4 +13,6 @@ pub struct RenderConfig {
     // Newline sequence to use in final output (e.g., "\n" or "").
     // Templates read this directly; no post-processing replacement.
     pub newline: String,
+    // When true, arrays prefer tail rendering (omission marker at start).
+    pub prefer_tail_arrays: bool,
 }

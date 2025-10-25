@@ -48,8 +48,13 @@ pub fn render_array_with<S: Style>(ctx: &ArrayCtx<'_>) -> String {
     out.push_str(open_indent);
     out.push('[');
     out.push_str(ctx.newline);
+    if ctx.omitted_at_start {
+        S::array_push_omitted(&mut out, ctx);
+    }
     push_array_items(&mut out, ctx);
-    S::array_push_omitted(&mut out, ctx);
+    if !ctx.omitted_at_start {
+        S::array_push_omitted(&mut out, ctx);
+    }
     out.push_str(&base);
     out.push(']');
     out
