@@ -1,5 +1,6 @@
+use std::fs::File;
 use std::io::{self, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
@@ -152,12 +153,29 @@ fn get_input_single(paths: &[PathBuf]) -> Result<Vec<u8>> {
     }
 }
 
-fn looks_binary(bytes: &[u8]) -> bool {
-    // Heuristic: JSON is UTF-8; treat non-UTF8 or NUL-containing data as binary.
-    if bytes.contains(&0) {
-        return true;
+fn read_file_with_nul_check(path: &Path) -> Result<Result<Vec<u8>, ()>> {
+    // Read the file while checking for NUL bytes. If a NUL is seen, treat as binary
+    // and stop early to avoid unnecessary I/O/CPU.
+    let file = File::open(path).with_context(|| {
+        format!("failed to open input file: {}", path.display())
+    })?;
+    let mut reader = io::BufReader::with_capacity(64 * 1024, file);
+    let mut buf = Vec::new();
+    let mut chunk = [0u8; 64 * 1024];
+    loop {
+        let n = reader.read(&mut chunk).with_context(|| {
+            format!("failed to read input file: {}", path.display())
+        })?;
+        if n == 0 {
+            break;
+        }
+        // If chunk contains NUL, consider it binary and stop reading further.
+        if memchr::memchr(0, &chunk[..n]).is_some() {
+            return Ok(Err(()));
+        }
+        buf.extend_from_slice(&chunk[..n]);
     }
-    std::str::from_utf8(bytes).is_err()
+    Ok(Ok(buf))
 }
 
 fn get_input_many(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
@@ -171,14 +189,12 @@ fn get_input_many(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
                 continue;
             }
         }
-        let bytes = std::fs::read(path).with_context(|| {
-            format!("failed to read input file: {display}")
-        })?;
-        if looks_binary(&bytes) {
+        if let Ok(bytes) = read_file_with_nul_check(path)? {
+            out.push((display, bytes))
+        } else {
             ignored.push(format!("Ignored binary file: {display}"));
             continue;
         }
-        out.push((display, bytes));
     }
     Ok((out, ignored))
 }

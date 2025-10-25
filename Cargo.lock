@@ -298,6 +298,7 @@ dependencies = [
  "clap",
  "fake",
  "insta",
+ "memchr",
  "rand",
  "rand_chacha",
  "serde",
