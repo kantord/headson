@@ -63,3 +63,20 @@ Examples:
 Show help:
 
     headson --help
+
+## Python package
+
+Headson is also available as a Python extension module built with PyO3/maturin.
+
+Install from PyPI:
+
+    pip install headson
+
+Example:
+
+    import json
+    import headson
+
+    data = {"foo": [1, 2, 3], "bar": {"x": "y"}}
+    preview = headson.summarize(json.dumps(data), template="json", character_budget=200)
+    print(preview)
