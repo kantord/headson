@@ -4,7 +4,9 @@
     "config:recommended"
   ],
   "automerge": true,
-  "platformAutomerge": true,
+  "platformAutomerge": false,
   "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "rebaseWhen": "behind-base-branch",
   "ignoreTests": false
 }
