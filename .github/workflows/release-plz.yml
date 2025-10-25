@@ -130,4 +130,5 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           command: publish
-          args: --skip-existing
+          # Pin interpreters to avoid building against unsupported Python (e.g., 3.14)
+          args: --skip-existing -i 3.10 3.11 3.12
