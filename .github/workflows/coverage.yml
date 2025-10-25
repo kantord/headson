@@ -43,13 +43,13 @@ jobs:
           verbose: true
 
       - name: Upload HTML report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-html
           path: target/llvm-cov/html
 
       - name: Upload lcov.info
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: lcov.info
           path: lcov.info
