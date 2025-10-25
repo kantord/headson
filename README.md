@@ -154,9 +154,10 @@ A thin Python extension module is available on PyPI as `headson`.
 
 - Install: `pip install headson` (prebuilt wheels for CPython 3.10–3.12 on Linux/macOS/Windows). Older/newer Python versions may build from source if Rust is installed.
 - API:
-  - `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None) -> str`
+  - `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None, tail: bool = False) -> str`
     - `template`: one of `"json" | "pseudo" | "js"`
     - `character_budget`: maximum output size in characters (default: 500)
+    - `tail`: prefer the end of arrays when truncating; strings unaffected. Affects only display templates (`pseudo`/`js`); `json` remains strict.
 
 Example:
 
@@ -167,6 +168,16 @@ import headson
 data = {"foo": [1, 2, 3], "bar": {"x": "y"}}
 preview = headson.summarize(json.dumps(data), template="json", character_budget=200)
 print(preview)
+
+# Prefer the tail of arrays (annotations show in pseudo/js only)
+print(
+    headson.summarize(
+        json.dumps(list(range(100))),
+        template="pseudo",
+        character_budget=80,
+        tail=True,
+    )
+)
 ```
 
 Developer install for the Python module (requires Rust):
@@ -200,8 +211,9 @@ fn main() -> anyhow::Result<()> {
         indent_unit: "  ".into(),
         space: " ".into(),
         newline: "\n".into(),
+        prefer_tail_arrays: true,
     };
-    let prio = PriorityConfig { max_string_graphemes: 500, array_max_items: 64 };
+    let prio = PriorityConfig { max_string_graphemes: 500, array_max_items: 64, prefer_tail_arrays: true };
     let json = br#"{"a": [1, 2, 3], "b": {"c": 4}}"#.to_vec();
     let out = headson::headson(json, &cfg, &prio, 500)?;
     println!("{}", out);
