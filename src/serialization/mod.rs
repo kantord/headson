@@ -502,6 +502,43 @@ mod tests {
     }
 
     #[test]
+    fn newline_detection_crlf_array_child() {
+        // Ensure we exercise the render_has_newline branch that checks
+        // arbitrary newline sequences (e.g., "\r\n") via s.contains(nl).
+        let arena = crate::json_ingest::build_json_tree_arena(
+            "[{\"a\":1,\"b\":2}]",
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let build = build_order(
+            &arena,
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+        let out = render_arena_with_marks(
+            &build,
+            usize::MAX,
+            &mut marks,
+            1,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Json,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                // Use CRLF to force the contains(nl) path.
+                newline: "\r\n".to_string(),
+                prefer_tail_arrays: false,
+            },
+        );
+        // Sanity: output should contain CRLF newlines and render the object child across lines.
+        assert!(
+            out.contains("\r\n"),
+            "expected CRLF newlines in output: {out:?}"
+        );
+        assert!(out.starts_with("["));
+    }
+
+    #[test]
     fn arena_render_single_string_array() {
         let arena = crate::json_ingest::build_json_tree_arena(
             "[\"ab\"]",

@@ -239,12 +239,6 @@ fn get_priority_config(
     per_file_budget: usize,
     cli: &Cli,
 ) -> headson::PriorityConfig {
-    // Optimization: derive a conservative per‑array expansion cap from the output
-    // budget to avoid allocating/walking items that could never appear in the
-    // final preview. As a simple lower bound, an array of N items needs ~2*N
-    // bytes to render (item plus comma), so we cap per‑array expansion at
-    // budget/2. This prunes unnecessary work on large inputs without changing
-    // output semantics.
     headson::PriorityConfig {
         max_string_graphemes: cli.string_cap,
         array_max_items: (per_file_budget / 2).max(1),
