@@ -1,6 +1,3 @@
-[changelog]
-path = "CHANGELOG.md"
-
 [workspace]
 publish = true
 
@@ -14,4 +11,3 @@ replace = 'version = "{next_version}"'
 file = "python/Cargo.toml"
 search = 'version = "{current_version}"'
 replace = 'version = "{next_version}"'
-
