@@ -6,8 +6,6 @@ Available as:
 - CLI (see [Usage](#usage))
 - Python library (see [Python Bindings](#python-bindings))
 
-Links: crates.io (Rust): https://crates.io/crates/headson · docs.rs: https://docs.rs/headson · PyPI (Python): https://pypi.org/project/headson/
-
 ## Install
 
 Using Cargo:
