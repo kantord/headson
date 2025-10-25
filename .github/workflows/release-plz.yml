@@ -105,10 +105,8 @@ jobs:
             echo "Version mismatch after sync: root=${ROOT_VER} pyproject=${PY_VER} python/Cargo.toml=${PY_CRATE_VER}" >&2
             exit 1
           fi
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-
       - name: Update Python lockfile
         shell: bash
         run: |
