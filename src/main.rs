@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
+use content_inspector::{ContentType, inspect};
 
 type InputEntry = (String, Vec<u8>);
 type InputEntries = Vec<InputEntry>;
@@ -167,7 +168,7 @@ fn read_file_with_nul_check(path: &Path) -> Result<Result<Vec<u8>, ()>> {
     if n == 0 {
         return Ok(Ok(Vec::new()));
     }
-    if memchr::memchr(0, &first[..n]).is_some() {
+    if matches!(inspect(&first[..n]), ContentType::BINARY) {
         return Ok(Err(()));
     }
 
