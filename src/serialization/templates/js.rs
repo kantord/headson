@@ -18,10 +18,13 @@ impl Style for Js {
     fn array_push_omitted(out: &mut String, ctx: &ArrayCtx<'_>) {
         if ctx.omitted > 0 {
             out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
-            out.push_str(&format!(
-                "/* {} more items */{}",
-                ctx.omitted, ctx.newline
-            ));
+            out.push_str("/* ");
+            out.push_str(&ctx.omitted.to_string());
+            out.push_str(" more items */");
+            if ctx.children_len > 0 && ctx.omitted_at_start {
+                out.push(',');
+            }
+            out.push_str(ctx.newline);
         }
     }
 

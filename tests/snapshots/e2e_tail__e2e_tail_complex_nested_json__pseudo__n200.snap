@@ -8,12 +8,12 @@ expression: stdout
     "page": 1,
     "pageSize": 20,
     "tags": [
-      …
+      …,
       "…"
     ]
   },
   "users": [
-    …
+    …,
     {
       "id": 2,
       "name": "…"

@@ -4,24 +4,21 @@ expression: stdout
 ---
 {
   "deep": [
-    …
+    …,
     {
       "a": [ … ]
     }
   ],
   "matrix": [
-    …
-    [
-      …
-      9
-    ]
+    …,
+        [ … ]
   ],
   "objects": [
-    …
+    …,
         { … }
   ],
   "strings": [
-    …
+    …,
     "…"
   ]
 }

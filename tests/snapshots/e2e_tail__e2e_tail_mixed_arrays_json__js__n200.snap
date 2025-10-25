@@ -4,7 +4,7 @@ expression: stdout
 ---
 {
   "deep": [
-    /* 1 more items */
+    /* 1 more items */,
         { /* 1 more properties */ }
   ],
   "matrix": [ /* 3 more items */ ],

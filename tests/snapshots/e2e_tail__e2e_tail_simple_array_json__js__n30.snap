@@ -3,6 +3,6 @@ source: tests/e2e_tail.rs
 expression: stdout
 ---
 [
-  /* 4 more items */
+  /* 4 more items */,
   5
 ]
