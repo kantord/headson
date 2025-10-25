@@ -1,13 +1,2 @@
 [workspace]
 publish = true
-
-[[replacements]]
-file = "pyproject.toml"
-search = 'version = "{current_version}"'
-replace = 'version = "{next_version}"'
-
-# Keep the Python extension crate version in sync as well
-[[replacements]]
-file = "python/Cargo.toml"
-search = 'version = "{current_version}"'
-replace = 'version = "{next_version}"'
