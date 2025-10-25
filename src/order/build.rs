@@ -120,7 +120,13 @@ impl<'a> Scope<'a> {
             let child_kind = self.arena.nodes[child_arena_id].kind;
             let child_pq = *self.next_pq_id;
             *self.next_pq_id += 1;
-            let extra = (i as u128).pow(3) * ARRAY_INDEX_CUBIC_WEIGHT;
+            let idx_for_priority: usize = if self.config.prefer_tail_arrays {
+                kept.saturating_sub(1).saturating_sub(i)
+            } else {
+                i
+            };
+            let extra =
+                (idx_for_priority as u128).pow(3) * ARRAY_INDEX_CUBIC_WEIGHT;
             let score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
             let child_node = &self.arena.nodes[child_arena_id];
             self.push_child_common(

@@ -172,6 +172,7 @@ impl<'a> RenderScope<'a> {
             indent_unit: &config.indent_unit,
             inline_open: inline,
             newline: &config.newline,
+            omitted_at_start: config.prefer_tail_arrays,
         };
         render_array(config.template, &ctx)
     }
@@ -463,6 +464,7 @@ mod tests {
                 indent_unit: "  ".to_string(),
                 space: " ".to_string(),
                 newline: "\n".to_string(),
+                prefer_tail_arrays: false,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -491,6 +493,7 @@ mod tests {
                 indent_unit: "  ".to_string(),
                 space: " ".to_string(),
                 newline: "\n".to_string(),
+                prefer_tail_arrays: false,
             },
         );
         assert_snapshot!("arena_render_single", out);

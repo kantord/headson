@@ -54,6 +54,12 @@ struct Cli {
     )]
     global_budget: Option<usize>,
     #[arg(
+        long = "tail",
+        default_value_t = false,
+        help = "Prefer the end of strings when truncating. Arrays unaffected for now."
+    )]
+    tail: bool,
+    #[arg(
         value_name = "INPUT",
         value_hint = clap::ValueHint::FilePath,
         num_args = 0..,
@@ -225,6 +231,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         indent_unit,
         space,
         newline,
+        prefer_tail_arrays: cli.tail,
     }
 }
 
@@ -241,5 +248,6 @@ fn get_priority_config(
     headson::PriorityConfig {
         max_string_graphemes: cli.string_cap,
         array_max_items: (per_file_budget / 2).max(1),
+        prefer_tail_arrays: cli.tail,
     }
 }

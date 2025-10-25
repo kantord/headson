@@ -25,6 +25,7 @@ fn render_config(
         indent_unit,
         space,
         newline,
+        prefer_tail_arrays: false,
     })
 }
 
@@ -32,6 +33,7 @@ fn priority_config(per_file_budget: usize) -> PriorityConfig {
     PriorityConfig {
         max_string_graphemes: 500,
         array_max_items: (per_file_budget / 2).max(1),
+        prefer_tail_arrays: false,
     }
 }
 
