@@ -80,9 +80,21 @@ jobs:
             exit 1
           fi
           echo "Using version: ${ROOT_VER}"
-          if [ "${RUNNER_OS:-}" = "macOS" ]; then SED_INPLACE=(-i ''); else SED_INPLACE=(-i); fi
-          sed "${SED_INPLACE[@]}" -E "0,/^version[[:space:]]*=[[:space:]]*\".*\"/s//version = \"${ROOT_VER}\"/" python/Cargo.toml
-          sed "${SED_INPLACE[@]}" -E "0,/^version[[:space:]]*=[[:space:]]*\".*\"/s//version = \"${ROOT_VER}\"/" pyproject.toml
+          update_version() {
+            local file="$1"
+            local tmp="${file}.tmp"
+            awk -v ver="${ROOT_VER}" '
+              BEGIN{ done=0 }
+              done==0 && $0 ~ /^[[:space:]]*version[[:space:]]*=/ {
+                sub(/"[^"]*"/, "\"" ver "\"");
+                done=1
+              }
+              { print }
+            ' "$file" > "$tmp"
+            mv "$tmp" "$file"
+          }
+          update_version python/Cargo.toml
+          update_version pyproject.toml
           echo "Synced versions in python/Cargo.toml and pyproject.toml"
           # Assert drift is gone
           PY_VER=$(awk -F '"' '/^version[[:space:]]*=/ {print $2; exit}' pyproject.toml)
