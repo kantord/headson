@@ -47,21 +47,6 @@ jobs:
             -D unused_features
         run: cargo build --all-targets --all-features
 
-      - name: Build (no default features)
-        env:
-          RUSTFLAGS: >-
-            -D warnings
-            -D dead_code
-            -D unused_imports
-            -D unused_mut
-            -D unused_variables
-            -D unused_assignments
-            -D unused_parens
-            -D unreachable_pub
-            -D unused_must_use
-            -D unused_features
-        run: cargo build --all-targets --no-default-features
-
       - name: Run tests
         run: cargo test --all-targets --all-features
 

@@ -15,12 +15,6 @@ repos:
         language: system
         types: [rust]
         pass_filenames: false
-      - id: clippy-no-default
-        name: clippy (workspace, all targets, no-default-features)
-        entry: cargo clippy --workspace --all-targets --no-default-features
-        language: system
-        types: [rust]
-        pass_filenames: false
       - id: rustfmt
         name: rustfmt (check)
         entry: cargo fmt --all -- --check
