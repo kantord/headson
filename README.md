@@ -153,18 +153,27 @@ print(
 ```mermaid
 flowchart TD
     subgraph Deserialization
+        direction TB
+        ZD1[" "]:::spacer
         A["Input file(s)"]
         A -- Single --> C["Parse into optimized tree representation"]
         A -- Multiple --> D["Parse each file and wrap into a fileset object"]
         D --> C
+        ZD2[" "]:::spacer
     end
     subgraph Prioritization
+        direction TB
+        ZP1[" "]:::spacer
         E["Build priority order"]
         F["Choose top N nodes"]
+        ZP2[" "]:::spacer
     end
     subgraph Serialization
+        direction TB
+        ZS1[" "]:::spacer
         G["Render attempt"]
         H["Output preview string"]
+        ZS2[" "]:::spacer
     end
     C --> E
     E --> F
@@ -175,6 +184,7 @@ flowchart TD
     classDef des fill:#eaf2ff,stroke:#3b82f6,stroke-width:1px,color:#0f172a;
     classDef prio fill:#ecfdf5,stroke:#10b981,stroke-width:1px,color:#064e3b;
     classDef ser fill:#fff1f2,stroke:#f43f5e,stroke-width:1px,color:#7f1d1d;
+    classDef spacer fill:transparent,stroke:transparent,stroke-width:0px;
     class A,C,D des;
     class E,F prio;
     class G,H ser;
