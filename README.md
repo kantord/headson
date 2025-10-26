@@ -43,8 +43,9 @@ If you’re comfortable with tools like `head` and `tail`, use `headson` when yo
 
 Common flags:
 
-- `-n, --budget <BYTES>`: per‑file output budget. When multiple input files are provided, the total budget equals `<BYTES> * number_of_inputs`.
-- `-N, --global-budget <BYTES>`: total output budget across all inputs. Useful when you want a fixed-size preview across many files (may omit entire files). Mutually exclusive with `--budget`.
+- `-n, --budget <BYTES>`: per‑file output budget. When multiple input files are provided, the default total budget equals `<BYTES> * number_of_inputs`.
+- `-N, --global-budget <BYTES>`: total output budget across all inputs. Useful when you want a fixed-size preview across many files (may omit entire files).
+  - When used together with `--budget`, the final total budget is `min(global, per_file * number_of_inputs)`. Files are only truncated if they don't fit into this final global limit, and no single file expands beyond the per‑file budget.
 - `-f, --template <json|pseudo|js>`: output style (default: `pseudo`)
 - `-m, --compact`: no indentation, no spaces, no newlines
 - `--no-newline`: single line output

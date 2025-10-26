@@ -1,0 +1,6 @@
+---
+source: tests/combined_limits.rs
+expression: out_both
+---
+"quote \" and backslash \\ and newline \n and tab \t and null \u0000"
+

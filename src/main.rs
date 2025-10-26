@@ -17,7 +17,7 @@ type IgnoreNotices = Vec<String>;
     about = "Get a small but useful preview of a JSON file"
 )]
 struct Cli {
-    #[arg(short = 'n', long = "budget", conflicts_with = "global_budget")]
+    #[arg(short = 'n', long = "budget")]
     budget: Option<usize>,
     #[arg(short = 'f', long = "template", value_enum, default_value_t = Template::Pseudo)]
     template: Template,
@@ -49,8 +49,7 @@ struct Cli {
         short = 'N',
         long = "global-budget",
         value_name = "BYTES",
-        conflicts_with = "budget",
-        help = "Total output budget across all inputs; useful to keep multiple files within a fixed overall output size (may omit entire files)."
+        help = "Total output budget across all inputs. When combined with --budget, the effective global limit is the smaller of the two."
     )]
     global_budget: Option<usize>,
     #[arg(
@@ -101,11 +100,11 @@ fn main() -> Result<()> {
 }
 
 fn compute_effective_budget(cli: &Cli, input_count: usize) -> usize {
-    if let Some(g) = cli.global_budget {
-        g
-    } else {
-        let per_file = cli.budget.unwrap_or(500);
-        per_file.saturating_mul(input_count)
+    match (cli.global_budget, cli.budget) {
+        (Some(g), Some(n)) => g.min(n.saturating_mul(input_count)),
+        (Some(g), None) => g,
+        (None, Some(n)) => n.saturating_mul(input_count),
+        (None, None) => 500usize.saturating_mul(input_count),
     }
 }
 
@@ -114,7 +113,14 @@ fn compute_priority(
     effective_budget: usize,
     input_count: usize,
 ) -> headson::PriorityConfig {
-    let per_file_for_priority = (effective_budget / input_count.max(1)).max(1);
+    let per_file_for_priority =
+        if cli.global_budget.is_some() && cli.budget.is_some() {
+            // When both limits are provided, base per-file heuristics on the explicit
+            // per-file budget rather than a split of the (min) global budget.
+            cli.budget.unwrap().max(1)
+        } else {
+            (effective_budget / input_count.max(1)).max(1)
+        };
     get_priority_config(per_file_for_priority, cli)
 }
 

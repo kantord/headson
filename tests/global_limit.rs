@@ -139,13 +139,31 @@ fn global_limit_can_omit_entire_files() {
 }
 
 #[test]
-fn budget_and_global_limit_conflict() {
-    let paths = ["tests/fixtures/explicit/object_small.json"];
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let assert = cmd
-        .args(["-f", "json", "-n", "200", "-N", "100", paths[0]])
-        .assert();
-    assert!(!assert.get_output().status.success(), "should fail");
+fn budget_and_global_limit_can_be_used_together() {
+    let path = "tests/fixtures/explicit/object_small.json";
+    // When both are set, the effective global limit is min(n, N).
+    // Here min(200, 100) = 100; using both should match using only -N 100.
+    let mut cmd_both = Command::cargo_bin("headson").expect("bin");
+    let out_both = cmd_both
+        .args(["-f", "json", "-n", "200", "-N", "100", path])
+        .assert()
+        .success();
+    let stdout_both =
+        String::from_utf8_lossy(&out_both.get_output().stdout).into_owned();
+
+    let mut cmd_global_only = Command::cargo_bin("headson").expect("bin");
+    let out_global_only = cmd_global_only
+        .args(["-f", "json", "-N", "100", path])
+        .assert()
+        .success();
+    let stdout_global_only =
+        String::from_utf8_lossy(&out_global_only.get_output().stdout)
+            .into_owned();
+
+    assert_eq!(
+        stdout_both, stdout_global_only,
+        "combined limits should behave like -N=min(n,N)"
+    );
 }
 
 #[test]
