@@ -51,6 +51,7 @@ pub enum ArrayBias {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum ArraySamplerStrategy {
     Default,
+    Tail,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]

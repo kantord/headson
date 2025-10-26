@@ -1,49 +1,19 @@
-//! Deterministic, low-overhead array sampling for streaming ingest.
-//!
-//! Goals:
-//! - Single pass over the input (serde streaming), no backtracking.
-//! - Parse only selected elements; skip others via `IgnoredAny`.
-//! - Stable, deterministic selection via a cheap 64-bit mix (SplitMix64-like)
-//!   with a fixed, cap-independent seed.
-//! - Preserve edges and coverage: always include a small head prefix (first 3),
-//!   then greedily include part of the head of the middle, then include more
-//!   items by a fixed predicate until the per-array cap is reached.
-//! - Record original indices and total length for accurate omission info and
-//!   internal gap markers in display templates.
-//!
-//! Rationale:
-//! - Prefix-only ingest is very fast but never sees mid/tail.
-//! - Reservoir sampling often implies extra parsing/replacements or RNG state.
-//! - A stateless, per-index inclusion test keeps costs tiny and predictable.
-//! - Hashing indices avoids periodic aliasing in selection.
-
 use serde::de::{IgnoredAny, SeqAccess};
 
-use super::builder::JsonTreeBuilder;
-
-/// Result of sampling a streamed array.
-/// - `children`: arena ids of kept children in kept order
-/// - `indices`: original indices of the kept children (may be empty if contiguous)
-/// - `total_len`: total number of elements encountered in the array
-pub(crate) struct SampledArray {
-    pub children: Vec<usize>,
-    pub indices: Vec<usize>,
-    pub total_len: usize,
-}
+use super::{JsonTreeBuilder, SampledArray};
 
 struct PhaseState {
     idx: usize,
     kept: usize,
 }
 
-struct SampleOut<'a> {
+struct SampleAccumulator<'a> {
     children: &'a mut Vec<usize>,
     indices: &'a mut Vec<usize>,
 }
 
 #[inline]
 fn mix64(mut x: u64) -> u64 {
-    // SplitMix64-style mixer: cheap and with good avalanche
     x ^= x >> 30;
     x = x.wrapping_mul(0xbf58_476d_1ce4_e5b9);
     x ^= x >> 27;
@@ -51,8 +21,6 @@ fn mix64(mut x: u64) -> u64 {
     x ^ (x >> 31)
 }
 
-// Deterministic, cap-independent acceptance predicate.
-// Uses a fixed seed so the accepted set per index is stable across budgets.
 #[inline]
 fn accept_index(i: u64) -> bool {
     const SEED: u64 = 0x9e37_79b9_7f4a_7c15;
@@ -61,15 +29,11 @@ fn accept_index(i: u64) -> bool {
     ((h >> 32) as u32) < THRESH
 }
 
-/// Sample an array from a serde `SeqAccess` without backtracking.
-///
-/// Returns (children_ids, original_indices, total_length).
-#[inline]
 fn parse_keep<'de, A>(
     seq: &mut A,
     builder: &JsonTreeBuilder,
     idx: usize,
-    out: &mut SampleOut<'_>,
+    out: &mut SampleAccumulator<'_>,
 ) -> Result<bool, A::Error>
 where
     A: SeqAccess<'de>,
@@ -85,7 +49,6 @@ where
     }
 }
 
-#[inline]
 fn skip_one<'de, A>(seq: &mut A) -> Result<bool, A::Error>
 where
     A: SeqAccess<'de>,
@@ -93,14 +56,13 @@ where
     Ok(seq.next_element::<IgnoredAny>()?.is_some())
 }
 
-#[inline]
 fn phase_keep_first<'de, A>(
     seq: &mut A,
     builder: &JsonTreeBuilder,
     cap: usize,
     keep_first: usize,
     state: &mut PhaseState,
-    out: &mut SampleOut<'_>,
+    out: &mut SampleAccumulator<'_>,
 ) -> Result<bool, A::Error>
 where
     A: SeqAccess<'de>,
@@ -115,14 +77,13 @@ where
     Ok(false)
 }
 
-#[inline]
 fn phase_greedy<'de, A>(
     seq: &mut A,
     builder: &JsonTreeBuilder,
     cap: usize,
     greedy_remaining: &mut usize,
     state: &mut PhaseState,
-    out: &mut SampleOut<'_>,
+    out: &mut SampleAccumulator<'_>,
 ) -> Result<bool, A::Error>
 where
     A: SeqAccess<'de>,
@@ -138,13 +99,12 @@ where
     Ok(false)
 }
 
-#[inline]
 fn phase_random<'de, A>(
     seq: &mut A,
     builder: &JsonTreeBuilder,
     cap: usize,
     state: &mut PhaseState,
-    out: &mut SampleOut<'_>,
+    out: &mut SampleAccumulator<'_>,
 ) -> Result<(), A::Error>
 where
     A: SeqAccess<'de>,
@@ -172,7 +132,6 @@ where
     A: SeqAccess<'de>,
 {
     if cap == 0 {
-        // Drain the sequence cheaply and report total length
         let mut total = 0usize;
         while (seq.next_element::<IgnoredAny>()?).is_some() {
             total += 1;
@@ -186,27 +145,23 @@ where
 
     let mut local_children: Vec<usize> = Vec::new();
     let mut local_indices: Vec<usize> = Vec::new();
-    // Reserve conservatively to avoid huge allocations when cap is large
     let reserve = cap.min(4096);
     local_children.reserve(reserve);
     local_indices.reserve(reserve);
 
     let mut state = PhaseState { idx: 0, kept: 0 };
 
-    // Always keep the first F items (up to cap)
     const F: usize = 3;
     let keep_first = F.min(cap);
-    // Greedy head-of-middle: take about half of the remaining budget eagerly
     let mut greedy_remaining = (cap.saturating_sub(keep_first)) / 2;
 
-    // Phase 1: keep first few
     if phase_keep_first(
         seq,
         builder,
         cap,
         keep_first,
         &mut state,
-        &mut SampleOut {
+        &mut SampleAccumulator {
             children: &mut local_children,
             indices: &mut local_indices,
         },
@@ -217,14 +172,13 @@ where
             total_len: state.idx,
         });
     }
-    // Phase 2: greedy middle head
     if phase_greedy(
         seq,
         builder,
         cap,
         &mut greedy_remaining,
         &mut state,
-        &mut SampleOut {
+        &mut SampleAccumulator {
             children: &mut local_children,
             indices: &mut local_indices,
         },
@@ -235,19 +189,17 @@ where
             total_len: state.idx,
         });
     }
-    // Phase 3: probabilistic accept for the remainder
     phase_random(
         seq,
         builder,
         cap,
         &mut state,
-        &mut SampleOut {
+        &mut SampleAccumulator {
             children: &mut local_children,
             indices: &mut local_indices,
         },
     )?;
 
-    // Drain the remainder to compute total length accurately
     while skip_one(seq)? {
         state.idx = state.idx.saturating_add(1);
     }
@@ -257,32 +209,4 @@ where
         indices: local_indices,
         total_len: state.idx,
     })
-}
-
-//
-// Pluggable sampler API (enum-based, object-safe for easy storage)
-//
-
-#[derive(Copy, Clone, Debug, Default)]
-pub(crate) enum ArraySamplerKind {
-    #[default]
-    Default,
-}
-
-impl ArraySamplerKind {
-    pub(crate) fn sample_stream<'de, A>(
-        self,
-        seq: &mut A,
-        builder: &JsonTreeBuilder,
-        cap: usize,
-    ) -> Result<SampledArray, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        match self {
-            ArraySamplerKind::Default => {
-                super::array_sample::sample_stream(seq, builder, cap)
-            }
-        }
-    }
 }
