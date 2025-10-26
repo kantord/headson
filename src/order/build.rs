@@ -130,6 +130,13 @@ impl<'a> Scope<'a> {
             let child_kind = self.arena.nodes[child_arena_id].kind;
             let child_priority_index = *self.next_pq_id;
             *self.next_pq_id += 1;
+            // Original index in source array if tracked; fall back to kept index.
+            let orig_index = if node.arr_indices_len > 0 {
+                let start = node.arr_indices_start;
+                self.arena.arr_indices[start + i]
+            } else {
+                i
+            };
             let idx_for_priority: usize = if self.config.prefer_tail_arrays {
                 kept.saturating_sub(1).saturating_sub(i)
             } else {
@@ -153,7 +160,7 @@ impl<'a> Scope<'a> {
                         bool_value: child_node.bool_value,
                         string_value: child_node.string_value.clone(),
                     },
-                    index_in_parent_array: Some(i),
+                    index_in_parent_array: Some(orig_index),
                 },
             );
             if *self.next_pq_id >= self.safety_cap {

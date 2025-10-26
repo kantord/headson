@@ -25,6 +25,42 @@ pub(crate) struct RenderScope<'a> {
 }
 
 impl<'a> RenderScope<'a> {
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Small selection logic for H/M/T sampling kept separate for clarity"
+    )]
+    fn maybe_downsample_array(
+        &self,
+        children_pairs: &mut Vec<ArrayChildPair>,
+        kept: &mut usize,
+        omitted: usize,
+    ) {
+        if self.config.template == crate::OutputTemplate::Json {
+            return;
+        }
+        if *kept <= 3 || omitted == 0 {
+            return;
+        }
+        let first = children_pairs.first().cloned();
+        let last = children_pairs.last().cloned();
+        let mid = children_pairs.get(*kept / 2).cloned();
+        let mut sampled: Vec<ArrayChildPair> = Vec::new();
+        if let Some(f) = first {
+            sampled.push(f);
+        }
+        if let Some(m) = mid {
+            if sampled.last().map(|p| p.0) != Some(m.0) {
+                sampled.push(m);
+            }
+        }
+        if let Some(l) = last {
+            if sampled.last().map(|p| p.0) != Some(l.0) {
+                sampled.push(l);
+            }
+        }
+        *children_pairs = sampled;
+        *kept = children_pairs.len();
+    }
     fn render_has_newline(&self, s: &str) -> bool {
         let nl = &self.config.newline;
         if nl.is_empty() {
@@ -197,12 +233,15 @@ impl<'a> RenderScope<'a> {
         inline: bool,
     ) -> String {
         let config = self.config;
-        let (children_pairs, kept) = self.gather_array_children(id, depth);
+        let (mut children_pairs, mut kept) =
+            self.gather_array_children(id, depth);
         let node = &self.order.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         if kept == 0 && omitted == 0 {
             return "[]".to_string();
         }
+        // Optional downsampling inside the kept window for display templates.
+        self.maybe_downsample_array(&mut children_pairs, &mut kept, omitted);
         let ctx = ArrayCtx {
             children: children_pairs,
             children_len: kept,
