@@ -82,13 +82,13 @@ def test_tail_affects_arrays_pseudo():
         text,
         template="pseudo",
         character_budget=30,
-        tail=True,
+        sampling="tail",
     )
     out_head = headson.summarize(
         text,
         template="pseudo",
         character_budget=30,
-        tail=False,
+        sampling="balanced",
     )
     assert out_tail != out_head
     # In tail mode (non-compact by default), the first non-empty line after '['
@@ -116,13 +116,13 @@ def test_tail_affects_arrays_js():
         text,
         template="js",
         character_budget=30,
-        tail=True,
+        sampling="tail",
     )
     out_head = headson.summarize(
         text,
         template="js",
         character_budget=30,
-        tail=False,
+        sampling="balanced",
     )
     assert out_tail != out_head
     # Tail mode may render as multi-line (with '[' on its own line) or as a
@@ -154,7 +154,7 @@ def test_tail_json_remains_strict():
         text,
         template="json",
         character_budget=30,
-        tail=True,
+        sampling="tail",
     )
     # Valid JSON and no visual omission markers.
     json.loads(out)

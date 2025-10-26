@@ -4,10 +4,13 @@ Minimal Python API for the `headson` JSON preview renderer.
 
 Currently exported function:
 
-- `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None, tail: bool = False) -> str`
+- `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None, sampling: str = "balanced") -> str`
   - `template`: one of `"json" | "pseudo" | "js"`.
   - `character_budget`: maximum output size in characters (defaults to 500 if not set).
-  - `tail`: prefer the end of arrays when truncating; strings are unaffected. Only affects display templates (`pseudo`/`js`); `json` remains strict JSON with no annotations.
+  - `sampling`: one of `"balanced" | "head" | "tail"`.
+    - `balanced`: default strategy (mix of head/middle/tail).
+    - `head`: keep the first N items in arrays.
+    - `tail`: keep the last N items in arrays and render tail-oriented markers in pseudo/js.
 
 Examples:
 
@@ -22,7 +25,7 @@ print(headson.summarize('{"a": 1, "b": {"c": 2}}', template="json", character_bu
 
 # JS template with tail preference: prefer the end of arrays when truncating
 arr = ','.join(str(i) for i in range(100))
-print(headson.summarize('{"arr": [' + arr + ']}', template="js", character_budget=60, tail=True))
+print(headson.summarize('{"arr": [' + arr + ']}', template="js", character_budget=60, sampling="tail"))
 
 # Note: tail mode affects only pseudo/js display templates; the json template stays strict.
 ```
