@@ -9,7 +9,7 @@
     "clusterPadding": 28
   },
   "flowchart": {
-    "htmlLabels": true,
+    "htmlLabels": false,
     "wrap": true,
     "useMaxWidth": true,
     "ranker": "tight-tree",

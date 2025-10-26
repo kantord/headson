@@ -9,6 +9,8 @@ svg { --m-text: #0f172a; /* slate-900 */
       --m-cluster-bg: #f8fafc; /* zinc-50 */
       --m-cluster-border: #e5e7eb; /* zinc-200 */
       --m-cluster-bg-opacity: 0.85;
+      --m-cluster-label-bg: #ffffff;
+      --m-cluster-label-fg: #0f172a;
       --m-des-fill: #eaf2ff; --m-des-stroke: #3b82f6;
       --m-pri-fill: #ecfdf5; --m-pri-stroke: #10b981;
       --m-ser-fill: #fff1f2; --m-ser-stroke: #f43f5e; }
@@ -21,6 +23,8 @@ svg { --m-text: #0f172a; /* slate-900 */
         --m-cluster-bg: #0b1220; /* deep slate */
         --m-cluster-border: #1f2937; /* slate-800 */
         --m-cluster-bg-opacity: 0.75;
+        --m-cluster-label-bg: #000000;
+        --m-cluster-label-fg: #ffffff;
         --m-des-fill: #0b1220; --m-des-stroke: #60a5fa; /* deeper blue bg, soft blue border */
         --m-pri-fill: #052e2b; --m-pri-stroke: #34d399; /* deep teal bg, green border */
         --m-ser-fill: #2a0f12; --m-ser-stroke: #fb7185; /* deep rose bg, rose border */ }
@@ -52,24 +56,16 @@ svg .ser rect { fill: var(--m-ser-fill) !important; }
 /* Cluster boxes invisible; labels styled */
 /* Subgraphs: no background or border, only label visible */
 svg g.cluster rect { fill: transparent !important; stroke: transparent !important; }
+/* Subgraph label sizing/styling (SVG text labels, htmlLabels=false) */
 svg .clusterLabel > text, svg .cluster-label > text {
+  font-size: 22px !important;
+  font-weight: 700 !important;
   fill: var(--m-text) !important;
-  font-size: 20px !important;
-  font-weight: 600;
-  paint-order: stroke fill;
-  stroke: var(--m-label-outline);
-  stroke-width: 6px;
-  stroke-opacity: 1;
-  stroke-linejoin: round;
 }
 
 /* Improve subgraph label contrast in dark mode */
 @media (prefers-color-scheme: dark) {
-  svg .clusterLabel > text, svg .cluster-label > text {
-    fill: #ffffff !important;
-    stroke: #000000;
-    stroke-opacity: 1;
-    stroke-width: 6px;
-    stroke-linejoin: round;
-  }
+  svg .clusterLabel > text, svg .cluster-label > text { fill: var(--m-text) !important; }
 }
+
+/* No HTML labels when htmlLabels=false */
