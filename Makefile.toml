@@ -1,0 +1,42 @@
+###############################################################################
+# cargo-make tasks
+#
+# Usage:
+#   cargo make diagrams           # generate all diagrams
+#   cargo make diagram-algorithm  # generate the algorithm diagram only
+#
+# This uses mermaid-cli (mmdc). If you don't have it installed, the task will
+# try to use npx to run @mermaid-js/mermaid-cli without a global install.
+###############################################################################
+
+[config]
+skip_core_tasks = true
+
+[tasks.default]
+description = "Generate diagrams (default task)"
+category = "Documentation"
+dependencies = ["diagrams"]
+
+[tasks.diagrams]
+description = "Generate all diagrams (SVG, transparent)"
+category = "Documentation"
+dependencies = ["diagram-algorithm"]
+
+[tasks.diagram-algorithm]
+description = "Render diagrams/algorithm.mmd -> assets/algorithm.svg"
+category = "Documentation"
+script_runner = "bash"
+script = [
+    """
+    set -euo pipefail
+    echo "[diagram] generating assets/algorithm.svg from diagrams/algorithm.mmd"
+    mkdir -p assets
+    if ! command -v npx >/dev/null 2>&1; then
+      echo "Error: 'npx' not found. Please install Node.js (which provides npx)." >&2
+      exit 1
+    fi
+    npx -y @mermaid-js/mermaid-cli@10 mmdc -i diagrams/algorithm.mmd -o assets/algorithm.svg --backgroundColor transparent
+    test -s assets/algorithm.svg || { echo "Error: assets/algorithm.svg not generated" >&2; exit 1; }
+    echo "[diagram] generated assets/algorithm.svg"
+    """,
+]
