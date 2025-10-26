@@ -27,16 +27,13 @@ fn mix64(mut x: u64) -> u64 {
     x ^ (x >> 31)
 }
 
-// Fixed-threshold acceptance to ensure monotonicity w.r.t. budget (cap).
-// The acceptance set does not depend on `cap` or how many items have been
-// kept so far; increasing cap simply includes more of the pre-determined
-// accepted elements encountered earlier in the stream.
+// Deterministic, cap-independent acceptance predicate.
+// Uses a fixed seed so the accepted set per index is stable across budgets.
 #[inline(always)]
-fn should_take(i: u64, seed: u64) -> bool {
-    // Use top 32 bits of the mixed index; accept when below threshold.
-    // Threshold ~ 0.5 density; tune if needed.
-    const THRESH: u32 = 0x8000_0000;
-    let h = mix64(i ^ seed);
+fn accept_index(i: u64) -> bool {
+    const SEED: u64 = 0x9e37_79b9_7f4a_7c15;
+    const THRESH: u32 = 0x8000_0000; // ~50%
+    let h = mix64(i ^ SEED);
     ((h >> 32) as u32) < THRESH
 }
 
@@ -72,12 +69,15 @@ where
     local_children.reserve(reserve);
     local_indices.reserve(reserve);
 
-    let hash_seed: u64 = 0x9e37_79b9_7f4a_7c15u64 ^ (cap as u64);
+    let mut idx: usize = 0;
+    let mut kept: usize = 0;
 
-    let mut idx: u64 = 0;
-    let mut kept = 0usize;
+    // Always keep the first F items (up to cap)
+    const F: usize = 3;
+    let keep_first = F.min(cap);
+    // Greedy head-of-middle: take about half of the remaining budget eagerly
+    let mut greedy_remaining = (cap.saturating_sub(keep_first)) / 2;
 
-    const SMALL_FULL: u64 = 8; // fully include small arrays up to this size
     loop {
         if kept >= cap {
             // Budget exhausted: fast skip remainder
@@ -87,8 +87,8 @@ where
             break;
         }
 
-        if idx == 0 {
-            // Always keep first element (index 0)
+        if idx < keep_first {
+            // Keep first few items unconditionally
             let cid = {
                 let de = builder.seed();
                 match seq.next_element_seed(de)? {
@@ -97,13 +97,13 @@ where
                 }
             };
             local_children.push(cid);
-            local_indices.push(0);
+            local_indices.push(idx);
             kept += 1;
             idx = idx.saturating_add(1);
             continue;
         }
 
-        if idx < SMALL_FULL || should_take(idx, hash_seed) {
+        if greedy_remaining > 0 {
             let cid = {
                 let de = builder.seed();
                 match seq.next_element_seed(de)? {
@@ -112,13 +112,33 @@ where
                 }
             };
             local_children.push(cid);
-            local_indices.push(idx as usize);
+            local_indices.push(idx);
             kept += 1;
-        } else if (seq.next_element::<IgnoredAny>()?).is_none() {
-            break;
+            greedy_remaining = greedy_remaining.saturating_sub(1);
+            idx = idx.saturating_add(1);
+            continue;
+        }
+
+        // Probabilistic accept for the remainder, deterministic and cap-independent
+        if accept_index(idx as u64) {
+            let cid = {
+                let de = builder.seed();
+                match seq.next_element_seed(de)? {
+                    Some(c) => c,
+                    None => break,
+                }
+            };
+            local_children.push(cid);
+            local_indices.push(idx);
+            kept += 1;
+        } else {
+            // Skip cheaply without parsing the value
+            if (seq.next_element::<IgnoredAny>()?).is_none() {
+                break;
+            }
         }
         idx = idx.saturating_add(1);
     }
 
-    Ok((local_children, local_indices, idx as usize))
+    Ok((local_children, local_indices, idx))
 }

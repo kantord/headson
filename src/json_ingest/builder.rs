@@ -93,15 +93,25 @@ impl JsonTreeBuilder {
         let mut a = self.arena.borrow_mut();
         let children_start = a.children.len();
         a.children.extend(local_children);
-        let arr_indices_start = if local_indices.is_empty() {
-            0
+
+        // Detect contiguous indices 0..kept-1 to skip storing arr_indices data
+        let contiguous = local_indices.len() == kept
+            && local_indices
+                .iter()
+                .enumerate()
+                .all(|(i, &idx)| idx == i);
+
+        let (arr_indices_start, pushed_len) = if kept == 0 || contiguous {
+            (0usize, 0usize)
+        } else if local_indices.is_empty() {
+            (0usize, 0usize)
         } else {
             let start = a.arr_indices.len();
             a.arr_indices.extend(local_indices);
-            start
+            let pushed = a.arr_indices.len().saturating_sub(start);
+            (start, pushed)
         };
-        // Compute pushed count before taking a mutable borrow to the node
-        let pushed = a.arr_indices.len().saturating_sub(arr_indices_start);
+
         let n = &mut a.nodes[id];
         n.kind = NodeKind::Array;
         n.children_start = children_start;
@@ -109,7 +119,7 @@ impl JsonTreeBuilder {
         n.array_len = Some(total);
         n.arr_indices_start = arr_indices_start;
         // When no indices were pushed, mark len=0 to indicate contiguous 0..kept
-        n.arr_indices_len = pushed.min(kept);
+        n.arr_indices_len = pushed_len.min(kept);
     }
 
     fn finish_object(
