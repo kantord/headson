@@ -142,7 +142,8 @@ impl<'a> Scope<'a> {
                 i
             };
             let extra: u128 = if self.config.prefer_tail_arrays {
-                let idx_for_priority: usize = kept.saturating_sub(1).saturating_sub(i);
+                let idx_for_priority: usize =
+                    kept.saturating_sub(1).saturating_sub(i);
                 let ii = idx_for_priority as u128;
                 ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT
             } else {
@@ -154,12 +155,11 @@ impl<'a> Scope<'a> {
                     super::types::ArrayBias::HeadMidTail => {
                         let mid = kept.saturating_sub(1) / 2;
                         let d_head = i as isize;
-                        let d_tail = kept.saturating_sub(1) as isize - i as isize;
+                        let d_tail =
+                            kept.saturating_sub(1) as isize - i as isize;
                         let d_mid = (i as isize - mid as isize).abs();
-                        let d = d_head
-                            .min(d_tail)
-                            .min(d_mid)
-                            .unsigned_abs() as u128;
+                        let d = d_head.min(d_tail).min(d_mid).unsigned_abs()
+                            as u128;
                         d * d * d * ARRAY_INDEX_CUBIC_WEIGHT
                     }
                 }

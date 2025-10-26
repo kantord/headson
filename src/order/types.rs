@@ -15,7 +15,7 @@ impl PriorityConfig {
             max_string_graphemes,
             array_max_items,
             prefer_tail_arrays: false,
-            array_bias: ArrayBias::Head,
+            array_bias: ArrayBias::HeadMidTail,
         }
     }
 }

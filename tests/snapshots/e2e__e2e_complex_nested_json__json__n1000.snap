@@ -9,7 +9,8 @@ expression: stdout
     "pageSize": 20,
     "tags": [
       "alpha",
-      "beta"
+      "gamma",
+      "epsilon"
     ]
   },
   "users": [
@@ -17,7 +18,7 @@ expression: stdout
       "id": 1,
       "name": "Alice Wonderland",
       "profile": {
-        "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+        "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore…",
         "social": {
           "github": "alice",
           "twitter": "@alice",
@@ -26,14 +27,15 @@ expression: stdout
       },
       "roles": [
         "admin",
-        "editor"
+        "editor",
+        "viewer"
       ]
     },
     {
       "id": 2,
       "name": "Bob Builder",
       "profile": {
-        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo co…",
         "social": {
           "github": "bobbuilder",
           "twitter": "@buildWithBob",

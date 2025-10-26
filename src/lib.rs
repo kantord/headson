@@ -19,10 +19,10 @@ mod json_ingest;
 mod order;
 mod serialization;
 mod utils;
+pub use order::types::ArrayBias;
 pub use order::{
     NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
 };
-pub use order::types::ArrayBias;
 
 pub use serialization::types::{OutputTemplate, RenderConfig};
 

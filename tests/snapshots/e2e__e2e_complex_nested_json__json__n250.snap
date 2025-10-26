@@ -8,17 +8,18 @@ expression: stdout
     "page": 1,
     "pageSize": 20,
     "tags": [
-      "a…"
+      "…",
+      "…",
+      "…"
     ]
   },
   "users": [
     {
       "id": 1,
-      "name": "A…",
-      "profile": {
-        "bio": "…"
-      },
+      "name": "…",
+      "profile": {},
       "roles": []
-    }
+    },
+    {}
   ]
 }
