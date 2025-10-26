@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0](https://github.com/kantord/headson/compare/v0.4.0...v0.5.0) - 2025-10-26
+
+### Added
+
+- add --tail flag ([#84](https://github.com/kantord/headson/pull/84))
+
+### Other
+
+- introduce tail sampler ([#81](https://github.com/kantord/headson/pull/81))
+- *(ingest)* introduce pluggable array sampler ([#80](https://github.com/kantord/headson/pull/80))
+- add support for internal array gaps ([#73](https://github.com/kantord/headson/pull/73))
+- add footnotes to algo chart ([#77](https://github.com/kantord/headson/pull/77))
+- add mermaid chart ([#75](https://github.com/kantord/headson/pull/75))
+
 ## [0.4.0](https://github.com/kantord/headson/compare/v0.3.0...v0.4.0) - 2025-10-26
 
 ### Other
