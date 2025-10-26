@@ -152,14 +152,25 @@ print(
 
 ```mermaid
 flowchart TD
-    A["Input file(s)"] -- Single --> C["Parse into optimized tree representation"]
-    A -- Multiple --> D["Parse each file and wrap into a fileset object"]
-    D --> C
-    C --> E["Build priority order"]
-    E --> F["Choose top N nodes"]
-    F --> G["Render attempt"]
+    subgraph Deserialization
+        A["Input file(s)"]
+        A -- Single --> C["Parse into optimized tree representation"]
+        A -- Multiple --> D["Parse each file and wrap into a fileset object"]
+        D --> C
+    end
+    subgraph Prioritization
+        E["Build priority order"]
+        F["Choose top N nodes"]
+    end
+    subgraph Serialization
+        G["Render attempt"]
+        H["Output preview string"]
+    end
+    C --> E
+    E --> F
+    F --> G
     G --> F
-    F --> H["Output preview string"]
+    F --> H
 ```
 
 ## License
