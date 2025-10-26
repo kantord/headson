@@ -57,7 +57,8 @@ Notes:
 
 - With multiple input files:
   - JSON template outputs a single JSON object keyed by the input file paths.
-  - Pseudo and JS templates render file sections with human-readable headers.
+  - Pseudo and JS templates render file sections with human-readable headers when newlines are enabled.
+    - If you use `--compact` or `--no-newline` (both disable newlines), fileset output falls back to standard inline rendering (no per-file headers) to remain compact.
   - Using `--global-budget` may truncate or omit entire files to respect the total budget.
   - The tool finds the largest preview that fits the budget; if even the tiniest preview exceeds it, you still get a minimal, valid preview.
   - When passing file paths, directories and binary files are ignored; a notice is printed to stderr for each (e.g., `Ignored binary file: ./path/to/file`). Stdin mode reads the stream as-is.
@@ -124,7 +125,7 @@ A thin Python extension module is available on PyPI as `headson`.
   - `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None, tail: bool = False) -> str`
     - `template`: one of `"json" | "pseudo" | "js"`
     - `character_budget`: maximum output size in characters (default: 500)
-    - `tail`: prefer the end of arrays when truncating; strings unaffected. Affects only display templates (`pseudo`/`js`); `json` remains strict.
+  - `tail`: prefer the end of arrays when truncating; strings unaffected. Affects only display templates (`pseudo`/`js`); `json` remains strict.
 
 Example:
 
