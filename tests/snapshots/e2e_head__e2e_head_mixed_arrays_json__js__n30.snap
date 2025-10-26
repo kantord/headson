@@ -1,0 +1,5 @@
+---
+source: tests/e2e_head.rs
+expression: stdout
+---
+{ /* 4 more properties */ }

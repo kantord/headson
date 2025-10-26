@@ -1,0 +1,54 @@
+---
+source: tests/e2e_head.rs
+expression: stdout
+---
+{
+  "meta": {
+    "next": null,
+    "page": 1,
+    "pageSize": 20,
+    "tags": [
+      "alpha",
+      /* 1 more items */
+      "gamma",
+      /* 1 more items */
+      "epsilon"
+      /* 2 more items */
+    ]
+  },
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice Wonderland",
+      "profile": {
+        "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed d…",
+        "social": {
+          "github": "alice",
+          "twitter": "@alice",
+          "web": "https://example.com/users/alice"
+        }
+      },
+      "roles": [
+        "admin",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Bob Builder",
+      "profile": {
+        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco la…",
+        "social": {
+          "github": "bobbuilder",
+          "twitter": "@buildWithBob",
+          "web": "https://bob.example.org"
+        }
+      },
+      "roles": [
+        "contributor",
+        "viewer"
+      ]
+    }
+  ]
+}

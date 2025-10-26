@@ -60,6 +60,13 @@ struct Cli {
     )]
     tail: bool,
     #[arg(
+        long = "head",
+        default_value_t = false,
+        conflicts_with = "tail",
+        help = "Prefer the beginning of arrays when truncating (keep first N)."
+    )]
+    head: bool,
+    #[arg(
         value_name = "INPUT",
         value_hint = clap::ValueHint::FilePath,
         num_args = 0..,
@@ -246,6 +253,8 @@ fn get_priority_config(
         array_bias: headson::ArrayBias::HeadMidTail,
         array_sampler: if cli.tail {
             headson::ArraySamplerStrategy::Tail
+        } else if cli.head {
+            headson::ArraySamplerStrategy::Head
         } else {
             headson::ArraySamplerStrategy::Default
         },
