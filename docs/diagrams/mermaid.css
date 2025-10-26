@@ -56,16 +56,20 @@ svg .ser rect { fill: var(--m-ser-fill) !important; }
 /* Cluster boxes invisible; labels styled */
 /* Subgraphs: no background or border, only label visible */
 svg g.cluster rect { fill: transparent !important; stroke: transparent !important; }
-/* Subgraph label sizing/styling (SVG text labels, htmlLabels=false) */
-svg .clusterLabel > text, svg .cluster-label > text {
+/* Subgraph label sizing/styling for both SVG and HTML label renderers */
+svg .clusterLabel > text, svg .cluster-label > text { font-size: 22px !important; font-weight: 700 !important; fill: var(--m-text) !important; }
+/* HTML-based cluster labels (when htmlLabels=true) */
+svg foreignObject .clusterLabel,
+svg foreignObject .cluster-label,
+svg foreignObject div[class*="clusterLabel"],
+svg foreignObject div[class*="cluster-label"] {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 6px;
+  background-color: var(--m-cluster-label-bg) !important;
+  color: var(--m-cluster-label-fg) !important;
   font-size: 22px !important;
   font-weight: 700 !important;
-  fill: var(--m-text) !important;
+  /* Mask nearby edges without outlines */
+  box-shadow: 0 0 0 6px var(--m-cluster-label-bg);
 }
-
-/* Improve subgraph label contrast in dark mode */
-@media (prefers-color-scheme: dark) {
-  svg .clusterLabel > text, svg .cluster-label > text { fill: var(--m-text) !important; }
-}
-
-/* No HTML labels when htmlLabels=false */

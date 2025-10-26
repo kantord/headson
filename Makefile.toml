@@ -37,6 +37,11 @@ script = [
     fi
     npx -y @mermaid-js/mermaid-cli@10 mmdc -i docs/diagrams/algorithm.mmd -o docs/assets/algorithm.svg --backgroundColor transparent --configFile docs/diagrams/mermaid.config.json --cssFile docs/diagrams/mermaid.css
     test -s docs/assets/algorithm.svg || { echo "Error: docs/assets/algorithm.svg not generated" >&2; exit 1; }
+    if command -v node >/dev/null 2>&1; then
+      node docs/diagrams/postprocess.js docs/assets/algorithm.svg || echo "[diagram] postprocess skipped/failed, continuing"
+    else
+      echo "[diagram] node not found; skipping SVG post-process for layering"
+    fi
     echo "[diagram] generated docs/assets/algorithm.svg"
     """,
 ]
