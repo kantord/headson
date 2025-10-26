@@ -224,15 +224,19 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
         A: SeqAccess<'de>,
     {
         let id = self.b.push_default();
-        let (local_children, local_indices, total) =
-            super::array_sample::sample_stream(
-                &mut seq,
-                self.b,
-                self.b.array_cap,
-            )?;
-        let kept = local_children.len();
-        self.b
-            .finish_array(id, kept, total, local_children, local_indices);
+        let sampled = super::array_sample::sample_stream(
+            &mut seq,
+            self.b,
+            self.b.array_cap,
+        )?;
+        let kept = sampled.children.len();
+        self.b.finish_array(
+            id,
+            kept,
+            sampled.total_len,
+            sampled.children,
+            sampled.indices,
+        );
         Ok(id)
     }
 

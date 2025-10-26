@@ -21,14 +21,22 @@ use serde::de::{IgnoredAny, SeqAccess};
 
 use super::builder::JsonTreeBuilder;
 
-type SampleResult = (Vec<usize>, Vec<usize>, usize);
+/// Result of sampling a streamed array.
+/// - `children`: arena ids of kept children in kept order
+/// - `indices`: original indices of the kept children (may be empty if contiguous)
+/// - `total_len`: total number of elements encountered in the array
+pub(crate) struct SampledArray {
+    pub children: Vec<usize>,
+    pub indices: Vec<usize>,
+    pub total_len: usize,
+}
 
 struct PhaseState {
     idx: usize,
     kept: usize,
 }
 
-struct Out<'a> {
+struct SampleOut<'a> {
     children: &'a mut Vec<usize>,
     indices: &'a mut Vec<usize>,
 }
@@ -61,7 +69,7 @@ fn parse_keep<'de, A>(
     seq: &mut A,
     builder: &JsonTreeBuilder,
     idx: usize,
-    out: &mut Out<'_>,
+    out: &mut SampleOut<'_>,
 ) -> Result<bool, A::Error>
 where
     A: SeqAccess<'de>,
@@ -92,7 +100,7 @@ fn phase_keep_first<'de, A>(
     cap: usize,
     keep_first: usize,
     state: &mut PhaseState,
-    out: &mut Out<'_>,
+    out: &mut SampleOut<'_>,
 ) -> Result<bool, A::Error>
 where
     A: SeqAccess<'de>,
@@ -114,7 +122,7 @@ fn phase_greedy<'de, A>(
     cap: usize,
     greedy_remaining: &mut usize,
     state: &mut PhaseState,
-    out: &mut Out<'_>,
+    out: &mut SampleOut<'_>,
 ) -> Result<bool, A::Error>
 where
     A: SeqAccess<'de>,
@@ -136,7 +144,7 @@ fn phase_random<'de, A>(
     builder: &JsonTreeBuilder,
     cap: usize,
     state: &mut PhaseState,
-    out: &mut Out<'_>,
+    out: &mut SampleOut<'_>,
 ) -> Result<(), A::Error>
 where
     A: SeqAccess<'de>,
@@ -159,7 +167,7 @@ pub(crate) fn sample_stream<'de, A>(
     seq: &mut A,
     builder: &JsonTreeBuilder,
     cap: usize,
-) -> Result<SampleResult, A::Error>
+) -> Result<SampledArray, A::Error>
 where
     A: SeqAccess<'de>,
 {
@@ -169,7 +177,11 @@ where
         while (seq.next_element::<IgnoredAny>()?).is_some() {
             total += 1;
         }
-        return Ok((Vec::new(), Vec::new(), total));
+        return Ok(SampledArray {
+            children: Vec::new(),
+            indices: Vec::new(),
+            total_len: total,
+        });
     }
 
     let mut local_children: Vec<usize> = Vec::new();
@@ -194,12 +206,16 @@ where
         cap,
         keep_first,
         &mut state,
-        &mut Out {
+        &mut SampleOut {
             children: &mut local_children,
             indices: &mut local_indices,
         },
     )? {
-        return Ok((local_children, local_indices, state.idx));
+        return Ok(SampledArray {
+            children: local_children,
+            indices: local_indices,
+            total_len: state.idx,
+        });
     }
     // Phase 2: greedy middle head
     if phase_greedy(
@@ -208,12 +224,16 @@ where
         cap,
         &mut greedy_remaining,
         &mut state,
-        &mut Out {
+        &mut SampleOut {
             children: &mut local_children,
             indices: &mut local_indices,
         },
     )? {
-        return Ok((local_children, local_indices, state.idx));
+        return Ok(SampledArray {
+            children: local_children,
+            indices: local_indices,
+            total_len: state.idx,
+        });
     }
     // Phase 3: probabilistic accept for the remainder
     phase_random(
@@ -221,7 +241,7 @@ where
         builder,
         cap,
         &mut state,
-        &mut Out {
+        &mut SampleOut {
             children: &mut local_children,
             indices: &mut local_indices,
         },
@@ -232,5 +252,9 @@ where
         state.idx = state.idx.saturating_add(1);
     }
 
-    Ok((local_children, local_indices, state.idx))
+    Ok(SampledArray {
+        children: local_children,
+        indices: local_indices,
+        total_len: state.idx,
+    })
 }
