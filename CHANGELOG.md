@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/kantord/headson/compare/v0.3.0...v0.4.0) - 2025-10-26
+
+### Other
+
+- set up abi3-based builds for python bindings ([#70](https://github.com/kantord/headson/pull/70))
+- small cleanup ([#69](https://github.com/kantord/headson/pull/69))
+- clarify render inclusion semantics and rename confusing fields ([#66](https://github.com/kantord/headson/pull/66))
+
 ## [0.3.0](https://github.com/kantord/headson/compare/v0.2.5...v0.3.0) - 2025-10-25
 
 ### Added
