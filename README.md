@@ -51,7 +51,8 @@ Common flags:
 - `--no-space`: no space after `:` in objects
 - `--indent <STR>`: indentation unit (default: two spaces)
 - `--string-cap <N>`: max graphemes to consider per string (default: 500)
-- `--tail`: prefer the end of arrays when truncating. Strings are unaffected. In `pseudo`/`js` templates the omission marker appears at the start; `json` remains strict JSON with no annotations.
+- `--head`: prefer the beginning of arrays when truncating (keep first N). Strings are unaffected. In `pseudo`/`js` templates the omission marker appears near the end; `json` remains strict. Mutually exclusive with `--tail`.
+- `--tail`: prefer the end of arrays when truncating (keep last N). Strings are unaffected. In `pseudo`/`js` templates the omission marker appears at the start; `json` remains strict. Mutually exclusive with `--head`.
 
 Notes:
 
@@ -62,6 +63,7 @@ Notes:
   - Using `--global-budget` may truncate or omit entire files to respect the total budget.
   - The tool finds the largest preview that fits the budget; if even the tiniest preview exceeds it, you still get a minimal, valid preview.
   - When passing file paths, directories and binary files are ignored; a notice is printed to stderr for each (e.g., `Ignored binary file: ./path/to/file`). Stdin mode reads the stream as-is.
+  - Head vs Tail sampling: these options bias which part of arrays are kept before rendering. They guarantee the kept segment is contiguous at the chosen side (prefix for `--head`, suffix for `--tail`). Display templates may still insert additional internal gap markers inside that kept segment to honor very small budgets; `json` remains strict and unannotated.
 
 Quick one‑liners:
 

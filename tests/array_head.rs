@@ -21,6 +21,18 @@ fn array_head_pseudo_ellipsis_at_end() {
         out.ends_with("]") && (out.contains("…]") || out.contains("…,]")),
         "expected output to end with '…]' in head mode (pseudo): {out:?}"
     );
+    // Ensure no leading omission marker at the start for head mode.
+    if let Some(open_idx) = out.lines().position(|l| l.trim() == "[") {
+        let first_non_empty = out
+            .lines()
+            .skip(open_idx + 1)
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or("");
+        assert!(
+            !first_non_empty.trim().starts_with('…'),
+            "head mode should not have leading ellipsis: {out:?}"
+        );
+    }
 }
 
 #[test]
@@ -32,6 +44,18 @@ fn array_head_js_comment_last() {
         out.ends_with("]") && out.contains("/*") && out.contains("*/]"),
         "expected omission comment at end in head mode (js): {out:?}"
     );
+    // Ensure no leading omission comment at the start for head mode.
+    if let Some(open_idx) = out.lines().position(|l| l.trim() == "[") {
+        let first_non_empty = out
+            .lines()
+            .skip(open_idx + 1)
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or("");
+        assert!(
+            !first_non_empty.trim().starts_with("/*"),
+            "head mode should not have leading omission comment: {out:?}"
+        );
+    }
 }
 
 #[test]

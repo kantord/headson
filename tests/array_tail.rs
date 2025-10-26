@@ -21,6 +21,29 @@ fn array_tail_pseudo_ellipsis_at_start() {
         out.starts_with("[…]".trim_end_matches(']')) || out.starts_with("[…"),
         "expected output to start with '[…' in tail mode (pseudo): {out:?}"
     );
+    // Ensure no trailing omission marker at the end for tail mode.
+    let last_non_empty = out
+        .lines()
+        .rev()
+        .find(|l| !l.trim().is_empty())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    if last_non_empty == "]" {
+        // Check the preceding non-empty line
+        let prev = out
+            .lines()
+            .rev()
+            .skip(1)
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        assert!(
+            !prev.starts_with('…'),
+            "tail mode should not have trailing ellipsis: {out:?}"
+        );
+    }
 }
 
 #[test]
@@ -32,6 +55,28 @@ fn array_tail_js_comment_first() {
         out.starts_with("[/*"),
         "expected output to start with '[/*' in tail mode (js): {out:?}"
     );
+    // Ensure no trailing omission comment at the end for tail mode.
+    let last_non_empty = out
+        .lines()
+        .rev()
+        .find(|l| !l.trim().is_empty())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    if last_non_empty == "]" {
+        let prev = out
+            .lines()
+            .rev()
+            .skip(1)
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        assert!(
+            !prev.starts_with("/*"),
+            "tail mode should not have trailing omission comment: {out:?}"
+        );
+    }
 }
 
 #[test]
