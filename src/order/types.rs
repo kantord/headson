@@ -7,6 +7,8 @@ pub struct PriorityConfig {
     pub prefer_tail_arrays: bool,
     // Array selection bias for partial renders.
     pub array_bias: ArrayBias,
+    // Array pre-sampling strategy.
+    pub array_sampler: ArraySamplerStrategy,
 }
 
 impl PriorityConfig {
@@ -16,6 +18,7 @@ impl PriorityConfig {
             array_max_items,
             prefer_tail_arrays: false,
             array_bias: ArrayBias::HeadMidTail,
+            array_sampler: ArraySamplerStrategy::Default,
         }
     }
 }
@@ -43,6 +46,11 @@ pub enum ObjectType {
 pub enum ArrayBias {
     Head,
     HeadMidTail,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum ArraySamplerStrategy {
+    Default,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]

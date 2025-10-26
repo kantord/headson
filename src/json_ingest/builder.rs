@@ -5,17 +5,24 @@ use std::cell::RefCell;
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
+use super::array_sample::ArraySamplerKind;
+
 #[derive(Default)]
 pub(crate) struct JsonTreeBuilder {
     arena: RefCell<JsonTreeArena>,
     pub(crate) array_cap: usize,
+    sampler: ArraySamplerKind,
 }
 
 impl JsonTreeBuilder {
-    pub(crate) fn new(array_cap: usize) -> Self {
+    pub(crate) fn new(
+        array_cap: usize,
+        sampler: super::array_sample::ArraySamplerKind,
+    ) -> Self {
         Self {
             arena: RefCell::new(JsonTreeArena::default()),
             array_cap,
+            sampler,
         }
     }
 
@@ -224,15 +231,19 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
         A: SeqAccess<'de>,
     {
         let id = self.b.push_default();
-        let (local_children, local_indices, total) =
-            super::array_sample::sample_stream(
-                &mut seq,
-                self.b,
-                self.b.array_cap,
-            )?;
-        let kept = local_children.len();
-        self.b
-            .finish_array(id, kept, total, local_children, local_indices);
+        let sampled = self.b.sampler.sample_stream(
+            &mut seq,
+            self.b,
+            self.b.array_cap,
+        )?;
+        let kept = sampled.children.len();
+        self.b.finish_array(
+            id,
+            kept,
+            sampled.total_len,
+            sampled.children,
+            sampled.indices,
+        );
         Ok(id)
     }
 
