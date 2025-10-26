@@ -1,0 +1,13 @@
+---
+source: tests/e2e_head.rs
+expression: stdout
+---
+{
+  "deep": [
+    { /* 1 more properties */ },
+    { /* 1 more properties */ }
+  ],
+  "matrix": [ /* 3 more items */ ],
+  "objects": [ /* 3 more items */ ],
+  "strings": [ /* 7 more items */ ]
+}

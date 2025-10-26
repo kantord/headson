@@ -1,5 +1,6 @@
 use serde::de::SeqAccess;
 
+use crate::ArraySamplerStrategy;
 use crate::json_ingest::builder::JsonTreeBuilder;
 
 #[derive(Debug)]
@@ -13,6 +14,7 @@ pub(crate) struct SampledArray {
 pub(crate) enum ArraySamplerKind {
     #[default]
     Default,
+    Head,
     Tail,
 }
 
@@ -30,10 +32,22 @@ impl ArraySamplerKind {
             ArraySamplerKind::Default => {
                 default::sample_stream(seq, builder, cap)
             }
+            ArraySamplerKind::Head => head::sample_stream(seq, builder, cap),
             ArraySamplerKind::Tail => tail::sample_stream(seq, builder, cap),
         }
     }
 }
 
+impl From<ArraySamplerStrategy> for ArraySamplerKind {
+    fn from(strategy: ArraySamplerStrategy) -> Self {
+        match strategy {
+            ArraySamplerStrategy::Default => ArraySamplerKind::Default,
+            ArraySamplerStrategy::Head => ArraySamplerKind::Head,
+            ArraySamplerStrategy::Tail => ArraySamplerKind::Tail,
+        }
+    }
+}
+
 mod default;
+mod head;
 mod tail;

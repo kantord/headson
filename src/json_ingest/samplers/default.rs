@@ -2,6 +2,15 @@ use serde::de::{IgnoredAny, SeqAccess};
 
 use super::{JsonTreeBuilder, SampledArray};
 
+// Tunable sampling constants for the default strategy.
+const RANDOM_ACCEPT_SEED: u64 = 0x9e37_79b9_7f4a_7c15;
+// ~50% acceptance to thin remaining elements in the random phase.
+const RANDOM_ACCEPT_THRESHOLD: u32 = 0x8000_0000;
+// Keep a small, fixed number of items from the head before greedy/random phases.
+const KEEP_FIRST_COUNT: usize = 3;
+// Take roughly half of the remaining capacity greedily after the first items.
+const GREEDY_PORTION_DIVISOR: usize = 2;
+
 struct PhaseState {
     idx: usize,
     kept: usize,
@@ -23,10 +32,8 @@ fn mix64(mut x: u64) -> u64 {
 
 #[inline]
 fn accept_index(i: u64) -> bool {
-    const SEED: u64 = 0x9e37_79b9_7f4a_7c15;
-    const THRESH: u32 = 0x8000_0000; // ~50%
-    let h = mix64(i ^ SEED);
-    ((h >> 32) as u32) < THRESH
+    let h = mix64(i ^ RANDOM_ACCEPT_SEED);
+    ((h >> 32) as u32) < RANDOM_ACCEPT_THRESHOLD
 }
 
 fn parse_keep<'de, A>(
@@ -151,9 +158,9 @@ where
 
     let mut state = PhaseState { idx: 0, kept: 0 };
 
-    const F: usize = 3;
-    let keep_first = F.min(cap);
-    let mut greedy_remaining = (cap.saturating_sub(keep_first)) / 2;
+    let keep_first = KEEP_FIRST_COUNT.min(cap);
+    let mut greedy_remaining =
+        (cap.saturating_sub(keep_first)) / GREEDY_PORTION_DIVISOR;
 
     if phase_keep_first(
         seq,

@@ -1,0 +1,8 @@
+---
+source: tests/e2e_head.rs
+expression: stdout
+---
+{
+  "meta": { … }
+  …
+}

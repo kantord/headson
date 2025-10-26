@@ -2,8 +2,8 @@ mod builder;
 mod samplers;
 use serde::de::DeserializeSeed;
 
+use crate::PriorityConfig;
 use crate::utils::tree_arena::JsonTreeArena;
-use crate::{ArraySamplerStrategy, PriorityConfig};
 use anyhow::Result;
 use builder::JsonTreeBuilder;
 
@@ -22,7 +22,7 @@ pub fn build_json_tree_arena_from_bytes(
     let mut de = simd_json::Deserializer::from_slice(&mut bytes)?;
     let builder = JsonTreeBuilder::new(
         config.array_max_items,
-        map_sampler(config.array_sampler),
+        config.array_sampler.into(),
     );
     let root_id: usize = {
         let seed = builder.seed();
@@ -39,7 +39,7 @@ pub fn build_json_tree_arena_from_many(
 ) -> Result<JsonTreeArena> {
     let builder = JsonTreeBuilder::new(
         config.array_max_items,
-        map_sampler(config.array_sampler),
+        config.array_sampler.into(),
     );
     let mut child_ids: Vec<usize> = Vec::with_capacity(inputs.len());
     let mut keys: Vec<String> = Vec::with_capacity(inputs.len());
@@ -55,13 +55,6 @@ pub fn build_json_tree_arena_from_many(
     arena.root_id = root_id;
     arena.is_fileset = true;
     Ok(arena)
-}
-
-fn map_sampler(kind: ArraySamplerStrategy) -> samplers::ArraySamplerKind {
-    match kind {
-        ArraySamplerStrategy::Default => samplers::ArraySamplerKind::Default,
-        ArraySamplerStrategy::Tail => samplers::ArraySamplerKind::Tail,
-    }
 }
 
 #[cfg(test)]
