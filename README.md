@@ -171,6 +171,13 @@ flowchart TD
     F --> G
     G --> F
     F --> H
+    %% Color classes for categories
+    classDef des fill:#eaf2ff,stroke:#3b82f6,stroke-width:1px,color:#0f172a;
+    classDef prio fill:#ecfdf5,stroke:#10b981,stroke-width:1px,color:#064e3b;
+    classDef ser fill:#fff1f2,stroke:#f43f5e,stroke-width:1px,color:#7f1d1d;
+    class A,C,D des;
+    class E,F prio;
+    class G,H ser;
     style Deserialization fill:transparent,stroke:transparent
     style Prioritization fill:transparent,stroke:transparent
     style Serialization fill:transparent,stroke:transparent
