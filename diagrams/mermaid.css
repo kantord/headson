@@ -1,0 +1,34 @@
+/* Mermaid diagram CSS overrides for good light/dark rendering on GitHub/docs.rs */
+/* Use a GitHub-like sans-serif stack for consistent sizing/flow */
+svg, svg * { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji", sans-serif; }
+
+/* Define light defaults */
+svg { --m-text: #0f172a; /* slate-900 */
+      --m-edge: #334155; /* slate-700 */
+      --m-des-fill: #eaf2ff; --m-des-stroke: #3b82f6;
+      --m-pri-fill: #ecfdf5; --m-pri-stroke: #10b981;
+      --m-ser-fill: #fff1f2; --m-ser-stroke: #f43f5e; }
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  svg { --m-text: #e5e7eb; /* zinc-200 */
+        --m-edge: #cbd5e1; /* slate-300 */
+        --m-des-fill: #0b1220; --m-des-stroke: #60a5fa; /* deeper blue bg, soft blue border */
+        --m-pri-fill: #052e2b; --m-pri-stroke: #34d399; /* deep teal bg, green border */
+        --m-ser-fill: #2a0f12; --m-ser-stroke: #fb7185; /* deep rose bg, rose border */ }
+}
+
+/* General text and edges */
+svg text { fill: var(--m-text) !important; }
+svg .edgePath path, svg path { stroke: var(--m-edge) !important; }
+svg marker path { fill: var(--m-edge) !important; }
+
+/* Node category fills based on classDef in the diagram (des/prio/ser) */
+svg .des rect { fill: var(--m-des-fill) !important; stroke: var(--m-des-stroke) !important; }
+svg .prio rect { fill: var(--m-pri-fill) !important; stroke: var(--m-pri-stroke) !important; }
+svg .ser rect { fill: var(--m-ser-fill) !important; stroke: var(--m-ser-stroke) !important; }
+
+/* Cluster boxes invisible; labels styled */
+svg g.cluster rect { fill: transparent !important; stroke: transparent !important; }
+svg .clusterLabel > text, svg .cluster-label > text { fill: var(--m-text) !important; font-size: 16px; font-weight: 600; }
+
