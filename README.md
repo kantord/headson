@@ -171,6 +171,9 @@ flowchart TD
     F --> G
     G --> F
     F --> H
+    style Deserialization fill:transparent,stroke:transparent
+    style Prioritization fill:transparent,stroke:transparent
+    style Serialization fill:transparent,stroke:transparent
 ```
 
 ## License
