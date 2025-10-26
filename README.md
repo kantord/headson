@@ -156,18 +156,18 @@ flowchart TD
     subgraph Deserialization
         direction TB
         A["Input file(s)"]
-        A -- Single --> C["Parse into optimized tree representation"]
+        A -- Single --> C["Parse into optimized tree representation ¹"]
         A -- Multiple --> D["Parse each file and wrap into a fileset object"]
         D --> C
     end
     subgraph Prioritization
         direction TB
-        E["Build priority order"]
-        F["Choose top N nodes"]
+        E["Build priority order ²"]
+        F["Choose top N nodes ³"]
     end
     subgraph Serialization
         direction TB
-        G["Render attempt"]
+        G["Render attempt ⁴"]
         H["Output preview string"]
     end
     C --> E
@@ -186,6 +186,12 @@ flowchart TD
     style Prioritization fill:transparent,stroke:transparent
     style Serialization fill:transparent,stroke:transparent
 ```
+
+## Footnotes
+- <sup><b>[1]</b></sup> <b>Optimized tree representation</b>: An arena-style tree stored in flat, contiguous buffers. Each node records its kind and value plus index ranges into shared child and key arrays. Arrays are ingested with a cap on kept elements while still tracking total lengths; objects record their property counts. This enables accurate omission info later and minimizes pointer chasing.
+- <sup><b>[2]</b></sup> <b>Priority order</b>: Nodes are scored so previews surface representative structure and values first. Earlier array items are preferred (or the tail when configured), object properties are ordered by key, and strings expand by grapheme with early characters prioritized over very deep expansions.
+- <sup><b>[3]</b></sup> <b>Choose top N nodes (binary search)</b>: Iteratively picks N so that the rendered preview fits within the character budget, looping between “choose N” and a render attempt to converge quickly.
+- <sup><b>[4]</b></sup> <b>Render attempt</b>: Serializes the currently included nodes using the selected template. Omission summaries and per-file section headers appear in display templates (pseudo/js); the json template stays strict JSON with no annotations.
 
 ## License
 
