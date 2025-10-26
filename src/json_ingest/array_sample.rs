@@ -3,15 +3,19 @@
 //! Goals:
 //! - Single pass over the input (serde streaming), no backtracking.
 //! - Parse only selected elements; skip others via `IgnoredAny`.
-//! - Deterministic selection using a cheap 64-bit mix (SplitMix64-like).
-//! - Always include the first element; pick additional items up to `cap - 1`.
-//! - Stable results for the same inputs (seed derived from `cap`).
+//! - Stable, deterministic selection via a cheap 64-bit mix (SplitMix64-like)
+//!   with a fixed, cap-independent seed.
+//! - Preserve edges and coverage: always include a small head prefix (first 3),
+//!   then greedily include part of the head of the middle, then include more
+//!   items by a fixed predicate until the per-array cap is reached.
+//! - Record original indices and total length for accurate omission info and
+//!   internal gap markers in display templates.
 //!
 //! Rationale:
-//! - Prefix-only ingest is very fast but never sees tail elements.
+//! - Prefix-only ingest is very fast but never sees mid/tail.
 //! - Reservoir sampling often implies extra parsing/replacements or RNG state.
 //! - A stateless, per-index inclusion test keeps costs tiny and predictable.
-//! - We avoid periodic aliasing by hashing the index before the modulus test.
+//! - Hashing indices avoids periodic aliasing in selection.
 
 use serde::de::{IgnoredAny, SeqAccess};
 
@@ -29,7 +33,7 @@ struct Out<'a> {
     indices: &'a mut Vec<usize>,
 }
 
-#[inline(always)]
+#[inline]
 fn mix64(mut x: u64) -> u64 {
     // SplitMix64-style mixer: cheap and with good avalanche
     x ^= x >> 30;
@@ -41,7 +45,7 @@ fn mix64(mut x: u64) -> u64 {
 
 // Deterministic, cap-independent acceptance predicate.
 // Uses a fixed seed so the accepted set per index is stable across budgets.
-#[inline(always)]
+#[inline]
 fn accept_index(i: u64) -> bool {
     const SEED: u64 = 0x9e37_79b9_7f4a_7c15;
     const THRESH: u32 = 0x8000_0000; // ~50%
