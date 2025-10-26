@@ -35,7 +35,7 @@ script = [
       echo "Error: 'npx' not found. Please install Node.js (which provides npx)." >&2
       exit 1
     fi
-    npx -y @mermaid-js/mermaid-cli@10 mmdc -i diagrams/algorithm.mmd -o assets/algorithm.svg --backgroundColor transparent --theme neutral --cssFile diagrams/mermaid.css
+    npx -y @mermaid-js/mermaid-cli@10 mmdc -i diagrams/algorithm.mmd -o assets/algorithm.svg --backgroundColor transparent --configFile diagrams/mermaid.config.json --cssFile diagrams/mermaid.css
     test -s assets/algorithm.svg || { echo "Error: assets/algorithm.svg not generated" >&2; exit 1; }
     echo "[diagram] generated assets/algorithm.svg"
     """,

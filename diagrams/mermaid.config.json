@@ -1,0 +1,12 @@
+{
+  "theme": "neutral",
+  "securityLevel": "loose",
+  "flowchart": {
+    "htmlLabels": true,
+    "wrap": true,
+    "padding": 8,
+    "nodeSpacing": 40,
+    "rankSpacing": 40
+  }
+}
+

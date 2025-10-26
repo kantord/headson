@@ -23,6 +23,16 @@ svg text { fill: var(--m-text) !important; }
 svg .edgePath path, svg path { stroke: var(--m-edge) !important; }
 svg marker path { fill: var(--m-edge) !important; }
 
+/* Prefer HTML labels and enable wrapping with a sensible max width */
+svg .nodeLabel, svg .label {
+  display: block;
+  max-width: 320px; /* tweakable */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
 /* Node category fills based on classDef in the diagram (des/prio/ser) */
 svg .des rect { fill: var(--m-des-fill) !important; stroke: var(--m-des-stroke) !important; }
 svg .prio rect { fill: var(--m-pri-fill) !important; stroke: var(--m-pri-stroke) !important; }
@@ -31,4 +41,3 @@ svg .ser rect { fill: var(--m-ser-fill) !important; stroke: var(--m-ser-stroke) 
 /* Cluster boxes invisible; labels styled */
 svg g.cluster rect { fill: transparent !important; stroke: transparent !important; }
 svg .clusterLabel > text, svg .cluster-label > text { fill: var(--m-text) !important; font-size: 16px; font-weight: 600; }
-
