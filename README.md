@@ -152,11 +152,11 @@ print(
 
 ```mermaid
 flowchart TD
-    A["Input file(s)"] --> B{"Single or multiple?"}
-    B -- Single --> X["JsonTreeArena"]
-    B -- Multiple --> D["Parse each and wrap into fileset object"] --> X
-    X --> E["Build priority order"]
-    E --> F["Binary search: choose k"]
+    A["Input file(s)"] -- Single --> C["Parse into internal tree representation"]
+    A -- Multiple --> D["Parse each file and wrap into a fileset object"]
+    D --> C
+    C --> E["Build priority order"]
+    E --> F["Choose top N nodes"]
     F --> G["Render attempt"]
     G --> F
     F --> H["Output preview string"]
