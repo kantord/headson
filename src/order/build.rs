@@ -59,6 +59,21 @@ struct Scope<'a> {
 }
 
 impl<'a> Scope<'a> {
+    fn apply_grep_bias(&self, base: u128, arena_index: Option<usize>) -> u128 {
+        if let Some(ar_id) = arena_index {
+            if self
+                .arena
+                .grep_subtree_match
+                .get(ar_id)
+                .copied()
+                .unwrap_or(false)
+            {
+                // Strongly prioritize nodes on paths to matches.
+                return 0;
+            }
+        }
+        base
+    }
     fn push_child_common(
         &mut self,
         entry: &Entry,
@@ -76,14 +91,7 @@ impl<'a> Scope<'a> {
         // If child is an object, default to Object type.
         self.object_type.push(ObjectType::Object);
         self.children[id].push(NodeId(child_priority_index));
-        let mut score = common.score;
-        if let Some(ar_id) = common.arena_index {
-            if let Some(flag) = self.arena.grep_subtree_match.get(ar_id) {
-                if *flag {
-                    score = score.saturating_sub(GREP_WEAK_BIAS);
-                }
-            }
-        }
+        let score = self.apply_grep_bias(common.score, common.arena_index);
         self.heap.push(Reverse(Entry {
             score,
             priority_index: child_priority_index,
@@ -368,7 +376,7 @@ pub fn build_order(
             .copied()
             .unwrap_or(false)
         {
-            base.saturating_sub(GREP_WEAK_BIAS)
+            0
         } else {
             base
         }

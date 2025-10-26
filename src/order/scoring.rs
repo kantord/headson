@@ -25,5 +25,10 @@ pub(crate) const STRING_INDEX_INFLECTION: usize = 20;
 /// inflection point.
 pub(crate) const STRING_INDEX_QUADRATIC_WEIGHT: u128 = 1;
 
-/// Bias to lift string nodes that match any weak-grep regex.
+// Reserved: previous weak-grep bias constant no longer used after switching to
+// absolute-priority (score=0) for nodes on paths to matches.
+#[allow(
+    dead_code,
+    reason = "kept for documentation/backwards-compat; may be reused"
+)]
 pub(crate) const GREP_WEAK_BIAS: u128 = 1_000_000_000_000;
