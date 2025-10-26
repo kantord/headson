@@ -17,6 +17,18 @@ use serde::de::{IgnoredAny, SeqAccess};
 
 use super::builder::JsonTreeBuilder;
 
+type SampleResult = (Vec<usize>, Vec<usize>, usize);
+
+struct PhaseState {
+    idx: usize,
+    kept: usize,
+}
+
+struct Out<'a> {
+    children: &'a mut Vec<usize>,
+    indices: &'a mut Vec<usize>,
+}
+
 #[inline(always)]
 fn mix64(mut x: u64) -> u64 {
     // SplitMix64-style mixer: cheap and with good avalanche
@@ -40,16 +52,110 @@ fn accept_index(i: u64) -> bool {
 /// Sample an array from a serde `SeqAccess` without backtracking.
 ///
 /// Returns (children_ids, original_indices, total_length).
-#[allow(
-    clippy::type_complexity,
-    clippy::cognitive_complexity,
-    reason = "streaming selection needs tuple return and a few branches"
-)]
+#[inline]
+fn parse_keep<'de, A>(
+    seq: &mut A,
+    builder: &JsonTreeBuilder,
+    idx: usize,
+    out: &mut Out<'_>,
+) -> Result<bool, A::Error>
+where
+    A: SeqAccess<'de>,
+{
+    let de = builder.seed();
+    match seq.next_element_seed(de)? {
+        Some(c) => {
+            out.children.push(c);
+            out.indices.push(idx);
+            Ok(true)
+        }
+        None => Ok(false),
+    }
+}
+
+#[inline]
+fn skip_one<'de, A>(seq: &mut A) -> Result<bool, A::Error>
+where
+    A: SeqAccess<'de>,
+{
+    Ok(seq.next_element::<IgnoredAny>()?.is_some())
+}
+
+#[inline]
+fn phase_keep_first<'de, A>(
+    seq: &mut A,
+    builder: &JsonTreeBuilder,
+    cap: usize,
+    keep_first: usize,
+    state: &mut PhaseState,
+    out: &mut Out<'_>,
+) -> Result<bool, A::Error>
+where
+    A: SeqAccess<'de>,
+{
+    while state.kept < cap && state.idx < keep_first {
+        if !parse_keep(seq, builder, state.idx, out)? {
+            return Ok(true);
+        }
+        state.kept += 1;
+        state.idx = state.idx.saturating_add(1);
+    }
+    Ok(false)
+}
+
+#[inline]
+fn phase_greedy<'de, A>(
+    seq: &mut A,
+    builder: &JsonTreeBuilder,
+    cap: usize,
+    greedy_remaining: &mut usize,
+    state: &mut PhaseState,
+    out: &mut Out<'_>,
+) -> Result<bool, A::Error>
+where
+    A: SeqAccess<'de>,
+{
+    while state.kept < cap && *greedy_remaining > 0 {
+        if !parse_keep(seq, builder, state.idx, out)? {
+            return Ok(true);
+        }
+        state.kept += 1;
+        *greedy_remaining = greedy_remaining.saturating_sub(1);
+        state.idx = state.idx.saturating_add(1);
+    }
+    Ok(false)
+}
+
+#[inline]
+fn phase_random<'de, A>(
+    seq: &mut A,
+    builder: &JsonTreeBuilder,
+    cap: usize,
+    state: &mut PhaseState,
+    out: &mut Out<'_>,
+) -> Result<(), A::Error>
+where
+    A: SeqAccess<'de>,
+{
+    while state.kept < cap {
+        if accept_index(state.idx as u64) {
+            if !parse_keep(seq, builder, state.idx, out)? {
+                return Ok(());
+            }
+            state.kept += 1;
+        } else if !skip_one(seq)? {
+            break;
+        }
+        state.idx = state.idx.saturating_add(1);
+    }
+    Ok(())
+}
+
 pub(crate) fn sample_stream<'de, A>(
     seq: &mut A,
     builder: &JsonTreeBuilder,
     cap: usize,
-) -> Result<(Vec<usize>, Vec<usize>, usize), A::Error>
+) -> Result<SampleResult, A::Error>
 where
     A: SeqAccess<'de>,
 {
@@ -69,8 +175,7 @@ where
     local_children.reserve(reserve);
     local_indices.reserve(reserve);
 
-    let mut idx: usize = 0;
-    let mut kept: usize = 0;
+    let mut state = PhaseState { idx: 0, kept: 0 };
 
     // Always keep the first F items (up to cap)
     const F: usize = 3;
@@ -78,67 +183,50 @@ where
     // Greedy head-of-middle: take about half of the remaining budget eagerly
     let mut greedy_remaining = (cap.saturating_sub(keep_first)) / 2;
 
-    loop {
-        if kept >= cap {
-            // Budget exhausted: fast skip remainder
-            while (seq.next_element::<IgnoredAny>()?).is_some() {
-                idx = idx.saturating_add(1);
-            }
-            break;
-        }
+    // Phase 1: keep first few
+    if phase_keep_first(
+        seq,
+        builder,
+        cap,
+        keep_first,
+        &mut state,
+        &mut Out {
+            children: &mut local_children,
+            indices: &mut local_indices,
+        },
+    )? {
+        return Ok((local_children, local_indices, state.idx));
+    }
+    // Phase 2: greedy middle head
+    if phase_greedy(
+        seq,
+        builder,
+        cap,
+        &mut greedy_remaining,
+        &mut state,
+        &mut Out {
+            children: &mut local_children,
+            indices: &mut local_indices,
+        },
+    )? {
+        return Ok((local_children, local_indices, state.idx));
+    }
+    // Phase 3: probabilistic accept for the remainder
+    phase_random(
+        seq,
+        builder,
+        cap,
+        &mut state,
+        &mut Out {
+            children: &mut local_children,
+            indices: &mut local_indices,
+        },
+    )?;
 
-        if idx < keep_first {
-            // Keep first few items unconditionally
-            let cid = {
-                let de = builder.seed();
-                match seq.next_element_seed(de)? {
-                    Some(c) => c,
-                    None => break,
-                }
-            };
-            local_children.push(cid);
-            local_indices.push(idx);
-            kept += 1;
-            idx = idx.saturating_add(1);
-            continue;
-        }
-
-        if greedy_remaining > 0 {
-            let cid = {
-                let de = builder.seed();
-                match seq.next_element_seed(de)? {
-                    Some(c) => c,
-                    None => break,
-                }
-            };
-            local_children.push(cid);
-            local_indices.push(idx);
-            kept += 1;
-            greedy_remaining = greedy_remaining.saturating_sub(1);
-            idx = idx.saturating_add(1);
-            continue;
-        }
-
-        // Probabilistic accept for the remainder, deterministic and cap-independent
-        if accept_index(idx as u64) {
-            let cid = {
-                let de = builder.seed();
-                match seq.next_element_seed(de)? {
-                    Some(c) => c,
-                    None => break,
-                }
-            };
-            local_children.push(cid);
-            local_indices.push(idx);
-            kept += 1;
-        } else {
-            // Skip cheaply without parsing the value
-            if (seq.next_element::<IgnoredAny>()?).is_none() {
-                break;
-            }
-        }
-        idx = idx.saturating_add(1);
+    // Drain the remainder to compute total length accurately
+    while skip_one(seq)? {
+        state.idx = state.idx.saturating_add(1);
     }
 
-    Ok((local_children, local_indices, idx))
+    Ok((local_children, local_indices, state.idx))
 }

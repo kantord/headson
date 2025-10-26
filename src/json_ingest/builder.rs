@@ -219,10 +219,6 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
         self.visit_unit()
     }
 
-    #[allow(
-        clippy::cognitive_complexity,
-        reason = "Single-pass head+tail selection with ring buffer adds a few branches"
-    )]
     fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: SeqAccess<'de>,
