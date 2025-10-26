@@ -7,7 +7,7 @@ name = "headson"
 version = "0.2.3"
 description = "Budget‑constrained JSON preview renderer (Python bindings)"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
