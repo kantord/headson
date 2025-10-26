@@ -29,14 +29,14 @@ script_runner = "bash"
 script = [
     """
     set -euo pipefail
-    echo "[diagram] generating assets/algorithm.svg from diagrams/algorithm.mmd"
-    mkdir -p assets
+    echo "[diagram] generating docs/assets/algorithm.svg from docs/diagrams/algorithm.mmd"
+    mkdir -p docs/assets
     if ! command -v npx >/dev/null 2>&1; then
       echo "Error: 'npx' not found. Please install Node.js (which provides npx)." >&2
       exit 1
     fi
-    npx -y @mermaid-js/mermaid-cli@10 mmdc -i diagrams/algorithm.mmd -o assets/algorithm.svg --backgroundColor transparent --configFile diagrams/mermaid.config.json --cssFile diagrams/mermaid.css
-    test -s assets/algorithm.svg || { echo "Error: assets/algorithm.svg not generated" >&2; exit 1; }
-    echo "[diagram] generated assets/algorithm.svg"
+    npx -y @mermaid-js/mermaid-cli@10 mmdc -i docs/diagrams/algorithm.mmd -o docs/assets/algorithm.svg --backgroundColor transparent --configFile docs/diagrams/mermaid.config.json --cssFile docs/diagrams/mermaid.css
+    test -s docs/assets/algorithm.svg || { echo "Error: docs/assets/algorithm.svg not generated" >&2; exit 1; }
+    echo "[diagram] generated docs/assets/algorithm.svg"
     """,
 ]

@@ -2,11 +2,11 @@
   "theme": "neutral",
   "securityLevel": "loose",
   "flowchart": {
-    "htmlLabels": true,
+    "htmlLabels": false,
     "wrap": true,
+    "useMaxWidth": false,
     "padding": 8,
     "nodeSpacing": 40,
     "rankSpacing": 40
   }
 }
-

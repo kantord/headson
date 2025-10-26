@@ -152,14 +152,14 @@ print(
 
 # Algorithm
 
-![Algorithm overview](assets/algorithm.svg)
+![Algorithm overview](docs/assets/algorithm.svg)
 
 ## Footnotes
  - <sup><b>[1]</b></sup> <b>Optimized tree representation</b>: An arena‑style tree stored in flat, contiguous buffers. Each node records its kind and value plus index ranges into shared child and key arrays. Arrays are ingested in a single pass and may be deterministically pre‑sampled: the first element is always kept; additional elements are selected via a fixed per‑index inclusion test; for kept elements, original indices are stored and full lengths are counted. This enables accurate omission info and internal gap markers later, while minimizing pointer chasing.
  - <sup><b>[2]</b></sup> <b>Priority order</b>: Nodes are scored so previews surface representative structure and values first. Arrays can favor head/mid/tail coverage (default) or strictly the head; tail preference flips head/tail when configured. Object properties are ordered by key, and strings expand by grapheme with early characters prioritized over very deep expansions.
  - <sup><b>[3]</b></sup> <b>Choose top N nodes (binary search)</b>: Iteratively picks N so that the rendered preview fits within the character budget, looping between “choose N” and a render attempt to converge quickly.
  - <sup><b>[4]</b></sup> <b>Render attempt</b>: Serializes the currently included nodes using the selected template. Omission summaries and per-file section headers appear in display templates (pseudo/js); json remains strict. For arrays, display templates may insert internal gap markers between non‑contiguous kept items using original indices.
- - <sup><b>[5]</b></sup> <b>Diagram source</b>: The Algorithm diagram is generated from `diagrams/algorithm.mmd`. Regenerate the SVG with `cargo make diagrams` before releasing.
+ - <sup><b>[5]</b></sup> <b>Diagram source</b>: The Algorithm diagram is generated from `docs/diagrams/algorithm.mmd`. Regenerate the SVG with `cargo make diagrams` before releasing.
 
 ## License
 
