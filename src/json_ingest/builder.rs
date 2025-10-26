@@ -1,8 +1,6 @@
 use serde::Deserializer;
 use serde::de::{DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor};
-use serde_json::Value as JsonValue;
 use std::cell::RefCell;
-use std::collections::VecDeque;
 
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
@@ -94,16 +92,24 @@ impl JsonTreeBuilder {
     ) {
         let mut a = self.arena.borrow_mut();
         let children_start = a.children.len();
-        let arr_indices_start = a.arr_indices.len();
         a.children.extend(local_children);
-        a.arr_indices.extend(local_indices);
+        let arr_indices_start = if local_indices.is_empty() {
+            0
+        } else {
+            let start = a.arr_indices.len();
+            a.arr_indices.extend(local_indices);
+            start
+        };
+        // Compute pushed count before taking a mutable borrow to the node
+        let pushed = a.arr_indices.len().saturating_sub(arr_indices_start);
         let n = &mut a.nodes[id];
         n.kind = NodeKind::Array;
         n.children_start = children_start;
         n.children_len = kept;
         n.array_len = Some(total);
         n.arr_indices_start = arr_indices_start;
-        n.arr_indices_len = kept;
+        // When no indices were pushed, mark len=0 to indicate contiguous 0..kept
+        n.arr_indices_len = pushed.min(kept);
     }
 
     fn finish_object(
@@ -216,50 +222,30 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
         A: SeqAccess<'de>,
     {
         let id = self.b.push_default();
-        let cap = self.b.array_cap;
-        let h = cap / 2 + (cap % 2); // ceil(cap/2) without overflow
-        let t = cap / 2; // floor(cap/2)
         let mut local_children: Vec<usize> = Vec::new();
-        let mut local_indices: Vec<usize> = Vec::new();
-        let mut tail_vals: VecDeque<(usize, JsonValue)> = VecDeque::new();
+        let low = seq.size_hint().unwrap_or(0);
+        local_children.reserve(low.min(self.b.array_cap));
+        let mut kept = 0usize;
         let mut total = 0usize;
-        // Greedily keep head elements via builder seed; buffer potential tail as serde_json::Value.
-        loop {
-            if total < h {
+        while kept < self.b.array_cap {
+            let next = {
                 let seed = self.b.seed();
-                match seq.next_element_seed(seed)? {
-                    Some(cid) => {
-                        local_children.push(cid);
-                        local_indices.push(total);
-                        total += 1;
-                    }
-                    None => break,
+                seq.next_element_seed(seed)?
+            };
+            match next {
+                Some(cid) => {
+                    local_children.push(cid);
+                    kept += 1;
+                    total += 1;
                 }
-            } else if t > 0 {
-                match seq.next_element::<JsonValue>()? {
-                    Some(v) => {
-                        if tail_vals.len() == t {
-                            tail_vals.pop_front();
-                        }
-                        tail_vals.push_back((total, v));
-                        total += 1;
-                    }
-                    None => break,
-                }
-            } else {
-                match seq.next_element::<IgnoredAny>()? {
-                    Some(_) => total += 1,
-                    None => break,
-                }
+                None => break,
             }
         }
-        // Append tail nodes converted from buffered values.
-        for (idx, v) in tail_vals.drain(..) {
-            let cid = self.b.push_from_value(&v);
-            local_children.push(cid);
-            local_indices.push(idx);
+        while (seq.next_element::<IgnoredAny>()?).is_some() {
+            total += 1;
         }
-        let kept = local_children.len();
+        // Indices are contiguous 0..kept; omit storing them to avoid overhead.
+        let local_indices: Vec<usize> = Vec::new();
         self.b
             .finish_array(id, kept, total, local_children, local_indices);
         Ok(id)
@@ -290,46 +276,4 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
     }
 }
 
-impl JsonTreeBuilder {
-    pub(crate) fn push_from_value(&self, v: &JsonValue) -> usize {
-        match v {
-            JsonValue::Null => self.push_null(),
-            JsonValue::Bool(b) => self.push_bool(*b),
-            JsonValue::Number(n) => {
-                // Clone serde_json::Number directly
-                self.push_with(|node| {
-                    node.kind = NodeKind::Number;
-                    node.number_value = Some(n.clone());
-                })
-            }
-            JsonValue::String(s) => self.push_string_owned(s.clone()),
-            JsonValue::Array(arr) => {
-                let id = self.push_default();
-                let total = arr.len();
-                let kept = total.min(self.array_cap);
-                let mut children: Vec<usize> = Vec::with_capacity(kept);
-                let mut indices: Vec<usize> = Vec::with_capacity(kept);
-                for (i, child) in arr.iter().enumerate().take(kept) {
-                    let cid = self.push_from_value(child);
-                    children.push(cid);
-                    indices.push(i);
-                }
-                self.finish_array(id, kept, total, children, indices);
-                id
-            }
-            JsonValue::Object(map) => {
-                let id = self.push_default();
-                let count = map.len();
-                let mut children: Vec<usize> = Vec::with_capacity(count);
-                let mut keys: Vec<String> = Vec::with_capacity(count);
-                for (k, child) in map.iter() {
-                    let cid = self.push_from_value(child);
-                    children.push(cid);
-                    keys.push(k.clone());
-                }
-                self.finish_object(id, count, children, keys);
-                id
-            }
-        }
-    }
-}
+impl JsonTreeBuilder {}
