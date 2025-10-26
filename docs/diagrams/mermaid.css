@@ -58,7 +58,8 @@ svg .clusterLabel > text, svg .cluster-label > text {
   font-weight: 600;
   paint-order: stroke fill;
   stroke: var(--m-label-outline);
-  stroke-width: 5px;
+  stroke-width: 6px;
+  stroke-opacity: 1;
   stroke-linejoin: round;
 }
 
@@ -67,8 +68,8 @@ svg .clusterLabel > text, svg .cluster-label > text {
   svg .clusterLabel > text, svg .cluster-label > text {
     fill: #ffffff !important;
     stroke: #000000;
-    stroke-opacity: 0.6;
-    stroke-width: 5px;
+    stroke-opacity: 1;
+    stroke-width: 6px;
     stroke-linejoin: round;
   }
 }

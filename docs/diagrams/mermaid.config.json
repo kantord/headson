@@ -15,6 +15,6 @@
     "ranker": "tight-tree",
     "padding": 24,
     "nodeSpacing": 44,
-    "rankSpacing": 56
+    "rankSpacing": 64
   }
 }
