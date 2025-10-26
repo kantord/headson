@@ -58,6 +58,16 @@ svg .clusterLabel &gt; text, svg .cluster-label &gt; text {
   font-weight: 600;
   paint-order: stroke fill;
   stroke: var(--m-label-outline);
-  stroke-width: 3px;
+  stroke-width: 2px;
+}
+
+/* Improve subgraph label contrast in dark mode */
+@media (prefers-color-scheme: dark) {
+  svg .clusterLabel &gt; text, svg .cluster-label &gt; text {
+    fill: #ffffff !important;
+    stroke: #000000;
+    stroke-opacity: 0.55;
+    stroke-width: 2px;
+  }
 }
 </style></svg>
