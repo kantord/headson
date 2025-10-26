@@ -62,6 +62,7 @@ fn map_sampler(kind: ArraySamplerStrategy) -> array_sample::ArraySamplerKind {
         ArraySamplerStrategy::Default => {
             array_sample::ArraySamplerKind::Default
         }
+        ArraySamplerStrategy::Tail => array_sample::ArraySamplerKind::Tail,
     }
 }
 

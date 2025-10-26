@@ -244,6 +244,10 @@ fn get_priority_config(
         array_max_items: (per_file_budget / 2).max(1),
         prefer_tail_arrays: cli.tail,
         array_bias: headson::ArrayBias::HeadMidTail,
-        array_sampler: headson::ArraySamplerStrategy::Default,
+        array_sampler: if cli.tail {
+            headson::ArraySamplerStrategy::Tail
+        } else {
+            headson::ArraySamplerStrategy::Default
+        },
     }
 }

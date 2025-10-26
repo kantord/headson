@@ -33,7 +33,11 @@ fn priority_config(per_file_budget: usize, prefer_tail_arrays: bool) -> Priority
         array_max_items: (per_file_budget / 2).max(1),
         prefer_tail_arrays,
         array_bias: headson_core::ArrayBias::HeadMidTail,
-        array_sampler: headson_core::ArraySamplerStrategy::Default,
+        array_sampler: if prefer_tail_arrays {
+            headson_core::ArraySamplerStrategy::Tail
+        } else {
+            headson_core::ArraySamplerStrategy::Default
+        },
     }
 }
 

@@ -59,3 +59,29 @@ fn array_tail_js_leading_marker_has_comma() {
         "expected trailing comma after omission comment in js: {out:?}"
     );
 }
+
+#[test]
+fn array_tail_json_contains_last_k_values() {
+    // Build a simple 0..49 array and ensure tail keeps the last K in JSON.
+    let values: Vec<String> = (0..50).map(|i| i.to_string()).collect();
+    let input = format!("[{}]", values.join(","));
+    let render_cfg = headson::RenderConfig {
+        template: headson::OutputTemplate::Json,
+        indent_unit: "  ".into(),
+        space: " ".into(),
+        newline: "\n".into(),
+        prefer_tail_arrays: true,
+    };
+    let mut prio = headson::PriorityConfig::new(usize::MAX, 15);
+    prio.prefer_tail_arrays = true;
+    prio.array_sampler = headson::ArraySamplerStrategy::Tail;
+    let out = headson::headson(input.into_bytes(), &render_cfg, &prio, 10_000)
+        .expect("render");
+    let v: serde_json::Value = serde_json::from_str(&out).expect("json parse");
+    let arr = v.as_array().expect("root array");
+    assert_eq!(arr.len(), 15, "kept exactly cap items");
+    let first = arr.first().and_then(serde_json::Value::as_u64).unwrap();
+    let last = arr.last().and_then(serde_json::Value::as_u64).unwrap();
+    assert_eq!(first, 35);
+    assert_eq!(last, 49);
+}
