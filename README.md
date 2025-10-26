@@ -151,16 +151,21 @@ print(
 # Algorithm
 
 ```mermaid
-flowchart TD
-    A["Input JSON (single or multiple files)"] --> B{"Single or multiple?"}
-    B -- Single --> C["Parse into JsonTreeArena"]
+ flowchart TD
+     A["Input JSON (single or multiple files)"] --> B{"Single or multiple?"}
+    B -- Single --> X["JsonTreeArena"]
     B -- Multiple --> D["Parse each and wrap into fileset object"]
-    C --> X["JsonTreeArena"]
     D --> X
     X --> E["Build priority order<br/>rank nodes + metrics"]
-    E --> F["Binary search top_k<br/>fit within budget"]
-    F --> G["Render with template<br/>json / pseudo / js"]
-    G --> H["Preview string"]
+    E --> F["Binary search: choose k"]
+    F --> G["Render attempt<br/>with template"]
+    G --> H{"Within budget?"}
+    H -- Yes --> I["Record best and increase k"]
+    H -- No --> J["Decrease k"]
+    I --> F
+    J --> F
+    F --> K["Final render with best k"]
+    K --> L["Preview string"]
 ```
 
 ## License
