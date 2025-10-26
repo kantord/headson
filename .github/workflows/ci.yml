@@ -115,8 +115,12 @@ jobs:
 
       - name: Sync Python deps (dev)
         run: |
-          # Prefer reproducible installs; if the lock is stale (e.g., version bump), refresh it in CI
-          uv sync --group dev --locked || (uv lock && uv sync --group dev --locked)
+          # Keep lock in sync with pyproject to avoid version drift (e.g., ruff formatting differences)
+          uv lock
+          uv sync --group dev --locked
+
+      - name: Show Ruff version
+        run: uv run --no-sync ruff --version
 
       - name: Ruff lint
         run: uv run --no-sync ruff check --config pyproject.toml .
