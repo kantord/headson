@@ -1,5 +1,5 @@
-mod array_sample;
 mod builder;
+mod samplers;
 use serde::de::DeserializeSeed;
 
 use crate::utils::tree_arena::JsonTreeArena;
@@ -57,12 +57,10 @@ pub fn build_json_tree_arena_from_many(
     Ok(arena)
 }
 
-fn map_sampler(kind: ArraySamplerStrategy) -> array_sample::ArraySamplerKind {
+fn map_sampler(kind: ArraySamplerStrategy) -> samplers::ArraySamplerKind {
     match kind {
-        ArraySamplerStrategy::Default => {
-            array_sample::ArraySamplerKind::Default
-        }
-        ArraySamplerStrategy::Tail => array_sample::ArraySamplerKind::Tail,
+        ArraySamplerStrategy::Default => samplers::ArraySamplerKind::Default,
+        ArraySamplerStrategy::Tail => samplers::ArraySamplerKind::Tail,
     }
 }
 
