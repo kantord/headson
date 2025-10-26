@@ -43,6 +43,11 @@ fn should_take(i: u64, seed: u64) -> bool {
 /// Sample an array from a serde `SeqAccess` without backtracking.
 ///
 /// Returns (children_ids, original_indices, total_length).
+#[allow(
+    clippy::type_complexity,
+    clippy::cognitive_complexity,
+    reason = "streaming selection needs tuple return and a few branches"
+)]
 pub(crate) fn sample_stream<'de, A>(
     seq: &mut A,
     builder: &JsonTreeBuilder,
@@ -67,9 +72,9 @@ where
     local_children.reserve(reserve);
     local_indices.reserve(reserve);
 
-    let seed: u64 = 0x9e37_79b9_7f4a_7c15u64 ^ (cap as u64);
+    let hash_seed: u64 = 0x9e37_79b9_7f4a_7c15u64 ^ (cap as u64);
 
-    let mut seen: u64 = 0;
+    let mut idx: u64 = 0;
     let mut kept = 0usize;
 
     const SMALL_FULL: u64 = 8; // fully include small arrays up to this size
@@ -77,16 +82,16 @@ where
         if kept >= cap {
             // Budget exhausted: fast skip remainder
             while (seq.next_element::<IgnoredAny>()?).is_some() {
-                seen = seen.saturating_add(1);
+                idx = idx.saturating_add(1);
             }
             break;
         }
 
-        if seen == 0 {
+        if idx == 0 {
             // Always keep first element (index 0)
             let cid = {
-                let seed = builder.seed();
-                match seq.next_element_seed(seed)? {
+                let de = builder.seed();
+                match seq.next_element_seed(de)? {
                     Some(c) => c,
                     None => break,
                 }
@@ -94,28 +99,26 @@ where
             local_children.push(cid);
             local_indices.push(0);
             kept += 1;
-            seen = seen.saturating_add(1);
+            idx = idx.saturating_add(1);
             continue;
         }
 
-        if seen < SMALL_FULL || should_take(seen, seed) {
+        if idx < SMALL_FULL || should_take(idx, hash_seed) {
             let cid = {
-                let seed = builder.seed();
-                match seq.next_element_seed(seed)? {
+                let de = builder.seed();
+                match seq.next_element_seed(de)? {
                     Some(c) => c,
                     None => break,
                 }
             };
             local_children.push(cid);
-            local_indices.push(seen as usize);
+            local_indices.push(idx as usize);
             kept += 1;
-        } else {
-            if (seq.next_element::<IgnoredAny>()?).is_none() {
-                break;
-            }
+        } else if (seq.next_element::<IgnoredAny>()?).is_none() {
+            break;
         }
-        seen = seen.saturating_add(1);
+        idx = idx.saturating_add(1);
     }
 
-    Ok((local_children, local_indices, seen as usize))
+    Ok((local_children, local_indices, idx as usize))
 }
