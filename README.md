@@ -156,18 +156,18 @@ flowchart TD
     subgraph Deserialization
         direction TB
         A["Input file(s)"]
-        A -- Single --> C["Parse into optimized tree representation [1]"]
+        A -- Single --> C["Parse into optimized tree representation ¹"]
         A -- Multiple --> D["Parse each file and wrap into a fileset object"]
         D --> C
     end
     subgraph Prioritization
         direction TB
-        E["Build priority order [2]"]
-        F["Choose top N nodes [3]"]
+        E["Build priority order ²"]
+        F["Choose top N nodes ³"]
     end
     subgraph Serialization
         direction TB
-        G["Render attempt [4]"]
+        G["Render attempt ⁴"]
         H["Output preview string"]
     end
     C --> E
