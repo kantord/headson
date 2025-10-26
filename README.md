@@ -152,7 +152,7 @@ print(
 
 ```mermaid
 flowchart TD
-    A["Input file(s)"] -- Single --> C["Parse into internal tree representation"]
+    A["Input file(s)"] -- Single --> C["Parse into optimized tree representation"]
     A -- Multiple --> D["Parse each file and wrap into a fileset object"]
     D --> C
     C --> E["Build priority order"]
