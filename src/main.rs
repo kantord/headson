@@ -243,5 +243,6 @@ fn get_priority_config(
         max_string_graphemes: cli.string_cap,
         array_max_items: (per_file_budget / 2).max(1),
         prefer_tail_arrays: cli.tail,
+        array_bias: headson::ArrayBias::Head,
     }
 }

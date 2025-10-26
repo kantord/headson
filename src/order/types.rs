@@ -5,6 +5,8 @@ pub struct PriorityConfig {
     pub max_string_graphemes: usize,
     pub array_max_items: usize,
     pub prefer_tail_arrays: bool,
+    // Array selection bias for partial renders.
+    pub array_bias: ArrayBias,
 }
 
 impl PriorityConfig {
@@ -13,6 +15,7 @@ impl PriorityConfig {
             max_string_graphemes,
             array_max_items,
             prefer_tail_arrays: false,
+            array_bias: ArrayBias::Head,
         }
     }
 }
@@ -34,6 +37,12 @@ pub enum NodeKind {
 pub enum ObjectType {
     Object,
     Fileset,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum ArrayBias {
+    Head,
+    HeadMidTail,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
