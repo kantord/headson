@@ -59,8 +59,7 @@ impl<'a> RenderScope<'a> {
             }
         }
     }
-    // Fileset rendering helpers are implemented in `fileset.rs` as methods on
-    // RenderScope to keep this module lean.
+
     fn count_kept_children(&self, id: usize) -> usize {
         if let Some(kids) = self.order.children.get(id) {
             let mut kept = 0usize;
@@ -294,10 +293,6 @@ impl<'a> RenderScope<'a> {
         }
         (children_pairs, kept)
     }
-
-    // Pseudo fileset rendering is implemented in fileset.rs
-
-    // JS fileset rendering functions are implemented in fileset.rs
 }
 
 /// Prepare a render set by including the first `top_k` nodes by priority
@@ -327,7 +322,6 @@ pub fn render_from_render_set(
     render_id: u32,
     config: &crate::RenderConfig,
 ) -> String {
-    // Root PQ id is a fixed invariant (0).
     let root_id = ROOT_PQ_ID;
     let mut scope = RenderScope {
         order: order_build,

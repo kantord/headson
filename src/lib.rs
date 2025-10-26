@@ -19,7 +19,7 @@ mod json_ingest;
 mod order;
 mod serialization;
 mod utils;
-pub use order::types::ArrayBias;
+pub use order::types::{ArrayBias, ArraySamplerStrategy};
 pub use order::{
     NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
 };
@@ -32,7 +32,6 @@ pub fn headson(
     priority_cfg: &PriorityConfig,
     budget: usize,
 ) -> Result<String> {
-    // Streaming arena parse from owned bytes + frontier adapter
     let arena = crate::json_ingest::build_json_tree_arena_from_bytes(
         input,
         priority_cfg,

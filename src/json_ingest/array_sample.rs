@@ -258,3 +258,31 @@ where
         total_len: state.idx,
     })
 }
+
+//
+// Pluggable sampler API (enum-based, object-safe for easy storage)
+//
+
+#[derive(Copy, Clone, Debug, Default)]
+pub(crate) enum ArraySamplerKind {
+    #[default]
+    Default,
+}
+
+impl ArraySamplerKind {
+    pub(crate) fn sample_stream<'de, A>(
+        self,
+        seq: &mut A,
+        builder: &JsonTreeBuilder,
+        cap: usize,
+    ) -> Result<SampledArray, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        match self {
+            ArraySamplerKind::Default => {
+                super::array_sample::sample_stream(seq, builder, cap)
+            }
+        }
+    }
+}
