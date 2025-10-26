@@ -155,8 +155,9 @@ flowchart TD
     A["Input JSON (single or multiple files)"] --> B{"Single or multiple?"}
     B -- Single --> C["Parse into JsonTreeArena"]
     B -- Multiple --> D["Parse each and wrap into fileset object"]
-    C --> E["Build priority order<br/>rank nodes + metrics"]
-    D --> E
+    C --> X["JsonTreeArena"]
+    D --> X
+    X --> E["Build priority order<br/>rank nodes + metrics"]
     E --> F["Binary search top_k<br/>fit within budget"]
     F --> G["Render with template<br/>json / pseudo / js"]
     G --> H["Preview string"]
