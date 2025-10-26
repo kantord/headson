@@ -54,7 +54,7 @@ svg .ser rect { fill: var(--m-ser-fill) !important; }
 svg g.cluster rect { fill: transparent !important; stroke: transparent !important; }
 svg .clusterLabel &gt; text, svg .cluster-label &gt; text {
   fill: var(--m-text) !important;
-  font-size: 18px;
+  font-size: 20px !important;
   font-weight: 600;
   paint-order: stroke fill;
   stroke: var(--m-label-outline);
