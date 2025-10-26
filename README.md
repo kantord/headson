@@ -124,10 +124,10 @@ A thin Python extension module is available on PyPI as `headson`.
 
  - Install: `pip install headson` (ABI3 wheels for Python 3.10+ on Linux/macOS/Windows).
 - API:
-  - `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None, tail: bool = False) -> str`
+  - `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None, skew: str = "balanced") -> str`
     - `template`: one of `"json" | "pseudo" | "js"`
     - `character_budget`: maximum output size in characters (default: 500)
-  - `tail`: prefer the end of arrays when truncating; strings unaffected. Affects only display templates (`pseudo`/`js`); `json` remains strict.
+    - `skew`: one of `"balanced" | "head" | "tail"` (focus arrays on start vs end; only affects display templates; `json` remains strict).
 
 Example:
 
@@ -145,7 +145,7 @@ print(
         json.dumps(list(range(100))),
         template="pseudo",
         character_budget=80,
-        tail=True,
+        skew="tail",
     )
 )
 ```

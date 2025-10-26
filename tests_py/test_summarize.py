@@ -82,13 +82,13 @@ def test_tail_affects_arrays_pseudo():
         text,
         template="pseudo",
         character_budget=30,
-        sampling="tail",
+        skew="tail",
     )
     out_head = headson.summarize(
         text,
         template="pseudo",
         character_budget=30,
-        sampling="balanced",
+        skew="balanced",
     )
     assert out_tail != out_head
     # In tail mode (non-compact by default), the first non-empty line after '['
@@ -116,13 +116,13 @@ def test_tail_affects_arrays_js():
         text,
         template="js",
         character_budget=30,
-        sampling="tail",
+        skew="tail",
     )
     out_head = headson.summarize(
         text,
         template="js",
         character_budget=30,
-        sampling="balanced",
+        skew="balanced",
     )
     assert out_tail != out_head
     # Tail mode may render as multi-line (with '[' on its own line) or as a
@@ -154,7 +154,7 @@ def test_tail_json_remains_strict():
         text,
         template="json",
         character_budget=30,
-        sampling="tail",
+        skew="tail",
     )
     # Valid JSON and no visual omission markers.
     json.loads(out)
@@ -167,7 +167,7 @@ def test_head_affects_arrays_pseudo():
         text,
         template="pseudo",
         character_budget=30,
-        sampling="head",
+        skew="head",
     )
     # Balanced may match head under tight budgets; check head’s placement instead of inequality.
     # In head mode (non-compact by default), the last non-empty line before ']' should
@@ -194,7 +194,7 @@ def test_head_affects_arrays_js():
         text,
         template="js",
         character_budget=30,
-        sampling="head",
+        skew="head",
     )
     # Balanced may coincide with head for small budgets; assert head’s placement explicitly.
     # Head mode may render as multi-line (']' on its own line) or as a
@@ -229,7 +229,7 @@ def test_head_json_remains_strict():
         text,
         template="json",
         character_budget=30,
-        sampling="head",
+        skew="head",
     )
     # Valid JSON and no visual omission markers.
     json.loads(out)
