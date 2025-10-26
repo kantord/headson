@@ -188,11 +188,11 @@ flowchart TD
 ```
 
 Footnotes
-- [1] Optimized tree representation: An arena-style tree stored in flat, contiguous buffers. Each node records its type and value plus index ranges into separate child and key arrays. Arrays are parsed with a cap on kept elements, and total sizes are tracked so omission information can be emitted later. This layout is cache-friendly and avoids pointer chasing.
-- [2] Priority order: Nodes are scored so previews surface representative structure and values first. Earlier array items are preferred (or the tail, when configured), object properties have a consistent ordering, and strings expand by grapheme with early characters prioritized over very deep expansions.
+- [1] Optimized tree representation: An arena-style tree stored in flat, contiguous buffers. Each node records its kind and value plus index ranges into shared child and key arrays. Arrays are ingested with a cap on kept elements while still tracking total lengths; objects record their property counts. This enables accurate omission info later and minimizes pointer chasing.
+- [2] Priority order: Nodes are scored so previews surface representative structure and values first. Earlier array items are preferred (or the tail when configured), object properties are ordered by key, and strings expand by grapheme with early characters prioritized over very deep expansions.
 - [3] Choose top N nodes (binary search): Iteratively picks N so that the rendered preview fits within the character budget, looping between “choose N” and a render attempt to converge quickly.
-- [4] Render attempt: Serializes the currently included nodes using the selected template (json, pseudo, or js). Adds omission summaries when parts are elided; for multiple inputs, human-friendly templates can show per-file sections.
-- [5] Output preview string: The final compact preview that satisfies the configured budget.
+- [4] Render attempt: Serializes the currently included nodes using the selected template. Omission summaries and per-file section headers appear in display templates (pseudo/js); the json template stays strict JSON with no annotations.
+- [5] Output preview string: Fits the budget when possible; if even the smallest valid preview exceeds it, returns the minimal valid preview.
 
 ## License
 
