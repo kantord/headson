@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3](https://github.com/kantord/headson/compare/v0.5.2...v0.5.3) - 2025-10-26
+
+### Added
+
+- allow global and per-file limits together ([#91](https://github.com/kantord/headson/pull/91))
+
+### Other
+
+- use absolute url for chart ([#89](https://github.com/kantord/headson/pull/89))
+
 ## [0.5.2](https://github.com/kantord/headson/compare/v0.5.1...v0.5.2) - 2025-10-26
 
 ### Other
