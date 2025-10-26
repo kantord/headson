@@ -152,14 +152,14 @@ print(
 
 ```mermaid
 flowchart TD
-    A[Input JSON (1 or many files)] --> B{Single or multiple?}
-    B -- Single --> C[Parse into JsonTreeArena]
-    B -- Multiple --> D[Parse each; wrap into fileset object]
-    C --> E[Build priority order\nrank nodes + metrics]
+    A["Input JSON (single or multiple files)"] --> B{"Single or multiple?"}
+    B -- Single --> C["Parse into JsonTreeArena"]
+    B -- Multiple --> D["Parse each and wrap into fileset object"]
+    C --> E["Build priority order<br/>rank nodes + metrics"]
     D --> E
-    E --> F[Binary search top_k\nlargest render <= budget]
-    F --> G[Render with template\njson / pseudo / js]
-    G --> H[Preview string]
+    E --> F["Binary search top_k<br/>fit within budget"]
+    F --> G["Render with template<br/>json / pseudo / js"]
+    G --> H["Preview string"]
 ```
 
 ## License
