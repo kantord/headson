@@ -96,21 +96,17 @@ impl JsonTreeBuilder {
 
         // Detect contiguous indices 0..kept-1 to skip storing arr_indices data
         let contiguous = local_indices.len() == kept
-            && local_indices
-                .iter()
-                .enumerate()
-                .all(|(i, &idx)| idx == i);
+            && local_indices.iter().enumerate().all(|(i, &idx)| idx == i);
 
-        let (arr_indices_start, pushed_len) = if kept == 0 || contiguous {
-            (0usize, 0usize)
-        } else if local_indices.is_empty() {
-            (0usize, 0usize)
-        } else {
-            let start = a.arr_indices.len();
-            a.arr_indices.extend(local_indices);
-            let pushed = a.arr_indices.len().saturating_sub(start);
-            (start, pushed)
-        };
+        let (arr_indices_start, pushed_len) =
+            if kept == 0 || contiguous || local_indices.is_empty() {
+                (0usize, 0usize)
+            } else {
+                let start = a.arr_indices.len();
+                a.arr_indices.extend(local_indices);
+                let pushed = a.arr_indices.len().saturating_sub(start);
+                (start, pushed)
+            };
 
         let n = &mut a.nodes[id];
         n.kind = NodeKind::Array;
