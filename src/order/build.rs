@@ -76,8 +76,16 @@ impl<'a> Scope<'a> {
         // If child is an object, default to Object type.
         self.object_type.push(ObjectType::Object);
         self.children[id].push(NodeId(child_priority_index));
+        let mut score = common.score;
+        if let Some(ar_id) = common.arena_index {
+            if let Some(flag) = self.arena.grep_subtree_match.get(ar_id) {
+                if *flag {
+                    score = score.saturating_sub(GREP_WEAK_BIAS);
+                }
+            }
+        }
         self.heap.push(Reverse(Entry {
-            score: common.score,
+            score,
             priority_index: child_priority_index,
             depth: entry.depth + 1,
             arena_index: common.arena_index,
@@ -349,8 +357,25 @@ pub fn build_order(
         ObjectType::Object
     };
     object_type.push(root_ot);
+    fn biased_score_for(
+        arena: &JsonTreeArena,
+        base: u128,
+        arena_id: usize,
+    ) -> u128 {
+        if arena
+            .grep_subtree_match
+            .get(arena_id)
+            .copied()
+            .unwrap_or(false)
+        {
+            base.saturating_sub(GREP_WEAK_BIAS)
+        } else {
+            base
+        }
+    }
+    let root_score = biased_score_for(arena, ROOT_BASE_SCORE, root_ar);
     heap.push(Reverse(Entry {
-        score: ROOT_BASE_SCORE,
+        score: root_score,
         priority_index: root_priority_index,
         depth: 0,
         arena_index: Some(root_ar),

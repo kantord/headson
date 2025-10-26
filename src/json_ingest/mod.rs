@@ -6,6 +6,7 @@ use crate::PriorityConfig;
 use crate::utils::tree_arena::JsonTreeArena;
 use anyhow::Result;
 use builder::JsonTreeBuilder;
+use regex::Regex;
 
 #[cfg(test)]
 pub fn build_json_tree_arena(
@@ -30,6 +31,9 @@ pub fn build_json_tree_arena_from_bytes(
     };
     let mut arena = builder.finish();
     arena.root_id = root_id;
+    if !config.grep_weak_patterns.is_empty() {
+        compute_grep_matches(&mut arena, &config.grep_weak_patterns);
+    }
     Ok(arena)
 }
 
@@ -54,7 +58,95 @@ pub fn build_json_tree_arena_from_many(
     let mut arena = builder.finish();
     arena.root_id = root_id;
     arena.is_fileset = true;
+    if !config.grep_weak_patterns.is_empty() {
+        compute_grep_matches(&mut arena, &config.grep_weak_patterns);
+    }
     Ok(arena)
+}
+
+fn compute_grep_matches(arena: &mut JsonTreeArena, pats: &[Regex]) {
+    let n = arena.nodes.len();
+    if n == 0 {
+        arena.grep_subtree_match.clear();
+        return;
+    }
+    let direct = build_direct_match(arena, pats);
+    let post = build_postorder(arena);
+    let mut sub = vec![false; n];
+    for id in post {
+        let node = &arena.nodes[id];
+        let mut any = direct[id];
+        for i in 0..node.children_len {
+            let cid = arena.children[node.children_start + i];
+            if sub[cid] {
+                any = true;
+                break;
+            }
+        }
+        sub[id] = any;
+    }
+    arena.grep_subtree_match = sub;
+}
+
+fn build_direct_match(arena: &JsonTreeArena, pats: &[Regex]) -> Vec<bool> {
+    let n = arena.nodes.len();
+    let mut out = vec![false; n];
+    for (id, slot) in out.iter_mut().enumerate().take(n) {
+        *slot = node_matches(arena, id, pats);
+    }
+    out
+}
+
+fn string_matches(s: &str, pats: &[Regex]) -> bool {
+    pats.iter().any(|re| re.is_match(s))
+}
+
+fn keys_match(
+    arena: &JsonTreeArena,
+    node: &crate::utils::tree_arena::JsonTreeNode,
+    pats: &[Regex],
+) -> bool {
+    if node.obj_keys_len == 0 {
+        return false;
+    }
+    let start = node.obj_keys_start;
+    let end = start + node.obj_keys_len;
+    for k in &arena.obj_keys[start..end] {
+        if string_matches(k, pats) {
+            return true;
+        }
+    }
+    false
+}
+
+fn node_matches(arena: &JsonTreeArena, id: usize, pats: &[Regex]) -> bool {
+    let node = &arena.nodes[id];
+    if let Some(s) = node.string_value.as_ref() {
+        if string_matches(s, pats) {
+            return true;
+        }
+    }
+    keys_match(arena, node, pats)
+}
+
+fn build_postorder(arena: &JsonTreeArena) -> Vec<usize> {
+    let n = arena.nodes.len();
+    let mut out: Vec<usize> = Vec::with_capacity(n);
+    let mut stack: Vec<(usize, bool)> = Vec::with_capacity(n.min(1024));
+    stack.push((arena.root_id, false));
+    while let Some((id, visited)) = stack.pop() {
+        if visited {
+            out.push(id);
+            continue;
+        }
+        stack.push((id, true));
+        let node = &arena.nodes[id];
+        for i in 0..node.children_len {
+            let cid = arena.children[node.children_start + i];
+            stack.push((cid, false));
+        }
+    }
+    out
 }
 
 #[cfg(test)]

@@ -1,3 +1,4 @@
+use regex::Regex;
 use serde_json;
 
 #[derive(Clone, Debug)]
@@ -9,6 +10,8 @@ pub struct PriorityConfig {
     pub array_bias: ArrayBias,
     // Array pre-sampling strategy.
     pub array_sampler: ArraySamplerStrategy,
+    // Weak grep: regex patterns to bias matching strings earlier.
+    pub grep_weak_patterns: Vec<Regex>,
 }
 
 impl PriorityConfig {
@@ -19,6 +22,7 @@ impl PriorityConfig {
             prefer_tail_arrays: false,
             array_bias: ArrayBias::HeadMidTail,
             array_sampler: ArraySamplerStrategy::Default,
+            grep_weak_patterns: Vec::new(),
         }
     }
 }

@@ -12,6 +12,9 @@ pub struct JsonTreeArena {
     // True when root is a synthetic wrapper object for multi-input ingest.
     // Rendering remains standard JSON; used to select fileset-specific headers.
     pub is_fileset: bool,
+    // Grep weak: for each arena node, whether this node or any of its
+    // descendants contains a regex match (in strings or object keys).
+    pub grep_subtree_match: Vec<bool>,
 }
 
 #[derive(Debug, Clone)]

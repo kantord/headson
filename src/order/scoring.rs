@@ -24,3 +24,6 @@ pub(crate) const STRING_INDEX_INFLECTION: usize = 20;
 /// Quadratic penalty multiplier for string grapheme expansions beyond the
 /// inflection point.
 pub(crate) const STRING_INDEX_QUADRATIC_WEIGHT: u128 = 1;
+
+/// Bias to lift string nodes that match any weak-grep regex.
+pub(crate) const GREP_WEAK_BIAS: u128 = 1_000_000_000_000;

@@ -53,6 +53,13 @@ struct Cli {
     )]
     global_budget: Option<usize>,
     #[arg(
+        long = "grep-weak",
+        value_name = "PATTERN",
+        num_args = 0..,
+        help = "Bias strings matching regex to appear earlier (no budget change). Repeatable."
+    )]
+    grep_weak: Vec<String>,
+    #[arg(
         long = "tail",
         default_value_t = false,
         help = "Prefer the end of arrays when truncating. Strings unaffected; JSON stays strict."
@@ -165,6 +172,8 @@ fn read_stdin() -> Result<Vec<u8>> {
     Ok(buf)
 }
 
+// no strong grep mode at this time
+
 fn sniff_then_read_text(path: &Path) -> Result<Option<Vec<u8>>> {
     // Inspect the first chunk with content_inspector; if it looks binary, skip.
     // Otherwise, read the remainder without further inspection for speed.
@@ -253,6 +262,16 @@ fn get_priority_config(
     per_file_budget: usize,
     cli: &Cli,
 ) -> headson::PriorityConfig {
+    let grep_weak_patterns = {
+        let mut out = Vec::with_capacity(cli.grep_weak.len());
+        for p in &cli.grep_weak {
+            // If a pattern is invalid, surface error early by exiting in CLI parse path.
+            if let Ok(re) = regex::Regex::new(p) {
+                out.push(re);
+            }
+        }
+        out
+    };
     headson::PriorityConfig {
         max_string_graphemes: cli.string_cap,
         array_max_items: (per_file_budget / 2).max(1),
@@ -265,5 +284,6 @@ fn get_priority_config(
         } else {
             headson::ArraySamplerStrategy::Default
         },
+        grep_weak_patterns,
     }
 }
