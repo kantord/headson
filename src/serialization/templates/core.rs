@@ -8,18 +8,31 @@ use super::{ArrayCtx, ObjectCtx};
 pub trait Style {
     fn array_empty(open_indent: &str, ctx: &ArrayCtx<'_>) -> String;
     fn array_push_omitted(_out: &mut String, _ctx: &ArrayCtx<'_>) {}
+    fn array_push_internal_gap(
+        _out: &mut String,
+        _ctx: &ArrayCtx<'_>,
+        _gap: usize,
+    ) {
+    }
 
     fn object_empty(open_indent: &str, ctx: &ObjectCtx<'_>) -> String;
     fn object_push_omitted(_out: &mut String, _ctx: &ObjectCtx<'_>) {}
 }
 
-fn push_array_items(out: &mut String, ctx: &ArrayCtx<'_>) {
-    for (i, (_, item)) in ctx.children.iter().enumerate() {
+fn push_array_items_with<S: Style>(out: &mut String, ctx: &ArrayCtx<'_>) {
+    let mut prev_index: Option<usize> = None;
+    for (i, (orig_index, item)) in ctx.children.iter().enumerate() {
+        if let Some(prev) = prev_index {
+            if *orig_index > prev.saturating_add(1) {
+                S::array_push_internal_gap(out, ctx, *orig_index - prev - 1);
+            }
+        }
         out.push_str(item);
         if i + 1 < ctx.children_len {
             out.push(',');
         }
         out.push_str(ctx.newline);
+        prev_index = Some(*orig_index);
     }
 }
 
@@ -51,7 +64,7 @@ pub fn render_array_with<S: Style>(ctx: &ArrayCtx<'_>) -> String {
     if ctx.omitted_at_start {
         S::array_push_omitted(&mut out, ctx);
     }
-    push_array_items(&mut out, ctx);
+    push_array_items_with::<S>(&mut out, ctx);
     if !ctx.omitted_at_start {
         S::array_push_omitted(&mut out, ctx);
     }

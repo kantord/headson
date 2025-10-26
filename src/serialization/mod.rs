@@ -330,9 +330,15 @@ impl<'a> RenderScope<'a> {
                 let child_kind = self.order.nodes[child_id.0].kind;
                 let rendered =
                     self.serialize_node(child_id.0, depth + 1, false);
+                let orig_index = self
+                    .order
+                    .index_in_parent_array
+                    .get(child_id.0)
+                    .and_then(|o| *o)
+                    .unwrap_or(i);
                 self.push_array_child_line(
                     &mut children_pairs,
-                    i,
+                    orig_index,
                     child_kind,
                     depth,
                     rendered,

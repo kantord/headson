@@ -62,6 +62,9 @@ pub struct PriorityOrder {
     // They correspond to `NodeId.0` in `RankedNode` for convenience when indexing.
     pub parent: Vec<Option<NodeId>>, // parent[id] = parent id (PQ id)
     pub children: Vec<Vec<NodeId>>,  // children[id] = children ids (PQ ids)
+    // For each PQ id, the original index within the parent array, when the
+    // parent is an array. None for non-array parents and synthetic nodes.
+    pub index_in_parent_array: Vec<Option<usize>>,
     pub by_priority: Vec<NodeId>, // ids sorted by ascending priority (PQ ids)
     pub total_nodes: usize,
     pub object_type: Vec<ObjectType>,
