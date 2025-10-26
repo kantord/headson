@@ -148,6 +148,45 @@ print(
 )
 ```
 
+# Algorithm
+
+```mermaid
+%%{init: {"themeCSS": ".cluster > rect { fill: transparent; stroke: transparent; } .clusterLabel > text { font-size: 16px; font-weight: 600; } .clusterLabel span { padding: 6px 10px; font-size: 16px; font-weight: 600; }"}}%%
+flowchart TD
+    subgraph Deserialization
+        direction TB
+        A["Input file(s)"]
+        A -- Single --> C["Parse into optimized tree representation"]
+        A -- Multiple --> D["Parse each file and wrap into a fileset object"]
+        D --> C
+    end
+    subgraph Prioritization
+        direction TB
+        E["Build priority order"]
+        F["Choose top N nodes"]
+    end
+    subgraph Serialization
+        direction TB
+        G["Render attempt"]
+        H["Output preview string"]
+    end
+    C --> E
+    E --> F
+    F --> G
+    G --> F
+    F --> H
+    %% Color classes for categories
+    classDef des fill:#eaf2ff,stroke:#3b82f6,stroke-width:1px,color:#0f172a;
+    classDef prio fill:#ecfdf5,stroke:#10b981,stroke-width:1px,color:#064e3b;
+    classDef ser fill:#fff1f2,stroke:#f43f5e,stroke-width:1px,color:#7f1d1d;
+    class A,C,D des;
+    class E,F prio;
+    class G,H ser;
+    style Deserialization fill:transparent,stroke:transparent
+    style Prioritization fill:transparent,stroke:transparent
+    style Serialization fill:transparent,stroke:transparent
+```
+
 ## License
 
 MIT
