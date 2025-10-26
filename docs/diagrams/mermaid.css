@@ -29,17 +29,27 @@ svg { --m-text: #0f172a; /* slate-900 */
 /* General text and edges */
 svg text { fill: var(--m-text) !important; }
 svg .edgePath path, svg path { stroke: var(--m-edge) !important; }
-svg marker path { fill: var(--m-edge) !important; }
+/* Slimmer edges and smaller arrowheads */
+svg .edgePath path { stroke-width: 1.2px !important; }
+svg marker path {
+  fill: var(--m-edge) !important;
+  stroke: var(--m-edge) !important;
+  stroke-width: 1.2px !important;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transform: scale(0.8);
+}
 
 /* Avoid overriding label metrics; let Mermaid compute sizes */
 
 /* Node category fills based on classDef in the diagram (des/prio/ser) */
-svg .des rect { fill: var(--m-des-fill) !important; stroke: var(--m-des-stroke) !important; }
-svg .prio rect { fill: var(--m-pri-fill) !important; stroke: var(--m-pri-stroke) !important; }
-svg .ser rect { fill: var(--m-ser-fill) !important; stroke: var(--m-ser-stroke) !important; }
+svg .des rect { fill: var(--m-des-fill) !important; stroke: transparent !important; }
+svg .prio rect { fill: var(--m-pri-fill) !important; stroke: transparent !important; }
+svg .ser rect { fill: var(--m-ser-fill) !important; stroke: transparent !important; }
 
 /* Cluster boxes invisible; labels styled */
-svg g.cluster rect { fill: var(--m-cluster-bg) !important; stroke: var(--m-cluster-border) !important; fill-opacity: var(--m-cluster-bg-opacity) !important; }
+/* Subgraphs: no background or border, only label visible */
+svg g.cluster rect { fill: transparent !important; stroke: transparent !important; }
 svg .clusterLabel > text, svg .cluster-label > text {
   fill: var(--m-text) !important;
   font-size: 16px;
