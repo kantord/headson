@@ -2,8 +2,8 @@ flowchart TD
     subgraph Deserialization
         direction TB
         A["Input file(s)"]
-        A -- Single --> C["Parse into optimized tree (with array pre‑sampling) ¹"]
-        A -- Multiple --> D["Parse each file and wrap into a fileset object"]
+        A -- Single --> C["Parse into optimized tree<br/>(with array pre‑sampling) ¹"]
+        A -- Multiple --> D["Parse each file<br/>and wrap into a fileset object"]
         D --> C
     end
     subgraph Prioritization
@@ -19,8 +19,8 @@ flowchart TD
     C --> E
     E --> F
     F --> G
-    G --> F
-    F --> H
+    G -.-> F
+    G --> H
     %% Color classes for categories
     classDef des fill:#eaf2ff,stroke:#3b82f6,stroke-width:1px,color:#0f172a;
     classDef prio fill:#ecfdf5,stroke:#10b981,stroke-width:1px,color:#064e3b;
@@ -31,4 +31,3 @@ flowchart TD
     style Deserialization fill:transparent,stroke:transparent
     style Prioritization fill:transparent,stroke:transparent
     style Serialization fill:transparent,stroke:transparent
-
