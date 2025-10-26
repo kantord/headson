@@ -152,7 +152,7 @@ print(
 
 # Algorithm
 
-![Algorithm overview](docs/assets/algorithm.svg)
+![Algorithm overview](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/algorithm.svg)
 
 ## Footnotes
  - <sup><b>[1]</b></sup> <b>Optimized tree representation</b>: An arena‑style tree stored in flat, contiguous buffers. Each node records its kind and value plus index ranges into shared child and key arrays. Arrays are ingested in a single pass and may be deterministically pre‑sampled: the first element is always kept; additional elements are selected via a fixed per‑index inclusion test; for kept elements, original indices are stored and full lengths are counted. This enables accurate omission info and internal gap markers later, while minimizing pointer chasing.
