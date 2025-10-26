@@ -120,7 +120,7 @@ headson -n 120 -f json users.json
 
 A thin Python extension module is available on PyPI as `headson`.
 
- - Install: `pip install headson` (ABI3 wheels for Python 3.10+ on Linux/macOS/Windows). Older versions require building from source.
+ - Install: `pip install headson` (ABI3 wheels for Python 3.10+ on Linux/macOS/Windows).
 - API:
   - `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None, tail: bool = False) -> str`
     - `template`: one of `"json" | "pseudo" | "js"`
