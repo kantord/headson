@@ -148,6 +148,25 @@ print(
 )
 ```
 
+# Algorithm
+
+```mermaid
+flowchart TD
+    A[CLI args: inputs, flags] --> B[Read inputs\nstdin or files\nignore binary/dirs]
+    B --> C{Single or many?}
+    C -- Single --> D[Parse JSON stream\nJsonTreeArena]
+    C -- Many --> E[Parse each JSON\nwrap in fileset object]
+    D --> F[Build priority order\nrank nodes + metrics]
+    E --> F
+    A --> G[Build configs\nRenderConfig + PriorityConfig]
+    F --> H[Binary search top_k\nlargest render <= budget]
+    G --> H
+    H <--> I[Render attempt with template\njson | pseudo | js]
+    I --> J[Preview string]
+    J --> K[stdout]
+    B -. notices .-> L[stderr]
+```
+
 ## License
 
 MIT
