@@ -148,6 +148,53 @@ print(
 )
 ```
 
+## Algorithm
+
+```mermaid
+%%{init: {"themeCSS": ".cluster > rect { fill: transparent; stroke: transparent; } .clusterLabel > text { font-size: 16px; font-weight: 600; } .clusterLabel span { padding: 6px 10px; font-size: 16px; font-weight: 600; }"}}%%
+flowchart TD
+    subgraph Deserialization
+        direction TB
+        A["Input file(s)"]
+        A -- Single --> C["Stream ingest → optimized tree ¹"]
+        C --> B["Deterministic array pre‑sampling ²"]
+        A -- Multiple --> D["Parse each file and wrap into a fileset object"]
+        D --> C
+    end
+    subgraph Prioritization
+        direction TB
+        E["Build priority order ³"]
+        F["Choose top N nodes ⁴"]
+    end
+    subgraph Serialization
+        direction TB
+        G["Render attempt ⁵"]
+        H["Output preview string"]
+    end
+    C --> E
+    E --> F
+    F --> G
+    G --> F
+    F --> H
+    %% Color classes for categories
+    classDef des fill:#eaf2ff,stroke:#3b82f6,stroke-width:1px,color:#0f172a;
+    classDef prio fill:#ecfdf5,stroke:#10b981,stroke-width:1px,color:#064e3b;
+    classDef ser fill:#fff1f2,stroke:#f43f5e,stroke-width:1px,color:#7f1d1d;
+    class A,C,D,B des;
+    class E,F prio;
+    class G,H ser;
+    style Deserialization fill:transparent,stroke:transparent
+    style Prioritization fill:transparent,stroke:transparent
+    style Serialization fill:transparent,stroke:transparent
+```
+
+## Footnotes
+- [1] Optimized tree representation: An arena‑style tree stored in flat, contiguous buffers. Each node records its kind and value plus index ranges into shared child and key arrays. Objects record their property counts to enable accurate omission info later while minimizing pointer chasing.
+- [2] Deterministic array pre‑sampling: Arrays are ingested in a single pass via serde streaming with a fixed, deterministic inclusion test per index (SplitMix64‑style mixer). Index 0 is always kept; additional elements are selected cheaply without RNG state. For each kept element, the original index is recorded alongside the child id, and the full array length is counted. This enables internal omission markers (head/mid/tail gaps) in display templates, not just trailing summaries, while remaining reproducible and monotonic with respect to the budget.
+- [3] Priority order: Nodes are scored to surface representative structure and values first. Arrays can favor head/mid/tail coverage (default) or strictly the head; tail preference flips head/tail when configured. Object properties are ordered by key, and strings expand by grapheme with early characters prioritized over very deep expansions.
+- [4] Choose top N nodes (binary search): Iteratively picks N so that the rendered preview fits within the character budget, looping between “choose N” and a render attempt to converge quickly.
+- [5] Render attempt: Serializes the currently included nodes using the selected template. Display templates (pseudo/js) show omission summaries and, for arrays, internal gap markers between non‑contiguous kept items based on original indices; the json template stays strict JSON with no annotations.
+
 ## License
 
 MIT
