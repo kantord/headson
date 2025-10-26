@@ -1,6 +1,5 @@
 ---
 source: tests/fileset_js.rs
-assertion_line: 19
 expression: out
 ---
 // tests/fixtures/explicit/array_numbers_50.json

@@ -1,5 +1,5 @@
 use serde::Deserializer;
-use serde::de::{DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor};
+use serde::de::{DeserializeSeed, MapAccess, SeqAccess, Visitor};
 use std::cell::RefCell;
 
 use crate::order::NodeKind;
@@ -88,15 +88,34 @@ impl JsonTreeBuilder {
         kept: usize,
         total: usize,
         local_children: Vec<usize>,
+        local_indices: Vec<usize>,
     ) {
         let mut a = self.arena.borrow_mut();
         let children_start = a.children.len();
         a.children.extend(local_children);
+
+        // Detect contiguous indices 0..kept-1 to skip storing arr_indices data
+        let contiguous = local_indices.len() == kept
+            && local_indices.iter().enumerate().all(|(i, &idx)| idx == i);
+
+        let (arr_indices_start, pushed_len) =
+            if kept == 0 || contiguous || local_indices.is_empty() {
+                (0usize, 0usize)
+            } else {
+                let start = a.arr_indices.len();
+                a.arr_indices.extend(local_indices);
+                let pushed = a.arr_indices.len().saturating_sub(start);
+                (start, pushed)
+            };
+
         let n = &mut a.nodes[id];
         n.kind = NodeKind::Array;
         n.children_start = children_start;
         n.children_len = kept;
         n.array_len = Some(total);
+        n.arr_indices_start = arr_indices_start;
+        // When no indices were pushed, mark len=0 to indicate contiguous 0..kept
+        n.arr_indices_len = pushed_len.min(kept);
     }
 
     fn finish_object(
@@ -205,29 +224,15 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
         A: SeqAccess<'de>,
     {
         let id = self.b.push_default();
-        let mut local_children: Vec<usize> = Vec::new();
-        let low = seq.size_hint().unwrap_or(0);
-        local_children.reserve(low.min(self.b.array_cap));
-        let mut kept = 0usize;
-        let mut total = 0usize;
-        while kept < self.b.array_cap {
-            let next = {
-                let seed = self.b.seed();
-                seq.next_element_seed(seed)?
-            };
-            match next {
-                Some(cid) => {
-                    local_children.push(cid);
-                    kept += 1;
-                    total += 1;
-                }
-                None => break,
-            }
-        }
-        while (seq.next_element::<IgnoredAny>()?).is_some() {
-            total += 1;
-        }
-        self.b.finish_array(id, kept, total, local_children);
+        let (local_children, local_indices, total) =
+            super::array_sample::sample_stream(
+                &mut seq,
+                self.b,
+                self.b.array_cap,
+            )?;
+        let kept = local_children.len();
+        self.b
+            .finish_array(id, kept, total, local_children, local_indices);
         Ok(id)
     }
 
@@ -255,3 +260,5 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
         Ok(id)
     }
 }
+
+impl JsonTreeBuilder {}

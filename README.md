@@ -156,7 +156,7 @@ flowchart TD
     subgraph Deserialization
         direction TB
         A["Input file(s)"]
-        A -- Single --> C["Parse into optimized tree representation ¹"]
+        A -- Single --> C["Parse into optimized tree (with array pre‑sampling) ¹"]
         A -- Multiple --> D["Parse each file and wrap into a fileset object"]
         D --> C
     end
@@ -188,10 +188,10 @@ flowchart TD
 ```
 
 ## Footnotes
-- <sup><b>[1]</b></sup> <b>Optimized tree representation</b>: An arena-style tree stored in flat, contiguous buffers. Each node records its kind and value plus index ranges into shared child and key arrays. Arrays are ingested with a cap on kept elements while still tracking total lengths; objects record their property counts. This enables accurate omission info later and minimizes pointer chasing.
-- <sup><b>[2]</b></sup> <b>Priority order</b>: Nodes are scored so previews surface representative structure and values first. Earlier array items are preferred (or the tail when configured), object properties are ordered by key, and strings expand by grapheme with early characters prioritized over very deep expansions.
-- <sup><b>[3]</b></sup> <b>Choose top N nodes (binary search)</b>: Iteratively picks N so that the rendered preview fits within the character budget, looping between “choose N” and a render attempt to converge quickly.
-- <sup><b>[4]</b></sup> <b>Render attempt</b>: Serializes the currently included nodes using the selected template. Omission summaries and per-file section headers appear in display templates (pseudo/js); the json template stays strict JSON with no annotations.
+ - <sup><b>[1]</b></sup> <b>Optimized tree representation</b>: An arena‑style tree stored in flat, contiguous buffers. Each node records its kind and value plus index ranges into shared child and key arrays. Arrays are ingested in a single pass and may be deterministically pre‑sampled: the first element is always kept; additional elements are selected via a fixed per‑index inclusion test; for kept elements, original indices are stored and full lengths are counted. This enables accurate omission info and internal gap markers later, while minimizing pointer chasing.
+ - <sup><b>[2]</b></sup> <b>Priority order</b>: Nodes are scored so previews surface representative structure and values first. Arrays can favor head/mid/tail coverage (default) or strictly the head; tail preference flips head/tail when configured. Object properties are ordered by key, and strings expand by grapheme with early characters prioritized over very deep expansions.
+ - <sup><b>[3]</b></sup> <b>Choose top N nodes (binary search)</b>: Iteratively picks N so that the rendered preview fits within the character budget, looping between “choose N” and a render attempt to converge quickly.
+ - <sup><b>[4]</b></sup> <b>Render attempt</b>: Serializes the currently included nodes using the selected template. Omission summaries and per-file section headers appear in display templates (pseudo/js); json remains strict. For arrays, display templates may insert internal gap markers between non‑contiguous kept items using original indices.
 
 ## License
 

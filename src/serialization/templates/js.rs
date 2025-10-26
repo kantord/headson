@@ -27,6 +27,17 @@ impl Style for Js {
             out.push_str(ctx.newline);
         }
     }
+    fn array_push_internal_gap(
+        out: &mut String,
+        ctx: &ArrayCtx<'_>,
+        gap: usize,
+    ) {
+        out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
+        out.push_str("/* ");
+        out.push_str(&gap.to_string());
+        out.push_str(" more items */");
+        out.push_str(ctx.newline);
+    }
 
     fn object_empty(open_indent: &str, ctx: &ObjectCtx<'_>) -> String {
         if ctx.omitted > 0 {

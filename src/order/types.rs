@@ -5,6 +5,8 @@ pub struct PriorityConfig {
     pub max_string_graphemes: usize,
     pub array_max_items: usize,
     pub prefer_tail_arrays: bool,
+    // Array selection bias for partial renders.
+    pub array_bias: ArrayBias,
 }
 
 impl PriorityConfig {
@@ -13,6 +15,7 @@ impl PriorityConfig {
             max_string_graphemes,
             array_max_items,
             prefer_tail_arrays: false,
+            array_bias: ArrayBias::HeadMidTail,
         }
     }
 }
@@ -34,6 +37,12 @@ pub enum NodeKind {
 pub enum ObjectType {
     Object,
     Fileset,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum ArrayBias {
+    Head,
+    HeadMidTail,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -62,6 +71,9 @@ pub struct PriorityOrder {
     // They correspond to `NodeId.0` in `RankedNode` for convenience when indexing.
     pub parent: Vec<Option<NodeId>>, // parent[id] = parent id (PQ id)
     pub children: Vec<Vec<NodeId>>,  // children[id] = children ids (PQ ids)
+    // For each PQ id, the original index within the parent array, when the
+    // parent is an array. None for non-array parents and synthetic nodes.
+    pub index_in_parent_array: Vec<Option<usize>>,
     pub by_priority: Vec<NodeId>, // ids sorted by ascending priority (PQ ids)
     pub total_nodes: usize,
     pub object_type: Vec<ObjectType>,

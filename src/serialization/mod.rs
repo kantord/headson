@@ -330,9 +330,15 @@ impl<'a> RenderScope<'a> {
                 let child_kind = self.order.nodes[child_id.0].kind;
                 let rendered =
                     self.serialize_node(child_id.0, depth + 1, false);
+                let orig_index = self
+                    .order
+                    .index_in_parent_array
+                    .get(child_id.0)
+                    .and_then(|o| *o)
+                    .unwrap_or(i);
                 self.push_array_child_line(
                     &mut children_pairs,
-                    i,
+                    orig_index,
                     child_kind,
                     depth,
                     rendered,
@@ -639,5 +645,48 @@ mod tests {
                 || out.contains("\"b\": 2")
                 || out.contains("\"c\": 3")
         );
+    }
+
+    fn mk_gap_ctx() -> super::templates::ArrayCtx<'static> {
+        super::templates::ArrayCtx {
+            children: vec![
+                (0, "  1".to_string()),
+                (3, "  2".to_string()),
+                (5, "  3".to_string()),
+            ],
+            children_len: 3,
+            omitted: 0,
+            depth: 0,
+            indent_unit: "  ",
+            inline_open: false,
+            newline: "\n",
+            omitted_at_start: false,
+        }
+    }
+
+    fn assert_contains_all(out: &str, needles: &[&str]) {
+        needles.iter().for_each(|n| assert!(out.contains(n)));
+    }
+
+    #[test]
+    fn array_internal_gaps_pseudo() {
+        let ctx = mk_gap_ctx();
+        let out = super::templates::render_array(
+            crate::OutputTemplate::Pseudo,
+            &ctx,
+        );
+        assert_contains_all(
+            &out,
+            &["[\n", "\n  1,", "\n  …\n", "\n  2,", "\n  3\n"],
+        );
+    }
+
+    #[test]
+    fn array_internal_gaps_js() {
+        let ctx = mk_gap_ctx();
+        let out =
+            super::templates::render_array(crate::OutputTemplate::Js, &ctx);
+        assert!(out.contains("/* 2 more items */"));
+        assert!(out.contains("/* 1 more items */"));
     }
 }

@@ -37,6 +37,13 @@ impl Ord for Entry {
     }
 }
 
+struct CommonChild {
+    arena_index: Option<usize>,
+    score: u128,
+    ranked: RankedNode,
+    index_in_parent_array: Option<usize>,
+}
+
 struct Scope<'a> {
     arena: &'a JsonTreeArena,
     config: &'a PriorityConfig,
@@ -48,6 +55,7 @@ struct Scope<'a> {
     heap: &'a mut BinaryHeap<Reverse<Entry>>,
     safety_cap: usize,
     object_type: &'a mut Vec<ObjectType>,
+    index_in_parent_array: &'a mut Vec<Option<usize>>,
 }
 
 impl<'a> Scope<'a> {
@@ -55,24 +63,24 @@ impl<'a> Scope<'a> {
         &mut self,
         entry: &Entry,
         child_priority_index: usize,
-        arena_index: Option<usize>,
-        score: u128,
-        ranked: RankedNode,
+        common: CommonChild,
     ) {
         let id = entry.priority_index;
         self.parent.push(Some(NodeId(id)));
         self.children.push(Vec::new());
         self.metrics.push(NodeMetrics::default());
-        self.nodes.push(ranked);
+        self.nodes.push(common.ranked);
+        self.index_in_parent_array
+            .push(common.index_in_parent_array);
         // Children created from parsing regular JSON are standard objects/arrays/etc.
         // If child is an object, default to Object type.
         self.object_type.push(ObjectType::Object);
         self.children[id].push(NodeId(child_priority_index));
         self.heap.push(Reverse(Entry {
-            score,
+            score: common.score,
             priority_index: child_priority_index,
             depth: entry.depth + 1,
-            arena_index,
+            arena_index: common.arena_index,
         }));
     }
     fn record_array_metrics(&mut self, id: usize, arena_id: usize) {
@@ -114,6 +122,28 @@ impl<'a> Scope<'a> {
         }
     }
 
+    fn array_extra_for_index(&self, i: usize, kept: usize) -> u128 {
+        if self.config.prefer_tail_arrays {
+            let idx_for_priority = kept.saturating_sub(1).saturating_sub(i);
+            let ii = idx_for_priority as u128;
+            return ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT;
+        }
+        match self.config.array_bias {
+            super::types::ArrayBias::Head => {
+                let ii = i as u128;
+                ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT
+            }
+            super::types::ArrayBias::HeadMidTail => {
+                let mid = kept.saturating_sub(1) / 2;
+                let d_head = i as isize;
+                let d_tail = kept.saturating_sub(1) as isize - i as isize;
+                let d_mid = (i as isize - mid as isize).abs();
+                let d = d_head.min(d_tail).min(d_mid).unsigned_abs() as u128;
+                d * d * d * ARRAY_INDEX_CUBIC_WEIGHT
+            }
+        }
+    }
+
     fn expand_array_children(&mut self, entry: &Entry, arena_id: usize) {
         let node = &self.arena.nodes[arena_id];
         let kept = node.children_len;
@@ -122,27 +152,31 @@ impl<'a> Scope<'a> {
             let child_kind = self.arena.nodes[child_arena_id].kind;
             let child_priority_index = *self.next_pq_id;
             *self.next_pq_id += 1;
-            let idx_for_priority: usize = if self.config.prefer_tail_arrays {
-                kept.saturating_sub(1).saturating_sub(i)
+            // Original index in source array if tracked; fall back to kept index.
+            let orig_index = if node.arr_indices_len > 0 {
+                let start = node.arr_indices_start;
+                self.arena.arr_indices[start + i]
             } else {
                 i
             };
-            let ii = idx_for_priority as u128;
-            let extra = ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT;
+            let extra: u128 = self.array_extra_for_index(i, kept);
             let score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
             let child_node = &self.arena.nodes[child_arena_id];
             self.push_child_common(
                 entry,
                 child_priority_index,
-                Some(child_arena_id),
-                score,
-                RankedNode {
-                    node_id: NodeId(child_priority_index),
-                    kind: child_kind,
-                    key_in_object: None,
-                    number_value: child_node.number_value.clone(),
-                    bool_value: child_node.bool_value,
-                    string_value: child_node.string_value.clone(),
+                CommonChild {
+                    arena_index: Some(child_arena_id),
+                    score,
+                    ranked: RankedNode {
+                        node_id: NodeId(child_priority_index),
+                        kind: child_kind,
+                        key_in_object: None,
+                        number_value: child_node.number_value.clone(),
+                        bool_value: child_node.bool_value,
+                        string_value: child_node.string_value.clone(),
+                    },
+                    index_in_parent_array: Some(orig_index),
                 },
             );
             if *self.next_pq_id >= self.safety_cap {
@@ -172,15 +206,20 @@ impl<'a> Scope<'a> {
             self.push_child_common(
                 entry,
                 child_priority_index,
-                Some(child_arena_id),
-                score,
-                RankedNode {
-                    node_id: NodeId(child_priority_index),
-                    kind: child_kind,
-                    key_in_object: Some(self.arena.obj_keys[key_idx].clone()),
-                    number_value: child_node.number_value.clone(),
-                    bool_value: child_node.bool_value,
-                    string_value: child_node.string_value.clone(),
+                CommonChild {
+                    arena_index: Some(child_arena_id),
+                    score,
+                    ranked: RankedNode {
+                        node_id: NodeId(child_priority_index),
+                        kind: child_kind,
+                        key_in_object: Some(
+                            self.arena.obj_keys[key_idx].clone(),
+                        ),
+                        number_value: child_node.number_value.clone(),
+                        bool_value: child_node.bool_value,
+                        string_value: child_node.string_value.clone(),
+                    },
+                    index_in_parent_array: None,
                 },
             );
             if *self.next_pq_id >= self.safety_cap {
@@ -211,15 +250,18 @@ impl<'a> Scope<'a> {
             self.push_child_common(
                 entry,
                 child_priority_index,
-                None,
-                score,
-                RankedNode {
-                    node_id: NodeId(child_priority_index),
-                    kind: NodeKind::String,
-                    key_in_object: None,
-                    number_value: None,
-                    bool_value: None,
-                    string_value: None,
+                CommonChild {
+                    arena_index: None,
+                    score,
+                    ranked: RankedNode {
+                        node_id: NodeId(child_priority_index),
+                        kind: NodeKind::String,
+                        key_in_object: None,
+                        number_value: None,
+                        bool_value: None,
+                        string_value: None,
+                    },
+                    index_in_parent_array: None,
                 },
             );
             if *self.next_pq_id >= self.safety_cap {
@@ -280,6 +322,7 @@ pub fn build_order(
     let mut order: Vec<NodeId> = Vec::new();
     let mut object_type: Vec<ObjectType> = Vec::new();
     let mut heap: BinaryHeap<Reverse<Entry>> = BinaryHeap::new();
+    let mut index_in_parent_array: Vec<Option<usize>> = Vec::new();
 
     // Seed root from arena
     let root_ar = arena.root_id;
@@ -289,6 +332,7 @@ pub fn build_order(
     parent.push(None);
     children.push(Vec::new());
     metrics.push(NodeMetrics::default());
+    index_in_parent_array.push(None);
     let n = &arena.nodes[root_ar];
     nodes.push(RankedNode {
         node_id: NodeId(root_priority_index),
@@ -324,6 +368,7 @@ pub fn build_order(
             heap: &mut heap,
             safety_cap: SAFETY_CAP,
             object_type: &mut object_type,
+            index_in_parent_array: &mut index_in_parent_array,
         };
         scope.process_entry(&entry, &mut order);
         if next_pq_id >= SAFETY_CAP {
@@ -337,6 +382,7 @@ pub fn build_order(
         nodes,
         parent,
         children,
+        index_in_parent_array,
         by_priority: order,
         total_nodes: total,
         object_type,

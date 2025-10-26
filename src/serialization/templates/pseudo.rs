@@ -22,6 +22,15 @@ impl Style for Pseudo {
             out.push_str(ctx.newline);
         }
     }
+    fn array_push_internal_gap(
+        out: &mut String,
+        ctx: &ArrayCtx<'_>,
+        _gap: usize,
+    ) {
+        out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
+        out.push('…');
+        out.push_str(ctx.newline);
+    }
 
     fn object_empty(open_indent: &str, ctx: &ObjectCtx<'_>) -> String {
         if ctx.omitted > 0 {

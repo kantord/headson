@@ -11,18 +11,39 @@ fn run_array_case(template: &str, budget: usize, extra: &[&str]) -> String {
     util::run_template_budget(&s, template, budget, &args)
 }
 
+fn count_kept_items(body: &str) -> usize {
+    if body.trim().is_empty() {
+        0
+    } else {
+        body.bytes().filter(|&b| b == b',').count() + 1
+    }
+}
+
+fn sum_omitted_from_comments(mut s: &str) -> usize {
+    let mut total = 0usize;
+    while let Some(pos) = s.find("/*") {
+        let after = &s[pos + 2..];
+        match after.find("*/") {
+            Some(end) => {
+                let chunk = &after[..end];
+                let digits: String =
+                    chunk.chars().filter(char::is_ascii_digit).collect();
+                if let Ok(n) = digits.parse::<usize>() {
+                    total = total.saturating_add(n);
+                }
+                s = &after[end + 2..];
+            }
+            None => break,
+        }
+    }
+    total
+}
+
 fn parse_js_kept_omitted(out_js: &str) -> (usize, usize) {
     assert!(out_js.starts_with('[') && out_js.ends_with("]\n"));
     let body = &out_js[1..out_js.len() - 2];
-    let (left, comment) = body.split_once("/*").expect("has comment");
-    let kept = if left.trim().is_empty() {
-        0
-    } else {
-        left.bytes().filter(|&b| b == b',').count() + 1
-    };
-    let digits: String =
-        comment.chars().filter(char::is_ascii_digit).collect();
-    let omitted = digits.parse::<usize>().expect("parse omitted");
+    let kept = count_kept_items(body);
+    let omitted = sum_omitted_from_comments(body);
     (kept, omitted)
 }
 
