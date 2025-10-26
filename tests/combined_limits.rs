@@ -7,6 +7,44 @@ fn run_args(args: &[&str]) -> String {
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
 }
 
+fn make_tmp_with_files(count: usize) -> (tempfile::TempDir, Vec<String>) {
+    use std::fs;
+    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let mut names: Vec<String> = Vec::with_capacity(count);
+    for i in 0..count {
+        let name = format!("a{i}.json");
+        let p = tmp.path().join(&name);
+        fs::write(&p, b"{}\n").unwrap();
+        names.push(name);
+    }
+    (tmp, names)
+}
+
+fn run_fileset_json_with_budgets(
+    dir: &std::path::Path,
+    names: &[String],
+    per_file: usize,
+    global: usize,
+) -> serde_json::Value {
+    use serde_json::Value;
+    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut args: Vec<String> = vec![
+        "-f".into(),
+        "json".into(),
+        "-n".into(),
+        per_file.to_string(),
+        "-N".into(),
+        global.to_string(),
+    ];
+    for s in names {
+        args.push(s.clone());
+    }
+    cmd.current_dir(dir);
+    let assert = cmd.args(args).assert().success();
+    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+    serde_json::from_str::<Value>(&out).expect("json parse")
+}
+
 #[test]
 fn combined_limits_across_multiple_files_matches_minimum_global() {
     let p1 = "tests/fixtures/explicit/object_small.json";
@@ -30,33 +68,9 @@ fn combined_limits_single_file_honors_per_file_minimum() {
 
 #[test]
 fn combined_limits_many_files_use_aggregate_per_file_budget() {
-    use std::fs;
-    let tmp = tempfile::tempdir().expect("tmp");
-    let mut paths = Vec::new();
-    for i in 0..8 {
-        let p = tmp.path().join(format!("f{i}.json"));
-        fs::write(&p, b"[1,2,3]").unwrap();
-        paths.push(p);
-    }
-    let path_strs: Vec<String> =
-        paths.iter().map(|p| p.to_string_lossy().into()).collect();
-    // Per-file budget 40; with 8 files aggregate=320. Global 1000 should not constrain.
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let mut args = vec!["-f", "js", "-n", "40", "-N", "1000"]; // newline mode
-    for s in &path_strs {
-        args.push(s);
-    }
-    let assert = cmd.args(args).assert().success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
-    // Expect all files are included (no omitted summary)
-    assert!(
-        !out.contains("more files"),
-        "should not omit files under aggregate per-file budget: {out:?}"
-    );
-    // Count JS headers
-    let headers = out
-        .lines()
-        .filter(|l| l.trim_start().starts_with("// "))
-        .count();
-    assert_eq!(headers, path_strs.len());
+    let (tmp, names) = make_tmp_with_files(8);
+    let v = run_fileset_json_with_budgets(tmp.path(), &names, 40, 1000);
+    let obj = v.as_object().expect("root object");
+    assert_eq!(obj.len(), names.len(), "should include all files");
+    assert!(names.iter().all(|n| obj.contains_key(n)));
 }

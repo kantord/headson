@@ -115,9 +115,10 @@ fn compute_priority(
 ) -> headson::PriorityConfig {
     let per_file_for_priority =
         if cli.global_budget.is_some() && cli.budget.is_some() {
-            // When both limits are provided, base per-file heuristics on the explicit
-            // per-file budget rather than a split of the (min) global budget.
-            cli.budget.unwrap().max(1)
+            // When both limits are provided, base per-file heuristics on the per-file
+            // budget but also respect the effective per-file slice of the final global.
+            let eff_per_file = (effective_budget / input_count.max(1)).max(1);
+            cli.budget.unwrap().min(eff_per_file).max(1)
         } else {
             (effective_budget / input_count.max(1)).max(1)
         };
