@@ -1,0 +1,3 @@
+# Normalize line endings for cross-platform consistency
+*.py text eol=lf
+
