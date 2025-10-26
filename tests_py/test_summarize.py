@@ -159,3 +159,90 @@ def test_tail_json_remains_strict():
     # Valid JSON and no visual omission markers.
     json.loads(out)
     assert "…" not in out and "/*" not in out
+
+
+def test_head_affects_arrays_pseudo():
+    text = json.dumps(list(range(50)))
+    out_head = headson.summarize(
+        text,
+        template="pseudo",
+        character_budget=30,
+        sampling="head",
+    )
+    out_bal = headson.summarize(
+        text,
+        template="pseudo",
+        character_budget=30,
+        sampling="balanced",
+    )
+    assert out_head != out_bal
+    # In head mode (non-compact by default), the last non-empty line before ']' should
+    # be the omission marker.
+    lines = out_head.splitlines()
+    # Find index of closer ']' line (last such line)
+    try:
+        idx = max(i for i, line in enumerate(lines) if line.strip() == "]")
+    except ValueError:
+        assert False, f"expected array closer, got: {out_head!r}"
+    # Previous non-empty line should be ellipsis (may include trailing comma)
+    preceding = next(
+        (line.strip() for line in reversed(lines[:idx]) if line.strip()),
+        "",
+    )
+    assert preceding.startswith(
+        "…"
+    ), f"expected ellipsis before closer in head mode, got: {out_head!r}"
+
+
+def test_head_affects_arrays_js():
+    text = json.dumps(list(range(50)))
+    out_head = headson.summarize(
+        text,
+        template="js",
+        character_budget=30,
+        sampling="head",
+    )
+    out_bal = headson.summarize(
+        text,
+        template="js",
+        character_budget=30,
+        sampling="balanced",
+    )
+    assert out_head != out_bal
+    # Head mode may render as multi-line (']' on its own line) or as a
+    # single-line '[ /* N more items */ ]' if nothing else fits.
+    lines = out_head.splitlines()
+    try:
+        # Look for a line that is purely ']' and examine the previous line
+        idx = next(i for i, line in enumerate(reversed(lines)) if line.strip() == "]")
+        # idx is offset from the end
+        closer_index = len(lines) - 1 - idx
+        preceding = next(
+            (line.strip() for line in reversed(lines[:closer_index]) if line.strip()),
+            "",
+        )
+        assert preceding.startswith(
+            "/*"
+        ), f"expected omission comment before closer in head mode, got: {out_head!r}"
+    except StopIteration:
+        # Single-line form like: '[ /* N more items */ ]'
+        stripped = out_head.strip()
+        assert (
+            stripped.startswith("[")
+            and stripped.endswith("]")
+            and "/*" in stripped
+            and "*/" in stripped
+        ), f"expected single-line omission comment inside brackets, got: {out_head!r}"
+
+
+def test_head_json_remains_strict():
+    text = json.dumps(list(range(50)))
+    out = headson.summarize(
+        text,
+        template="json",
+        character_budget=30,
+        sampling="head",
+    )
+    # Valid JSON and no visual omission markers.
+    json.loads(out)
+    assert "…" not in out and "/*" not in out

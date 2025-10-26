@@ -50,18 +50,20 @@ fn to_pyerr(e: anyhow::Error) -> PyErr {
 }
 
 #[pyfunction]
-#[pyo3(signature = (text, *, template="pseudo", character_budget=None, sampling="balanced"))]
+#[pyo3(signature = (text, *, template="pseudo", character_budget=None, sampling=None, tail=None))]
 fn summarize(
     py: Python<'_>,
     text: &str,
     template: &str,
     character_budget: Option<usize>,
-    sampling: &str,
+    sampling: Option<&str>,
+    tail: Option<bool>,
 ) -> PyResult<String> {
-    let cfg = render_config(template, sampling).map_err(to_pyerr)?;
+    let sampling_val = sampling.unwrap_or_else(|| if tail.unwrap_or(false) { "tail" } else { "balanced" });
+    let cfg = render_config(template, sampling_val).map_err(to_pyerr)?;
     let budget = character_budget.unwrap_or(500);
     let per_file_for_priority = budget.max(1);
-    let prio = priority_config(per_file_for_priority, sampling).map_err(to_pyerr)?;
+    let prio = priority_config(per_file_for_priority, sampling_val).map_err(to_pyerr)?;
     let input = text.as_bytes().to_vec();
     py.detach(|| headson_core::headson(input, &cfg, &prio, budget).map_err(to_pyerr))
 }
