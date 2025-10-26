@@ -30,14 +30,14 @@ svg { --m-text: #0f172a; /* slate-900 */
 svg text { fill: var(--m-text) !important; }
 svg .edgePath path, svg path { stroke: var(--m-edge) !important; }
 /* Slimmer edges and smaller arrowheads */
-svg .edgePath path { stroke-width: 1.2px !important; }
+svg .edgePath path { stroke-width: 1.1px !important; }
 svg marker path {
   fill: var(--m-edge) !important;
   stroke: var(--m-edge) !important;
   stroke-width: 1.2px !important;
   transform-box: fill-box;
   transform-origin: 50% 50%;
-  transform: scale(0.8);
+  transform: scale(0.75);
 }
 
 /* Avoid overriding label metrics; let Mermaid compute sizes */
@@ -54,11 +54,12 @@ svg .ser rect { fill: var(--m-ser-fill) !important; }
 svg g.cluster rect { fill: transparent !important; stroke: transparent !important; }
 svg .clusterLabel > text, svg .cluster-label > text {
   fill: var(--m-text) !important;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   paint-order: stroke fill;
   stroke: var(--m-label-outline);
-  stroke-width: 2px;
+  stroke-width: 5px;
+  stroke-linejoin: round;
 }
 
 /* Improve subgraph label contrast in dark mode */
@@ -66,7 +67,8 @@ svg .clusterLabel > text, svg .cluster-label > text {
   svg .clusterLabel > text, svg .cluster-label > text {
     fill: #ffffff !important;
     stroke: #000000;
-    stroke-opacity: 0.55;
-    stroke-width: 2px;
+    stroke-opacity: 0.6;
+    stroke-width: 5px;
+    stroke-linejoin: round;
   }
 }

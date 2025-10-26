@@ -5,7 +5,8 @@
     "fontFamily": "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif",
     "fontSize": "14px",
     "lineHeight": 1.3,
-    "nodePadding": 20
+    "nodePadding": 20,
+    "clusterPadding": 28
   },
   "flowchart": {
     "htmlLabels": true,
@@ -13,7 +14,7 @@
     "useMaxWidth": true,
     "ranker": "tight-tree",
     "padding": 24,
-    "nodeSpacing": 36,
-    "rankSpacing": 32
+    "nodeSpacing": 44,
+    "rankSpacing": 56
   }
 }
