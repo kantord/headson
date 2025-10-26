@@ -1,5 +1,5 @@
 use serde::Deserializer;
-use serde::de::{DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor};
+use serde::de::{DeserializeSeed, MapAccess, SeqAccess, Visitor};
 use std::cell::RefCell;
 
 use crate::order::NodeKind;
@@ -222,30 +222,13 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
         A: SeqAccess<'de>,
     {
         let id = self.b.push_default();
-        let mut local_children: Vec<usize> = Vec::new();
-        let low = seq.size_hint().unwrap_or(0);
-        local_children.reserve(low.min(self.b.array_cap));
-        let mut kept = 0usize;
-        let mut total = 0usize;
-        while kept < self.b.array_cap {
-            let next = {
-                let seed = self.b.seed();
-                seq.next_element_seed(seed)?
-            };
-            match next {
-                Some(cid) => {
-                    local_children.push(cid);
-                    kept += 1;
-                    total += 1;
-                }
-                None => break,
-            }
-        }
-        while (seq.next_element::<IgnoredAny>()?).is_some() {
-            total += 1;
-        }
-        // Indices are contiguous 0..kept; omit storing them to avoid overhead.
-        let local_indices: Vec<usize> = Vec::new();
+        let (local_children, local_indices, total) =
+            super::array_sample::sample_stream(
+                &mut seq,
+                self.b,
+                self.b.array_cap,
+            )?;
+        let kept = local_children.len();
         self.b
             .finish_array(id, kept, total, local_children, local_indices);
         Ok(id)

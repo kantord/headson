@@ -1,3 +1,4 @@
+mod array_sample;
 mod builder;
 use serde::de::DeserializeSeed;
 
