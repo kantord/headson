@@ -152,20 +152,14 @@ print(
 
 ```mermaid
 flowchart TD
-    A[CLI args: inputs, flags] --> B[Read inputs\nstdin or files\nignore binary/dirs]
-    B --> C{Single or many?}
-    C -- Single --> D[Parse JSON stream\nJsonTreeArena]
-    C -- Many --> E[Parse each JSON\nwrap in fileset object]
-    D --> F[Build priority order\nrank nodes + metrics]
-    E --> F
-    A --> G[Build configs\nRenderConfig + PriorityConfig]
-    F --> H[Binary search top_k\nlargest render <= budget]
-    G --> H
-    H --> I["Render attempt with template\njson | pseudo | js"]
-    I --> H
-    I --> J[Preview string]
-    J --> K[stdout]
-    B -. notices .-> L[stderr]
+    A[Input JSON (1 or many files)] --> B{Single or multiple?}
+    B -- Single --> C[Parse into JsonTreeArena]
+    B -- Multiple --> D[Parse each; wrap into fileset object]
+    C --> E[Build priority order\nrank nodes + metrics]
+    D --> E
+    E --> F[Binary search top_k\nlargest render <= budget]
+    F --> G[Render with template\njson / pseudo / js]
+    G --> H[Preview string]
 ```
 
 ## License
