@@ -156,7 +156,7 @@ flowchart TD
     subgraph Deserialization
         direction TB
         A["Input file(s)"]
-        A -- Single --> C["Parse into optimized tree representation ¹"]
+        A -- Single --> C["Parse into optimized tree (with array pre‑sampling) ¹"]
         A -- Multiple --> D["Parse each file and wrap into a fileset object"]
         D --> C
     end
