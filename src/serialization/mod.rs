@@ -25,8 +25,6 @@ pub(crate) struct RenderScope<'a> {
 }
 
 impl<'a> RenderScope<'a> {
-    // (removed) optional downsampling helper to keep invariants simple and
-    // maintain accurate omitted counts for JS compact tests.
     fn render_has_newline(&self, s: &str) -> bool {
         let nl = &self.config.newline;
         if nl.is_empty() {

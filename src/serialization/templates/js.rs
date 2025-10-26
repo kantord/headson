@@ -32,11 +32,6 @@ impl Style for Js {
         ctx: &ArrayCtx<'_>,
         gap: usize,
     ) {
-        if ctx.newline.is_empty() {
-            // In compact mode, suppress internal gap comments to keep
-            // a single omitted summary for easier machine parsing.
-            return;
-        }
         out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
         out.push_str("/* ");
         out.push_str(&gap.to_string());
