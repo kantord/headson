@@ -155,20 +155,20 @@ print(
 flowchart TD
     subgraph Deserialization
         direction TB
-        A["Input file(s) [1]"]
-        A -- Single --> C["Parse into optimized tree representation [2]"]
-        A -- Multiple --> D["Parse each file and wrap into a fileset object [3]"]
+        A["Input file(s)"]
+        A -- Single --> C["Parse into optimized tree representation [1]"]
+        A -- Multiple --> D["Parse each file and wrap into a fileset object"]
         D --> C
     end
     subgraph Prioritization
         direction TB
-        E["Build priority order [4]"]
-        F["Choose top N nodes [5]"]
+        E["Build priority order [2]"]
+        F["Choose top N nodes [3]"]
     end
     subgraph Serialization
         direction TB
-        G["Render attempt [6]"]
-        H["Output preview string [7]"]
+        G["Render attempt [4]"]
+        H["Output preview string [5]"]
     end
     C --> E
     E --> F
@@ -188,13 +188,11 @@ flowchart TD
 ```
 
 Footnotes
-- [1] Input file(s): Accepts a single input or multiple inputs. In the multi-file case, each file is parsed and then grouped under a lightweight fileset wrapper to keep outputs distinguishable while sharing a single preview budget.
-- [2] Optimized tree representation: A compact, tree-shaped structure retaining node type, values, and child relationships. Arrays keep only a limited number of elements; basic per-node metrics (e.g., array length, string length) are recorded to inform prioritization and omission summaries.
-- [3] Fileset wrapper: For multiple inputs, the parsed roots are placed under a synthetic object keyed by file name, enabling one unified preview while preserving per-file boundaries.
-- [4] Priority order: Nodes are scored so previews surface representative structure and values first. Earlier array items are preferred (or the tail, when configured), object properties have a stable order, and strings expand by grapheme with early characters prioritized over deep expansions.
-- [5] Choose top N nodes (binary search): Iteratively selects N such that the rendered preview remains within the character budget. The search loops between “choose N” and “render attempt” to converge efficiently.
-- [6] Render attempt: Serializes the currently included nodes using the selected template (json, pseudo, or js). Displays omission summaries when parts are elided; multi-file outputs can include per-file section headers in human-friendly templates.
-- [7] Output preview string: The final compact preview that fits within the specified budget.
+- [1] Optimized tree representation: An arena-style tree stored in flat, contiguous buffers. Each node records its type and value plus index ranges into separate child and key arrays. Arrays are parsed with a cap on kept elements, and total sizes are tracked so omission information can be emitted later. This layout is cache-friendly and avoids pointer chasing.
+- [2] Priority order: Nodes are scored so previews surface representative structure and values first. Earlier array items are preferred (or the tail, when configured), object properties have a consistent ordering, and strings expand by grapheme with early characters prioritized over very deep expansions.
+- [3] Choose top N nodes (binary search): Iteratively picks N so that the rendered preview fits within the character budget, looping between “choose N” and a render attempt to converge quickly.
+- [4] Render attempt: Serializes the currently included nodes using the selected template (json, pseudo, or js). Adds omission summaries when parts are elided; for multiple inputs, human-friendly templates can show per-file sections.
+- [5] Output preview string: The final compact preview that satisfies the configured budget.
 
 ## License
 
