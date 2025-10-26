@@ -43,9 +43,11 @@ svg marker path {
 /* Avoid overriding label metrics; let Mermaid compute sizes */
 
 /* Node category fills based on classDef in the diagram (des/prio/ser) */
-svg .des rect { fill: var(--m-des-fill) !important; stroke: transparent !important; }
-svg .prio rect { fill: var(--m-pri-fill) !important; stroke: transparent !important; }
-svg .ser rect { fill: var(--m-ser-fill) !important; stroke: transparent !important; }
+/* Remove borders from all nodes */
+svg .node rect, svg g.node > rect, svg .label-container > rect { stroke: none !important; }
+svg .des rect { fill: var(--m-des-fill) !important; }
+svg .prio rect { fill: var(--m-pri-fill) !important; }
+svg .ser rect { fill: var(--m-ser-fill) !important; }
 
 /* Cluster boxes invisible; labels styled */
 /* Subgraphs: no background or border, only label visible */
