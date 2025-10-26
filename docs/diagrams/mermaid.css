@@ -1,0 +1,75 @@
+/* Mermaid diagram CSS overrides for good light/dark rendering on GitHub/docs.rs */
+/* Use a GitHub-like sans-serif stack for consistent sizing/flow */
+svg, svg * { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji", sans-serif; }
+
+/* Define light defaults */
+svg { --m-text: #0f172a; /* slate-900 */
+      --m-edge: #334155; /* slate-700 */
+      --m-label-outline: #ffffff;
+      --m-cluster-bg: #f8fafc; /* zinc-50 */
+      --m-cluster-border: #e5e7eb; /* zinc-200 */
+      --m-cluster-bg-opacity: 0.85;
+      --m-cluster-label-bg: #ffffff;
+      --m-cluster-label-fg: #0f172a;
+      --m-des-fill: #eaf2ff; --m-des-stroke: #3b82f6;
+      --m-pri-fill: #ecfdf5; --m-pri-stroke: #10b981;
+      --m-ser-fill: #fff1f2; --m-ser-stroke: #f43f5e; }
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  svg { --m-text: #e5e7eb; /* zinc-200 */
+        --m-edge: #cbd5e1; /* slate-300 */
+        --m-label-outline: #0b1220;
+        --m-cluster-bg: #0b1220; /* deep slate */
+        --m-cluster-border: #1f2937; /* slate-800 */
+        --m-cluster-bg-opacity: 0.75;
+        --m-cluster-label-bg: #000000;
+        --m-cluster-label-fg: #ffffff;
+        --m-des-fill: #0b1220; --m-des-stroke: #60a5fa; /* deeper blue bg, soft blue border */
+        --m-pri-fill: #052e2b; --m-pri-stroke: #34d399; /* deep teal bg, green border */
+        --m-ser-fill: #2a0f12; --m-ser-stroke: #fb7185; /* deep rose bg, rose border */ }
+}
+
+/* General text and edges */
+svg text { fill: var(--m-text) !important; }
+svg .edgePath path, svg path { stroke: var(--m-edge) !important; }
+/* Slimmer edges and smaller arrowheads */
+svg .edgePath path { stroke-width: 1.1px !important; }
+svg marker path {
+  fill: var(--m-edge) !important;
+  stroke: var(--m-edge) !important;
+  stroke-width: 1.2px !important;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transform: scale(0.75);
+}
+
+/* Avoid overriding label metrics; let Mermaid compute sizes */
+
+/* Node category fills based on classDef in the diagram (des/prio/ser) */
+/* Remove borders from all nodes */
+svg .node rect, svg g.node > rect, svg .label-container > rect { stroke: none !important; }
+svg .des rect { fill: var(--m-des-fill) !important; }
+svg .prio rect { fill: var(--m-pri-fill) !important; }
+svg .ser rect { fill: var(--m-ser-fill) !important; }
+
+/* Cluster boxes invisible; labels styled */
+/* Subgraphs: no background or border, only label visible */
+svg g.cluster rect { fill: transparent !important; stroke: transparent !important; }
+/* Subgraph label sizing/styling for both SVG and HTML label renderers */
+svg .clusterLabel > text, svg .cluster-label > text { font-size: 22px !important; font-weight: 700 !important; fill: var(--m-text) !important; }
+/* HTML-based cluster labels (when htmlLabels=true) */
+svg foreignObject .clusterLabel,
+svg foreignObject .cluster-label,
+svg foreignObject div[class*="clusterLabel"],
+svg foreignObject div[class*="cluster-label"] {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 6px;
+  background-color: var(--m-cluster-label-bg) !important;
+  color: var(--m-cluster-label-fg) !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  /* Mask nearby edges without outlines */
+  box-shadow: 0 0 0 6px var(--m-cluster-label-bg);
+}
