@@ -12,4 +12,19 @@ Set TypingSpeed 25ms
 Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson" Sleep 400ms Enter
 Sleep 6s
 
+Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson -n100" Sleep 400ms Enter
+Sleep 6s
+
+
+Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson -n700" Sleep 400ms Enter
+Sleep 6s
+
+
+Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson -f js" Sleep 400ms Enter
+Sleep 6s
+
+
+Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson -f json" Sleep 400ms Enter
+Sleep 6s
+
 
