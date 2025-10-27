@@ -22,7 +22,7 @@ fn render_config_with_sampler(
     let newline = "\n".to_string();
     let indent_unit = "  ".to_string();
     let prefer_tail_arrays = matches!(sampler, ArraySamplerStrategy::Tail);
-    Ok(RenderConfig { template: t, indent_unit, space, newline, prefer_tail_arrays, color_mode: ColorMode::Auto })
+    Ok(RenderConfig { template: t, indent_unit, space, newline, prefer_tail_arrays, color_mode: ColorMode::Auto, color_enabled: false })
 }
 
 fn parse_skew(skew: &str) -> Result<ArraySamplerStrategy> {

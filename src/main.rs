@@ -271,6 +271,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         cli.indent.clone()
     };
     let color_mode = color_mode_from_flags(cli);
+    let color_enabled = color_mode.effective(io::stdout().is_terminal());
 
     headson::RenderConfig {
         template,
@@ -279,6 +280,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         newline,
         prefer_tail_arrays: cli.tail,
         color_mode,
+        color_enabled,
     }
 }
 

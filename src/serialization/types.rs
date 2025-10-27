@@ -18,6 +18,8 @@ pub struct RenderConfig {
     // Desired color mode for rendering. Currently unused by templates,
     // but parsed and threaded through for future use.
     pub color_mode: ColorMode,
+    // Resolved color enablement after considering color_mode and stdout TTY.
+    pub color_enabled: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

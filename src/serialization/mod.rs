@@ -188,12 +188,20 @@ impl<'a> RenderScope<'a> {
         let node = &self.order.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         let full: &str = node.string_value.as_deref().unwrap_or("");
-        if omitted == 0 {
-            return crate::utils::json::json_string(full);
+        let s = if omitted == 0 {
+            crate::utils::json::json_string(full)
+        } else {
+            let prefix = crate::utils::text::take_n_graphemes(full, kept);
+            let truncated = format!("{prefix}…");
+            crate::utils::json::json_string(&truncated)
+        };
+        if self.config.template == crate::OutputTemplate::Pseudo
+            && self.config.color_enabled
+        {
+            format!("\u{001b}[34m{s}\u{001b}[0m")
+        } else {
+            s
         }
-        let prefix = crate::utils::text::take_n_graphemes(full, kept);
-        let truncated = format!("{prefix}…");
-        crate::utils::json::json_string(&truncated)
     }
 
     fn serialize_number(&self, id: usize) -> String {
@@ -286,7 +294,12 @@ impl<'a> RenderScope<'a> {
                 kept += 1;
                 let child = &self.order.nodes[child_id.0];
                 let raw_key = child.key_in_object.as_deref().unwrap_or("");
-                let key = crate::utils::json::json_string(raw_key);
+                let mut key = crate::utils::json::json_string(raw_key);
+                if self.config.template == crate::OutputTemplate::Pseudo
+                    && self.config.color_enabled
+                {
+                    key = format!("\u{001b}[34m{key}\u{001b}[0m");
+                }
                 let val = self.serialize_node(child_id.0, depth + 1, true);
                 children_pairs.push((i, (key, val)));
             }
@@ -382,6 +395,7 @@ mod tests {
                 newline: "\n".to_string(),
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
+                color_enabled: false,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -415,6 +429,7 @@ mod tests {
                 newline: "\r\n".to_string(),
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
+                color_enabled: false,
             },
         );
         // Sanity: output should contain CRLF newlines and render the object child across lines.
@@ -450,6 +465,7 @@ mod tests {
                 newline: "\n".to_string(),
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
+                color_enabled: false,
             },
         );
         assert_snapshot!("arena_render_single", out);
@@ -482,6 +498,7 @@ mod tests {
                 newline: "\n".to_string(),
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
+                color_enabled: false,
             },
         );
         // Should be a valid JS object with one property and an omitted summary.
