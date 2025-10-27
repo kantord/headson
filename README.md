@@ -119,6 +119,21 @@ headson -n 120 -f json users.json
 # {"users":[{"id":1,"name":"Ana","roles":["admin"]}],"meta":{"count":2}}
 ```
 
+## Terminal Demos
+
+Short terminal demo GIFs are generated from VHS tapes and included in the repo.
+
+<!-- BEGIN:INLINE_DEMO_GIF -->
+<!-- Inline demo.gif will be inserted here by `cargo make tapes-inline` -->
+<!-- END:INLINE_DEMO_GIF -->
+
+Regenerate locally:
+
+- Place tapes under docs/tapes (e.g., docs/tapes/demo.tape)
+- Run: cargo make tapes
+- Then inline into README: cargo make tapes-inline
+- Outputs are written to docs/assets/tapes and the README contains an inlined image
+
 ## Python Bindings
 
 A thin Python extension module is available on PyPI as `headson`.
