@@ -17,7 +17,7 @@ impl<'a> RenderScope<'a> {
         out.push_str("// ");
         out.push_str(raw_key);
         out.push_str(nl);
-        let rendered = self.serialize_node(child_pq_id, depth, false);
+        let rendered = self.render_node_to_string(child_pq_id, depth, false);
         out.push_str(&rendered);
         out.push(';');
         out.push_str(nl);
@@ -58,7 +58,7 @@ impl<'a> RenderScope<'a> {
         out.push_str(raw_key);
         out.push_str(" <==");
         out.push_str(nl);
-        let rendered = self.serialize_node(child_pq_id, depth, false);
+        let rendered = self.render_node_to_string(child_pq_id, depth, false);
         out.push_str(&rendered);
     }
 

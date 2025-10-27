@@ -5,10 +5,10 @@ use crate::serialization::output::Out;
 struct Pseudo;
 
 impl Style for Pseudo {
-    fn array_empty(open_indent: &str, ctx: &ArrayCtx<'_>) -> String {
-        let mut buf = String::new();
-        let mut out = Out::from_array_ctx(&mut buf, ctx);
-        out.push_str(open_indent);
+    fn array_empty(out: &mut Out<'_>, ctx: &ArrayCtx) {
+        if !ctx.inline_open {
+            out.push_indent(ctx.depth);
+        }
         out.push_char('[');
         if ctx.omitted > 0 {
             out.push_str(" ");
@@ -16,35 +16,32 @@ impl Style for Pseudo {
             out.push_str(" ");
         }
         out.push_char(']');
-        buf
     }
 
-    fn array_push_omitted(out: &mut String, ctx: &ArrayCtx<'_>) {
+    fn array_push_omitted(out: &mut Out<'_>, ctx: &ArrayCtx) {
         if ctx.omitted > 0 {
-            let mut ow = Out::from_array_ctx(out, ctx);
-            ow.push_indent(ctx.depth + 1);
-            ow.push_omission();
+            out.push_indent(ctx.depth + 1);
+            out.push_omission();
             if ctx.children_len > 0 && ctx.omitted_at_start {
-                ow.push_char(',');
+                out.push_char(',');
             }
-            ow.push_newline();
+            out.push_newline();
         }
     }
     fn array_push_internal_gap(
-        out: &mut String,
-        ctx: &ArrayCtx<'_>,
+        out: &mut Out<'_>,
+        ctx: &ArrayCtx,
         _gap: usize,
     ) {
-        let mut ow = Out::from_array_ctx(out, ctx);
-        ow.push_indent(ctx.depth + 1);
-        ow.push_omission();
-        ow.push_newline();
+        out.push_indent(ctx.depth + 1);
+        out.push_omission();
+        out.push_newline();
     }
 
-    fn object_empty(open_indent: &str, ctx: &ObjectCtx<'_>) -> String {
-        let mut buf = String::new();
-        let mut out = Out::from_object_ctx(&mut buf, ctx);
-        out.push_str(open_indent);
+    fn object_empty(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
+        if !ctx.inline_open {
+            out.push_indent(ctx.depth);
+        }
         out.push_char('{');
         if ctx.omitted > 0 {
             out.push_str(ctx.space);
@@ -52,23 +49,21 @@ impl Style for Pseudo {
             out.push_str(ctx.space);
         }
         out.push_char('}');
-        buf
     }
 
-    fn object_push_omitted(out: &mut String, ctx: &ObjectCtx<'_>) {
+    fn object_push_omitted(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
         if ctx.omitted > 0 {
-            let mut ow = Out::from_object_ctx(out, ctx);
-            ow.push_indent(ctx.depth + 1);
-            ow.push_omission();
-            ow.push_newline();
+            out.push_indent(ctx.depth + 1);
+            out.push_omission();
+            out.push_newline();
         }
     }
 }
 
-pub(super) fn render_array(ctx: &ArrayCtx<'_>) -> String {
-    render_array_with::<Pseudo>(ctx)
+pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
+    render_array_with::<Pseudo>(ctx, out)
 }
 
-pub(super) fn render_object(ctx: &ObjectCtx<'_>) -> String {
-    render_object_with::<Pseudo>(ctx)
+pub(super) fn render_object(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
+    render_object_with::<Pseudo>(ctx, out)
 }

@@ -6,6 +6,7 @@ pub mod output;
 pub mod templates;
 pub mod types;
 use self::templates::{ArrayCtx, ObjectCtx, render_array, render_object};
+use crate::serialization::output::Out;
 
 fn indent(depth: usize, unit: &str) -> String {
     unit.repeat(depth)
@@ -115,39 +116,35 @@ impl<'a> RenderScope<'a> {
         }
     }
 
-    fn serialize_array(
+    fn write_array(
         &mut self,
         id: usize,
         depth: usize,
         inline: bool,
-    ) -> String {
+        out: &mut Out<'_>,
+    ) {
         let config = self.config;
         let (children_pairs, kept) = self.gather_array_children(id, depth);
         let node = &self.order.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
-        if kept == 0 && omitted == 0 {
-            return "[]".to_string();
-        }
         let ctx = ArrayCtx {
             children: children_pairs,
             children_len: kept,
             omitted,
             depth,
-            indent_unit: &config.indent_unit,
             inline_open: inline,
-            newline: &config.newline,
             omitted_at_start: config.prefer_tail_arrays,
-            color_enabled: config.color_enabled,
         };
-        render_array(config.template, &ctx)
+        render_array(config.template, &ctx, out)
     }
 
-    fn serialize_object(
+    fn write_object(
         &mut self,
         id: usize,
         depth: usize,
         inline: bool,
-    ) -> String {
+        out: &mut Out<'_>,
+    ) {
         let config = self.config;
         // Special-case: fileset root in Pseudo/JS templates → head-style sections
         if id == ROOT_PQ_ID
@@ -156,10 +153,14 @@ impl<'a> RenderScope<'a> {
         {
             match config.template {
                 crate::OutputTemplate::Pseudo => {
-                    return self.serialize_fileset_root_pseudo(depth);
+                    let s = self.serialize_fileset_root_pseudo(depth);
+                    out.push_str(&s);
+                    return;
                 }
                 crate::OutputTemplate::Js => {
-                    return self.serialize_fileset_root_js(depth);
+                    let s = self.serialize_fileset_root_js(depth);
+                    out.push_str(&s);
+                    return;
                 }
                 _ => {}
             }
@@ -167,24 +168,18 @@ impl<'a> RenderScope<'a> {
         let (children_pairs, kept) = self.gather_object_children(id, depth);
         let node = &self.order.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
-        if kept == 0 && omitted == 0 {
-            return "{}".to_string();
-        }
         let ctx = ObjectCtx {
             children: children_pairs,
             children_len: kept,
             omitted,
             depth,
-            indent_unit: &config.indent_unit,
             inline_open: inline,
             space: &config.space,
-            newline: &config.newline,
             fileset_root: id == ROOT_PQ_ID
                 && self.order.object_type.get(id)
                     == Some(&ObjectType::Fileset),
-            color_enabled: config.color_enabled,
         };
-        render_object(config.template, &ctx)
+        render_object(config.template, &ctx, out)
     }
 
     fn serialize_string(&mut self, id: usize) -> String {
@@ -240,24 +235,37 @@ impl<'a> RenderScope<'a> {
         )
     }
 
-    fn serialize_node(
+    fn write_node(
         &mut self,
         id: usize,
         depth: usize,
         inline: bool,
-    ) -> String {
+        out: &mut Out<'_>,
+    ) {
         let it = &self.order.nodes[id];
         match it.kind {
-            NodeKind::Array => self.serialize_array(id, depth, inline),
-            NodeKind::Object => self.serialize_object(id, depth, inline),
-            NodeKind::String => self.serialize_string(id),
-            NodeKind::Number => self.serialize_number(id),
-            NodeKind::Bool => self.serialize_bool(id),
-            NodeKind::Null => crate::serialization::color::wrap_role(
-                "null",
-                crate::serialization::color::ColorRole::Null,
-                self.config.color_enabled,
-            ),
+            NodeKind::Array => self.write_array(id, depth, inline, out),
+            NodeKind::Object => self.write_object(id, depth, inline, out),
+            NodeKind::String => {
+                let s = self.serialize_string(id);
+                out.push_str(&s);
+            }
+            NodeKind::Number => {
+                let s = self.serialize_number(id);
+                out.push_str(&s);
+            }
+            NodeKind::Bool => {
+                let s = self.serialize_bool(id);
+                out.push_str(&s);
+            }
+            NodeKind::Null => {
+                let s = crate::serialization::color::wrap_role(
+                    "null",
+                    crate::serialization::color::ColorRole::Null,
+                    self.config.color_enabled,
+                );
+                out.push_str(&s);
+            }
         }
     }
 
@@ -276,7 +284,7 @@ impl<'a> RenderScope<'a> {
                 kept += 1;
                 let child_kind = self.order.nodes[child_id.0].kind;
                 let rendered =
-                    self.serialize_node(child_id.0, depth + 1, false);
+                    self.render_node_to_string(child_id.0, depth + 1, false);
                 let orig_index = self
                     .order
                     .index_in_parent_array
@@ -315,11 +323,53 @@ impl<'a> RenderScope<'a> {
                     crate::serialization::color::ColorRole::Key,
                     self.config.color_enabled,
                 );
-                let val = self.serialize_node(child_id.0, depth + 1, true);
+                let val =
+                    self.render_node_to_string(child_id.0, depth + 1, true);
                 children_pairs.push((i, (key, val)));
             }
         }
         (children_pairs, kept)
+    }
+
+    fn render_node_to_string(
+        &mut self,
+        id: usize,
+        depth: usize,
+        inline: bool,
+    ) -> String {
+        let it = &self.order.nodes[id];
+        match it.kind {
+            NodeKind::Array => {
+                let mut s = String::new();
+                let mut ow = Out::new(
+                    &mut s,
+                    &self.config.newline,
+                    &self.config.indent_unit,
+                    self.config.color_enabled,
+                );
+                self.write_array(id, depth, inline, &mut ow);
+                s
+            }
+            NodeKind::Object => {
+                let mut s = String::new();
+                let mut ow = Out::new(
+                    &mut s,
+                    &self.config.newline,
+                    &self.config.indent_unit,
+                    self.config.color_enabled,
+                );
+                self.write_object(id, depth, inline, &mut ow);
+                s
+            }
+            NodeKind::String => self.serialize_string(id),
+            NodeKind::Number => self.serialize_number(id),
+            NodeKind::Bool => self.serialize_bool(id),
+            NodeKind::Null => crate::serialization::color::wrap_role(
+                "null",
+                crate::serialization::color::ColorRole::Null,
+                self.config.color_enabled,
+            ),
+        }
     }
 }
 
@@ -357,7 +407,15 @@ pub fn render_from_render_set(
         render_set_id: render_id,
         config,
     };
-    scope.serialize_node(root_id, 0, false)
+    let mut s = String::new();
+    let mut out = Out::new(
+        &mut s,
+        &config.newline,
+        &config.indent_unit,
+        config.color_enabled,
+    );
+    scope.write_node(root_id, 0, false, &mut out);
+    s
 }
 
 /// Convenience: prepare the render set for `top_k` nodes and render in one call.
@@ -529,7 +587,7 @@ mod tests {
         );
     }
 
-    fn mk_gap_ctx() -> super::templates::ArrayCtx<'static> {
+    fn mk_gap_ctx() -> super::templates::ArrayCtx {
         super::templates::ArrayCtx {
             children: vec![
                 (0, "  1".to_string()),
@@ -539,11 +597,8 @@ mod tests {
             children_len: 3,
             omitted: 0,
             depth: 0,
-            indent_unit: "  ",
             inline_open: false,
-            newline: "\n",
             omitted_at_start: false,
-            color_enabled: false,
         }
     }
 
@@ -554,10 +609,15 @@ mod tests {
     #[test]
     fn array_internal_gaps_pseudo() {
         let ctx = mk_gap_ctx();
-        let out = super::templates::render_array(
+        let mut s = String::new();
+        let mut outw =
+            crate::serialization::output::Out::new(&mut s, "\n", "  ", false);
+        super::templates::render_array(
             crate::OutputTemplate::Pseudo,
             &ctx,
+            &mut outw,
         );
+        let out = s;
         assert_contains_all(
             &out,
             &["[\n", "\n  1,", "\n  …\n", "\n  2,", "\n  3\n"],
@@ -567,8 +627,15 @@ mod tests {
     #[test]
     fn array_internal_gaps_js() {
         let ctx = mk_gap_ctx();
-        let out =
-            super::templates::render_array(crate::OutputTemplate::Js, &ctx);
+        let mut s = String::new();
+        let mut outw =
+            crate::serialization::output::Out::new(&mut s, "\n", "  ", false);
+        super::templates::render_array(
+            crate::OutputTemplate::Js,
+            &ctx,
+            &mut outw,
+        );
+        let out = s;
         assert!(out.contains("/* 2 more items */"));
         assert!(out.contains("/* 1 more items */"));
     }

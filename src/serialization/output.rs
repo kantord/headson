@@ -1,31 +1,26 @@
 use super::color;
-use crate::serialization::templates::{ArrayCtx, ObjectCtx};
 
 // Simple output layer that centralizes colored and structured pushes
 // while still rendering into a String buffer (to preserve sizing/measurement).
 pub struct Out<'a> {
     buf: &'a mut String,
-    newline: &'a str,
-    indent_unit: &'a str,
+    newline: String,
+    indent_unit: String,
     color_enabled: bool,
 }
 
 impl<'a> Out<'a> {
-    pub fn from_array_ctx(buf: &'a mut String, ctx: &ArrayCtx<'a>) -> Self {
+    pub fn new(
+        buf: &'a mut String,
+        newline: &str,
+        indent_unit: &str,
+        color_enabled: bool,
+    ) -> Self {
         Self {
             buf,
-            newline: ctx.newline,
-            indent_unit: ctx.indent_unit,
-            color_enabled: ctx.color_enabled,
-        }
-    }
-
-    pub fn from_object_ctx(buf: &'a mut String, ctx: &ObjectCtx<'a>) -> Self {
-        Self {
-            buf,
-            newline: ctx.newline,
-            indent_unit: ctx.indent_unit,
-            color_enabled: ctx.color_enabled,
+            newline: newline.to_string(),
+            indent_unit: indent_unit.to_string(),
+            color_enabled,
         }
     }
 
@@ -41,7 +36,7 @@ impl<'a> Out<'a> {
 
     #[inline]
     pub fn push_newline(&mut self) {
-        self.buf.push_str(self.newline);
+        self.buf.push_str(&self.newline);
     }
 
     #[inline]
