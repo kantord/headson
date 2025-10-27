@@ -1,19 +1,13 @@
 use super::super::indent;
 use super::core::{Style, render_array_with, render_object_with};
-use super::{ArrayCtx, ObjectCtx};
+use super::{ArrayCtx, ColorExt, ObjectCtx};
 
 struct Pseudo;
 
 impl Style for Pseudo {
     fn array_empty(open_indent: &str, ctx: &ArrayCtx<'_>) -> String {
         if ctx.omitted > 0 {
-            if ctx.color_enabled {
-                return format!(
-                    "{open_indent}[ {ell} ]",
-                    ell = crate::serialization::color::omission_marker(true)
-                );
-            }
-            return format!("{open_indent}[ … ]");
+            return format!("{open_indent}[ {} ]", ctx.omission());
         }
         format!("{open_indent}[]")
     }
@@ -21,9 +15,7 @@ impl Style for Pseudo {
     fn array_push_omitted(out: &mut String, ctx: &ArrayCtx<'_>) {
         if ctx.omitted > 0 {
             out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
-            out.push_str(crate::serialization::color::omission_marker(
-                ctx.color_enabled,
-            ));
+            out.push_str(ctx.omission());
             if ctx.children_len > 0 && ctx.omitted_at_start {
                 out.push(',');
             }
@@ -36,9 +28,7 @@ impl Style for Pseudo {
         _gap: usize,
     ) {
         out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
-        out.push_str(crate::serialization::color::omission_marker(
-            ctx.color_enabled,
-        ));
+        out.push_str(ctx.omission());
         out.push_str(ctx.newline);
     }
 
@@ -47,9 +37,7 @@ impl Style for Pseudo {
             return format!(
                 "{open_indent}{{{space}{ell}{space}}}",
                 space = ctx.space,
-                ell = crate::serialization::color::omission_marker(
-                    ctx.color_enabled,
-                )
+                ell = ctx.omission()
             );
         }
         format!("{open_indent}{{}}")
@@ -58,9 +46,7 @@ impl Style for Pseudo {
     fn object_push_omitted(out: &mut String, ctx: &ObjectCtx<'_>) {
         if ctx.omitted > 0 {
             out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
-            out.push_str(crate::serialization::color::omission_marker(
-                ctx.color_enabled,
-            ));
+            out.push_str(ctx.omission());
             out.push_str(ctx.newline);
         }
     }

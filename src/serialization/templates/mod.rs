@@ -4,6 +4,7 @@ mod core;
 mod js;
 mod json;
 mod pseudo;
+use super::color::{self};
 
 pub struct ArrayCtx<'a> {
     pub children: Vec<(usize, String)>,
@@ -28,6 +29,30 @@ pub struct ObjectCtx<'a> {
     pub newline: &'a str,
     pub fileset_root: bool,
     pub color_enabled: bool,
+}
+
+// Color helpers facade so templates don't pass flags around.
+pub trait ColorExt {
+    fn omission(&self) -> &'static str;
+    fn comment<S: Into<String>>(&self, body: S) -> String;
+}
+
+impl<'a> ColorExt for ArrayCtx<'a> {
+    fn omission(&self) -> &'static str {
+        color::omission_marker(self.color_enabled)
+    }
+    fn comment<S: Into<String>>(&self, body: S) -> String {
+        color::color_comment(body, self.color_enabled)
+    }
+}
+
+impl<'a> ColorExt for ObjectCtx<'a> {
+    fn omission(&self) -> &'static str {
+        color::omission_marker(self.color_enabled)
+    }
+    fn comment<S: Into<String>>(&self, body: S) -> String {
+        color::color_comment(body, self.color_enabled)
+    }
 }
 
 pub fn render_array(template: OutputTemplate, ctx: &ArrayCtx<'_>) -> String {

@@ -1,32 +1,25 @@
 use super::super::indent;
 use super::core::{Style, render_array_with, render_object_with};
-use super::{ArrayCtx, ObjectCtx};
+use super::{ArrayCtx, ColorExt, ObjectCtx};
 
 struct Js;
 
 impl Style for Js {
     fn array_empty(open_indent: &str, ctx: &ArrayCtx<'_>) -> String {
         if ctx.omitted > 0 {
-            let body = crate::serialization::color::color_comment(
-                format!("/* {} more items */", ctx.omitted),
-                ctx.color_enabled,
-            );
+            let body =
+                ctx.comment(format!("/* {} more items */", ctx.omitted));
             return format!("{open_indent}[ {body} ]");
         }
-        let body = crate::serialization::color::color_comment(
-            "/* empty */",
-            ctx.color_enabled,
-        );
+        let body = ctx.comment("/* empty */");
         format!("{open_indent}[ {body} ]")
     }
 
     fn array_push_omitted(out: &mut String, ctx: &ArrayCtx<'_>) {
         if ctx.omitted > 0 {
             out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
-            let body = crate::serialization::color::color_comment(
-                format!("/* {} more items */", ctx.omitted),
-                ctx.color_enabled,
-            );
+            let body =
+                ctx.comment(format!("/* {} more items */", ctx.omitted));
             out.push_str(&body);
             if ctx.children_len > 0 && ctx.omitted_at_start {
                 out.push(',');
@@ -40,10 +33,7 @@ impl Style for Js {
         gap: usize,
     ) {
         out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
-        let body = crate::serialization::color::color_comment(
-            format!("/* {gap} more items */"),
-            ctx.color_enabled,
-        );
+        let body = ctx.comment(format!("/* {gap} more items */"));
         out.push_str(&body);
         out.push_str(ctx.newline);
     }
@@ -55,19 +45,14 @@ impl Style for Js {
             } else {
                 "properties"
             };
-            let body = crate::serialization::color::color_comment(
-                format!("/* {} more {label} */", ctx.omitted),
-                ctx.color_enabled,
-            );
+            let body =
+                ctx.comment(format!("/* {} more {label} */", ctx.omitted));
             return format!(
                 "{open_indent}{{{space}{body}{space}}}",
                 space = ctx.space
             );
         }
-        let body = crate::serialization::color::color_comment(
-            "/* empty */",
-            ctx.color_enabled,
-        );
+        let body = ctx.comment("/* empty */");
         format!("{open_indent}{{{space}{body}{space}}}", space = ctx.space)
     }
 
@@ -79,10 +64,8 @@ impl Style for Js {
             } else {
                 "properties"
             };
-            let body = crate::serialization::color::color_comment(
-                format!("/* {} more {label} */", ctx.omitted),
-                ctx.color_enabled,
-            );
+            let body =
+                ctx.comment(format!("/* {} more {label} */", ctx.omitted));
             out.push_str(&body);
             out.push_str(ctx.newline);
         }
