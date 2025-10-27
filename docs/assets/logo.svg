@@ -35,8 +35,14 @@
      inkscape:window-y="748"
      inkscape:window-maximized="1"
      inkscape:current-layer="layer1" />
-  <defs
-     id="defs1" />
+  <defs id="defs1">
+    <style type="text/css"><![CDATA[
+      .wordmark { fill: #000000; }
+      @media (prefers-color-scheme: dark) {
+        .wordmark { fill: #ffffff; }
+      }
+    ]]></style>
+  </defs>
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
@@ -44,6 +50,7 @@
      transform="translate(-62.9858,-133.27801)">
     <g
        id="text1"
+       class="wordmark"
        style="font-size:3.175px;stroke-width:0.244"
        aria-label="head{…}son">
       <path
