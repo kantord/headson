@@ -1,4 +1,9 @@
-# headson
+<h1 align="center">headson</h1>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/demo.gif" alt="Terminal demo" />
+  <br/>
+</p>
 
 Head/tail for JSON — but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict character budget.
 
@@ -120,10 +125,6 @@ headson -n 120 -f json users.json
 ```
 
 ## Terminal Demos
-
-Short terminal demo GIFs are generated from VHS tapes and included in the repo.
-
-![Terminal demo](docs/assets/tapes/demo.gif)
 
 Regenerate locally:
 
