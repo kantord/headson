@@ -26,6 +26,15 @@ pub(crate) struct RenderScope<'a> {
 }
 
 impl<'a> RenderScope<'a> {
+    #[inline]
+    fn wrap(&self, s: String, ansi_prefix: &str) -> String {
+        if self.config.color_enabled {
+            format!("{ansi_prefix}{s}\u{001b}[0m")
+        } else {
+            s
+        }
+    }
+
     fn render_has_newline(&self, s: &str) -> bool {
         let nl = &self.config.newline;
         if nl.is_empty() {
@@ -135,6 +144,7 @@ impl<'a> RenderScope<'a> {
             inline_open: inline,
             newline: &config.newline,
             omitted_at_start: config.prefer_tail_arrays,
+            color_enabled: config.color_enabled,
         };
         render_array(config.template, &ctx)
     }
@@ -179,6 +189,7 @@ impl<'a> RenderScope<'a> {
             fileset_root: id == ROOT_PQ_ID
                 && self.order.object_type.get(id)
                     == Some(&ObjectType::Fileset),
+            color_enabled: config.color_enabled,
         };
         render_object(config.template, &ctx)
     }
@@ -195,11 +206,8 @@ impl<'a> RenderScope<'a> {
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
         };
-        if self.config.color_enabled {
-            format!("\u{001b}[34m{s}\u{001b}[0m")
-        } else {
-            s
-        }
+        // Strings: green (approximate common jq defaults)
+        self.wrap(s, "\u{001b}[32m")
     }
 
     fn serialize_number(&self, id: usize) -> String {
@@ -215,15 +223,19 @@ impl<'a> RenderScope<'a> {
                 return n.to_string();
             }
         }
-        "0".to_string()
+        let s = "0".to_string();
+        // Numbers: cyan
+        self.wrap(s, "\u{001b}[36m")
     }
 
     fn serialize_bool(&self, id: usize) -> String {
         let it = &self.order.nodes[id];
-        match it.bool_value {
-            Some(true) => "true".to_string(),
-            Some(false) | None => "false".to_string(),
-        }
+        let raw = match it.bool_value {
+            Some(true) => "true",
+            Some(false) | None => "false",
+        };
+        // Booleans: bright gray
+        self.wrap(raw.to_string(), "\u{001b}[37m")
     }
 
     fn serialize_node(
@@ -239,7 +251,10 @@ impl<'a> RenderScope<'a> {
             NodeKind::String => self.serialize_string(id),
             NodeKind::Number => self.serialize_number(id),
             NodeKind::Bool => self.serialize_bool(id),
-            NodeKind::Null => "null".to_string(),
+            NodeKind::Null => {
+                // null: bright gray
+                self.wrap("null".to_string(), "\u{001b}[37m")
+            }
         }
     }
 
@@ -293,9 +308,8 @@ impl<'a> RenderScope<'a> {
                 let child = &self.order.nodes[child_id.0];
                 let raw_key = child.key_in_object.as_deref().unwrap_or("");
                 let mut key = crate::utils::json::json_string(raw_key);
-                if self.config.color_enabled {
-                    key = format!("\u{001b}[34m{key}\u{001b}[0m");
-                }
+                // Keys: bold blue
+                key = self.wrap(key, "\u{001b}[1;34m");
                 let val = self.serialize_node(child_id.0, depth + 1, true);
                 children_pairs.push((i, (key, val)));
             }
@@ -524,6 +538,7 @@ mod tests {
             inline_open: false,
             newline: "\n",
             omitted_at_start: false,
+            color_enabled: false,
         }
     }
 

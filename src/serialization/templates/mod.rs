@@ -14,6 +14,7 @@ pub struct ArrayCtx<'a> {
     pub inline_open: bool,
     pub newline: &'a str,
     pub omitted_at_start: bool,
+    pub color_enabled: bool,
 }
 
 pub struct ObjectCtx<'a> {
@@ -26,6 +27,7 @@ pub struct ObjectCtx<'a> {
     pub space: &'a str,
     pub newline: &'a str,
     pub fileset_root: bool,
+    pub color_enabled: bool,
 }
 
 pub fn render_array(template: OutputTemplate, ctx: &ArrayCtx<'_>) -> String {

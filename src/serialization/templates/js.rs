@@ -7,20 +7,34 @@ struct Js;
 impl Style for Js {
     fn array_empty(open_indent: &str, ctx: &ArrayCtx<'_>) -> String {
         if ctx.omitted > 0 {
-            return format!(
-                "{open_indent}[ /* {} more items */ ]",
-                ctx.omitted
-            );
+            let body = format!("/* {} more items */", ctx.omitted);
+            let body = if ctx.color_enabled {
+                format!("\u{001b}[90m{body}\u{001b}[0m")
+            } else {
+                body
+            };
+            return format!("{open_indent}[ {body} ]");
         }
-        format!("{open_indent}[ /* empty */ ]")
+        let body = if ctx.color_enabled {
+            "\u{001b}[90m/* empty */\u{001b}[0m"
+        } else {
+            "/* empty */"
+        };
+        format!("{open_indent}[ {body} ]")
     }
 
     fn array_push_omitted(out: &mut String, ctx: &ArrayCtx<'_>) {
         if ctx.omitted > 0 {
             out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
+            if ctx.color_enabled {
+                out.push_str("\u{001b}[90m");
+            }
             out.push_str("/* ");
             out.push_str(&ctx.omitted.to_string());
             out.push_str(" more items */");
+            if ctx.color_enabled {
+                out.push_str("\u{001b}[0m");
+            }
             if ctx.children_len > 0 && ctx.omitted_at_start {
                 out.push(',');
             }
@@ -33,9 +47,15 @@ impl Style for Js {
         gap: usize,
     ) {
         out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
+        if ctx.color_enabled {
+            out.push_str("\u{001b}[90m");
+        }
         out.push_str("/* ");
         out.push_str(&gap.to_string());
         out.push_str(" more items */");
+        if ctx.color_enabled {
+            out.push_str("\u{001b}[0m");
+        }
         out.push_str(ctx.newline);
     }
 
@@ -46,16 +66,23 @@ impl Style for Js {
             } else {
                 "properties"
             };
+            let body = format!("/* {} more {label} */", ctx.omitted);
+            let body = if ctx.color_enabled {
+                format!("\u{001b}[90m{body}\u{001b}[0m")
+            } else {
+                body
+            };
             return format!(
-                "{open_indent}{{{space}/* {n} more {label} */{space}}}",
-                n = ctx.omitted,
+                "{open_indent}{{{space}{body}{space}}}",
                 space = ctx.space
             );
         }
-        format!(
-            "{open_indent}{{{space}/* empty */{space}}}",
-            space = ctx.space
-        )
+        let body = if ctx.color_enabled {
+            "\u{001b}[90m/* empty */\u{001b}[0m"
+        } else {
+            "/* empty */"
+        };
+        format!("{open_indent}{{{space}{body}{space}}}", space = ctx.space)
     }
 
     fn object_push_omitted(out: &mut String, ctx: &ObjectCtx<'_>) {
@@ -66,10 +93,14 @@ impl Style for Js {
             } else {
                 "properties"
             };
-            out.push_str(&format!(
-                "/* {} more {label} */{}",
-                ctx.omitted, ctx.newline
-            ));
+            if ctx.color_enabled {
+                out.push_str("\u{001b}[90m");
+            }
+            out.push_str(&format!("/* {} more {label} */", ctx.omitted));
+            if ctx.color_enabled {
+                out.push_str("\u{001b}[0m");
+            }
+            out.push_str(ctx.newline);
         }
     }
 }
