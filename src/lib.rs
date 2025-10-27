@@ -25,6 +25,7 @@ pub use order::{
     NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
 };
 
+pub use serialization::color::resolve_color_enabled;
 pub use serialization::types::{ColorMode, OutputTemplate, RenderConfig};
 
 pub fn headson(
