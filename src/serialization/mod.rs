@@ -2,6 +2,7 @@ use crate::order::ObjectType;
 use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID};
 pub mod color;
 mod fileset;
+pub mod output;
 pub mod templates;
 pub mod types;
 use self::templates::{ArrayCtx, ObjectCtx, render_array, render_object};

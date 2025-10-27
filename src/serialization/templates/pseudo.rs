@@ -1,25 +1,33 @@
-use super::super::indent;
 use super::core::{Style, render_array_with, render_object_with};
-use super::{ArrayCtx, ColorExt, ObjectCtx};
+use super::{ArrayCtx, ObjectCtx};
+use crate::serialization::output::Out;
 
 struct Pseudo;
 
 impl Style for Pseudo {
     fn array_empty(open_indent: &str, ctx: &ArrayCtx<'_>) -> String {
+        let mut buf = String::new();
+        let mut out = Out::from_array_ctx(&mut buf, ctx);
+        out.push_str(open_indent);
+        out.push_char('[');
         if ctx.omitted > 0 {
-            return format!("{open_indent}[ {} ]", ctx.omission());
+            out.push_str(" ");
+            out.push_omission();
+            out.push_str(" ");
         }
-        format!("{open_indent}[]")
+        out.push_char(']');
+        buf
     }
 
     fn array_push_omitted(out: &mut String, ctx: &ArrayCtx<'_>) {
         if ctx.omitted > 0 {
-            out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
-            out.push_str(ctx.omission());
+            let mut ow = Out::from_array_ctx(out, ctx);
+            ow.push_indent(ctx.depth + 1);
+            ow.push_omission();
             if ctx.children_len > 0 && ctx.omitted_at_start {
-                out.push(',');
+                ow.push_char(',');
             }
-            out.push_str(ctx.newline);
+            ow.push_newline();
         }
     }
     fn array_push_internal_gap(
@@ -27,27 +35,32 @@ impl Style for Pseudo {
         ctx: &ArrayCtx<'_>,
         _gap: usize,
     ) {
-        out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
-        out.push_str(ctx.omission());
-        out.push_str(ctx.newline);
+        let mut ow = Out::from_array_ctx(out, ctx);
+        ow.push_indent(ctx.depth + 1);
+        ow.push_omission();
+        ow.push_newline();
     }
 
     fn object_empty(open_indent: &str, ctx: &ObjectCtx<'_>) -> String {
+        let mut buf = String::new();
+        let mut out = Out::from_object_ctx(&mut buf, ctx);
+        out.push_str(open_indent);
+        out.push_char('{');
         if ctx.omitted > 0 {
-            return format!(
-                "{open_indent}{{{space}{ell}{space}}}",
-                space = ctx.space,
-                ell = ctx.omission()
-            );
+            out.push_str(ctx.space);
+            out.push_omission();
+            out.push_str(ctx.space);
         }
-        format!("{open_indent}{{}}")
+        out.push_char('}');
+        buf
     }
 
     fn object_push_omitted(out: &mut String, ctx: &ObjectCtx<'_>) {
         if ctx.omitted > 0 {
-            out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
-            out.push_str(ctx.omission());
-            out.push_str(ctx.newline);
+            let mut ow = Out::from_object_ctx(out, ctx);
+            ow.push_indent(ctx.depth + 1);
+            ow.push_omission();
+            ow.push_newline();
         }
     }
 }
