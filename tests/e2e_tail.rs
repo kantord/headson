@@ -8,6 +8,7 @@ fn run_case_with_tail(path: &Path, template: &str, n: u32) -> String {
     let input = fs::read_to_string(path).expect("read fixture");
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     let output = cmd
+        .arg("--no-color")
         .arg("-n")
         .arg(n.to_string())
         .arg("-f")

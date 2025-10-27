@@ -3,7 +3,7 @@ use insta::assert_snapshot;
 
 fn run_args(args: &[&str]) -> String {
     let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let assert = cmd.args(args).assert().success();
+    let assert = cmd.arg("--no-color").args(args).assert().success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
 }
 
@@ -29,6 +29,7 @@ fn run_fileset_json_with_budgets(
     use serde_json::Value;
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     let mut args: Vec<String> = vec![
+        "--no-color".into(),
         "-f".into(),
         "json".into(),
         "-n".into(),

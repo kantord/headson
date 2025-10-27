@@ -69,6 +69,7 @@ fn array_head_json_contains_first_k_values() {
         space: " ".into(),
         newline: "\n".into(),
         prefer_tail_arrays: false,
+        color_mode: headson::ColorMode::Auto,
     };
     let mut prio = headson::PriorityConfig::new(usize::MAX, 15);
     prio.prefer_tail_arrays = false;

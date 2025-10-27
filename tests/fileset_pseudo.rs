@@ -4,7 +4,7 @@ use insta::assert_snapshot;
 fn run_pseudo(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
     let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let mut args = vec!["-n", &budget_s, "-f", "pseudo"]; // newline mode
+    let mut args = vec!["--no-color", "-n", &budget_s, "-f", "pseudo"]; // newline mode
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert().success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
@@ -44,7 +44,17 @@ fn pseudo_fileset_compact_shows_ellipsis_for_omitted() {
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     // Compact mode => object-style rendering; expect ellipsis for omitted content
     let assert = cmd
-        .args(["-n", &budget_s, "-f", "pseudo", "--compact", p1, p2, p3])
+        .args([
+            "--no-color",
+            "-n",
+            &budget_s,
+            "-f",
+            "pseudo",
+            "--compact",
+            p1,
+            p2,
+            p3,
+        ])
         .assert()
         .success();
     let out = String::from_utf8_lossy(&assert.get_output().stdout);

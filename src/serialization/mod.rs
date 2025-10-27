@@ -381,6 +381,7 @@ mod tests {
                 space: " ".to_string(),
                 newline: "\n".to_string(),
                 prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Auto,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -413,6 +414,7 @@ mod tests {
                 // Use CRLF to force the contains(nl) path.
                 newline: "\r\n".to_string(),
                 prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Auto,
             },
         );
         // Sanity: output should contain CRLF newlines and render the object child across lines.
@@ -447,6 +449,7 @@ mod tests {
                 space: " ".to_string(),
                 newline: "\n".to_string(),
                 prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Auto,
             },
         );
         assert_snapshot!("arena_render_single", out);
@@ -478,6 +481,7 @@ mod tests {
                 space: " ".to_string(),
                 newline: "\n".to_string(),
                 prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Auto,
             },
         );
         // Should be a valid JS object with one property and an omitted summary.

@@ -25,7 +25,7 @@ pub use order::{
     NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
 };
 
-pub use serialization::types::{OutputTemplate, RenderConfig};
+pub use serialization::types::{ColorMode, OutputTemplate, RenderConfig};
 
 pub fn headson(
     input: Vec<u8>,

@@ -6,7 +6,7 @@ mod util;
 
 fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
     let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let mut full_args = vec!["-f", "json"];
+    let mut full_args = vec!["--no-color", "-f", "json"];
     full_args.extend_from_slice(args);
     full_args.extend_from_slice(paths);
     let assert = cmd.args(full_args).assert();
@@ -21,7 +21,7 @@ fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
 fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     let limit_s = limit.to_string();
-    let mut args = vec!["-f", "js", "-N", &limit_s];
+    let mut args = vec!["--no-color", "-f", "js", "-N", &limit_s];
     args.extend_from_slice(extra);
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert();
@@ -56,7 +56,7 @@ fn find_js_summary_output(
 fn run_pseudo_with_limit(paths: &[&str], limit: usize) -> String {
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     let limit_s = limit.to_string();
-    let args = vec!["-f", "pseudo", "-N", &limit_s];
+    let args = vec!["--no-color", "-f", "pseudo", "-N", &limit_s];
     let assert = cmd
         .args(args.into_iter().chain(paths.iter().copied()))
         .assert();
@@ -145,7 +145,7 @@ fn budget_and_global_limit_can_be_used_together() {
     // Here min(200, 100) = 100; using both should match using only -N 100.
     let mut cmd_both = Command::cargo_bin("headson").expect("bin");
     let out_both = cmd_both
-        .args(["-f", "json", "-n", "200", "-N", "100", path])
+        .args(["--no-color", "-f", "json", "-n", "200", "-N", "100", path])
         .assert()
         .success();
     let stdout_both =
@@ -153,7 +153,7 @@ fn budget_and_global_limit_can_be_used_together() {
 
     let mut cmd_global_only = Command::cargo_bin("headson").expect("bin");
     let out_global_only = cmd_global_only
-        .args(["-f", "json", "-N", "100", path])
+        .args(["--no-color", "-f", "json", "-N", "100", path])
         .assert()
         .success();
     let stdout_global_only =

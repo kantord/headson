@@ -7,7 +7,7 @@ use test_each_file::test_each_path;
 fn run_cli(input: &[u8]) -> (bool, Vec<u8>, Vec<u8>) {
     let assert = Command::cargo_bin("headson")
         .unwrap()
-        .args(["-n", "10000", "-f", "json"]) // ensure valid JSON output
+        .args(["--no-color", "-n", "10000", "-f", "json"]) // ensure valid JSON output
         .write_stdin(input)
         .assert();
     let ok = assert.get_output().status.success();
