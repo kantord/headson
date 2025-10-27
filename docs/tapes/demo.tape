@@ -67,6 +67,6 @@ Set Height 650
 Set TypingSpeed 25ms
 
 # Show a concise, structure-aware preview of a large JSON API response
-Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson -n 400 -f pseudo" Sleep 400ms Enter
+Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson" Sleep 400ms Enter
 
 Sleep 6s
