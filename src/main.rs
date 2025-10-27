@@ -256,6 +256,56 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
             headson::ColorMode::Auto
         }
     }
+    fn env_bool(var: &str) -> Option<bool> {
+        std::env::var_os(var).map(|v| {
+            let s = v.to_string_lossy();
+            !(s == "0" || s.is_empty())
+        })
+    }
+
+    struct ColorEnv {
+        force: bool,            // CLICOLOR_FORCE=1
+        force_color: bool,      // FORCE_COLOR=1
+        no_color: bool,         // NO_COLOR present
+        dumb: bool,             // TERM=dumb
+        clicolor: Option<bool>, // CLICOLOR=0/1
+        is_tty: bool,
+    }
+
+    fn read_color_env() -> ColorEnv {
+        let term_dumb = std::env::var_os("TERM")
+            .map(|t| t.to_string_lossy() == "dumb")
+            .unwrap_or(false);
+        ColorEnv {
+            force: matches!(env_bool("CLICOLOR_FORCE"), Some(true)),
+            force_color: matches!(env_bool("FORCE_COLOR"), Some(true)),
+            no_color: std::env::var_os("NO_COLOR").is_some(),
+            dumb: term_dumb,
+            clicolor: env_bool("CLICOLOR"),
+            is_tty: io::stdout().is_terminal(),
+        }
+    }
+
+    fn auto_color_enabled(env: &ColorEnv) -> bool {
+        if env.force || env.force_color {
+            return true;
+        }
+        if env.no_color || env.dumb {
+            return false;
+        }
+        if let Some(b) = env.clicolor {
+            return b && env.is_tty;
+        }
+        env.is_tty
+    }
+
+    fn resolve_color_enabled(mode: headson::ColorMode) -> bool {
+        match mode {
+            headson::ColorMode::On => true,
+            headson::ColorMode::Off => false,
+            headson::ColorMode::Auto => auto_color_enabled(&read_color_env()),
+        }
+    }
 
     let template = to_output_template(cli.template);
     let space = if cli.compact || cli.no_space { "" } else { " " }.to_string();
@@ -271,7 +321,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         cli.indent.clone()
     };
     let color_mode = color_mode_from_flags(cli);
-    let color_enabled = color_mode.effective(io::stdout().is_terminal());
+    let color_enabled = resolve_color_enabled(color_mode);
 
     headson::RenderConfig {
         template,
