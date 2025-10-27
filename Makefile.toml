@@ -13,9 +13,9 @@
 skip_core_tasks = true
 
 [tasks.default]
-description = "Generate diagrams (default task)"
+description = "Generate diagrams and VHS demo tapes"
 category = "Documentation"
-dependencies = ["diagrams"]
+dependencies = ["diagrams", "tapes"]
 
 [tasks.diagrams]
 description = "Generate all diagrams (SVG, transparent)"
@@ -44,4 +44,109 @@ script = [
     fi
     echo "[diagram] generated docs/assets/algorithm.svg"
     """,
+]
+
+# ---------------------------------------------------------------------------
+# VHS terminal demo tapes -> GIF/MP4/WebM
+#
+# Usage:
+#   cargo make tapes           # render all docs/tapes/*.tape to docs/assets/tapes
+#   cargo make tape-one        # example single-tape render (see task for env var)
+#
+# Requirements:
+#   - vhs must be installed and available on PATH: https://github.com/charmbracelet/vhs
+#     (If not present, the task will exit with an instructive error.)
+# ---------------------------------------------------------------------------
+
+[tasks.tapes]
+description = "Render all VHS tapes in docs/tapes into docs/assets/tapes"
+category = "Documentation"
+script_runner = "bash"
+script = [
+    '''
+    set -euo pipefail
+    TAPES_DIR=docs/tapes
+    OUT_DIR=docs/assets/tapes
+    mkdir -p "$OUT_DIR"
+    if ! command -v vhs >/dev/null 2>&1; then
+      echo "Error: 'vhs' not found on PATH. Install from https://github.com/charmbracelet/vhs" >&2
+      exit 1
+    fi
+    shopt -s nullglob
+    files=("$TAPES_DIR"/*.tape)
+    if [ ${#files[@]} -eq 0 ]; then
+      echo "[tapes] no .tape files found in $TAPES_DIR; nothing to do"
+      exit 0
+    fi
+    for tape in "${files[@]}"; do
+      echo "[tapes] rendering $tape"
+      tape_dir=$(dirname "$tape")
+      tape_base=$(basename "$tape")
+      # Collect declared outputs from the tape (relative to tape_dir)
+      mapfile -t outputs < <(sed -n 's/^Output[[:space:]]\+//p' "$tape") || true
+      # Run vhs from the tape directory so relative Output paths land there
+      (cd "$tape_dir" && vhs "$tape_base")
+      # Move declared outputs to OUT_DIR (if any declared); else try a sane default GIF name
+      if [ ${#outputs[@]} -gt 0 ]; then
+        for o in "${outputs[@]}"; do
+          # Only move known media types
+          case "$o" in
+            *.gif|*.mp4|*.webm)
+              src="$tape_dir/$o"
+              if [ -f "$src" ]; then
+                echo "[tapes] -> $OUT_DIR/$(basename "$o")"
+                mv -f "$src" "$OUT_DIR/$(basename "$o")"
+              else
+                echo "[tapes] warning: declared output not found: $src" >&2
+              fi
+              ;;
+            *) ;;
+          esac
+        done
+      else
+        # Fallback: if the tape name is demo.tape, try demo.gif
+        guess="$tape_dir/${tape_base%.tape}.gif"
+        if [ -f "$guess" ]; then
+          echo "[tapes] -> $OUT_DIR/$(basename "$guess")"
+          mv -f "$guess" "$OUT_DIR/$(basename "$guess")"
+        fi
+      fi
+    done
+    echo "[tapes] done"
+    ''',
+]
+
+
+
+[tasks.tape-one]
+description = "Render a single VHS tape (env TAPE=<path>)"
+category = "Documentation"
+script_runner = "bash"
+script = [
+    '''
+    set -euo pipefail
+    : "${TAPE:?Set TAPE to a .tape file, e.g., TAPE=docs/tapes/demo.tape}"
+    OUT_DIR=docs/assets/tapes
+    mkdir -p "$OUT_DIR"
+    if ! command -v vhs >/dev/null 2>&1; then
+      echo "Error: 'vhs' not found on PATH. Install from https://github.com/charmbracelet/vhs" >&2
+      exit 1
+    fi
+    tape="$TAPE"
+    tape_dir=$(dirname "$tape")
+    tape_base=$(basename "$tape")
+    mapfile -t outputs < <(sed -n 's/^Output[[:space:]]\+//p' "$tape") || true
+    (cd "$tape_dir" && vhs "$tape_base")
+    if [ ${#outputs[@]} -gt 0 ]; then
+      for o in "${outputs[@]}"; do
+        case "$o" in
+          *.gif|*.mp4|*.webm)
+            [ -f "$tape_dir/$o" ] && mv -f "$tape_dir/$o" "$OUT_DIR/$(basename "$o")" || echo "[tape-one] missing: $o" >&2
+            ;;
+          *) ;;
+        esac
+      done
+    fi
+    echo "[tape-one] done"
+    ''',
 ]

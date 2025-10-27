@@ -1,4 +1,9 @@
-# headson
+<h1 align="center">headson</h1>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/demo.gif" alt="Terminal demo" />
+  <br/>
+</p>
 
 Head/tail for JSON — but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict character budget.
 
@@ -118,6 +123,14 @@ Machine‑readable preview (json):
 headson -n 120 -f json users.json
 # {"users":[{"id":1,"name":"Ana","roles":["admin"]}],"meta":{"count":2}}
 ```
+
+## Terminal Demos
+
+Regenerate locally:
+
+- Place tapes under docs/tapes (e.g., docs/tapes/demo.tape)
+- Run: cargo make tapes
+- Outputs are written to docs/assets/tapes
 
 ## Python Bindings
 
