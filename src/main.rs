@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::IsTerminal as _;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
@@ -99,6 +100,9 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let render_cfg = get_render_config_from(&cli);
+    // Resolve color auto-detection now (stdout is the surface for user output).
+    let _color_enabled =
+        render_cfg.color_mode.effective(io::stdout().is_terminal());
     let (output, ignore_notices) = if cli.inputs.is_empty() {
         (run_from_stdin(&cli, &render_cfg)?, Vec::new())
     } else {

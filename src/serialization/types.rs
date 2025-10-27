@@ -26,3 +26,14 @@ pub enum ColorMode {
     Off,
     Auto,
 }
+
+impl ColorMode {
+    // Returns whether coloring should be enabled given whether stdout is a TTY.
+    pub fn effective(self, stdout_is_terminal: bool) -> bool {
+        match self {
+            ColorMode::On => true,
+            ColorMode::Off => false,
+            ColorMode::Auto => stdout_is_terminal,
+        }
+    }
+}
