@@ -116,40 +116,7 @@ script = [
     ''',
 ]
 
-[tasks.tapes-inline]
-description = "Inline demo GIF(s) into README between marker comments"
-category = "Documentation"
-script_runner = "bash"
-script = [
-    '''
-    set -euo pipefail
-    DEMO_PATH=${DEMO_PATH:-docs/assets/tapes/demo.gif}
-    if [ ! -f "$DEMO_PATH" ]; then
-      echo "Error: demo GIF not found at $DEMO_PATH. Run 'cargo make tapes' first." >&2
-      exit 1
-    fi
-    # Base64 encode without newlines (GNU base64 -w0; fallback to tr if unsupported)
-    if base64 -w0 </dev/null >/dev/null 2>&1; then
-      DEMO_B64=$(base64 -w0 "$DEMO_PATH")
-    else
-      DEMO_B64=$(base64 "$DEMO_PATH" | tr -d '\n')
-    fi
-    TMP=$(mktemp)
-    awk -v b64="$DEMO_B64" '
-      BEGIN {inblk=0}
-      /<!-- BEGIN:INLINE_DEMO_GIF -->/ {
-        print;
-        print "<img alt=\"Terminal demo\" src=\"data:image/gif;base64," b64 "\" />";
-        print "<!-- END:INLINE_DEMO_GIF -->";
-        inblk=1; next
-      }
-      /<!-- END:INLINE_DEMO_GIF -->/ { inblk=0; next }
-      { if(!inblk) print }
-    ' README.md > "$TMP"
-    mv "$TMP" README.md
-    echo "[tapes-inline] embedded demo.gif into README.md"
-    ''',
-]
+
 
 [tasks.tape-one]
 description = "Render a single VHS tape (env TAPE=<path>)"

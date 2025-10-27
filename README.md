@@ -123,16 +123,13 @@ headson -n 120 -f json users.json
 
 Short terminal demo GIFs are generated from VHS tapes and included in the repo.
 
-<!-- BEGIN:INLINE_DEMO_GIF -->
-<!-- Inline demo.gif will be inserted here by `cargo make tapes-inline` -->
-<!-- END:INLINE_DEMO_GIF -->
+![Terminal demo](docs/assets/tapes/demo.gif)
 
 Regenerate locally:
 
 - Place tapes under docs/tapes (e.g., docs/tapes/demo.tape)
 - Run: cargo make tapes
-- Then inline into README: cargo make tapes-inline
-- Outputs are written to docs/assets/tapes and the README contains an inlined image
+- Outputs are written to docs/assets/tapes
 
 ## Python Bindings
 
