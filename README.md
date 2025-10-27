@@ -1,6 +1,7 @@
+<h1 align="center">
+  <img src="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/logo.svg" alt="headson" width="600" height="99" />
+</h1>
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/logo.png" alt="headson" />
-  <br/>
   <img src="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/demo.gif" alt="Terminal demo" width="1560" height="900" />
   <br/>
 </p>
