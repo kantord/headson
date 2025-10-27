@@ -23,9 +23,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="2.4416016"
-     inkscape:cx="162.80297"
-     inkscape:cy="57.748979"
+     inkscape:zoom="27.623569"
+     inkscape:cx="27.856647"
+     inkscape:cy="5.8645572"
      inkscape:window-width="3840"
      inkscape:window-height="2124"
      inkscape:window-x="1080"
@@ -41,7 +41,7 @@
      transform="translate(-62.9858,-133.27801)">
     <text
        xml:space="preserve"
-       style="font-size:3.175px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;opacity:0.208062;fill:#000000;fill-opacity:1;stroke-width:0.244"
+       style="font-size:3.175px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;stroke-width:0.244"
        x="62.716049"
        y="135.75383"
        id="text1"><tspan
@@ -49,6 +49,8 @@
          id="tspan1"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Roboto Mono';-inkscape-font-specification:'Roboto Mono';fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.244;stroke-opacity:1"
          x="62.716049"
-         y="135.75383">head{…}son</tspan></text>
+         y="135.75383">head{<tspan
+   style="fill:#ff0000;fill-opacity:1"
+   id="tspan2">…</tspan>}son</tspan></text>
   </g>
 </svg>
