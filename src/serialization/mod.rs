@@ -127,6 +127,11 @@ impl<'a> RenderScope<'a> {
         let (children_pairs, kept) = self.gather_array_children(id, depth);
         let node = &self.order.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
+        if kept == 0 && omitted == 0 {
+            // Minimal representation for empty arrays across templates.
+            out.push_str("[]");
+            return;
+        }
         let ctx = ArrayCtx {
             children: children_pairs,
             children_len: kept,
@@ -168,6 +173,11 @@ impl<'a> RenderScope<'a> {
         let (children_pairs, kept) = self.gather_object_children(id, depth);
         let node = &self.order.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
+        if kept == 0 && omitted == 0 {
+            // Minimal representation for empty objects across templates.
+            out.push_str("{}");
+            return;
+        }
         let ctx = ObjectCtx {
             children: children_pairs,
             children_len: kept,
