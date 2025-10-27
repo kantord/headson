@@ -1,5 +1,8 @@
 <h1 align="center">
-  <img src="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/logo.svg" alt="headson" width="600" height="99" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/logo-dark.svg">
+    <img src="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/logo.svg" alt="headson" width="600" height="99" />
+  </picture>
 </h1>
 <p align="center">
   <img src="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/demo.gif" alt="Terminal demo" width="1560" height="900" />
