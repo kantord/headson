@@ -36,13 +36,50 @@ fn push_array_items_with<S: Style>(out: &mut Out<'_>, ctx: &ArrayCtx) {
     }
 }
 
+#[inline]
+fn as_bool(v: &str) -> Option<bool> {
+    if v == "true" {
+        Some(true)
+    } else if v == "false" {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+#[inline]
+fn is_number_text(v: &str) -> bool {
+    matches!(v.as_bytes().first().copied(), Some(b'-' | b'0'..=b'9'))
+}
+
+#[inline]
+fn push_value_token(out: &mut Out<'_>, v: &str) {
+    if v.starts_with('"') {
+        out.push_string_literal(v);
+        return;
+    }
+    if let Some(b) = as_bool(v) {
+        out.push_bool(b);
+        return;
+    }
+    if v == "null" {
+        out.push_null();
+        return;
+    }
+    if is_number_text(v) {
+        out.push_number_literal(v);
+        return;
+    }
+    out.push_str(v);
+}
+
 fn push_object_items(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
     for (i, (_, (k, v))) in ctx.children.iter().enumerate() {
         out.push_indent(ctx.depth + 1);
-        out.push_str(k);
+        out.push_key(k);
         out.push_char(':');
         out.push_str(ctx.space);
-        out.push_str(v);
+        push_value_token(out, v);
         if i + 1 < ctx.children_len {
             out.push_char(',');
         }

@@ -197,18 +197,13 @@ impl<'a> RenderScope<'a> {
         let node = &self.order.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         let full: &str = node.string_value.as_deref().unwrap_or("");
-        let s = if omitted == 0 {
+        if omitted == 0 {
             crate::utils::json::json_string(full)
         } else {
             let prefix = crate::utils::text::take_n_graphemes(full, kept);
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
-        };
-        crate::serialization::color::wrap_role(
-            s,
-            crate::serialization::color::ColorRole::String,
-            self.config.color_enabled,
-        )
+        }
     }
 
     fn serialize_number(&self, id: usize) -> String {
@@ -224,25 +219,15 @@ impl<'a> RenderScope<'a> {
                 return n.to_string();
             }
         }
-        let s = "0".to_string();
-        crate::serialization::color::wrap_role(
-            s,
-            crate::serialization::color::ColorRole::Number,
-            self.config.color_enabled,
-        )
+        "0".to_string()
     }
 
     fn serialize_bool(&self, id: usize) -> String {
         let it = &self.order.nodes[id];
-        let raw = match it.bool_value {
-            Some(true) => "true",
-            Some(false) | None => "false",
-        };
-        crate::serialization::color::wrap_role(
-            raw,
-            crate::serialization::color::ColorRole::Bool,
-            self.config.color_enabled,
-        )
+        match it.bool_value {
+            Some(true) => "true".to_string(),
+            Some(false) | None => "false".to_string(),
+        }
     }
 
     fn write_node(
@@ -258,24 +243,17 @@ impl<'a> RenderScope<'a> {
             NodeKind::Object => self.write_object(id, depth, inline, out),
             NodeKind::String => {
                 let s = self.serialize_string(id);
-                out.push_str(&s);
+                out.push_string_literal(&s);
             }
             NodeKind::Number => {
                 let s = self.serialize_number(id);
-                out.push_str(&s);
+                out.push_number_literal(&s);
             }
             NodeKind::Bool => {
                 let s = self.serialize_bool(id);
-                out.push_str(&s);
+                out.push_bool(s == "true");
             }
-            NodeKind::Null => {
-                let s = crate::serialization::color::wrap_role(
-                    "null",
-                    crate::serialization::color::ColorRole::Null,
-                    self.config.color_enabled,
-                );
-                out.push_str(&s);
-            }
+            NodeKind::Null => out.push_null(),
         }
     }
 
@@ -328,11 +306,7 @@ impl<'a> RenderScope<'a> {
                 kept += 1;
                 let child = &self.order.nodes[child_id.0];
                 let raw_key = child.key_in_object.as_deref().unwrap_or("");
-                let key = crate::serialization::color::wrap_role(
-                    crate::utils::json::json_string(raw_key),
-                    crate::serialization::color::ColorRole::Key,
-                    self.config.color_enabled,
-                );
+                let key = crate::utils::json::json_string(raw_key);
                 let val =
                     self.render_node_to_string(child_id.0, depth + 1, true);
                 children_pairs.push((i, (key, val)));
@@ -374,11 +348,7 @@ impl<'a> RenderScope<'a> {
             NodeKind::String => self.serialize_string(id),
             NodeKind::Number => self.serialize_number(id),
             NodeKind::Bool => self.serialize_bool(id),
-            NodeKind::Null => crate::serialization::color::wrap_role(
-                "null",
-                crate::serialization::color::ColorRole::Null,
-                self.config.color_enabled,
-            ),
+            NodeKind::Null => "null".to_string(),
         }
     }
 }

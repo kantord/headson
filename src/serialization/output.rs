@@ -55,4 +55,55 @@ impl<'a> Out<'a> {
         self.buf
             .push_str(color::omission_marker(self.color_enabled));
     }
+
+    // Color role helpers for tokens
+    #[inline]
+    pub fn push_key(&mut self, quoted_key: &str) {
+        let s = color::wrap_role(
+            quoted_key,
+            color::ColorRole::Key,
+            self.color_enabled,
+        );
+        self.buf.push_str(&s);
+    }
+
+    #[inline]
+    pub fn push_string_literal(&mut self, quoted_value: &str) {
+        let s = color::wrap_role(
+            quoted_value,
+            color::ColorRole::String,
+            self.color_enabled,
+        );
+        self.buf.push_str(&s);
+    }
+
+    #[inline]
+    pub fn push_number_literal(&mut self, number_text: &str) {
+        let s = color::wrap_role(
+            number_text,
+            color::ColorRole::Number,
+            self.color_enabled,
+        );
+        self.buf.push_str(&s);
+    }
+
+    #[inline]
+    pub fn push_bool(&mut self, val: bool) {
+        let s = color::wrap_role(
+            if val { "true" } else { "false" },
+            color::ColorRole::Bool,
+            self.color_enabled,
+        );
+        self.buf.push_str(&s);
+    }
+
+    #[inline]
+    pub fn push_null(&mut self) {
+        let s = color::wrap_role(
+            "null",
+            color::ColorRole::Null,
+            self.color_enabled,
+        );
+        self.buf.push_str(&s);
+    }
 }
