@@ -1,8 +1,0 @@
----
-source: tests/pseudo_color.rs
-expression: "pseudo_color_object_key_and_value"
----
-{
-  [34m"k"[0m: [34m"v"[0m
-}
-

@@ -195,9 +195,7 @@ impl<'a> RenderScope<'a> {
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
         };
-        if self.config.template == crate::OutputTemplate::Pseudo
-            && self.config.color_enabled
-        {
+        if self.config.color_enabled {
             format!("\u{001b}[34m{s}\u{001b}[0m")
         } else {
             s
@@ -295,9 +293,7 @@ impl<'a> RenderScope<'a> {
                 let child = &self.order.nodes[child_id.0];
                 let raw_key = child.key_in_object.as_deref().unwrap_or("");
                 let mut key = crate::utils::json::json_string(raw_key);
-                if self.config.template == crate::OutputTemplate::Pseudo
-                    && self.config.color_enabled
-                {
+                if self.config.color_enabled {
                     key = format!("\u{001b}[34m{key}\u{001b}[0m");
                 }
                 let val = self.serialize_node(child_id.0, depth + 1, true);

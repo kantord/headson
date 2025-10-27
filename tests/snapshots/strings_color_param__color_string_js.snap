@@ -1,0 +1,6 @@
+---
+source: tests/strings_color_param.rs
+expression: "color_string_js"
+---
+[34m"hello"[0m
+

@@ -1,6 +1,0 @@
----
-source: tests/pseudo_color.rs
-expression: "pseudo_color_string_value"
----
-[34m"hello"[0m
-

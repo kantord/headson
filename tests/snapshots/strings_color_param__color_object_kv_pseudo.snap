@@ -1,0 +1,8 @@
+---
+source: tests/strings_color_param.rs
+expression: "color_object_kv_pseudo"
+---
+{
+  [34m"k"[0m: [34m"v"[0m
+}
+
