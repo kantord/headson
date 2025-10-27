@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.4](https://github.com/kantord/headson/compare/v0.5.3...v0.5.4) - 2025-10-27
+
+### Other
+
+- fix logo in readme ([#96](https://github.com/kantord/headson/pull/96))
+- fix logo ([#95](https://github.com/kantord/headson/pull/95))
+- small readme improvements ([#94](https://github.com/kantord/headson/pull/94))
+- add terminal gifs ([#92](https://github.com/kantord/headson/pull/92))
+
 ## [0.5.3](https://github.com/kantord/headson/compare/v0.5.2...v0.5.3) - 2025-10-26
 
 ### Added
