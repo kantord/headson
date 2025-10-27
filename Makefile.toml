@@ -13,9 +13,9 @@
 skip_core_tasks = true
 
 [tasks.default]
-description = "Generate diagrams (default task)"
+description = "Generate diagrams and VHS demo tapes"
 category = "Documentation"
-dependencies = ["diagrams"]
+dependencies = ["diagrams", "tapes"]
 
 [tasks.diagrams]
 description = "Generate all diagrams (SVG, transparent)"

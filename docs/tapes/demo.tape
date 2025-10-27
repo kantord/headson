@@ -57,13 +57,16 @@
 
 Output demo.gif
 
-Require echo
+Require curl
+Require headson
 
 Set Shell "bash"
 Set FontSize 32
 Set Width 1200
-Set Height 600
+Set Height 650
+Set TypingSpeed 25ms
 
-Type "echo 'Welcome to VHS!'" Sleep 500ms  Enter
+# Show a concise, structure-aware preview of a large JSON API response
+Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson -n 400 -f pseudo" Sleep 400ms Enter
 
-Sleep 5s
+Sleep 6s
