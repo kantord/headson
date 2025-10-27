@@ -62,8 +62,8 @@ Require headson
 
 Set Shell "bash"
 Set FontSize 32
-Set Width 1200
-Set Height 650
+Set Width 1560
+Set Height 845
 Set TypingSpeed 25ms
 
 # Show a concise, structure-aware preview of a large JSON API response
