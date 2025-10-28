@@ -1,9 +1,10 @@
 use std::fs::File;
+use std::io::IsTerminal as _;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use clap::{Parser, ValueEnum};
+use clap::{ArgAction, Parser, ValueEnum};
 use content_inspector::{ContentType, inspect};
 
 type InputEntry = (String, Vec<u8>);
@@ -66,6 +67,20 @@ struct Cli {
     )]
     head: bool,
     #[arg(
+        long = "color",
+        action = ArgAction::SetTrue,
+        conflicts_with = "no_color",
+        help = "Force enable ANSI colors in output"
+    )]
+    color: bool,
+    #[arg(
+        long = "no-color",
+        action = ArgAction::SetTrue,
+        conflicts_with = "color",
+        help = "Disable ANSI colors in output"
+    )]
+    no_color: bool,
+    #[arg(
         value_name = "INPUT",
         value_hint = clap::ValueHint::FilePath,
         num_args = 0..,
@@ -85,6 +100,9 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let render_cfg = get_render_config_from(&cli);
+    // Resolve color auto-detection now (stdout is the surface for user output).
+    let _color_enabled =
+        render_cfg.color_mode.effective(io::stdout().is_terminal());
     let (output, ignore_notices) = if cli.inputs.is_empty() {
         (run_from_stdin(&cli, &render_cfg)?, Vec::new())
     } else {
@@ -222,11 +240,24 @@ fn ingest_paths(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
 }
 
 fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
-    let template = match cli.template {
-        Template::Json => headson::OutputTemplate::Json,
-        Template::Pseudo => headson::OutputTemplate::Pseudo,
-        Template::Js => headson::OutputTemplate::Js,
-    };
+    fn to_output_template(t: Template) -> headson::OutputTemplate {
+        match t {
+            Template::Json => headson::OutputTemplate::Json,
+            Template::Pseudo => headson::OutputTemplate::Pseudo,
+            Template::Js => headson::OutputTemplate::Js,
+        }
+    }
+    fn color_mode_from_flags(cli: &Cli) -> headson::ColorMode {
+        if cli.color {
+            headson::ColorMode::On
+        } else if cli.no_color {
+            headson::ColorMode::Off
+        } else {
+            headson::ColorMode::Auto
+        }
+    }
+
+    let template = to_output_template(cli.template);
     let space = if cli.compact || cli.no_space { "" } else { " " }.to_string();
     let newline = if cli.compact || cli.no_newline {
         ""
@@ -239,6 +270,8 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
     } else {
         cli.indent.clone()
     };
+    let color_mode = color_mode_from_flags(cli);
+    let color_enabled = headson::resolve_color_enabled(color_mode);
 
     headson::RenderConfig {
         template,
@@ -246,6 +279,8 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         space,
         newline,
         prefer_tail_arrays: cli.tail,
+        color_mode,
+        color_enabled,
     }
 }
 

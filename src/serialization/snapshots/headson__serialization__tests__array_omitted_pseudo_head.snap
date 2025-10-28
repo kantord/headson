@@ -1,0 +1,9 @@
+---
+source: src/serialization/mod.rs
+expression: out_head
+---
+[
+  1
+  …
+]
+

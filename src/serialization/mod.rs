@@ -1,9 +1,12 @@
 use crate::order::ObjectType;
 use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID};
+pub mod color;
 mod fileset;
+pub mod output;
 pub mod templates;
 pub mod types;
 use self::templates::{ArrayCtx, ObjectCtx, render_array, render_object};
+use crate::serialization::output::Out;
 
 fn indent(depth: usize, unit: &str) -> String {
     unit.repeat(depth)
@@ -113,38 +116,35 @@ impl<'a> RenderScope<'a> {
         }
     }
 
-    fn serialize_array(
+    fn write_array(
         &mut self,
         id: usize,
         depth: usize,
         inline: bool,
-    ) -> String {
+        out: &mut Out<'_>,
+    ) {
         let config = self.config;
         let (children_pairs, kept) = self.gather_array_children(id, depth);
         let node = &self.order.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
-        if kept == 0 && omitted == 0 {
-            return "[]".to_string();
-        }
         let ctx = ArrayCtx {
             children: children_pairs,
             children_len: kept,
             omitted,
             depth,
-            indent_unit: &config.indent_unit,
             inline_open: inline,
-            newline: &config.newline,
             omitted_at_start: config.prefer_tail_arrays,
         };
-        render_array(config.template, &ctx)
+        render_array(config.template, &ctx, out)
     }
 
-    fn serialize_object(
+    fn write_object(
         &mut self,
         id: usize,
         depth: usize,
         inline: bool,
-    ) -> String {
+        out: &mut Out<'_>,
+    ) {
         let config = self.config;
         // Special-case: fileset root in Pseudo/JS templates → head-style sections
         if id == ROOT_PQ_ID
@@ -153,10 +153,14 @@ impl<'a> RenderScope<'a> {
         {
             match config.template {
                 crate::OutputTemplate::Pseudo => {
-                    return self.serialize_fileset_root_pseudo(depth);
+                    let s = self.serialize_fileset_root_pseudo(depth);
+                    out.push_str(&s);
+                    return;
                 }
                 crate::OutputTemplate::Js => {
-                    return self.serialize_fileset_root_js(depth);
+                    let s = self.serialize_fileset_root_js(depth);
+                    out.push_str(&s);
+                    return;
                 }
                 _ => {}
             }
@@ -164,23 +168,18 @@ impl<'a> RenderScope<'a> {
         let (children_pairs, kept) = self.gather_object_children(id, depth);
         let node = &self.order.nodes[id];
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
-        if kept == 0 && omitted == 0 {
-            return "{}".to_string();
-        }
         let ctx = ObjectCtx {
             children: children_pairs,
             children_len: kept,
             omitted,
             depth,
-            indent_unit: &config.indent_unit,
             inline_open: inline,
             space: &config.space,
-            newline: &config.newline,
             fileset_root: id == ROOT_PQ_ID
                 && self.order.object_type.get(id)
                     == Some(&ObjectType::Fileset),
         };
-        render_object(config.template, &ctx)
+        render_object(config.template, &ctx, out)
     }
 
     fn serialize_string(&mut self, id: usize) -> String {
@@ -189,11 +188,12 @@ impl<'a> RenderScope<'a> {
         let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
         let full: &str = node.string_value.as_deref().unwrap_or("");
         if omitted == 0 {
-            return crate::utils::json::json_string(full);
+            crate::utils::json::json_string(full)
+        } else {
+            let prefix = crate::utils::text::take_n_graphemes(full, kept);
+            let truncated = format!("{prefix}…");
+            crate::utils::json::json_string(&truncated)
         }
-        let prefix = crate::utils::text::take_n_graphemes(full, kept);
-        let truncated = format!("{prefix}…");
-        crate::utils::json::json_string(&truncated)
     }
 
     fn serialize_number(&self, id: usize) -> String {
@@ -209,31 +209,42 @@ impl<'a> RenderScope<'a> {
                 return n.to_string();
             }
         }
-        "0".to_string()
+        unreachable!("NodeKind::Number without number_value")
     }
 
     fn serialize_bool(&self, id: usize) -> String {
         let it = &self.order.nodes[id];
         match it.bool_value {
             Some(true) => "true".to_string(),
-            Some(false) | None => "false".to_string(),
+            Some(false) => "false".to_string(),
+            None => unreachable!("NodeKind::Bool without bool_value"),
         }
     }
 
-    fn serialize_node(
+    fn write_node(
         &mut self,
         id: usize,
         depth: usize,
         inline: bool,
-    ) -> String {
+        out: &mut Out<'_>,
+    ) {
         let it = &self.order.nodes[id];
         match it.kind {
-            NodeKind::Array => self.serialize_array(id, depth, inline),
-            NodeKind::Object => self.serialize_object(id, depth, inline),
-            NodeKind::String => self.serialize_string(id),
-            NodeKind::Number => self.serialize_number(id),
-            NodeKind::Bool => self.serialize_bool(id),
-            NodeKind::Null => "null".to_string(),
+            NodeKind::Array => self.write_array(id, depth, inline, out),
+            NodeKind::Object => self.write_object(id, depth, inline, out),
+            NodeKind::String => {
+                let s = self.serialize_string(id);
+                out.push_string_literal(&s);
+            }
+            NodeKind::Number => {
+                let s = self.serialize_number(id);
+                out.push_number_literal(&s);
+            }
+            NodeKind::Bool => {
+                let s = self.serialize_bool(id);
+                out.push_bool(s == "true");
+            }
+            NodeKind::Null => out.push_null(),
         }
     }
 
@@ -252,7 +263,7 @@ impl<'a> RenderScope<'a> {
                 kept += 1;
                 let child_kind = self.order.nodes[child_id.0].kind;
                 let rendered =
-                    self.serialize_node(child_id.0, depth + 1, false);
+                    self.render_node_to_string(child_id.0, depth + 1, false);
                 let orig_index = self
                     .order
                     .index_in_parent_array
@@ -287,11 +298,49 @@ impl<'a> RenderScope<'a> {
                 let child = &self.order.nodes[child_id.0];
                 let raw_key = child.key_in_object.as_deref().unwrap_or("");
                 let key = crate::utils::json::json_string(raw_key);
-                let val = self.serialize_node(child_id.0, depth + 1, true);
+                let val =
+                    self.render_node_to_string(child_id.0, depth + 1, true);
                 children_pairs.push((i, (key, val)));
             }
         }
         (children_pairs, kept)
+    }
+
+    fn render_node_to_string(
+        &mut self,
+        id: usize,
+        depth: usize,
+        inline: bool,
+    ) -> String {
+        let it = &self.order.nodes[id];
+        match it.kind {
+            NodeKind::Array => {
+                let mut s = String::new();
+                let mut ow = Out::new(
+                    &mut s,
+                    &self.config.newline,
+                    &self.config.indent_unit,
+                    self.config.color_enabled,
+                );
+                self.write_array(id, depth, inline, &mut ow);
+                s
+            }
+            NodeKind::Object => {
+                let mut s = String::new();
+                let mut ow = Out::new(
+                    &mut s,
+                    &self.config.newline,
+                    &self.config.indent_unit,
+                    self.config.color_enabled,
+                );
+                self.write_object(id, depth, inline, &mut ow);
+                s
+            }
+            NodeKind::String => self.serialize_string(id),
+            NodeKind::Number => self.serialize_number(id),
+            NodeKind::Bool => self.serialize_bool(id),
+            NodeKind::Null => "null".to_string(),
+        }
     }
 }
 
@@ -329,7 +378,15 @@ pub fn render_from_render_set(
         render_set_id: render_id,
         config,
     };
-    scope.serialize_node(root_id, 0, false)
+    let mut s = String::new();
+    let mut out = Out::new(
+        &mut s,
+        &config.newline,
+        &config.indent_unit,
+        config.color_enabled,
+    );
+    scope.write_node(root_id, 0, false, &mut out);
+    s
 }
 
 /// Convenience: prepare the render set for `top_k` nodes and render in one call.
@@ -381,6 +438,8 @@ mod tests {
                 space: " ".to_string(),
                 newline: "\n".to_string(),
                 prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Auto,
+                color_enabled: false,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -413,6 +472,8 @@ mod tests {
                 // Use CRLF to force the contains(nl) path.
                 newline: "\r\n".to_string(),
                 prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Auto,
+                color_enabled: false,
             },
         );
         // Sanity: output should contain CRLF newlines and render the object child across lines.
@@ -447,9 +508,143 @@ mod tests {
                 space: " ".to_string(),
                 newline: "\n".to_string(),
                 prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Auto,
+                color_enabled: false,
             },
         );
         assert_snapshot!("arena_render_single", out);
+    }
+
+    #[test]
+    fn array_omitted_markers_pseudo_head_and_tail() {
+        // Force sampling to keep only a subset so omitted > 0.
+        let cfg_prio = crate::PriorityConfig {
+            max_string_graphemes: usize::MAX,
+            array_max_items: 1,
+            prefer_tail_arrays: false,
+            array_bias: crate::ArrayBias::HeadMidTail,
+            array_sampler: crate::ArraySamplerStrategy::Default,
+        };
+        let arena =
+            crate::json_ingest::build_json_tree_arena("[1,2,3]", &cfg_prio)
+                .unwrap();
+        let build = build_order(&arena, &cfg_prio).unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+
+        // Head preference: omitted marker after items.
+        let out_head = render_top_k(
+            &build,
+            2,
+            &mut marks,
+            1,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Pseudo,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("array_omitted_pseudo_head", out_head);
+
+        // Tail preference: omitted marker before items (with comma).
+        let out_tail = render_top_k(
+            &build,
+            2,
+            &mut marks,
+            2,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Pseudo,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: true,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("array_omitted_pseudo_tail", out_tail);
+    }
+
+    #[test]
+    fn array_omitted_markers_js_head_and_tail() {
+        let cfg_prio = crate::PriorityConfig {
+            max_string_graphemes: usize::MAX,
+            array_max_items: 1,
+            prefer_tail_arrays: false,
+            array_bias: crate::ArrayBias::HeadMidTail,
+            array_sampler: crate::ArraySamplerStrategy::Default,
+        };
+        let arena =
+            crate::json_ingest::build_json_tree_arena("[1,2,3]", &cfg_prio)
+                .unwrap();
+        let build = build_order(&arena, &cfg_prio).unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+
+        let out_head = render_top_k(
+            &build,
+            2,
+            &mut marks,
+            3,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Js,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("array_omitted_js_head", out_head);
+
+        let out_tail = render_top_k(
+            &build,
+            2,
+            &mut marks,
+            4,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Js,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: true,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("array_omitted_js_tail", out_tail);
+    }
+
+    #[test]
+    fn inline_open_array_in_object_json() {
+        let arena = crate::json_ingest::build_json_tree_arena(
+            "{\"a\":[1,2,3]}",
+            &crate::PriorityConfig::new(usize::MAX, 2),
+        )
+        .unwrap();
+        let build =
+            build_order(&arena, &crate::PriorityConfig::new(usize::MAX, 2))
+                .unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+        let out = render_top_k(
+            &build,
+            4,
+            &mut marks,
+            5,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Json,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("inline_open_array_in_object_json", out);
     }
 
     #[test]
@@ -478,6 +673,8 @@ mod tests {
                 space: " ".to_string(),
                 newline: "\n".to_string(),
                 prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Auto,
+                color_enabled: false,
             },
         );
         // Should be a valid JS object with one property and an omitted summary.
@@ -493,7 +690,7 @@ mod tests {
         );
     }
 
-    fn mk_gap_ctx() -> super::templates::ArrayCtx<'static> {
+    fn mk_gap_ctx() -> super::templates::ArrayCtx {
         super::templates::ArrayCtx {
             children: vec![
                 (0, "  1".to_string()),
@@ -503,9 +700,7 @@ mod tests {
             children_len: 3,
             omitted: 0,
             depth: 0,
-            indent_unit: "  ",
             inline_open: false,
-            newline: "\n",
             omitted_at_start: false,
         }
     }
@@ -517,10 +712,15 @@ mod tests {
     #[test]
     fn array_internal_gaps_pseudo() {
         let ctx = mk_gap_ctx();
-        let out = super::templates::render_array(
+        let mut s = String::new();
+        let mut outw =
+            crate::serialization::output::Out::new(&mut s, "\n", "  ", false);
+        super::templates::render_array(
             crate::OutputTemplate::Pseudo,
             &ctx,
+            &mut outw,
         );
+        let out = s;
         assert_contains_all(
             &out,
             &["[\n", "\n  1,", "\n  …\n", "\n  2,", "\n  3\n"],
@@ -530,8 +730,15 @@ mod tests {
     #[test]
     fn array_internal_gaps_js() {
         let ctx = mk_gap_ctx();
-        let out =
-            super::templates::render_array(crate::OutputTemplate::Js, &ctx);
+        let mut s = String::new();
+        let mut outw =
+            crate::serialization::output::Out::new(&mut s, "\n", "  ", false);
+        super::templates::render_array(
+            crate::OutputTemplate::Js,
+            &ctx,
+            &mut outw,
+        );
+        let out = s;
         assert!(out.contains("/* 2 more items */"));
         assert!(out.contains("/* 1 more items */"));
     }

@@ -4,7 +4,7 @@ use insta::assert_snapshot;
 fn run_js(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
     let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let mut args = vec!["-n", &budget_s, "-f", "js"]; // newline mode
+    let mut args = vec!["--no-color", "-n", &budget_s, "-f", "js"]; // newline mode
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert().success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
@@ -42,7 +42,17 @@ fn js_fileset_compact_shows_inline_omitted_summary() {
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     // Compact mode => no newlines, but object-style rendering includes inline summary
     let assert = cmd
-        .args(["-n", &budget_s, "-f", "js", "--compact", p1, p2, p3])
+        .args([
+            "--no-color",
+            "-n",
+            &budget_s,
+            "-f",
+            "js",
+            "--compact",
+            p1,
+            p2,
+            p3,
+        ])
         .assert()
         .success();
     let out = String::from_utf8_lossy(&assert.get_output().stdout);

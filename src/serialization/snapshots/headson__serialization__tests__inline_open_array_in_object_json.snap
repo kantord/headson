@@ -1,0 +1,10 @@
+---
+source: src/serialization/mod.rs
+expression: out
+---
+{
+  "a": [
+    1,
+    2
+  ]
+}

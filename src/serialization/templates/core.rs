@@ -1,25 +1,25 @@
-use super::super::indent;
 use super::{ArrayCtx, ObjectCtx};
+use crate::serialization::output::Out;
 
 // Shared rendering core for all templates.
 // - Style controls only empty/omitted decorations.
 // - Indentation and newlines come from ctx (depth, indent_unit, newline).
 // - When ctx.inline_open is true, no leading indent is emitted before the opener.
 pub trait Style {
-    fn array_empty(open_indent: &str, ctx: &ArrayCtx<'_>) -> String;
-    fn array_push_omitted(_out: &mut String, _ctx: &ArrayCtx<'_>) {}
+    fn array_empty(out: &mut Out<'_>, ctx: &ArrayCtx);
+    fn array_push_omitted(_out: &mut Out<'_>, _ctx: &ArrayCtx) {}
     fn array_push_internal_gap(
-        _out: &mut String,
-        _ctx: &ArrayCtx<'_>,
+        _out: &mut Out<'_>,
+        _ctx: &ArrayCtx,
         _gap: usize,
     ) {
     }
 
-    fn object_empty(open_indent: &str, ctx: &ObjectCtx<'_>) -> String;
-    fn object_push_omitted(_out: &mut String, _ctx: &ObjectCtx<'_>) {}
+    fn object_empty(out: &mut Out<'_>, ctx: &ObjectCtx<'_>);
+    fn object_push_omitted(_out: &mut Out<'_>, _ctx: &ObjectCtx<'_>) {}
 }
 
-fn push_array_items_with<S: Style>(out: &mut String, ctx: &ArrayCtx<'_>) {
+fn push_array_items_with<S: Style>(out: &mut Out<'_>, ctx: &ArrayCtx) {
     let mut prev_index: Option<usize> = None;
     for (i, (orig_index, item)) in ctx.children.iter().enumerate() {
         if let Some(prev) = prev_index {
@@ -29,64 +29,96 @@ fn push_array_items_with<S: Style>(out: &mut String, ctx: &ArrayCtx<'_>) {
         }
         out.push_str(item);
         if i + 1 < ctx.children_len {
-            out.push(',');
+            out.push_char(',');
         }
-        out.push_str(ctx.newline);
+        out.push_newline();
         prev_index = Some(*orig_index);
     }
 }
 
-fn push_object_items(out: &mut String, ctx: &ObjectCtx<'_>) {
+fn as_bool(v: &str) -> Option<bool> {
+    if v == "true" {
+        Some(true)
+    } else if v == "false" {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+fn is_number_text(v: &str) -> bool {
+    matches!(v.as_bytes().first().copied(), Some(b'-' | b'0'..=b'9'))
+}
+
+fn push_value_token(out: &mut Out<'_>, v: &str) {
+    if v.starts_with('"') {
+        out.push_string_literal(v);
+        return;
+    }
+    if let Some(b) = as_bool(v) {
+        out.push_bool(b);
+        return;
+    }
+    if v == "null" {
+        out.push_null();
+        return;
+    }
+    if is_number_text(v) {
+        out.push_number_literal(v);
+        return;
+    }
+    out.push_str(v);
+}
+
+fn push_object_items(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
     for (i, (_, (k, v))) in ctx.children.iter().enumerate() {
-        out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
-        out.push_str(k);
-        out.push(':');
+        out.push_indent(ctx.depth + 1);
+        out.push_key(k);
+        out.push_char(':');
         out.push_str(ctx.space);
-        out.push_str(v);
+        push_value_token(out, v);
         if i + 1 < ctx.children_len {
-            out.push(',');
+            out.push_char(',');
         }
-        out.push_str(ctx.newline);
+        out.push_newline();
     }
 }
 
 // Render an array using the shared control flow and style-specific decorations.
-pub fn render_array_with<S: Style>(ctx: &ArrayCtx<'_>) -> String {
-    let base = indent(ctx.depth, ctx.indent_unit);
-    let open_indent = if ctx.inline_open { "" } else { &base };
+pub fn render_array_with<S: Style>(ctx: &ArrayCtx, out: &mut Out<'_>) {
     if ctx.children_len == 0 {
-        return S::array_empty(open_indent, ctx);
+        S::array_empty(out, ctx);
+        return;
     }
-    let mut out = String::new();
-    out.push_str(open_indent);
-    out.push('[');
-    out.push_str(ctx.newline);
+    if !ctx.inline_open {
+        out.push_indent(ctx.depth);
+    }
+    out.push_char('[');
+    out.push_newline();
     if ctx.omitted_at_start {
-        S::array_push_omitted(&mut out, ctx);
+        S::array_push_omitted(out, ctx);
     }
-    push_array_items_with::<S>(&mut out, ctx);
+    push_array_items_with::<S>(out, ctx);
     if !ctx.omitted_at_start {
-        S::array_push_omitted(&mut out, ctx);
+        S::array_push_omitted(out, ctx);
     }
-    out.push_str(&base);
-    out.push(']');
-    out
+    out.push_indent(ctx.depth);
+    out.push_char(']');
 }
 
 // Render an object using the shared control flow and style-specific decorations.
-pub fn render_object_with<S: Style>(ctx: &ObjectCtx<'_>) -> String {
-    let base = indent(ctx.depth, ctx.indent_unit);
-    let open_indent = if ctx.inline_open { "" } else { &base };
+pub fn render_object_with<S: Style>(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
     if ctx.children_len == 0 {
-        return S::object_empty(open_indent, ctx);
+        S::object_empty(out, ctx);
+        return;
     }
-    let mut out = String::new();
-    out.push_str(open_indent);
-    out.push('{');
-    out.push_str(ctx.newline);
-    push_object_items(&mut out, ctx);
-    S::object_push_omitted(&mut out, ctx);
-    out.push_str(&base);
-    out.push('}');
-    out
+    if !ctx.inline_open {
+        out.push_indent(ctx.depth);
+    }
+    out.push_char('{');
+    out.push_newline();
+    push_object_items(out, ctx);
+    S::object_push_omitted(out, ctx);
+    out.push_indent(ctx.depth);
+    out.push_char('}');
 }

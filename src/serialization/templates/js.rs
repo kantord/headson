@@ -1,83 +1,75 @@
-use super::super::indent;
 use super::core::{Style, render_array_with, render_object_with};
 use super::{ArrayCtx, ObjectCtx};
+use crate::serialization::output::Out;
 
 struct Js;
 
 impl Style for Js {
-    fn array_empty(open_indent: &str, ctx: &ArrayCtx<'_>) -> String {
-        if ctx.omitted > 0 {
-            return format!(
-                "{open_indent}[ /* {} more items */ ]",
-                ctx.omitted
-            );
+    fn array_empty(out: &mut Out<'_>, ctx: &ArrayCtx) {
+        if !ctx.inline_open {
+            out.push_indent(ctx.depth);
         }
-        format!("{open_indent}[ /* empty */ ]")
+        out.push_char('[');
+        if ctx.omitted > 0 {
+            out.push_str(" ");
+            out.push_comment(format!("/* {} more items */", ctx.omitted));
+            out.push_str(" ");
+        }
+        out.push_char(']');
     }
 
-    fn array_push_omitted(out: &mut String, ctx: &ArrayCtx<'_>) {
+    fn array_push_omitted(out: &mut Out<'_>, ctx: &ArrayCtx) {
         if ctx.omitted > 0 {
-            out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
-            out.push_str("/* ");
-            out.push_str(&ctx.omitted.to_string());
-            out.push_str(" more items */");
+            out.push_indent(ctx.depth + 1);
+            out.push_comment(format!("/* {} more items */", ctx.omitted));
             if ctx.children_len > 0 && ctx.omitted_at_start {
-                out.push(',');
+                out.push_char(',');
             }
-            out.push_str(ctx.newline);
+            out.push_newline();
         }
     }
-    fn array_push_internal_gap(
-        out: &mut String,
-        ctx: &ArrayCtx<'_>,
-        gap: usize,
-    ) {
-        out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
-        out.push_str("/* ");
-        out.push_str(&gap.to_string());
-        out.push_str(" more items */");
-        out.push_str(ctx.newline);
+    fn array_push_internal_gap(out: &mut Out<'_>, ctx: &ArrayCtx, gap: usize) {
+        out.push_indent(ctx.depth + 1);
+        out.push_comment(format!("/* {gap} more items */"));
+        out.push_newline();
     }
 
-    fn object_empty(open_indent: &str, ctx: &ObjectCtx<'_>) -> String {
+    fn object_empty(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
+        if !ctx.inline_open {
+            out.push_indent(ctx.depth);
+        }
+        out.push_char('{');
         if ctx.omitted > 0 {
+            out.push_str(ctx.space);
             let label = if ctx.fileset_root {
                 "files"
             } else {
                 "properties"
             };
-            return format!(
-                "{open_indent}{{{space}/* {n} more {label} */{space}}}",
-                n = ctx.omitted,
-                space = ctx.space
-            );
+            out.push_comment(format!("/* {} more {label} */", ctx.omitted));
+            out.push_str(ctx.space);
         }
-        format!(
-            "{open_indent}{{{space}/* empty */{space}}}",
-            space = ctx.space
-        )
+        out.push_char('}');
     }
 
-    fn object_push_omitted(out: &mut String, ctx: &ObjectCtx<'_>) {
+    fn object_push_omitted(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
         if ctx.omitted > 0 {
-            out.push_str(&indent(ctx.depth + 1, ctx.indent_unit));
+            out.push_indent(ctx.depth + 1);
             let label = if ctx.fileset_root {
                 "files"
             } else {
                 "properties"
             };
-            out.push_str(&format!(
-                "/* {} more {label} */{}",
-                ctx.omitted, ctx.newline
-            ));
+            out.push_comment(format!("/* {} more {label} */", ctx.omitted));
+            out.push_newline();
         }
     }
 }
 
-pub(super) fn render_array(ctx: &ArrayCtx<'_>) -> String {
-    render_array_with::<Js>(ctx)
+pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
+    render_array_with::<Js>(ctx, out)
 }
 
-pub(super) fn render_object(ctx: &ObjectCtx<'_>) -> String {
-    render_object_with::<Js>(ctx)
+pub(super) fn render_object(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
+    render_object_with::<Js>(ctx, out)
 }

@@ -9,7 +9,10 @@ fn single_binary_file_is_ignored_with_notice() {
     fs::write(&bin, [0x00, 0x01, 0xFF, 0xFE]).expect("write bin");
 
     let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let assert = cmd.arg(bin.to_string_lossy().to_string()).assert();
+    let assert = cmd
+        .arg("--no-color")
+        .arg(bin.to_string_lossy().to_string())
+        .assert();
 
     let status = assert.get_output().status.success();
     let out =

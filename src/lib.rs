@@ -25,7 +25,8 @@ pub use order::{
     NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
 };
 
-pub use serialization::types::{OutputTemplate, RenderConfig};
+pub use serialization::color::resolve_color_enabled;
+pub use serialization::types::{ColorMode, OutputTemplate, RenderConfig};
 
 pub fn headson(
     input: Vec<u8>,
@@ -76,7 +77,11 @@ fn find_largest_render_under_budget(
     let mut inclusion_flags: Vec<u32> = vec![0; total];
     // Each render attempt bumps this non-zero identifier to create a fresh inclusion set.
     let mut render_set_id: u32 = 1;
-    let mut best_str: Option<String> = None;
+    // Measure length without color so ANSI escapes do not count toward the
+    // character budget. Then render once more with the requested color setting.
+    let mut best_k: Option<usize> = None;
+    let mut measure_cfg = config.clone();
+    measure_cfg.color_enabled = false;
 
     let _ = crate::utils::search::binary_search_max(lo, hi, |mid| {
         let s = crate::serialization::render_top_k(
@@ -84,19 +89,26 @@ fn find_largest_render_under_budget(
             mid,
             &mut inclusion_flags,
             render_set_id,
-            config,
+            &measure_cfg,
         );
         render_set_id = render_set_id.wrapping_add(1).max(1);
         if s.len() <= char_budget {
-            best_str = Some(s);
+            best_k = Some(mid);
             true
         } else {
             false
         }
     });
 
-    if let Some(s) = best_str {
-        s
+    if let Some(k) = best_k {
+        // Final render with original color settings
+        crate::serialization::render_top_k(
+            order_build,
+            k,
+            &mut inclusion_flags,
+            render_set_id,
+            config,
+        )
     } else {
         // Fallback: always render a single node (k=1) to produce the
         // shortest possible preview, even if it exceeds the byte budget.

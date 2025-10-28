@@ -3,7 +3,12 @@ use assert_cmd::{Command, assert::Assert};
 #[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
 pub fn run_stdout(input: &str, args: &[&str]) -> String {
     let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let assert = cmd.args(args).write_stdin(input).assert().success();
+    let assert = cmd
+        .arg("--no-color")
+        .args(args)
+        .write_stdin(input)
+        .assert()
+        .success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
 }
 
@@ -31,13 +36,14 @@ pub fn run_template_budget_assert(
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     let mut args = vec!["-n", &budget_s, "-f", template];
     args.extend_from_slice(extra);
-    cmd.args(args).write_stdin(input).assert()
+    cmd.arg("--no-color").args(args).write_stdin(input).assert()
 }
 
 #[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
 pub fn run_capture(input: &[u8], args: &[&str]) -> (bool, Vec<u8>, Vec<u8>) {
     let assert = Command::cargo_bin("headson")
         .unwrap()
+        .arg("--no-color")
         .args(args)
         .write_stdin(input)
         .assert();

@@ -6,7 +6,7 @@ use tempfile::tempdir;
 fn run_with_paths_json(paths: &[&str]) -> (bool, String, String) {
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     // large budget to avoid truncation
-    let mut args = vec!["-n", "100000", "-f", "json"];
+    let mut args = vec!["--no-color", "-n", "100000", "-f", "json"];
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert();
     let ok = assert.get_output().status.success();

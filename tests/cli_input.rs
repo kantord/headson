@@ -26,7 +26,7 @@ fn run_with_input_path(
 ) -> (bool, String, String) {
     let budget_s = budget.to_string();
     let mut cmd = Command::cargo_bin("headson").expect("bin");
-    let mut args = vec!["-n", &budget_s, "-f", template, path];
+    let mut args = vec!["--no-color", "-n", &budget_s, "-f", template, path];
     args.extend_from_slice(extra);
     let assert = cmd.args(args).assert();
     let ok = assert.get_output().status.success();
@@ -75,6 +75,7 @@ fn directories_and_binary_files_are_ignored_with_notices() {
     let mut cmd = Command::cargo_bin("headson").expect("bin");
     let assert = cmd
         .args([
+            "--no-color",
             "-n",
             "100",
             "-f",
@@ -113,7 +114,14 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
     // Case 1: single ignored path -> falls into included == 0 branch, empty output
     let mut cmd1 = Command::cargo_bin("headson").expect("bin");
     let assert1 = cmd1
-        .args(["-n", "100", "-f", "json", dir_path.to_str().unwrap()])
+        .args([
+            "--no-color",
+            "-n",
+            "100",
+            "-f",
+            "json",
+            dir_path.to_str().unwrap(),
+        ])
         .assert();
     let ok1 = assert1.get_output().status.success();
     let out1 = String::from_utf8_lossy(&assert1.get_output().stdout);
@@ -126,6 +134,7 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
     let mut cmd2 = Command::cargo_bin("headson").expect("bin");
     let assert2 = cmd2
         .args([
+            "--no-color",
             "-n",
             "100",
             "-f",
@@ -164,6 +173,7 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
     let mut cmd_pf = Command::cargo_bin("headson").expect("bin");
     let assert_pf = cmd_pf
         .args([
+            "--no-color",
             "-n",
             "40",
             "-f",
@@ -180,6 +190,7 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
     let mut cmd_g = Command::cargo_bin("headson").expect("bin");
     let assert_g = cmd_g
         .args([
+            "--no-color",
             "--global-budget",
             "40",
             "-f",

@@ -21,7 +21,6 @@ struct SampleAccumulator<'a> {
     indices: &'a mut Vec<usize>,
 }
 
-#[inline]
 fn mix64(mut x: u64) -> u64 {
     x ^= x >> 30;
     x = x.wrapping_mul(0xbf58_476d_1ce4_e5b9);
@@ -30,7 +29,6 @@ fn mix64(mut x: u64) -> u64 {
     x ^ (x >> 31)
 }
 
-#[inline]
 fn accept_index(i: u64) -> bool {
     let h = mix64(i ^ RANDOM_ACCEPT_SEED);
     ((h >> 32) as u32) < RANDOM_ACCEPT_THRESHOLD
