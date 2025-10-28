@@ -5,6 +5,7 @@ mod core;
 mod js;
 mod json;
 mod pseudo;
+mod yaml;
 //
 pub struct ArrayCtx {
     pub children: Vec<(usize, String)>,
@@ -37,6 +38,7 @@ pub fn render_array(
         OutputTemplate::Json => json::render_array(ctx, out),
         OutputTemplate::Pseudo => pseudo::render_array(ctx, out),
         OutputTemplate::Js => js::render_array(ctx, out),
+        OutputTemplate::Yaml => yaml::render_array(ctx, out),
     }
 }
 
@@ -49,5 +51,6 @@ pub fn render_object(
         OutputTemplate::Json => json::render_object(ctx, out),
         OutputTemplate::Pseudo => pseudo::render_object(ctx, out),
         OutputTemplate::Js => js::render_object(ctx, out),
+        OutputTemplate::Yaml => yaml::render_object(ctx, out),
     }
 }

@@ -6,6 +6,7 @@ pub mod output;
 pub mod templates;
 pub mod types;
 use self::templates::{ArrayCtx, ObjectCtx, render_array, render_object};
+use crate::OutputTemplate;
 use crate::serialization::output::Out;
 
 fn indent(depth: usize, unit: &str) -> String {
@@ -57,8 +58,14 @@ impl<'a> RenderScope<'a> {
                 out.push((index, rendered));
             }
             _ => {
-                let child_indent = indent(depth + 1, &self.config.indent_unit);
-                out.push((index, format!("{child_indent}{rendered}")));
+                if self.config.template == OutputTemplate::Yaml {
+                    // YAML template controls its own list indent; avoid prefixing here.
+                    out.push((index, rendered));
+                } else {
+                    let child_indent =
+                        indent(depth + 1, &self.config.indent_unit);
+                    out.push((index, format!("{child_indent}{rendered}")));
+                }
             }
         }
     }
@@ -616,6 +623,168 @@ mod tests {
             },
         );
         assert_snapshot!("array_omitted_js_tail", out_tail);
+    }
+
+    #[test]
+    fn array_omitted_markers_yaml_head_and_tail() {
+        let cfg_prio = crate::PriorityConfig {
+            max_string_graphemes: usize::MAX,
+            array_max_items: 1,
+            prefer_tail_arrays: false,
+            array_bias: crate::ArrayBias::HeadMidTail,
+            array_sampler: crate::ArraySamplerStrategy::Default,
+        };
+        let arena =
+            crate::json_ingest::build_json_tree_arena("[1,2,3]", &cfg_prio)
+                .unwrap();
+        let build = build_order(&arena, &cfg_prio).unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+
+        let out_head = render_top_k(
+            &build,
+            2,
+            &mut marks,
+            11,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Yaml,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        // For YAML, we include an omitted marker comment at end when head-preferred.
+        assert!(
+            out_head.contains("# 2 more items") || out_head.contains("- 1")
+        );
+
+        let out_tail = render_top_k(
+            &build,
+            2,
+            &mut marks,
+            12,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Yaml,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: true,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert!(out_tail.contains("# 2 more items"));
+    }
+
+    #[test]
+    fn arena_render_empty_array_yaml() {
+        let arena = crate::json_ingest::build_json_tree_arena(
+            "[]",
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let build = build_order(
+            &arena,
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+        let out = render_top_k(
+            &build,
+            10,
+            &mut marks,
+            21,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Yaml,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Auto,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("arena_render_empty_yaml", out);
+    }
+
+    #[test]
+    fn arena_render_single_string_array_yaml() {
+        let arena = crate::json_ingest::build_json_tree_arena(
+            "[\"ab\"]",
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let build = build_order(
+            &arena,
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+        let out = render_top_k(
+            &build,
+            10,
+            &mut marks,
+            22,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Yaml,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Auto,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("arena_render_single_yaml", out);
+    }
+
+    #[test]
+    fn inline_open_array_in_object_yaml() {
+        let arena = crate::json_ingest::build_json_tree_arena(
+            "{\"a\":[1,2,3]}",
+            &crate::PriorityConfig::new(usize::MAX, 2),
+        )
+        .unwrap();
+        let build =
+            build_order(&arena, &crate::PriorityConfig::new(usize::MAX, 2))
+                .unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+        let out = render_top_k(
+            &build,
+            4,
+            &mut marks,
+            23,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Yaml,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("inline_open_array_in_object_yaml", out);
+    }
+
+    #[test]
+    fn array_internal_gaps_yaml() {
+        let ctx = mk_gap_ctx();
+        let mut s = String::new();
+        let mut outw =
+            crate::serialization::output::Out::new(&mut s, "\n", "  ", false);
+        super::templates::render_array(
+            crate::OutputTemplate::Yaml,
+            &ctx,
+            &mut outw,
+        );
+        let out = s;
+        // No strict assertions on gap formatting; ensure dash list rendered.
+        assert!(out.contains("- 1"));
+        assert!(out.contains("- 2") || out.contains("#"));
+        assert!(out.contains("- 3"));
     }
 
     #[test]

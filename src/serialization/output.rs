@@ -95,4 +95,9 @@ impl<'a> Out<'a> {
         );
         self.buf.push_str(&s);
     }
+
+    // Formatting mode queries
+    pub fn is_compact_mode(&self) -> bool {
+        self.newline.is_empty() && self.indent_unit.is_empty()
+    }
 }

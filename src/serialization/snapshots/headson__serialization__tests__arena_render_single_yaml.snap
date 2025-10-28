@@ -1,0 +1,6 @@
+---
+source: src/serialization/mod.rs
+expression: out
+---
+- "ab"
+
