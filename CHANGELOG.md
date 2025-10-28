@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0](https://github.com/kantord/headson/compare/v0.5.4...v0.6.0) - 2025-10-28
+
+### Added
+
+- add color output ([#98](https://github.com/kantord/headson/pull/98))
+
 ## [0.5.4](https://github.com/kantord/headson/compare/v0.5.3...v0.5.4) - 2025-10-27
 
 ### Other
