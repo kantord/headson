@@ -421,6 +421,14 @@ mod tests {
     use crate::order::build_order;
     use insta::assert_snapshot;
 
+    #[cfg(feature = "yaml-validate")]
+    fn assert_yaml_valid(s: &str) {
+        let _: serde_yaml::Value = serde_yaml::from_str(s)
+            .expect("YAML parse failed (validation feature)");
+    }
+    #[cfg(not(feature = "yaml-validate"))]
+    fn assert_yaml_valid(_s: &str) {}
+
     #[test]
     fn arena_render_empty_array() {
         let arena = crate::json_ingest::build_json_tree_arena(
@@ -655,6 +663,7 @@ mod tests {
                 color_enabled: false,
             },
         );
+        assert_yaml_valid(&out_head);
         // For YAML, we include an omitted marker comment at end when head-preferred.
         assert!(
             out_head.contains("# 2 more items") || out_head.contains("- 1")
@@ -675,6 +684,7 @@ mod tests {
                 color_enabled: false,
             },
         );
+        assert_yaml_valid(&out_tail);
         assert!(out_tail.contains("# 2 more items"));
     }
 
@@ -706,6 +716,7 @@ mod tests {
                 color_enabled: false,
             },
         );
+        assert_yaml_valid(&out);
         assert_snapshot!("arena_render_empty_yaml", out);
     }
 
@@ -737,6 +748,7 @@ mod tests {
                 color_enabled: false,
             },
         );
+        assert_yaml_valid(&out);
         assert_snapshot!("arena_render_single_yaml", out);
     }
 
@@ -766,6 +778,7 @@ mod tests {
                 color_enabled: false,
             },
         );
+        assert_yaml_valid(&out);
         assert_snapshot!("inline_open_array_in_object_yaml", out);
     }
 
@@ -781,6 +794,7 @@ mod tests {
             &mut outw,
         );
         let out = s;
+        assert_yaml_valid(&out);
         // No strict assertions on gap formatting; ensure dash list rendered.
         assert!(out.contains("- 1"));
         assert!(out.contains("- 2") || out.contains("#"));

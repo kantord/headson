@@ -36,6 +36,14 @@ rand = "0.9"
 rand_chacha = "0.9"
 tempfile = "3"
 
+[features]
+default = []
+yaml-validate = ["serde_yaml"]
+
+[dependencies.serde_yaml]
+version = "0.9"
+optional = true
+
 [profile.release]
 # Prioritize runtime speed for large inputs
 opt-level = 3
