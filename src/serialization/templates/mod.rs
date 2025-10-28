@@ -5,7 +5,7 @@ mod core;
 mod js;
 mod json;
 mod pseudo;
-// color helpers used directly by templates via output::Out
+//
 pub struct ArrayCtx {
     pub children: Vec<(usize, String)>,
     pub children_len: usize,

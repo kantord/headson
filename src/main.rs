@@ -256,7 +256,6 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
             headson::ColorMode::Auto
         }
     }
-    // color resolution moved to serializer/color
 
     let template = to_output_template(cli.template);
     let space = if cli.compact || cli.no_space { "" } else { " " }.to_string();

@@ -516,6 +516,138 @@ mod tests {
     }
 
     #[test]
+    fn array_omitted_markers_pseudo_head_and_tail() {
+        // Force sampling to keep only a subset so omitted > 0.
+        let cfg_prio = crate::PriorityConfig {
+            max_string_graphemes: usize::MAX,
+            array_max_items: 1,
+            prefer_tail_arrays: false,
+            array_bias: crate::ArrayBias::HeadMidTail,
+            array_sampler: crate::ArraySamplerStrategy::Default,
+        };
+        let arena =
+            crate::json_ingest::build_json_tree_arena("[1,2,3]", &cfg_prio)
+                .unwrap();
+        let build = build_order(&arena, &cfg_prio).unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+
+        // Head preference: omitted marker after items.
+        let out_head = render_top_k(
+            &build,
+            2,
+            &mut marks,
+            1,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Pseudo,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("array_omitted_pseudo_head", out_head);
+
+        // Tail preference: omitted marker before items (with comma).
+        let out_tail = render_top_k(
+            &build,
+            2,
+            &mut marks,
+            2,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Pseudo,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: true,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("array_omitted_pseudo_tail", out_tail);
+    }
+
+    #[test]
+    fn array_omitted_markers_js_head_and_tail() {
+        let cfg_prio = crate::PriorityConfig {
+            max_string_graphemes: usize::MAX,
+            array_max_items: 1,
+            prefer_tail_arrays: false,
+            array_bias: crate::ArrayBias::HeadMidTail,
+            array_sampler: crate::ArraySamplerStrategy::Default,
+        };
+        let arena =
+            crate::json_ingest::build_json_tree_arena("[1,2,3]", &cfg_prio)
+                .unwrap();
+        let build = build_order(&arena, &cfg_prio).unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+
+        let out_head = render_top_k(
+            &build,
+            2,
+            &mut marks,
+            3,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Js,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("array_omitted_js_head", out_head);
+
+        let out_tail = render_top_k(
+            &build,
+            2,
+            &mut marks,
+            4,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Js,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: true,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("array_omitted_js_tail", out_tail);
+    }
+
+    #[test]
+    fn inline_open_array_in_object_json() {
+        let arena = crate::json_ingest::build_json_tree_arena(
+            "{\"a\":[1,2,3]}",
+            &crate::PriorityConfig::new(usize::MAX, 2),
+        )
+        .unwrap();
+        let build =
+            build_order(&arena, &crate::PriorityConfig::new(usize::MAX, 2))
+                .unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+        let out = render_top_k(
+            &build,
+            4,
+            &mut marks,
+            5,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Json,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_snapshot!("inline_open_array_in_object_json", out);
+    }
+
+    #[test]
     fn arena_render_object_partial_js() {
         // Object with three properties; render top_k small so only one child is kept.
         let arena = crate::json_ingest::build_json_tree_arena(
