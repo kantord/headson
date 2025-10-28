@@ -11,7 +11,7 @@ fn push_yaml_array_item(out: &mut Out<'_>, depth: usize, item: &str) {
     if !has_newline(item) {
         out.push_indent(depth);
         out.push_str("- ");
-        out.push_str(item.trim());
+        out.push_str(&yaml_printable_scalar(item.trim()));
         out.push_newline();
         return;
     }
@@ -28,6 +28,18 @@ fn push_yaml_array_item(out: &mut Out<'_>, depth: usize, item: &str) {
     if !item.ends_with('\n') && !item.ends_with('\r') {
         out.push_newline();
     }
+}
+
+fn yaml_printable_scalar(token: &str) -> String {
+    // If it's a JSON string literal, decode, then decide quoting.
+    if let Some(raw) = decode_json_string(token) {
+        if !needs_quotes_yaml_value(&raw) {
+            return raw;
+        }
+        return token.to_string();
+    }
+    // Non-string token (number, bool, null) → pass through.
+    token.to_string()
 }
 
 fn push_array_omitted_start(ctx: &ArrayCtx, out: &mut Out<'_>) {
@@ -113,7 +125,7 @@ fn push_object_kv(out: &mut Out<'_>, depth: usize, key_text: &str, v: &str) {
     out.push_indent(depth);
     if !has_newline(v) {
         out.push_str(&format!("{key_text}: "));
-        out.push_str(v);
+        out.push_str(&yaml_printable_scalar(v));
         out.push_newline();
     } else {
         out.push_str(&format!("{key_text}:"));
@@ -123,6 +135,66 @@ fn push_object_kv(out: &mut Out<'_>, depth: usize, key_text: &str, v: &str) {
             out.push_newline();
         }
     }
+}
+
+fn yaml_value_has_linebreaks(s: &str) -> bool {
+    s.contains('\n') || s.contains('\r')
+}
+
+fn yaml_value_has_outer_ws(s: &str) -> bool {
+    s.starts_with(char::is_whitespace) || s.ends_with(char::is_whitespace)
+}
+
+fn yaml_value_is_reserved(s: &str) -> bool {
+    let lower = s.to_ascii_lowercase();
+    matches!(
+        lower.as_str(),
+        "true"
+            | "false"
+            | "null"
+            | "~"
+            | "yes"
+            | "no"
+            | "on"
+            | "off"
+            | "y"
+            | "n"
+    )
+}
+
+fn yaml_value_looks_numeric(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    match bytes.first().copied() {
+        Some(b'-' | b'+' | b'0'..=b'9') => {
+            let mut has_digit = false;
+            for &c in bytes {
+                match c {
+                    b'0'..=b'9' => has_digit = true,
+                    b'.' | b'e' | b'E' | b'+' | b'-' => {}
+                    _ => return false,
+                }
+            }
+            has_digit
+        }
+        _ => false,
+    }
+}
+
+fn yaml_value_has_disallowed_punct(s: &str) -> bool {
+    const DISALLOWED: [char; 15] = [
+        ':', '#', '{', '}', '[', ']', ',', '&', '*', '?', '|', '>', '@', '%',
+        '!',
+    ];
+    s.chars().any(|c| DISALLOWED.contains(&c))
+}
+
+fn needs_quotes_yaml_value(s: &str) -> bool {
+    s.is_empty()
+        || yaml_value_has_linebreaks(s)
+        || yaml_value_has_outer_ws(s)
+        || yaml_value_is_reserved(s)
+        || yaml_value_looks_numeric(s)
+        || yaml_value_has_disallowed_punct(s)
 }
 
 fn push_object_omitted(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
