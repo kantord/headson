@@ -209,7 +209,7 @@ impl<'a> RenderScope<'a> {
                 return n.to_string();
             }
         }
-        "0".to_string()
+        unreachable!("NodeKind::Number without number_value")
     }
 
     fn serialize_bool(&self, id: usize) -> String {
