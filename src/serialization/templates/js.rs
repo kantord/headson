@@ -10,13 +10,11 @@ impl Style for Js {
             out.push_indent(ctx.depth);
         }
         out.push_char('[');
-        out.push_str(" ");
         if ctx.omitted > 0 {
+            out.push_str(" ");
             out.push_comment(format!("/* {} more items */", ctx.omitted));
-        } else {
-            out.push_comment("/* empty */");
+            out.push_str(" ");
         }
-        out.push_str(" ");
         out.push_char(']');
     }
 
@@ -41,18 +39,16 @@ impl Style for Js {
             out.push_indent(ctx.depth);
         }
         out.push_char('{');
-        out.push_str(ctx.space);
         if ctx.omitted > 0 {
+            out.push_str(ctx.space);
             let label = if ctx.fileset_root {
                 "files"
             } else {
                 "properties"
             };
             out.push_comment(format!("/* {} more {label} */", ctx.omitted));
-        } else {
-            out.push_comment("/* empty */");
+            out.push_str(ctx.space);
         }
-        out.push_str(ctx.space);
         out.push_char('}');
     }
 
