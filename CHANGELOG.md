@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1](https://github.com/kantord/headson/compare/v0.6.0...v0.6.1) - 2025-10-28
+
+### Other
+
+- fix logo height ([#103](https://github.com/kantord/headson/pull/103))
+- reduce logo size ([#102](https://github.com/kantord/headson/pull/102))
+- improve logo ([#100](https://github.com/kantord/headson/pull/100))
+
 ## [0.6.0](https://github.com/kantord/headson/compare/v0.5.4...v0.6.0) - 2025-10-28
 
 ### Added
