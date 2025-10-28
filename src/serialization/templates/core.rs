@@ -36,7 +36,6 @@ fn push_array_items_with<S: Style>(out: &mut Out<'_>, ctx: &ArrayCtx) {
     }
 }
 
-#[inline]
 fn as_bool(v: &str) -> Option<bool> {
     if v == "true" {
         Some(true)
@@ -47,12 +46,10 @@ fn as_bool(v: &str) -> Option<bool> {
     }
 }
 
-#[inline]
 fn is_number_text(v: &str) -> bool {
     matches!(v.as_bytes().first().copied(), Some(b'-' | b'0'..=b'9'))
 }
 
-#[inline]
 fn push_value_token(out: &mut Out<'_>, v: &str) {
     if v.starts_with('"') {
         out.push_string_literal(v);

@@ -24,40 +24,33 @@ impl<'a> Out<'a> {
         }
     }
 
-    #[inline]
     pub fn push_str(&mut self, s: &str) {
         self.buf.push_str(s);
     }
 
-    #[inline]
     pub fn push_char(&mut self, c: char) {
         self.buf.push(c);
     }
 
-    #[inline]
     pub fn push_newline(&mut self) {
         self.buf.push_str(&self.newline);
     }
 
-    #[inline]
     pub fn push_indent(&mut self, depth: usize) {
         self.buf.push_str(&self.indent_unit.repeat(depth));
     }
 
-    #[inline]
     pub fn push_comment<S: Into<String>>(&mut self, body: S) {
         let s = color::color_comment(body, self.color_enabled);
         self.buf.push_str(&s);
     }
 
-    #[inline]
     pub fn push_omission(&mut self) {
         self.buf
             .push_str(color::omission_marker(self.color_enabled));
     }
 
     // Color role helpers for tokens
-    #[inline]
     pub fn push_key(&mut self, quoted_key: &str) {
         let s = color::wrap_role(
             quoted_key,
@@ -67,7 +60,6 @@ impl<'a> Out<'a> {
         self.buf.push_str(&s);
     }
 
-    #[inline]
     pub fn push_string_literal(&mut self, quoted_value: &str) {
         let s = color::wrap_role(
             quoted_value,
@@ -77,7 +69,6 @@ impl<'a> Out<'a> {
         self.buf.push_str(&s);
     }
 
-    #[inline]
     pub fn push_number_literal(&mut self, number_text: &str) {
         let s = color::wrap_role(
             number_text,
@@ -87,7 +78,6 @@ impl<'a> Out<'a> {
         self.buf.push_str(&s);
     }
 
-    #[inline]
     pub fn push_bool(&mut self, val: bool) {
         let s = color::wrap_role(
             if val { "true" } else { "false" },
@@ -97,7 +87,6 @@ impl<'a> Out<'a> {
         self.buf.push_str(&s);
     }
 
-    #[inline]
     pub fn push_null(&mut self) {
         let s = color::wrap_role(
             "null",
