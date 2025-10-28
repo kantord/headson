@@ -216,7 +216,8 @@ impl<'a> RenderScope<'a> {
         let it = &self.order.nodes[id];
         match it.bool_value {
             Some(true) => "true".to_string(),
-            Some(false) | None => "false".to_string(),
+            Some(false) => "false".to_string(),
+            None => unreachable!("NodeKind::Bool without bool_value"),
         }
     }
 
