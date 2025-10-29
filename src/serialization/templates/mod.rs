@@ -1,4 +1,5 @@
 use crate::OutputTemplate;
+use crate::order::NodeKind;
 use crate::serialization::output::Out;
 
 mod core;
@@ -8,7 +9,7 @@ mod pseudo;
 mod yaml;
 //
 pub struct ArrayCtx {
-    pub children: Vec<(usize, String)>,
+    pub children: Vec<(usize, (NodeKind, String))>,
     pub children_len: usize,
     pub omitted: usize,
     pub depth: usize,

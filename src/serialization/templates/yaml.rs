@@ -60,7 +60,7 @@ fn push_array_omitted_end(ctx: &ArrayCtx, out: &mut Out<'_>) {
 
 fn render_array_pretty(ctx: &ArrayCtx, out: &mut Out<'_>) {
     push_array_omitted_start(ctx, out);
-    for (_, item) in ctx.children.iter() {
+    for (_, (_, item)) in ctx.children.iter() {
         push_yaml_array_item(out, ctx.depth, item);
     }
     push_array_omitted_end(ctx, out);

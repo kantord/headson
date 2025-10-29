@@ -1,4 +1,5 @@
 use super::{ArrayCtx, ObjectCtx};
+use crate::order::NodeKind;
 use crate::serialization::output::Out;
 
 // Shared rendering core for all templates.
@@ -19,15 +20,47 @@ pub trait Style {
     fn object_push_omitted(_out: &mut Out<'_>, _ctx: &ObjectCtx<'_>) {}
 }
 
+fn has_any_newline(s: &str) -> bool {
+    s.as_bytes().contains(&b'\n') || s.as_bytes().contains(&b'\r')
+}
+
+fn maybe_push_internal_gap<S: Style>(
+    out: &mut Out<'_>,
+    ctx: &ArrayCtx,
+    prev_index: Option<usize>,
+    orig_index: usize,
+) {
+    if let Some(prev) = prev_index {
+        if orig_index > prev.saturating_add(1) {
+            S::array_push_internal_gap(out, ctx, orig_index - prev - 1);
+        }
+    }
+}
+
+fn push_single_array_item(
+    out: &mut Out<'_>,
+    ctx: &ArrayCtx,
+    kind: NodeKind,
+    item: &str,
+) {
+    if has_any_newline(item) {
+        out.push_str(item);
+        return;
+    }
+    match kind {
+        NodeKind::Array | NodeKind::Object => out.push_str(item),
+        _ => {
+            out.push_indent(ctx.depth + 1);
+            out.push_str(item);
+        }
+    }
+}
+
 fn push_array_items_with<S: Style>(out: &mut Out<'_>, ctx: &ArrayCtx) {
     let mut prev_index: Option<usize> = None;
-    for (i, (orig_index, item)) in ctx.children.iter().enumerate() {
-        if let Some(prev) = prev_index {
-            if *orig_index > prev.saturating_add(1) {
-                S::array_push_internal_gap(out, ctx, *orig_index - prev - 1);
-            }
-        }
-        out.push_str(item);
+    for (i, (orig_index, (kind, item))) in ctx.children.iter().enumerate() {
+        maybe_push_internal_gap::<S>(out, ctx, prev_index, *orig_index);
+        push_single_array_item(out, ctx, *kind, item);
         if i + 1 < ctx.children_len {
             out.push_char(',');
         }

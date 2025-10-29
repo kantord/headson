@@ -6,14 +6,13 @@ pub mod output;
 pub mod templates;
 pub mod types;
 use self::templates::{ArrayCtx, ObjectCtx, render_array, render_object};
-use crate::OutputTemplate;
 use crate::serialization::output::Out;
 
 fn indent(depth: usize, unit: &str) -> String {
     unit.repeat(depth)
 }
 
-type ArrayChildPair = (usize, String);
+type ArrayChildPair = (usize, (NodeKind, String));
 type ObjectChildPair = (usize, (String, String));
 
 pub(crate) struct RenderScope<'a> {
@@ -30,44 +29,16 @@ pub(crate) struct RenderScope<'a> {
 }
 
 impl<'a> RenderScope<'a> {
-    fn render_has_newline(&self, s: &str) -> bool {
-        let nl = &self.config.newline;
-        if nl.is_empty() {
-            return false;
-        }
-        if nl == "\n" {
-            return s.as_bytes().contains(&b'\n');
-        }
-        s.contains(nl)
-    }
-
     fn push_array_child_line(
         &self,
         out: &mut Vec<ArrayChildPair>,
         index: usize,
         child_kind: NodeKind,
-        depth: usize,
+        _depth: usize,
         rendered: String,
     ) {
-        if self.render_has_newline(&rendered) {
-            out.push((index, rendered));
-            return;
-        }
-        match child_kind {
-            NodeKind::Array | NodeKind::Object => {
-                out.push((index, rendered));
-            }
-            _ => {
-                if self.config.template == OutputTemplate::Yaml {
-                    // YAML template controls its own list indent; avoid prefixing here.
-                    out.push((index, rendered));
-                } else {
-                    let child_indent =
-                        indent(depth + 1, &self.config.indent_unit);
-                    out.push((index, format!("{child_indent}{rendered}")));
-                }
-            }
-        }
+        // Defer indentation concerns to templates; store kind + rendered.
+        out.push((index, (child_kind, rendered)));
     }
 
     fn count_kept_children(&self, id: usize) -> usize {
@@ -982,9 +953,9 @@ mod tests {
     fn mk_gap_ctx() -> super::templates::ArrayCtx {
         super::templates::ArrayCtx {
             children: vec![
-                (0, "  1".to_string()),
-                (3, "  2".to_string()),
-                (5, "  3".to_string()),
+                (0, (crate::order::NodeKind::Number, "1".to_string())),
+                (3, (crate::order::NodeKind::Number, "2".to_string())),
+                (5, (crate::order::NodeKind::Number, "3".to_string())),
             ],
             children_len: 3,
             omitted: 0,
