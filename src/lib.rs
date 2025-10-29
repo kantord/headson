@@ -16,6 +16,7 @@
 
 use anyhow::Result;
 
+mod ingest;
 mod json_ingest;
 mod order;
 mod serialization;
@@ -34,10 +35,7 @@ pub fn headson(
     priority_cfg: &PriorityConfig,
     budget: usize,
 ) -> Result<String> {
-    let arena = crate::json_ingest::build_json_tree_arena_from_bytes(
-        input,
-        priority_cfg,
-    )?;
+    let arena = crate::ingest::parse_json_one(input, priority_cfg)?;
     let order_build = order::build_order(&arena, priority_cfg)?;
     let out = find_largest_render_under_budget(&order_build, config, budget);
     Ok(out)
@@ -49,10 +47,7 @@ pub fn headson_many(
     priority_cfg: &PriorityConfig,
     budget: usize,
 ) -> Result<String> {
-    let arena = crate::json_ingest::build_json_tree_arena_from_many(
-        inputs,
-        priority_cfg,
-    )?;
+    let arena = crate::ingest::parse_json_many(inputs, priority_cfg)?;
     let order_build = order::build_order(&arena, priority_cfg)?;
     let out = find_largest_render_under_budget(&order_build, config, budget);
     Ok(out)
