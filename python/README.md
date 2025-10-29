@@ -27,9 +27,6 @@ print(headson.summarize('{"a": 1, "b": {"c": 2}}', template="json", character_bu
 arr = ','.join(str(i) for i in range(100))
 print(headson.summarize('{"arr": [' + arr + ']}', template="js", character_budget=60, skew="tail"))
 
-# YAML template renders a human-friendly preview
-print(headson.summarize('{"a": 1, "b": [1,2,3]}', template="yaml", character_budget=80))
-
 # Note: tail mode affects only pseudo/js display templates; the json template stays strict.
 ```
 

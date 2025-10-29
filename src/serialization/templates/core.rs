@@ -153,5 +153,3 @@ pub(crate) fn wrap_block(
     body(out);
     close_block(out, depth, close_ch);
 }
-
-// (reserved for future shared helpers as needed)
