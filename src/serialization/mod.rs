@@ -162,7 +162,9 @@ impl<'a> RenderScope<'a> {
         let omitted = self.omitted_for(id, kept).unwrap_or(0);
         let full: &str = match &self.order.nodes[id] {
             RankedNode::SplittableLeaf { value, .. } => value.as_str(),
-            _ => "",
+            _ => unreachable!(
+                "serialize_string called for non-string node: id={id}"
+            ),
         };
         if omitted == 0 {
             crate::utils::json::json_string(full)

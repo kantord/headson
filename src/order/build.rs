@@ -100,7 +100,9 @@ impl<'a> Scope<'a> {
     fn record_string_metrics(&mut self, id: usize) {
         let s = match &self.nodes[id] {
             RankedNode::SplittableLeaf { value, .. } => value.as_str(),
-            _ => "",
+            _ => unreachable!(
+                "record_string_metrics called for non-string node: id={id}"
+            ),
         };
         let mut iter = UnicodeSegmentation::graphemes(s, true);
         let count =
@@ -285,6 +287,7 @@ impl<'a> Scope<'a> {
         let id = entry.priority_index;
         let full = match &self.nodes[id] {
             RankedNode::SplittableLeaf { value, .. } => value.as_str(),
+            // LeafPart (and any non-splittable) should not expand further; treat as empty
             _ => "",
         };
         let count = UnicodeSegmentation::graphemes(full, true)
