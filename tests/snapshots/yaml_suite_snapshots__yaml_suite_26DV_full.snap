@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "\"top1\":\n  \"key1\": &alias1 scalar1\n'top2':\n  'key2': &alias2 scalar2\ntop3: &node3\n  *alias1 : scalar3\ntop4:\n  *alias2 : scalar4\ntop5: scalar5\ntop6:\n  &anchor6 'key6': scalar6\n"
+  from: "@perlpunk"
+  json: "{\n  \"top1\": {\n    \"key1\": \"scalar1\"\n  },\n  \"top2\": {\n    \"key2\": \"scalar2\"\n  },\n  \"top3\": {\n    \"scalar1\": \"scalar3\"\n  },\n  \"top4\": {\n    \"scalar2\": \"scalar4\"\n  },\n  \"top5\": \"scalar5\",\n  \"top6\": {\n    \"key6\": \"scalar6\"\n  }\n}\n"
+  name: Whitespace around colon in mappings
+  tags: alias mapping whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL \"top1\n   +MAP\n    =VAL \"key1\n    =VAL &alias1 :scalar1\n   -MAP\n   =VAL 'top2\n   +MAP\n    =VAL 'key2\n    =VAL &alias2 :scalar2\n   -MAP\n   =VAL :top3\n   +MAP &node3\n    =ALI *alias1\n    =VAL :scalar3\n   -MAP\n   =VAL :top4\n   +MAP\n    =ALI *alias2\n    =VAL :scalar4\n   -MAP\n   =VAL :top5\n   =VAL :scalar5\n   =VAL :top6\n   +MAP\n    =VAL &anchor6 'key6\n    =VAL :scalar6\n   -MAP\n  -MAP\n -DOC\n-STR\n"
+  yaml: "\"top1\" :␣\n  \"key1\" : &alias1 scalar1\n'top2' :␣\n  'key2' : &alias2 scalar2\ntop3: &node3␣\n  *alias1 : scalar3\ntop4:␣\n  *alias2 : scalar4\ntop5   :␣␣␣␣\n  scalar5\ntop6:␣\n  &anchor6 'key6' : scalar6\n"

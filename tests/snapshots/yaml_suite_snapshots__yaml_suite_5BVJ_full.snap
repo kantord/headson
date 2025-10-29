@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "literal: |\n  some\n  text\nfolded: >\n  some text\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2773653"
+  json: "{\n  \"literal\": \"some\\ntext\\n\",\n  \"folded\": \"some text\\n\"\n}\n"
+  name: Spec Example 5.7. Block Scalar Indicators
+  tags: spec literal folded scalar
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :literal\n   =VAL |some\\ntext\\n\n   =VAL :folded\n   =VAL >some text\\n\n  -MAP\n -DOC\n-STR\n"
+  yaml: "literal: |\n  some\n  text\nfolded: >\n  some\n  text\n"

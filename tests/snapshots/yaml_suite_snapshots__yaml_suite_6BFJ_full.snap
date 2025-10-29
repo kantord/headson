@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "--- &mapping\n? &key\n- &item a\n- b\n- c\n: value\n"
+  from: "@perlpunk"
+  name: "Mapping, key and flow sequence item anchors"
+  tags: anchor complex-key flow mapping sequence
+  tree: "+STR\n +DOC ---\n  +MAP &mapping\n   +SEQ [] &key\n    =VAL &item :a\n    =VAL :b\n    =VAL :c\n   -SEQ\n   =VAL :value\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\n&mapping\n&key [ &item a, b, c ]: value\n"

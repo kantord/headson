@@ -1,0 +1,19 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- fail: true
+  from: "@ingydotnet"
+  name: Literal modifers
+  tags: literal scalar
+  tree: "+STR\n +DOC ---\n"
+  yaml: "--- |0\n"
+- fail: true
+  yaml: "--- |10\n"
+- emit: "--- \"\"\n"
+  json: "\"\"\n"
+  tree: "+STR\n +DOC ---\n  =VAL |\n -DOC\n-STR\n"
+  yaml: "--- |1-∎\n"
+- emit: "--- \"\"\n"
+  tree: "+STR\n +DOC ---\n  =VAL |\n -DOC\n-STR\n"
+  yaml: "--- |1+∎\n"

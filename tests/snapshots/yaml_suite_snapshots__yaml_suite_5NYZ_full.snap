@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "key: value\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2780342"
+  json: "{\n  \"key\": \"value\"\n}\n"
+  name: Spec Example 6.9. Separated Comment
+  tags: mapping spec comment
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   =VAL :value\n  -MAP\n -DOC\n-STR\n"
+  yaml: "key:    # Comment\n  value\n"

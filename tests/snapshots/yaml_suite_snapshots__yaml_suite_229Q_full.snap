@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "- name: Mark McGwire\n  hr: 65\n  avg: 0.278\n- name: Sammy Sosa\n  hr: 63\n  avg: 0.288\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2760193"
+  json: "[\n  {\n    \"name\": \"Mark McGwire\",\n    \"hr\": 65,\n    \"avg\": 0.278\n  },\n  {\n    \"name\": \"Sammy Sosa\",\n    \"hr\": 63,\n    \"avg\": 0.288\n  }\n]\n"
+  name: Spec Example 2.4. Sequence of Mappings
+  tags: sequence mapping spec
+  tree: "+STR\n +DOC\n  +SEQ\n   +MAP\n    =VAL :name\n    =VAL :Mark McGwire\n    =VAL :hr\n    =VAL :65\n    =VAL :avg\n    =VAL :0.278\n   -MAP\n   +MAP\n    =VAL :name\n    =VAL :Sammy Sosa\n    =VAL :hr\n    =VAL :63\n    =VAL :avg\n    =VAL :0.288\n   -MAP\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "-\n  name: Mark McGwire\n  hr:   65\n  avg:  0.278\n-\n  name: Sammy Sosa\n  hr:   63\n  avg:  0.288\n"

@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "!!str a: b\nc: !!int 42\ne: !!str f\ng: h\n!!str 23: !!bool false\n"
+  from: NimYAML tests
+  json: "{\n  \"a\": \"b\",\n  \"c\": 42,\n  \"e\": \"f\",\n  \"g\": \"h\",\n  \"23\": false\n}\n"
+  name: Tags in Implicit Mapping
+  tags: tag mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL <tag:yaml.org,2002:str> :a\n   =VAL :b\n   =VAL :c\n   =VAL <tag:yaml.org,2002:int> :42\n   =VAL :e\n   =VAL <tag:yaml.org,2002:str> :f\n   =VAL :g\n   =VAL :h\n   =VAL <tag:yaml.org,2002:str> :23\n   =VAL <tag:yaml.org,2002:bool> :false\n  -MAP\n -DOC\n-STR\n"
+  yaml: "!!str a: b\nc: !!int 42\ne: !!str f\ng: h\n!!str 23: !!bool false\n"

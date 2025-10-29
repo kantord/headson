@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- fail: true
+  from: "@ingydotnet"
+  name: Need document footer before directives
+  tags: directive error footer tag unknown-tag
+  tree: "+STR\n +DOC\n  =VAL <!foo> \"bar\n"
+  yaml: "!foo \"bar\"\n%TAG ! tag:example.com,2000:app/\n---\n!foo \"bar\"\n"

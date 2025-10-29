@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- from: "@perlpunk"
+  json: "{\n  \"a\": \"scalar a\",\n  \"b\": \"scalar a\"\n}\n"
+  name: Allowed characters in alias
+  tags: alias 1.3-err
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n   =VAL &:@*!$\"<foo>: :scalar a\n   =VAL :b\n   =ALI *:@*!$\"<foo>:\n  -MAP\n -DOC\n-STR\n"
+  yaml: "a: &:@*!$\"<foo>: scalar a\nb: *:@*!$\"<foo>:\n"

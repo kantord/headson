@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: full
+---
+- fail: true
+  from: "@perlpunk"
+  name: Invalid value after mapping
+  tags: error mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   =VAL :bar\n"
+  yaml: "foo:\n  bar\ninvalid\n"

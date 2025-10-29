@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "---\n---\n"
+  from: "@perlpunk"
+  json: "null\nnull\n"
+  name: Two document start markers
+  tags: header
+  tree: "+STR\n +DOC ---\n  =VAL :\n -DOC\n +DOC ---\n  =VAL :\n -DOC\n-STR\n"
+  yaml: "---\n---\n"

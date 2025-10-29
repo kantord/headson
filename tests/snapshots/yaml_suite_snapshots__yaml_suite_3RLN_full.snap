@@ -1,0 +1,31 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- emit: "\"1 leading \\ttab\"\n"
+  from: "@ingydotnet"
+  json: "\"1 leading \\ttab\"\n"
+  name: Leading tabs in double quoted
+  tags: double whitespace
+  tree: "+STR\n +DOC\n  =VAL \"1 leading \\ttab\n -DOC\n-STR\n"
+  yaml: "\"1 leading\n    \\ttab\"\n"
+- emit: "\"2 leading \\ttab\"\n"
+  json: "\"2 leading \\ttab\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"2 leading \\ttab\n -DOC\n-STR\n"
+  yaml: "\"2 leading\n    \\———»tab\"\n"
+- emit: "\"3 leading tab\"\n"
+  json: "\"3 leading tab\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"3 leading tab\n -DOC\n-STR\n"
+  yaml: "\"3 leading\n    ————»tab\"\n"
+- emit: "\"4 leading \\t  tab\"\n"
+  json: "\"4 leading \\t  tab\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"4 leading \\t  tab\n -DOC\n-STR\n"
+  yaml: "\"4 leading\n    \\t  tab\"\n"
+- emit: "\"5 leading \\t  tab\"\n"
+  json: "\"5 leading \\t  tab\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"5 leading \\t  tab\n -DOC\n-STR\n"
+  yaml: "\"5 leading\n    \\———»  tab\"\n"
+- emit: "\"6 leading tab\"\n"
+  json: "\"6 leading tab\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"6 leading tab\n -DOC\n-STR\n"
+  yaml: "\"6 leading\n    ————»  tab\"\n"

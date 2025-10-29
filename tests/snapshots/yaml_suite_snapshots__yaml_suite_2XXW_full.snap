@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "--- !!set\nMark McGwire:\nSammy Sosa:\nKen Griff:\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2761758"
+  json: "{\n  \"Mark McGwire\": null,\n  \"Sammy Sosa\": null,\n  \"Ken Griff\": null\n}\n"
+  name: Spec Example 2.25. Unordered Sets
+  tags: spec mapping unknown-tag explicit-key
+  tree: "+STR\n +DOC ---\n  +MAP <tag:yaml.org,2002:set>\n   =VAL :Mark McGwire\n   =VAL :\n   =VAL :Sammy Sosa\n   =VAL :\n   =VAL :Ken Griff\n   =VAL :\n  -MAP\n -DOC\n-STR\n"
+  yaml: "# Sets are represented as a\n# Mapping where each key is\n# associated with a null value\n--- !!set\n? Mark McGwire\n? Sammy Sosa\n? Ken Griff\n"

@@ -1,0 +1,15 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- from: "@ingydotnet"
+  name: Syntax character edge cases
+  tags: edge empty-key
+  tree: "+STR\n +DOC\n  +SEQ\n   +MAP\n    =VAL :\n    =VAL :\n   -MAP\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "- :\n"
+- json: "{\n  \":\": null\n}\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL ::\n   =VAL :\n  -MAP\n -DOC\n-STR\n"
+  yaml: "::\n"
+- json: null
+  tree: "+STR\n +DOC\n  =VAL <!> :\n -DOC\n-STR\n"
+  yaml: "!\n"
