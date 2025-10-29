@@ -7,7 +7,6 @@ use crate::serialization::output::Out;
 // - Indentation and newlines come from ctx (depth, indent_unit, newline).
 // - When ctx.inline_open is true, no leading indent is emitted before the opener.
 pub trait Style {
-    fn array_empty(out: &mut Out<'_>, ctx: &ArrayCtx);
     fn array_push_omitted(_out: &mut Out<'_>, _ctx: &ArrayCtx) {}
     fn array_push_internal_gap(
         _out: &mut Out<'_>,
@@ -15,8 +14,6 @@ pub trait Style {
         _gap: usize,
     ) {
     }
-
-    fn object_empty(out: &mut Out<'_>, ctx: &ObjectCtx<'_>);
     fn object_push_omitted(_out: &mut Out<'_>, _ctx: &ObjectCtx<'_>) {}
 }
 
@@ -56,7 +53,10 @@ fn push_single_array_item(
     }
 }
 
-fn push_array_items_with<S: Style>(out: &mut Out<'_>, ctx: &ArrayCtx) {
+pub(crate) fn push_array_items_with<S: Style>(
+    out: &mut Out<'_>,
+    ctx: &ArrayCtx,
+) {
     let mut prev_index: Option<usize> = None;
     for (i, (orig_index, (kind, item))) in ctx.children.iter().enumerate() {
         maybe_push_internal_gap::<S>(out, ctx, prev_index, *orig_index);
@@ -103,7 +103,7 @@ fn push_value_token(out: &mut Out<'_>, v: &str) {
     out.push_str(v);
 }
 
-fn push_object_items(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
+pub(crate) fn push_object_items(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
     for (i, (_, (k, v))) in ctx.children.iter().enumerate() {
         out.push_indent(ctx.depth + 1);
         out.push_key(k);
@@ -117,41 +117,6 @@ fn push_object_items(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
     }
 }
 
-// Render an array using the shared control flow and style-specific decorations.
-pub fn render_array_with<S: Style>(ctx: &ArrayCtx, out: &mut Out<'_>) {
-    if ctx.children_len == 0 {
-        S::array_empty(out, ctx);
-        return;
-    }
-    if !ctx.inline_open {
-        out.push_indent(ctx.depth);
-    }
-    out.push_char('[');
-    out.push_newline();
-    if ctx.omitted_at_start {
-        S::array_push_omitted(out, ctx);
-    }
-    push_array_items_with::<S>(out, ctx);
-    if !ctx.omitted_at_start {
-        S::array_push_omitted(out, ctx);
-    }
-    out.push_indent(ctx.depth);
-    out.push_char(']');
-}
-
-// Render an object using the shared control flow and style-specific decorations.
-pub fn render_object_with<S: Style>(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
-    if ctx.children_len == 0 {
-        S::object_empty(out, ctx);
-        return;
-    }
-    if !ctx.inline_open {
-        out.push_indent(ctx.depth);
-    }
-    out.push_char('{');
-    out.push_newline();
-    push_object_items(out, ctx);
-    S::object_push_omitted(out, ctx);
-    out.push_indent(ctx.depth);
-    out.push_char('}');
-}
+// A no-op style for cases where only the array item printing is desired without gap markers.
+pub struct StyleNoop;
+impl Style for StyleNoop {}
