@@ -84,9 +84,12 @@ impl<'a> RenderScope<'a> {
                     if orig > kept { Some(orig - kept) } else { None }
                 })
             }
-            RankedNode::LongLeaf { .. } => self.omitted_for_string(id, kept),
-            RankedNode::AtomicLeaf { .. }
-            | RankedNode::LongLeafPart { .. } => None,
+            RankedNode::SplittableLeaf { .. } => {
+                self.omitted_for_string(id, kept)
+            }
+            RankedNode::AtomicLeaf { .. } | RankedNode::LeafPart { .. } => {
+                None
+            }
         }
     }
 
@@ -158,7 +161,7 @@ impl<'a> RenderScope<'a> {
         let kept = self.count_kept_children(id);
         let omitted = self.omitted_for(id, kept).unwrap_or(0);
         let full: &str = match &self.order.nodes[id] {
-            RankedNode::LongLeaf { value, .. } => value.as_str(),
+            RankedNode::SplittableLeaf { value, .. } => value.as_str(),
             _ => "",
         };
         if omitted == 0 {
@@ -191,7 +194,7 @@ impl<'a> RenderScope<'a> {
             RankedNode::Object { .. } => {
                 self.write_object(id, depth, inline, out)
             }
-            RankedNode::LongLeaf { .. } => {
+            RankedNode::SplittableLeaf { .. } => {
                 let s = self.serialize_string(id);
                 out.push_string_literal(&s);
             }
@@ -199,7 +202,7 @@ impl<'a> RenderScope<'a> {
                 let s = self.serialize_atomic(id);
                 out.push_str(&s);
             }
-            RankedNode::LongLeafPart { .. } => {
+            RankedNode::LeafPart { .. } => {
                 unreachable!("string part should not be rendered")
             }
         }
@@ -292,9 +295,9 @@ impl<'a> RenderScope<'a> {
                 self.write_object(id, depth, inline, &mut ow);
                 s
             }
-            RankedNode::LongLeaf { .. } => self.serialize_string(id),
+            RankedNode::SplittableLeaf { .. } => self.serialize_string(id),
             RankedNode::AtomicLeaf { .. } => self.serialize_atomic(id),
-            RankedNode::LongLeafPart { .. } => {
+            RankedNode::LeafPart { .. } => {
                 unreachable!("string part not rendered")
             }
         }
@@ -816,7 +819,8 @@ mod tests {
 
     #[test]
     fn string_parts_never_rendered_but_affect_truncation() {
-        // Build a long string that will generate LongLeafPart nodes.
+        // Build a long string: the string node itself is SplittableLeaf; the
+        // builder also creates LeafPart children used only for priority.
         let arena = crate::json_ingest::build_json_tree_arena(
             "\"abcdefghij\"",
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),

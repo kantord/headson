@@ -3,9 +3,8 @@ use anyhow::Result;
 use crate::order::PriorityConfig;
 use crate::utils::tree_arena::JsonTreeArena as TreeArena;
 
-/// Format-agnostic ingest boundary. Additional formats (e.g., YAML) can
-/// implement this trait to produce the neutral TreeArena without going
-/// through JSON first.
+/// Format-agnostic ingest boundary. Other formats can implement this trait
+/// to produce the neutral TreeArena without going through JSON first.
 pub trait Ingest {
     fn parse_one(bytes: Vec<u8>, cfg: &PriorityConfig) -> Result<TreeArena>;
     fn parse_many(

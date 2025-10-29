@@ -99,7 +99,7 @@ impl<'a> Scope<'a> {
 
     fn record_string_metrics(&mut self, id: usize) {
         let s = match &self.nodes[id] {
-            RankedNode::LongLeaf { value, .. } => value.as_str(),
+            RankedNode::SplittableLeaf { value, .. } => value.as_str(),
             _ => "",
         };
         let mut iter = UnicodeSegmentation::graphemes(s, true);
@@ -185,7 +185,7 @@ impl<'a> Scope<'a> {
                             node_id: NodeId(child_priority_index),
                             key_in_object: None,
                         },
-                        NodeKind::String => RankedNode::LongLeaf {
+                        NodeKind::String => RankedNode::SplittableLeaf {
                             node_id: NodeId(child_priority_index),
                             key_in_object: None,
                             value: child_node
@@ -252,7 +252,7 @@ impl<'a> Scope<'a> {
                                 self.arena.obj_keys[key_idx].clone(),
                             ),
                         },
-                        NodeKind::String => RankedNode::LongLeaf {
+                        NodeKind::String => RankedNode::SplittableLeaf {
                             node_id: NodeId(child_priority_index),
                             key_in_object: Some(
                                 self.arena.obj_keys[key_idx].clone(),
@@ -284,7 +284,7 @@ impl<'a> Scope<'a> {
     fn expand_string_children(&mut self, entry: &Entry) {
         let id = entry.priority_index;
         let full = match &self.nodes[id] {
-            RankedNode::LongLeaf { value, .. } => value.as_str(),
+            RankedNode::SplittableLeaf { value, .. } => value.as_str(),
             _ => "",
         };
         let count = UnicodeSegmentation::graphemes(full, true)
@@ -309,7 +309,7 @@ impl<'a> Scope<'a> {
                 CommonChild {
                     arena_index: None,
                     score,
-                    ranked: RankedNode::LongLeafPart {
+                    ranked: RankedNode::LeafPart {
                         node_id: NodeId(child_priority_index),
                         key_in_object: None,
                     },
@@ -400,7 +400,7 @@ pub fn build_order(
             node_id: NodeId(root_priority_index),
             key_in_object: None,
         },
-        NodeKind::String => RankedNode::LongLeaf {
+        NodeKind::String => RankedNode::SplittableLeaf {
             node_id: NodeId(root_priority_index),
             key_in_object: None,
             value: n.string_value.clone().unwrap_or_default(),

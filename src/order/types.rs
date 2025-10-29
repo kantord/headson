@@ -67,14 +67,14 @@ pub enum RankedNode {
         node_id: NodeId,
         key_in_object: Option<String>,
     },
-    // LongLeaf: truncatable string leaf with full value available.
-    LongLeaf {
+    // SplittableLeaf: truncatable string leaf with full value available.
+    SplittableLeaf {
         node_id: NodeId,
         key_in_object: Option<String>,
         value: String,
     },
-    // LongLeafPart: synthetic node for string-grapheme prioritization; holds no value.
-    LongLeafPart {
+    // LeafPart: synthetic node for string-grapheme prioritization; holds no value.
+    LeafPart {
         node_id: NodeId,
         key_in_object: Option<String>,
     },
@@ -91,8 +91,8 @@ impl RankedNode {
         match self {
             RankedNode::Array { node_id, .. }
             | RankedNode::Object { node_id, .. }
-            | RankedNode::LongLeaf { node_id, .. }
-            | RankedNode::LongLeafPart { node_id, .. }
+            | RankedNode::SplittableLeaf { node_id, .. }
+            | RankedNode::LeafPart { node_id, .. }
             | RankedNode::AtomicLeaf { node_id, .. } => *node_id,
         }
     }
@@ -100,8 +100,8 @@ impl RankedNode {
         match self {
             RankedNode::Array { key_in_object, .. }
             | RankedNode::Object { key_in_object, .. }
-            | RankedNode::LongLeaf { key_in_object, .. }
-            | RankedNode::LongLeafPart { key_in_object, .. }
+            | RankedNode::SplittableLeaf { key_in_object, .. }
+            | RankedNode::LeafPart { key_in_object, .. }
             | RankedNode::AtomicLeaf { key_in_object, .. } => {
                 key_in_object.as_deref()
             }
@@ -111,8 +111,8 @@ impl RankedNode {
         match self {
             RankedNode::Array { .. } => NodeKind::Array,
             RankedNode::Object { .. } => NodeKind::Object,
-            RankedNode::LongLeaf { .. }
-            | RankedNode::LongLeafPart { .. }
+            RankedNode::SplittableLeaf { .. }
+            | RankedNode::LeafPart { .. }
             | RankedNode::AtomicLeaf { .. } => NodeKind::String,
         }
     }

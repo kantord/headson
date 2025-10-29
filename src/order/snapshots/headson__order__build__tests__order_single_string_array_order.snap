@@ -4,6 +4,6 @@ expression: "lines.join(\"\\n\")"
 ---
 len=4
 Array { node_id: NodeId(0), key_in_object: None }
-LongLeaf { node_id: NodeId(1), key_in_object: None, value: "ab" }
-LongLeafPart { node_id: NodeId(2), key_in_object: None }
-LongLeafPart { node_id: NodeId(3), key_in_object: None }
+SplittableLeaf { node_id: NodeId(1), key_in_object: None, value: "ab" }
+LeafPart { node_id: NodeId(2), key_in_object: None }
+LeafPart { node_id: NodeId(3), key_in_object: None }
