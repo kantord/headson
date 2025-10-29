@@ -120,3 +120,72 @@ pub(crate) fn push_object_items(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
 // A no-op style for cases where only the array item printing is desired without gap markers.
 pub struct StyleNoop;
 impl Style for StyleNoop {}
+
+// Combinators and tiny building blocks
+#[allow(dead_code, reason = "Available for templates to adopt progressively")]
+pub(crate) fn with_indent(
+    out: &mut Out<'_>,
+    depth: usize,
+    f: impl FnOnce(&mut Out<'_>),
+) {
+    out.push_indent(depth);
+    f(out);
+}
+
+#[allow(dead_code, reason = "Available for templates to adopt progressively")]
+pub(crate) fn with_line(out: &mut Out<'_>, f: impl FnOnce(&mut Out<'_>)) {
+    f(out);
+    out.push_newline();
+}
+
+pub(crate) fn open_block(
+    out: &mut Out<'_>,
+    depth: usize,
+    inline: bool,
+    ch: char,
+) {
+    if !inline {
+        out.push_indent(depth);
+    }
+    out.push_char(ch);
+}
+
+pub(crate) fn close_block(out: &mut Out<'_>, depth: usize, ch: char) {
+    out.push_indent(depth);
+    out.push_char(ch);
+}
+
+pub(crate) fn wrap_block(
+    out: &mut Out<'_>,
+    depth: usize,
+    inline: bool,
+    open_ch: char,
+    close_ch: char,
+    body: impl FnOnce(&mut Out<'_>),
+) {
+    open_block(out, depth, inline, open_ch);
+    out.push_newline();
+    body(out);
+    close_block(out, depth, close_ch);
+}
+
+#[allow(dead_code, reason = "Helper for future template refactors")]
+pub(crate) fn write_comma_if_needed(out: &mut Out<'_>, i: usize, len: usize) {
+    if i + 1 < len {
+        out.push_char(',');
+    }
+}
+
+#[allow(dead_code, reason = "Helper for future template refactors")]
+pub(crate) fn emit_omitted_comment(
+    out: &mut Out<'_>,
+    label: &str,
+    count: usize,
+) {
+    out.push_comment(format!("/* {count} more {label} */"));
+}
+
+#[allow(dead_code, reason = "Helper for future template refactors")]
+pub(crate) fn write_scalar_item(out: &mut Out<'_>, depth: usize, text: &str) {
+    with_line(out, |o| with_indent(o, depth, |oo| oo.push_str(text)));
+}
