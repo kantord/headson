@@ -19,7 +19,7 @@ type IgnoreNotices = Vec<String>;
 #[command(
     name = "headson",
     version,
-    about = "Get a small but useful preview of a JSON file"
+    about = "Get a small but useful preview of JSON or YAML"
 )]
 struct Cli {
     #[arg(short = 'n', long = "budget")]
@@ -95,10 +95,10 @@ struct Cli {
         short = 'i',
         long = "input-format",
         value_enum,
-        default_value_t = InputFlag::Json,
+        default_value_t = InputFormat::Json,
         help = "Input ingestion format: json or yaml."
     )]
-    input_format: InputFlag,
+    input_format: InputFormat,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -110,7 +110,7 @@ enum Template {
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
-enum InputFlag {
+enum InputFormat {
     Json,
     Yaml,
 }
@@ -171,10 +171,10 @@ fn run_from_stdin(
     let eff = compute_effective_budget(cli, input_count);
     let prio = compute_priority(cli, eff, input_count);
     match cli.input_format {
-        InputFlag::Json => {
+        InputFormat::Json => {
             headson::headson(input_bytes, render_cfg, &prio, eff)
         }
-        InputFlag::Yaml => {
+        InputFormat::Yaml => {
             headson::headson_yaml(input_bytes, render_cfg, &prio, eff)
         }
     }
@@ -191,10 +191,10 @@ fn run_from_paths(
     let prio = compute_priority(cli, eff, input_count);
     if cli.inputs.len() > 1 {
         let out = match cli.input_format {
-            InputFlag::Json => {
+            InputFormat::Json => {
                 headson::headson_many(entries, render_cfg, &prio, eff)?
             }
-            InputFlag::Yaml => {
+            InputFormat::Yaml => {
                 headson::headson_many_yaml(entries, render_cfg, &prio, eff)?
             }
         };
@@ -204,10 +204,10 @@ fn run_from_paths(
     } else {
         let bytes = entries.into_iter().next().unwrap().1;
         let out = match cli.input_format {
-            InputFlag::Json => {
+            InputFormat::Json => {
                 headson::headson(bytes, render_cfg, &prio, eff)?
             }
-            InputFlag::Yaml => {
+            InputFormat::Yaml => {
                 headson::headson_yaml(bytes, render_cfg, &prio, eff)?
             }
         };
