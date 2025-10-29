@@ -895,6 +895,43 @@ mod tests {
     }
 
     #[test]
+    fn omitted_for_atomic_returns_none() {
+        // Single atomic value as input (number), root is AtomicLeaf.
+        let arena = crate::json_ingest::build_json_tree_arena(
+            "1",
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let build = build_order(
+            &arena,
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+        let render_id = 7u32;
+        // Mark the root included for this render set.
+        marks[crate::order::ROOT_PQ_ID] = render_id;
+        let cfg = crate::RenderConfig {
+            template: crate::OutputTemplate::Json,
+            indent_unit: "".to_string(),
+            space: " ".to_string(),
+            newline: "".to_string(),
+            prefer_tail_arrays: false,
+            color_mode: crate::ColorMode::Off,
+            color_enabled: false,
+        };
+        let scope = RenderScope {
+            order: &build,
+            inclusion_flags: &marks,
+            render_set_id: render_id,
+            config: &cfg,
+        };
+        // Atomic leaves never report omitted counts.
+        let none = scope.omitted_for(crate::order::ROOT_PQ_ID, 0);
+        assert!(none.is_none());
+    }
+
+    #[test]
     fn inline_open_array_in_object_json() {
         let arena = crate::json_ingest::build_json_tree_arena(
             "{\"a\":[1,2,3]}",
