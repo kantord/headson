@@ -5,7 +5,7 @@ Minimal Python API for the `headson` JSON preview renderer.
 Currently exported function:
 
 - `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None, skew: str = "balanced") -> str`
-  - `template`: one of `"json" | "pseudo" | "js"`.
+  - `template`: one of `"json" | "pseudo" | "js" | "yaml"`.
   - `character_budget`: maximum output size in characters (defaults to 500 if not set).
   - `skew`: one of `"balanced" | "head" | "tail"`.
     - `balanced`: default behavior.

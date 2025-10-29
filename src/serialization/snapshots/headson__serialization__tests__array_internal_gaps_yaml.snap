@@ -1,0 +1,9 @@
+---
+source: src/serialization/mod.rs
+assertion_line: 795
+expression: out
+---
+- 1
+- 2
+- 3
+

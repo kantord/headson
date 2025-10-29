@@ -1,29 +1,32 @@
-use super::core::{Style, render_array_with, render_object_with};
 use super::{ArrayCtx, ObjectCtx};
 use crate::serialization::output::Out;
+use crate::serialization::templates::core::{
+    StyleNoop, push_array_items_with, push_object_items, wrap_block,
+};
 
-struct Json;
-
-impl Style for Json {
-    fn array_empty(out: &mut Out<'_>, ctx: &ArrayCtx) {
+pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
+    if ctx.children_len == 0 {
         if !ctx.inline_open {
             out.push_indent(ctx.depth);
         }
         out.push_str("[]");
+        return;
     }
+    wrap_block(out, ctx.depth, ctx.inline_open, '[', ']', |o| {
+        // JSON has no explicit omitted markers; just items and close.
+        push_array_items_with::<StyleNoop>(o, ctx);
+    });
+}
 
-    fn object_empty(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
+pub(super) fn render_object(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
+    if ctx.children_len == 0 {
         if !ctx.inline_open {
             out.push_indent(ctx.depth);
         }
         out.push_str("{}");
+        return;
     }
-}
-
-pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
-    render_array_with::<Json>(ctx, out)
-}
-
-pub(super) fn render_object(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
-    render_object_with::<Json>(ctx, out)
+    wrap_block(out, ctx.depth, ctx.inline_open, '{', '}', |o| {
+        push_object_items(o, ctx);
+    });
 }

@@ -1,4 +1,5 @@
 use super::{ArrayCtx, ObjectCtx};
+use crate::order::NodeKind;
 use crate::serialization::output::Out;
 
 // Shared rendering core for all templates.
@@ -6,7 +7,6 @@ use crate::serialization::output::Out;
 // - Indentation and newlines come from ctx (depth, indent_unit, newline).
 // - When ctx.inline_open is true, no leading indent is emitted before the opener.
 pub trait Style {
-    fn array_empty(out: &mut Out<'_>, ctx: &ArrayCtx);
     fn array_push_omitted(_out: &mut Out<'_>, _ctx: &ArrayCtx) {}
     fn array_push_internal_gap(
         _out: &mut Out<'_>,
@@ -14,20 +14,53 @@ pub trait Style {
         _gap: usize,
     ) {
     }
-
-    fn object_empty(out: &mut Out<'_>, ctx: &ObjectCtx<'_>);
     fn object_push_omitted(_out: &mut Out<'_>, _ctx: &ObjectCtx<'_>) {}
 }
 
-fn push_array_items_with<S: Style>(out: &mut Out<'_>, ctx: &ArrayCtx) {
-    let mut prev_index: Option<usize> = None;
-    for (i, (orig_index, item)) in ctx.children.iter().enumerate() {
-        if let Some(prev) = prev_index {
-            if *orig_index > prev.saturating_add(1) {
-                S::array_push_internal_gap(out, ctx, *orig_index - prev - 1);
-            }
+fn has_any_newline(s: &str) -> bool {
+    s.as_bytes().contains(&b'\n') || s.as_bytes().contains(&b'\r')
+}
+
+fn maybe_push_internal_gap<S: Style>(
+    out: &mut Out<'_>,
+    ctx: &ArrayCtx,
+    prev_index: Option<usize>,
+    orig_index: usize,
+) {
+    if let Some(prev) = prev_index {
+        if orig_index > prev.saturating_add(1) {
+            S::array_push_internal_gap(out, ctx, orig_index - prev - 1);
         }
+    }
+}
+
+fn push_single_array_item(
+    out: &mut Out<'_>,
+    ctx: &ArrayCtx,
+    kind: NodeKind,
+    item: &str,
+) {
+    if has_any_newline(item) {
         out.push_str(item);
+        return;
+    }
+    match kind {
+        NodeKind::Array | NodeKind::Object => out.push_str(item),
+        _ => {
+            out.push_indent(ctx.depth + 1);
+            out.push_str(item);
+        }
+    }
+}
+
+pub(crate) fn push_array_items_with<S: Style>(
+    out: &mut Out<'_>,
+    ctx: &ArrayCtx,
+) {
+    let mut prev_index: Option<usize> = None;
+    for (i, (orig_index, (kind, item))) in ctx.children.iter().enumerate() {
+        maybe_push_internal_gap::<S>(out, ctx, prev_index, *orig_index);
+        push_single_array_item(out, ctx, *kind, item);
         if i + 1 < ctx.children_len {
             out.push_char(',');
         }
@@ -70,7 +103,7 @@ fn push_value_token(out: &mut Out<'_>, v: &str) {
     out.push_str(v);
 }
 
-fn push_object_items(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
+pub(crate) fn push_object_items(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
     for (i, (_, (k, v))) in ctx.children.iter().enumerate() {
         out.push_indent(ctx.depth + 1);
         out.push_key(k);
@@ -84,41 +117,39 @@ fn push_object_items(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
     }
 }
 
-// Render an array using the shared control flow and style-specific decorations.
-pub fn render_array_with<S: Style>(ctx: &ArrayCtx, out: &mut Out<'_>) {
-    if ctx.children_len == 0 {
-        S::array_empty(out, ctx);
-        return;
+// A no-op style for cases where only the array item printing is desired without gap markers.
+pub struct StyleNoop;
+impl Style for StyleNoop {}
+
+// Combinators and tiny building blocks
+
+pub(crate) fn open_block(
+    out: &mut Out<'_>,
+    depth: usize,
+    inline: bool,
+    ch: char,
+) {
+    if !inline {
+        out.push_indent(depth);
     }
-    if !ctx.inline_open {
-        out.push_indent(ctx.depth);
-    }
-    out.push_char('[');
-    out.push_newline();
-    if ctx.omitted_at_start {
-        S::array_push_omitted(out, ctx);
-    }
-    push_array_items_with::<S>(out, ctx);
-    if !ctx.omitted_at_start {
-        S::array_push_omitted(out, ctx);
-    }
-    out.push_indent(ctx.depth);
-    out.push_char(']');
+    out.push_char(ch);
 }
 
-// Render an object using the shared control flow and style-specific decorations.
-pub fn render_object_with<S: Style>(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
-    if ctx.children_len == 0 {
-        S::object_empty(out, ctx);
-        return;
-    }
-    if !ctx.inline_open {
-        out.push_indent(ctx.depth);
-    }
-    out.push_char('{');
+pub(crate) fn close_block(out: &mut Out<'_>, depth: usize, ch: char) {
+    out.push_indent(depth);
+    out.push_char(ch);
+}
+
+pub(crate) fn wrap_block(
+    out: &mut Out<'_>,
+    depth: usize,
+    inline: bool,
+    open_ch: char,
+    close_ch: char,
+    body: impl FnOnce(&mut Out<'_>),
+) {
+    open_block(out, depth, inline, open_ch);
     out.push_newline();
-    push_object_items(out, ctx);
-    S::object_push_omitted(out, ctx);
-    out.push_indent(ctx.depth);
-    out.push_char('}');
+    body(out);
+    close_block(out, depth, close_ch);
 }

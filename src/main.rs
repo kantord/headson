@@ -94,6 +94,7 @@ enum Template {
     Json,
     Pseudo,
     Js,
+    Yaml,
 }
 
 fn main() -> Result<()> {
@@ -245,6 +246,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
             Template::Json => headson::OutputTemplate::Json,
             Template::Pseudo => headson::OutputTemplate::Pseudo,
             Template::Js => headson::OutputTemplate::Js,
+            Template::Yaml => headson::OutputTemplate::Yaml,
         }
     }
     fn color_mode_from_flags(cli: &Cli) -> headson::ColorMode {
