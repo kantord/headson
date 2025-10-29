@@ -1,5 +1,5 @@
 use crate::order::ObjectType;
-use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID};
+use crate::order::{LeafClass, NodeKind, PriorityOrder, ROOT_PQ_ID};
 pub mod color;
 mod fileset;
 pub mod output;
@@ -84,13 +84,15 @@ impl<'a> RenderScope<'a> {
                     if orig > kept { Some(orig - kept) } else { None }
                 })
             }
-            NodeKind::String => self.omitted_for_string(id, kept),
             NodeKind::Object => {
                 self.order.metrics[id].object_len.and_then(|orig| {
                     if orig > kept { Some(orig - kept) } else { None }
                 })
             }
-            _ => None,
+            _ => match self.order.leaf_class.get(id).and_then(|x| *x) {
+                Some(LeafClass::String) => self.omitted_for_string(id, kept),
+                Some(LeafClass::Atomic) | None => None,
+            },
         }
     }
 
