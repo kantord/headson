@@ -45,8 +45,10 @@ pub fn parse_json_many(
     JsonIngest::parse_many(inputs, cfg)
 }
 
-/// Dummy YAML adapter for the ingest boundary. For now, always returns a
-/// minimal empty arena (an empty array as the root) regardless of input.
+/// YAML adapter for the ingest boundary. Parses YAML using `yaml-rust2`
+/// and builds the neutral TreeArena. Multi-document YAML in a single
+/// input is wrapped in an array; multi-file inputs produce a fileset
+/// object whose values may be arrays when a file contains multiple docs.
 pub struct YamlIngest;
 
 impl Ingest for YamlIngest {

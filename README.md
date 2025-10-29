@@ -44,7 +44,7 @@ If you’re comfortable with tools like `head` and `tail`, use `headson` when yo
 
     headson [FLAGS] [INPUT...]
 
-- INPUT (optional, repeatable): file path(s). If omitted, reads JSON from stdin. Multiple input files are supported.
+- INPUT (optional, repeatable): file path(s). If omitted, reads from stdin. Multiple input files are supported.
 - Prints the preview to stdout. On parse errors, exits non‑zero and prints an error to stderr.
 
 Common flags:

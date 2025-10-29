@@ -88,7 +88,7 @@ struct Cli {
         value_name = "INPUT",
         value_hint = clap::ValueHint::FilePath,
         num_args = 0..,
-        help = "Optional file paths. If omitted, reads JSON from stdin. Multiple input files are supported. Directories and binary files are ignored with a notice on stderr."
+        help = "Optional file paths. If omitted, reads input from stdin. Multiple input files are supported. Directories and binary files are ignored with a notice on stderr."
     )]
     inputs: Vec<PathBuf>,
     #[arg(
@@ -96,7 +96,7 @@ struct Cli {
         long = "input-format",
         value_enum,
         default_value_t = InputFlag::Json,
-        help = "Input ingestion format: json or yaml (yaml is currently a dummy that yields an empty structure)."
+        help = "Input ingestion format: json or yaml."
     )]
     input_format: InputFlag,
 }
