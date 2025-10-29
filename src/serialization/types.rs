@@ -16,10 +16,10 @@ pub struct RenderConfig {
     pub newline: String,
     // When true, arrays prefer tail rendering (omission marker at start).
     pub prefer_tail_arrays: bool,
-    // Desired color mode for rendering. Currently unused by templates,
-    // but parsed and threaded through for future use.
+    // Desired color mode for rendering. Parsed and resolved to
+    // `color_enabled`; templates receive color via the Out writer.
     pub color_mode: ColorMode,
-    // Resolved color enablement after considering color_mode and stdout TTY.
+    // Resolved color enablement after considering `color_mode` and stdout TTY.
     pub color_enabled: bool,
 }
 

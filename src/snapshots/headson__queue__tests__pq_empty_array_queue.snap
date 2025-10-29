@@ -1,7 +1,0 @@
----
-source: src/queue.rs
-assertion_line: 270
-expression: "lines.join(\"\\n\")"
----
-len=1
-QueueItem { node_id: NodeId(0), parent_id: ParentId(None), kind: Array, depth: 0, index_in_array: None, key_in_object: None, priority: 1, atomic_token: None, string_value: None } prio=1
