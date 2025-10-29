@@ -40,7 +40,7 @@ pub enum NodeKind {
 // Atomic: values that cannot be truncated (null, bool, number).
 // String: values that can be truncated to a prefix during rendering.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum LeafClass {
+pub enum LeafKind {
     Atomic,
     String,
 }
@@ -97,7 +97,7 @@ pub struct PriorityOrder {
     pub total_nodes: usize,
     pub object_type: Vec<ObjectType>,
     // Leaf semantics for each PQ id: Some(...) for leaves, None for containers.
-    pub leaf_class: Vec<Option<LeafClass>>,
+    pub leaf_kind: Vec<Option<LeafKind>>,
 }
 
 pub const ROOT_PQ_ID: usize = 0;

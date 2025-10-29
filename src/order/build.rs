@@ -56,7 +56,7 @@ struct Scope<'a> {
     safety_cap: usize,
     object_type: &'a mut Vec<ObjectType>,
     index_in_parent_array: &'a mut Vec<Option<usize>>,
-    leaf_class: &'a mut Vec<Option<LeafClass>>,
+    leaf_kind: &'a mut Vec<Option<LeafKind>>,
 }
 
 impl<'a> Scope<'a> {
@@ -77,12 +77,12 @@ impl<'a> Scope<'a> {
         // Leaf class: containers -> None, leaves -> Some(...)
         let lc = match ranked_kind {
             NodeKind::Array | NodeKind::Object => None,
-            NodeKind::String => Some(LeafClass::String),
+            NodeKind::String => Some(LeafKind::String),
             NodeKind::Null | NodeKind::Bool | NodeKind::Number => {
-                Some(LeafClass::Atomic)
+                Some(LeafKind::Atomic)
             }
         };
-        self.leaf_class.push(lc);
+        self.leaf_kind.push(lc);
         // Children created from parsing regular JSON are standard objects/arrays/etc.
         // If child is an object, default to Object type.
         self.object_type.push(ObjectType::Object);
@@ -334,7 +334,7 @@ pub fn build_order(
     let mut object_type: Vec<ObjectType> = Vec::new();
     let mut heap: BinaryHeap<Reverse<Entry>> = BinaryHeap::new();
     let mut index_in_parent_array: Vec<Option<usize>> = Vec::new();
-    let mut leaf_class: Vec<Option<LeafClass>> = Vec::new();
+    let mut leaf_kind: Vec<Option<LeafKind>> = Vec::new();
 
     // Seed root from arena
     let root_ar = arena.root_id;
@@ -357,12 +357,12 @@ pub fn build_order(
     // Root leaf class
     let root_lc = match root_kind {
         NodeKind::Array | NodeKind::Object => None,
-        NodeKind::String => Some(LeafClass::String),
+        NodeKind::String => Some(LeafKind::String),
         NodeKind::Null | NodeKind::Bool | NodeKind::Number => {
-            Some(LeafClass::Atomic)
+            Some(LeafKind::Atomic)
         }
     };
-    leaf_class.push(root_lc);
+    leaf_kind.push(root_lc);
     // Root object type: mark fileset root specially, otherwise Object.
     let root_ot = if arena.is_fileset {
         ObjectType::Fileset
@@ -390,7 +390,7 @@ pub fn build_order(
             safety_cap: SAFETY_CAP,
             object_type: &mut object_type,
             index_in_parent_array: &mut index_in_parent_array,
-            leaf_class: &mut leaf_class,
+            leaf_kind: &mut leaf_kind,
         };
         scope.process_entry(&entry, &mut order);
         if next_pq_id >= SAFETY_CAP {
@@ -408,7 +408,7 @@ pub fn build_order(
         by_priority: order,
         total_nodes: total,
         object_type,
-        leaf_class,
+        leaf_kind,
     })
 }
 
