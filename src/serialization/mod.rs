@@ -392,13 +392,10 @@ mod tests {
     use crate::order::build_order;
     use insta::assert_snapshot;
 
-    #[cfg(feature = "yaml-validate")]
     fn assert_yaml_valid(s: &str) {
-        let _: serde_yaml::Value = serde_yaml::from_str(s)
-            .expect("YAML parse failed (validation feature)");
+        let _: serde_yaml::Value =
+            serde_yaml::from_str(s).expect("YAML parse failed (validation)");
     }
-    #[cfg(not(feature = "yaml-validate"))]
-    fn assert_yaml_valid(_s: &str) {}
 
     #[test]
     fn arena_render_empty_array() {
