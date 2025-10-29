@@ -17,8 +17,8 @@ pub struct JsonTreeArena {
 #[derive(Debug, Clone)]
 pub struct JsonTreeNode {
     pub kind: NodeKind,
-    pub number_value: Option<serde_json::Number>,
-    pub bool_value: Option<bool>,
+    // For atomic leaves (null/bool/number), the exact token text.
+    pub atomic_token: Option<String>,
     pub string_value: Option<String>,
     pub children_start: usize,
     pub children_len: usize,
@@ -36,8 +36,7 @@ impl Default for JsonTreeNode {
     fn default() -> Self {
         Self {
             kind: NodeKind::Null,
-            number_value: None,
-            bool_value: None,
+            atomic_token: None,
             string_value: None,
             children_start: 0,
             children_len: 0,

@@ -67,14 +67,16 @@ impl JsonTreeBuilder {
     {
         self.push_with(|n| {
             n.kind = NodeKind::Number;
-            n.number_value = Some(serde_json::Number::from(v));
+            let num = serde_json::Number::from(v);
+            n.atomic_token = Some(num.to_string());
         })
     }
 
     fn push_bool(&self, v: bool) -> usize {
         self.push_with(|n| {
             n.kind = NodeKind::Bool;
-            n.bool_value = Some(v);
+            n.atomic_token =
+                Some(if v { "true" } else { "false" }.to_string());
         })
     }
     fn push_string_owned(&self, s: String) -> usize {
@@ -86,6 +88,7 @@ impl JsonTreeBuilder {
     fn push_null(&self) -> usize {
         self.push_with(|n| {
             n.kind = NodeKind::Null;
+            n.atomic_token = Some("null".to_string());
         })
     }
 
@@ -197,7 +200,7 @@ impl<'de> Visitor<'de> for NodeVisitor<'_> {
             .ok_or_else(|| E::custom("invalid f64"))?;
         let id = self.b.push_with(|n| {
             n.kind = NodeKind::Number;
-            n.number_value = Some(num);
+            n.atomic_token = Some(num.to_string());
         });
         Ok(id)
     }

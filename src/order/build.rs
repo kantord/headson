@@ -177,21 +177,7 @@ impl<'a> Scope<'a> {
             let extra: u128 = self.array_extra_for_index(i, kept);
             let score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
             let child_node = &self.arena.nodes[child_arena_id];
-            let atomic = match child_kind {
-                NodeKind::Null => Some("null".to_string()),
-                NodeKind::Bool => {
-                    Some(if child_node.bool_value.unwrap_or(false) {
-                        "true".to_string()
-                    } else {
-                        "false".to_string()
-                    })
-                }
-                NodeKind::Number => child_node
-                    .number_value
-                    .as_ref()
-                    .map(std::string::ToString::to_string),
-                _ => None,
-            };
+            let atomic = child_node.atomic_token.clone();
             self.push_child_common(
                 entry,
                 child_priority_index,
@@ -236,21 +222,7 @@ impl<'a> Scope<'a> {
             *self.next_pq_id += 1;
             let score = entry.score + OBJECT_CHILD_BASE_INCREMENT;
             let child_node = &self.arena.nodes[child_arena_id];
-            let atomic = match child_kind {
-                NodeKind::Null => Some("null".to_string()),
-                NodeKind::Bool => {
-                    Some(if child_node.bool_value.unwrap_or(false) {
-                        "true".to_string()
-                    } else {
-                        "false".to_string()
-                    })
-                }
-                NodeKind::Number => child_node
-                    .number_value
-                    .as_ref()
-                    .map(std::string::ToString::to_string),
-                _ => None,
-            };
+            let atomic = child_node.atomic_token.clone();
             self.push_child_common(
                 entry,
                 child_priority_index,
@@ -385,19 +357,7 @@ pub fn build_order(
     metrics.push(NodeMetrics::default());
     index_in_parent_array.push(None);
     let n = &arena.nodes[root_ar];
-    let root_atomic = match root_kind {
-        NodeKind::Null => Some("null".to_string()),
-        NodeKind::Bool => Some(if n.bool_value.unwrap_or(false) {
-            "true".to_string()
-        } else {
-            "false".to_string()
-        }),
-        NodeKind::Number => n
-            .number_value
-            .as_ref()
-            .map(std::string::ToString::to_string),
-        _ => None,
-    };
+    let root_atomic = n.atomic_token.clone();
     nodes.push(RankedNode {
         node_id: NodeId(root_priority_index),
         kind: root_kind,
