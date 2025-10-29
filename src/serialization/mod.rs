@@ -1,5 +1,5 @@
 use crate::order::ObjectType;
-use crate::order::{LeafKind, NodeKind, PriorityOrder, ROOT_PQ_ID};
+use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID, RankedNode};
 pub mod color;
 mod fileset;
 pub mod output;
@@ -72,27 +72,21 @@ impl<'a> RenderScope<'a> {
         }
     }
 
-    fn omitted_for(
-        &self,
-        id: usize,
-        kind: NodeKind,
-        kept: usize,
-    ) -> Option<usize> {
-        match kind {
-            NodeKind::Array => {
+    fn omitted_for(&self, id: usize, kept: usize) -> Option<usize> {
+        match &self.order.nodes[id] {
+            RankedNode::Array { .. } => {
                 self.order.metrics[id].array_len.and_then(|orig| {
                     if orig > kept { Some(orig - kept) } else { None }
                 })
             }
-            NodeKind::Object => {
+            RankedNode::Object { .. } => {
                 self.order.metrics[id].object_len.and_then(|orig| {
                     if orig > kept { Some(orig - kept) } else { None }
                 })
             }
-            _ => match self.order.leaf_kind.get(id).and_then(|x| *x) {
-                Some(LeafKind::String) => self.omitted_for_string(id, kept),
-                Some(LeafKind::Atomic) | None => None,
-            },
+            RankedNode::LongLeaf { .. } => self.omitted_for_string(id, kept),
+            RankedNode::AtomicLeaf { .. }
+            | RankedNode::LongLeafPart { .. } => None,
         }
     }
 
@@ -105,8 +99,7 @@ impl<'a> RenderScope<'a> {
     ) {
         let config = self.config;
         let (children_pairs, kept) = self.gather_array_children(id, depth);
-        let node = &self.order.nodes[id];
-        let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
+        let omitted = self.omitted_for(id, kept).unwrap_or(0);
         let ctx = ArrayCtx {
             children: children_pairs,
             children_len: kept,
@@ -146,8 +139,7 @@ impl<'a> RenderScope<'a> {
             }
         }
         let (children_pairs, kept) = self.gather_object_children(id, depth);
-        let node = &self.order.nodes[id];
-        let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
+        let omitted = self.omitted_for(id, kept).unwrap_or(0);
         let ctx = ObjectCtx {
             children: children_pairs,
             children_len: kept,
@@ -164,9 +156,11 @@ impl<'a> RenderScope<'a> {
 
     fn serialize_string(&mut self, id: usize) -> String {
         let kept = self.count_kept_children(id);
-        let node = &self.order.nodes[id];
-        let omitted = self.omitted_for(id, node.kind, kept).unwrap_or(0);
-        let full: &str = node.string_value.as_deref().unwrap_or("");
+        let omitted = self.omitted_for(id, kept).unwrap_or(0);
+        let full: &str = match &self.order.nodes[id] {
+            RankedNode::LongLeaf { value, .. } => value.as_str(),
+            _ => "",
+        };
         if omitted == 0 {
             crate::utils::json::json_string(full)
         } else {
@@ -177,12 +171,9 @@ impl<'a> RenderScope<'a> {
     }
 
     fn serialize_atomic(&self, id: usize) -> String {
-        if let Some(tok) = self.order.nodes[id].atomic_token.clone() {
-            tok
-        } else {
-            // Safety: only called for Null/Bool/Number; builder sets tokens for these.
-            // Use unreachable! to satisfy clippy expect_used while keeping invariant explicit.
-            unreachable!("atomic leaf without token: id={id}")
+        match &self.order.nodes[id] {
+            RankedNode::AtomicLeaf { token, .. } => token.clone(),
+            _ => unreachable!("atomic leaf without token: id={id}"),
         }
     }
 
@@ -193,17 +184,23 @@ impl<'a> RenderScope<'a> {
         inline: bool,
         out: &mut Out<'_>,
     ) {
-        let it = &self.order.nodes[id];
-        match it.kind {
-            NodeKind::Array => self.write_array(id, depth, inline, out),
-            NodeKind::Object => self.write_object(id, depth, inline, out),
-            NodeKind::String => {
+        match &self.order.nodes[id] {
+            RankedNode::Array { .. } => {
+                self.write_array(id, depth, inline, out)
+            }
+            RankedNode::Object { .. } => {
+                self.write_object(id, depth, inline, out)
+            }
+            RankedNode::LongLeaf { .. } => {
                 let s = self.serialize_string(id);
                 out.push_string_literal(&s);
             }
-            NodeKind::Number | NodeKind::Bool | NodeKind::Null => {
+            RankedNode::AtomicLeaf { .. } => {
                 let s = self.serialize_atomic(id);
                 out.push_str(&s);
+            }
+            RankedNode::LongLeafPart { .. } => {
+                unreachable!("string part should not be rendered")
             }
         }
     }
@@ -221,7 +218,7 @@ impl<'a> RenderScope<'a> {
                     continue;
                 }
                 kept += 1;
-                let child_kind = self.order.nodes[child_id.0].kind;
+                let child_kind = self.order.nodes[child_id.0].display_kind();
                 let rendered =
                     self.render_node_to_string(child_id.0, depth + 1, false);
                 let orig_index = self
@@ -256,7 +253,7 @@ impl<'a> RenderScope<'a> {
                 }
                 kept += 1;
                 let child = &self.order.nodes[child_id.0];
-                let raw_key = child.key_in_object.as_deref().unwrap_or("");
+                let raw_key = child.key_in_object().unwrap_or("");
                 let key = crate::utils::json::json_string(raw_key);
                 let val =
                     self.render_node_to_string(child_id.0, depth + 1, true);
@@ -272,9 +269,8 @@ impl<'a> RenderScope<'a> {
         depth: usize,
         inline: bool,
     ) -> String {
-        let it = &self.order.nodes[id];
-        match it.kind {
-            NodeKind::Array => {
+        match &self.order.nodes[id] {
+            RankedNode::Array { .. } => {
                 let mut s = String::new();
                 let mut ow = Out::new(
                     &mut s,
@@ -285,7 +281,7 @@ impl<'a> RenderScope<'a> {
                 self.write_array(id, depth, inline, &mut ow);
                 s
             }
-            NodeKind::Object => {
+            RankedNode::Object { .. } => {
                 let mut s = String::new();
                 let mut ow = Out::new(
                     &mut s,
@@ -296,9 +292,10 @@ impl<'a> RenderScope<'a> {
                 self.write_object(id, depth, inline, &mut ow);
                 s
             }
-            NodeKind::String => self.serialize_string(id),
-            NodeKind::Number | NodeKind::Bool | NodeKind::Null => {
-                self.serialize_atomic(id)
+            RankedNode::LongLeaf { .. } => self.serialize_string(id),
+            RankedNode::AtomicLeaf { .. } => self.serialize_atomic(id),
+            RankedNode::LongLeafPart { .. } => {
+                unreachable!("string part not rendered")
             }
         }
     }

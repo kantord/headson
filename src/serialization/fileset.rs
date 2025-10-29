@@ -9,10 +9,8 @@ impl<'a> RenderScope<'a> {
         child_pq_id: usize,
         nl: &str,
     ) {
-        let raw_key = self.order.nodes[child_pq_id]
-            .key_in_object
-            .as_deref()
-            .unwrap_or("");
+        let raw_key =
+            self.order.nodes[child_pq_id].key_in_object().unwrap_or("");
         out.push_str(&indent(depth, &self.config.indent_unit));
         out.push_str("// ");
         out.push_str(raw_key);
@@ -49,10 +47,8 @@ impl<'a> RenderScope<'a> {
         child_pq_id: usize,
         nl: &str,
     ) {
-        let raw_key = self.order.nodes[child_pq_id]
-            .key_in_object
-            .as_deref()
-            .unwrap_or("");
+        let raw_key =
+            self.order.nodes[child_pq_id].key_in_object().unwrap_or("");
         out.push_str(&indent(depth, &self.config.indent_unit));
         out.push_str("==> ");
         out.push_str(raw_key);

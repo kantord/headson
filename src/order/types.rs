@@ -37,11 +37,6 @@ pub enum NodeKind {
 // Classification of leaf nodes by truncatability semantics.
 // Atomic: values that cannot be truncated (null, bool, number).
 // String: values that can be truncated to a prefix during rendering.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum LeafKind {
-    Atomic,
-    String,
-}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum ObjectType {
@@ -63,13 +58,64 @@ pub enum ArraySamplerStrategy {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct RankedNode {
-    pub node_id: NodeId,
-    pub kind: NodeKind,
-    pub key_in_object: Option<String>,
-    // For non-truncatable leaves (null, bool, number), store the exact token text.
-    pub atomic_token: Option<String>,
-    pub string_value: Option<String>,
+pub enum RankedNode {
+    Array {
+        node_id: NodeId,
+        key_in_object: Option<String>,
+    },
+    Object {
+        node_id: NodeId,
+        key_in_object: Option<String>,
+    },
+    // LongLeaf: truncatable string leaf with full value available.
+    LongLeaf {
+        node_id: NodeId,
+        key_in_object: Option<String>,
+        value: String,
+    },
+    // LongLeafPart: synthetic node for string-grapheme prioritization; holds no value.
+    LongLeafPart {
+        node_id: NodeId,
+        key_in_object: Option<String>,
+    },
+    // AtomicLeaf: non-truncatable scalar, printed verbatim.
+    AtomicLeaf {
+        node_id: NodeId,
+        key_in_object: Option<String>,
+        token: String,
+    },
+}
+
+impl RankedNode {
+    pub fn node_id(&self) -> NodeId {
+        match self {
+            RankedNode::Array { node_id, .. }
+            | RankedNode::Object { node_id, .. }
+            | RankedNode::LongLeaf { node_id, .. }
+            | RankedNode::LongLeafPart { node_id, .. }
+            | RankedNode::AtomicLeaf { node_id, .. } => *node_id,
+        }
+    }
+    pub fn key_in_object(&self) -> Option<&str> {
+        match self {
+            RankedNode::Array { key_in_object, .. }
+            | RankedNode::Object { key_in_object, .. }
+            | RankedNode::LongLeaf { key_in_object, .. }
+            | RankedNode::LongLeafPart { key_in_object, .. }
+            | RankedNode::AtomicLeaf { key_in_object, .. } => {
+                key_in_object.as_deref()
+            }
+        }
+    }
+    pub fn display_kind(&self) -> NodeKind {
+        match self {
+            RankedNode::Array { .. } => NodeKind::Array,
+            RankedNode::Object { .. } => NodeKind::Object,
+            RankedNode::LongLeaf { .. }
+            | RankedNode::LongLeafPart { .. }
+            | RankedNode::AtomicLeaf { .. } => NodeKind::String,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -94,8 +140,6 @@ pub struct PriorityOrder {
     pub by_priority: Vec<NodeId>, // ids sorted by ascending priority (PQ ids)
     pub total_nodes: usize,
     pub object_type: Vec<ObjectType>,
-    // Leaf semantics for each PQ id: Some(...) for leaves, None for containers.
-    pub leaf_kind: Vec<Option<LeafKind>>,
 }
 
 pub const ROOT_PQ_ID: usize = 0;
