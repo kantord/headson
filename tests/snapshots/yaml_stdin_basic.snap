@@ -1,0 +1,9 @@
+---
+source: tests/yaml_input.rs
+expression: out
+---
+foo:
+  - list1
+  - 2
+bar: true
+

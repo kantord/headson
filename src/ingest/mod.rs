@@ -45,6 +45,38 @@ pub fn parse_json_many(
     JsonIngest::parse_many(inputs, cfg)
 }
 
+/// Dummy YAML adapter for the ingest boundary. For now, always returns a
+/// minimal empty arena (an empty array as the root) regardless of input.
+pub struct YamlIngest;
+
+impl Ingest for YamlIngest {
+    fn parse_one(bytes: Vec<u8>, cfg: &PriorityConfig) -> Result<TreeArena> {
+        crate::yaml_ingest::build_yaml_tree_arena_from_bytes(bytes, cfg)
+    }
+
+    fn parse_many(
+        inputs: Vec<(String, Vec<u8>)>,
+        cfg: &PriorityConfig,
+    ) -> Result<TreeArena> {
+        crate::yaml_ingest::build_yaml_tree_arena_from_many(inputs, cfg)
+    }
+}
+
+/// Convenience functions for the YAML ingest path.
+pub fn parse_yaml_one(
+    bytes: Vec<u8>,
+    cfg: &PriorityConfig,
+) -> Result<TreeArena> {
+    YamlIngest::parse_one(bytes, cfg)
+}
+
+pub fn parse_yaml_many(
+    inputs: Vec<(String, Vec<u8>)>,
+    cfg: &PriorityConfig,
+) -> Result<TreeArena> {
+    YamlIngest::parse_many(inputs, cfg)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

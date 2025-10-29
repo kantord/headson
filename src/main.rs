@@ -1,3 +1,7 @@
+#![allow(
+    clippy::multiple_crate_versions,
+    reason = "Dependency graph pulls distinct versions (e.g., yaml-rust2)."
+)]
 use std::fs::File;
 use std::io::IsTerminal as _;
 use std::io::{self, Read};
@@ -87,6 +91,14 @@ struct Cli {
         help = "Optional file paths. If omitted, reads JSON from stdin. Multiple input files are supported. Directories and binary files are ignored with a notice on stderr."
     )]
     inputs: Vec<PathBuf>,
+    #[arg(
+        short = 'i',
+        long = "input-format",
+        value_enum,
+        default_value_t = InputFlag::Json,
+        help = "Input ingestion format: json or yaml (yaml is currently a dummy that yields an empty structure)."
+    )]
+    input_format: InputFlag,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -94,6 +106,12 @@ enum Template {
     Json,
     Pseudo,
     Js,
+    Yaml,
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum InputFlag {
+    Json,
     Yaml,
 }
 
@@ -152,7 +170,14 @@ fn run_from_stdin(
     let input_count = 1usize;
     let eff = compute_effective_budget(cli, input_count);
     let prio = compute_priority(cli, eff, input_count);
-    headson::headson(input_bytes, render_cfg, &prio, eff)
+    match cli.input_format {
+        InputFlag::Json => {
+            headson::headson(input_bytes, render_cfg, &prio, eff)
+        }
+        InputFlag::Yaml => {
+            headson::headson_yaml(input_bytes, render_cfg, &prio, eff)
+        }
+    }
 }
 
 fn run_from_paths(
@@ -165,13 +190,27 @@ fn run_from_paths(
     let eff = compute_effective_budget(cli, input_count);
     let prio = compute_priority(cli, eff, input_count);
     if cli.inputs.len() > 1 {
-        let out = headson::headson_many(entries, render_cfg, &prio, eff)?;
+        let out = match cli.input_format {
+            InputFlag::Json => {
+                headson::headson_many(entries, render_cfg, &prio, eff)?
+            }
+            InputFlag::Yaml => {
+                headson::headson_many_yaml(entries, render_cfg, &prio, eff)?
+            }
+        };
         Ok((out, ignored))
     } else if included == 0 {
         Ok((String::new(), ignored))
     } else {
         let bytes = entries.into_iter().next().unwrap().1;
-        let out = headson::headson(bytes, render_cfg, &prio, eff)?;
+        let out = match cli.input_format {
+            InputFlag::Json => {
+                headson::headson(bytes, render_cfg, &prio, eff)?
+            }
+            InputFlag::Yaml => {
+                headson::headson_yaml(bytes, render_cfg, &prio, eff)?
+            }
+        };
         Ok((out, ignored))
     }
 }
