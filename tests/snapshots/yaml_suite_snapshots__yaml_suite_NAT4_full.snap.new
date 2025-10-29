@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- emit: "---\na: ' '\nb: ' '\nc: \" \"\nd: \" \"\ne: '\n\n  '\nf: \"\\n\"\ng: '\n\n\n  '\nh: \"\\n\\n\"\n"
+  from: "@perlpunk"
+  json: "{\n  \"a\": \" \",\n  \"b\": \" \",\n  \"c\": \" \",\n  \"d\": \" \",\n  \"e\": \"\\n\",\n  \"f\": \"\\n\",\n  \"g\": \"\\n\\n\",\n  \"h\": \"\\n\\n\"\n}\n"
+  name: Various empty or newline only quoted strings
+  tags: double scalar single whitespace
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :a\n   =VAL '␣\n   =VAL :b\n   =VAL '␣\n   =VAL :c\n   =VAL \"␣\n   =VAL :d\n   =VAL \"␣\n   =VAL :e\n   =VAL '\\n\n   =VAL :f\n   =VAL \"\\n\n   =VAL :g\n   =VAL '\\n\\n\n   =VAL :h\n   =VAL \"\\n\\n\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\na: '\n  '\nb: '␣␣\n  '\nc: \"\n  \"\nd: \"␣␣\n  \"\ne: '\n\n  '\nf: \"\n\n  \"\ng: '\n\n\n  '\nh: \"\n\n\n  \"\n"

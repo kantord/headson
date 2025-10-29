@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Comment that looks like a mappin…
+  name: Comment that looks like a mapping key
   tags: comment error mapping
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   =VAL :value\n"
   yaml: "key: value\nthis is #not a: key\n"

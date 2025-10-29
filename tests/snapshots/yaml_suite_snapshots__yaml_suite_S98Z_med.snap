@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Block scalar with more spa…
-  tags: error folded comment scala…
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL …"
-  yaml: "empty block scalar: >\n␣\n␣␣…"
+  name: Block scalar with more spaces than first content line
+  tags: error folded comment scalar whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :empty block scalar\n"
+  yaml: "empty block scalar: >\n␣\n␣␣\n␣␣␣\n # comment\n"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- emit: "---\na: >2\n   mor…"
+- emit: "---\na: >2\n   more indented\n  regular\nb: >2\n\n\n   more…"
   from: "@perlpunk"
-  json: "{\n  \"a\": \" more …"
-  name: More indented li…
+  json: "{\n  \"a\": \" more indented\\nregular\\n\",\n  \"b\": \"\\n\\n m…"
+  name: More indented lines at the beginning of folded block…
   tags: folded indent
-  tree: "+STR\n +DOC ---\n …"
-  yaml: "---\na: >2\n   mor…"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :a\n   =VAL > more inde…"
+  yaml: "---\na: >2\n   more indented\n  regular\nb: >2\n\n\n   mor…"

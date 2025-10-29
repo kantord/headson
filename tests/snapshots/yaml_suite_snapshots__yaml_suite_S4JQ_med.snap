@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "- \"12\"\n- 12\n- ! …"
-  from: "http://www.yaml…"
-  json: "[\n  \"12\",\n  12,…"
-  name: Spec Example 6.…
+- dump: "- \"12\"\n- 12\n- ! 12\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2785512"
+  json: "[\n  \"12\",\n  12,\n  \"12\"\n]\n"
+  name: Spec Example 6.28. Non-Specific Tags
   tags: spec tag
-  tree: "+STR\n +DOC\n  +S…"
-  yaml: "# Assuming conv…"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL \"12\n   =VAL :12\n   =VAL <!> :12\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "# Assuming conventional resolution:\n- \"12\"\n- 12\n- ! 12\n"

@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Invalid item after end of flow …
+  name: Invalid item after end of flow sequence
   tags: error flow sequence
-  tree: "+STR\n +DOC ---\n  +SEQ []\n   =VA…"
-  yaml: "---\n[\nsequence item\n]\ninvalid …"
+  tree: "+STR\n +DOC ---\n  +SEQ []\n   =VAL :sequence item\n  -SEQ\n"
+  yaml: "---\n[\nsequence item\n]\ninvalid item\n"

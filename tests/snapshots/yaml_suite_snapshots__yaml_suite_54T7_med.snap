@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "foo: you\nbar: fa…"
-  from: "https://github.c…"
-  json: "{\n  \"foo\": \"you\"…"
+- dump: "foo: you\nbar: far\n"
+  from: "https://github.com/ingydotnet/yaml-pegex-pm/blob/master/test/mapping.tml"
+  json: "{\n  \"foo\": \"you\",\n  \"bar\": \"far\"\n}\n"
   name: Flow Mapping
   tags: flow mapping
-  tree: "+STR\n +DOC\n  +MA…"
-  yaml: "{foo: you, bar: …"
+  tree: "+STR\n +DOC\n  +MAP {}\n   =VAL :foo\n   =VAL :you\n   =VAL :bar\n   =VAL :far\n  -MAP\n -DOC\n-STR\n"
+  yaml: "{foo: you, bar: far}\n"

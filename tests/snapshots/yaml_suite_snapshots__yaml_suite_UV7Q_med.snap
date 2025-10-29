@@ -4,8 +4,8 @@ expression: out_med
 ---
 - dump: "x:\n- x x\n"
   from: "@ingydotnet"
-  json: "{\n  \"x\": [\n    \"…"
-  name: Legal tab after …
-  tags: indent whitespac…
-  tree: "+STR\n +DOC\n  +M…"
+  json: "{\n  \"x\": [\n    \"x x\"\n  ]\n}\n"
+  name: Legal tab after indentation
+  tags: indent whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :x\n   +SEQ\n    =VAL :x x\n   -SEQ\n  -MAP\n -DOC\n-STR\n"
   yaml: "x:\n - x\n  ——»x\n"

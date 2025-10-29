@@ -6,5 +6,5 @@ expression: out_med
   from: "@perlpunk"
   name: Wrong indendation in Sequence
   tags: error sequence indent
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n …"
-  yaml: "key:\n   - ok\n   - also ok\n  - wr…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   +SEQ\n    =VAL :ok\n    =VAL :also ok\n   -SEQ\n"
+  yaml: "key:\n   - ok\n   - also ok\n  - wrong\n"

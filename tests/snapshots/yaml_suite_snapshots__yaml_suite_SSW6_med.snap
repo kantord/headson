@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: --- 'here''s to …
-  from: "4GC6, modified f…"
-  json: "here's to \"qu…
-  name: Spec Example 7.…
-  tags: spec scalar sin…
-  tree: "+STR\n +DOC ---\n…"
-  yaml: "---\n'here''s to…"
+- dump: "--- 'here''s to \"quotes\"'\n"
+  from: "4GC6, modified for YAML 1.3"
+  json: "\"here's to \\\"quotes\\\"\"\n"
+  name: "Spec Example 7.7. Single Quoted Characters [1.3]"
+  tags: spec scalar single 1.3-mod
+  tree: "+STR\n +DOC ---\n  =VAL 'here's to \"quotes\"\n -DOC\n-STR\n"
+  yaml: "---\n'here''s to \"quotes\"'\n"

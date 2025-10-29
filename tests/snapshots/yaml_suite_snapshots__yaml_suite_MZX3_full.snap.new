@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- from: NimYAML tests
+  json: "[\n  \"plain\",\n  \"double quoted\",\n  \"single quoted\",\n  \"block\\n\",\n  \"plain again\"\n]\n"
+  name: Non-Specific Tags on Scalars
+  tags: folded scalar
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :plain\n   =VAL \"double quoted\n   =VAL 'single quoted\n   =VAL >block\\n\n   =VAL :plain again\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "- plain\n- \"double quoted\"\n- 'single quoted'\n- >\n  block\n- plain again\n"

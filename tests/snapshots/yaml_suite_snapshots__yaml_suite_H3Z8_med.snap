@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\nwanted: \"love \\…"
+- dump: "---\nwanted: \"love \\u2665 and peace \\u262E\"\n"
   from: "@perlpunk"
-  json: "{\n  \"wanted\": \"lov…"
+  json: "{\n  \"wanted\": \"love ♥ and peace ☮\"\n}\n"
   name: Literal unicode
   tags: scalar
-  tree: "+STR\n +DOC ---\n  +…"
-  yaml: "---\nwanted: love ♥…"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :wanted\n   =VAL :love ♥ and peace ☮\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\nwanted: love ♥ and peace ☮\n"

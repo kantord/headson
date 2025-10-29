@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "- one: two\n  three: four\n- five: six\n  seven: eight\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2791018"
+  json: "[\n  {\n    \"one\": \"two\",\n    \"three\": \"four\"\n  },\n  {\n    \"five\": \"six\",\n    \"seven\": \"eight\"\n  }\n]\n"
+  name: Spec Example 7.15. Flow Mappings
+  tags: spec flow mapping
+  tree: "+STR\n +DOC\n  +SEQ\n   +MAP {}\n    =VAL :one\n    =VAL :two\n    =VAL :three\n    =VAL :four\n   -MAP\n   +MAP {}\n    =VAL :five\n    =VAL :six\n    =VAL :seven\n    =VAL :eight\n   -MAP\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "- { one : two , three: four , }\n- {five: six,seven : eight}\n"

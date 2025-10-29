@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "name: Mark McGw…"
-  from: "http://www.yaml…"
-  json: "{\n  \"name\": \"M…"
-  name: Spec Example 2…
-  tags: spec folded li…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "name: Mark McG…"
+- dump: "name: Mark McGwire\naccomplishment: >\n  Mark se…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id27610…"
+  json: "{\n  \"name\": \"Mark McGwire\",\n  \"accomplishment\"…"
+  name: Spec Example 2.16. Indentation determines scop…
+  tags: spec folded literal
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :name\n   =VAL :Mark…"
+  yaml: "name: Mark McGwire\naccomplishment: >\n  Mark s…"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: - "flow in bloc…
-  from: "http://www.yaml…"
-  json: "[\n  \"flow in bl…"
-  name: Spec Example 8.…
-  tags: comment double…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "-\n  \"flow in b…"
+- dump: "- \"flow in block\"\n- >\n  Block scalar\n- !!map\n…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2799…"
+  json: "[\n  \"flow in block\",\n  \"Block scalar\\n\",\n  {…"
+  name: Spec Example 8.20. Block Node Types
+  tags: comment double spec folded tag
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL \"flow in block\n   …"
+  yaml: "-\n  \"flow in block\"\n- >\n Block scalar\n- !!ma…"

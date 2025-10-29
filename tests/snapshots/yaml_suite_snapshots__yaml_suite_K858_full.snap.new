@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "strip: \"\"\nclip: \"\"\nkeep: |2+\n\n...\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2795596"
+  json: "{\n  \"strip\": \"\",\n  \"clip\": \"\",\n  \"keep\": \"\\n\"\n}\n"
+  name: Spec Example 8.6. Empty Scalar Chomping
+  tags: spec folded literal whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :strip\n   =VAL >\n   =VAL :clip\n   =VAL >\n   =VAL :keep\n   =VAL |\\n\n  -MAP\n -DOC\n-STR\n"
+  yaml: "strip: >-\n\nclip: >\n\nkeep: |+\n↵\n"

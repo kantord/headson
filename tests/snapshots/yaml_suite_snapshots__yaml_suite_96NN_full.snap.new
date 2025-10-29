@@ -1,0 +1,13 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "foo: |-\n  ——»bar\n"
+  from: "@ingydotnet"
+  json: "{\"foo\":\"\\tbar\"}\n"
+  name: Leading tab content in literals
+  tags: indent literal whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   =VAL |\\tbar\n  -MAP\n -DOC\n-STR\n"
+  yaml: "foo: |-\n ——»bar\n"
+- yaml: "foo: |-\n ——»bar∎\n"

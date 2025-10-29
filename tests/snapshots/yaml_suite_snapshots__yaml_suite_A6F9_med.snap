@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "strip: |-\n  te…"
-  from: "http://www.yam…"
-  json: "{\n  \"strip\": \"…"
-  name: Spec Example 8…
-  tags: spec literal s…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "strip: |-\n  te…"
+- dump: "strip: |-\n  text\nclip: |\n  text\nkeep: |\n  tex…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2795…"
+  json: "{\n  \"strip\": \"text\",\n  \"clip\": \"text\\n\",\n  \"k…"
+  name: Spec Example 8.4. Chomping Final Line Break
+  tags: spec literal scalar
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :strip\n   =VAL |te…"
+  yaml: "strip: |-\n  text\nclip: |\n  text\nkeep: |+\n  t…"

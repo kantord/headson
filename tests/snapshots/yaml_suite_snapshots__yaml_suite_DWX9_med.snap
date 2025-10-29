@@ -2,11 +2,11 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "\n\nlitera…
-  emit: "|\n\n\n  liter…"
-  from: "http://www.…"
-  json: "\n\nliter…
-  name: Spec Examp…
-  tags: spec liter…
-  tree: "+STR\n +DOC…"
-  yaml: "|\n␣\n␣␣\n  l…"
+- dump: "\"\\n\\nliteral\\n \\n\\ntext\\n\"\n"
+  emit: "|\n\n\n  literal\n␣␣␣\n\n  text\n"
+  from: "http://www.yaml.org/spec/1.2/spec…"
+  json: "\"\\n\\nliteral\\n \\n\\ntext\\n\"\n"
+  name: Spec Example 8.8. Literal Content
+  tags: spec literal scalar comment white…
+  tree: "+STR\n +DOC\n  =VAL |\\n\\nliteral\\n …"
+  yaml: "|\n␣\n␣␣\n  literal\n␣␣␣\n␣␣\n  text\n\n…"

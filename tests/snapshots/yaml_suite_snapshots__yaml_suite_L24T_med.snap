@@ -2,14 +2,14 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- emit: "---\nf…"
-  from: "@ingy…"
-  json: "{\n  \"…"
-  name: Trail…
-  tags: white…
-  tree: +STR…
-  yaml: "foo:…"
-- emit: "---\n…"
-  json: "{\n  …"
-  tree: +STR…
-  yaml: "foo:…"
+- emit: "---\nfoo: \"x\\n \\n\"\n"
+  from: "@ingydotnet"
+  json: "{\n  \"foo\" : \"x\\n \\n\"\n}\n"
+  name: Trailing line of spaces
+  tags: whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n…"
+  yaml: "foo: |\n  x\n␣␣␣\n"
+- emit: "---\nfoo: \"x\\n \\n\"\n"
+  json: "{\n  \"foo\" : \"x\\n \\n\"\n}\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n…"
+  yaml: "foo: |\n  x\n␣␣␣∎\n"

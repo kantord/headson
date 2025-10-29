@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "- &a\n- a\n- &a : a\n  b:…"
+- dump: "- &a\n- a\n- &a : a\n  b: &b\n- &c : &a\n- &d :\n- &e : &a\n"
   from: NimYAML tests
-  name: Anchors on Empty Scala…
+  name: Anchors on Empty Scalars
   tags: anchor explicit-key
-  tree: "+STR\n +DOC\n  +SEQ\n   …"
-  yaml: "- &a\n- a\n-\n  &a : a\n …"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL &a :\n   =VAL :a\n   +MAP\n    =VAL &a :\n    =VAL :a\n    =VAL :b\n    =VAL &b :\n   -MAP\n   +MAP\n    =VAL &c :…"
+  yaml: "- &a\n- a\n-\n  &a : a\n  b: &b\n-\n  &c : &a\n-\n  ? &d\n-\n  ? &e\n  : &a\n"

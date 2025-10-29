@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\nkey: &an:chor …"
+- dump: "---\nkey: &an:chor value\n"
   from: "@perlpunk"
-  json: "{\n  \"key\": \"value\"…"
-  name: Anchor with colon …
+  json: "{\n  \"key\": \"value\"\n}\n"
+  name: Anchor with colon in the middle
   tags: anchor
-  tree: "+STR\n +DOC ---\n  …"
-  yaml: "---\nkey: &an:chor…"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :key\n   =VAL &an:chor :value\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\nkey: &an:chor value\n"

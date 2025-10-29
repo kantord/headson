@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: --- plain\value\with…
+- dump: "--- plain\\value\\with\\backslashes\n"
   from: "@perlpunk"
-  json: "plain\\value\\with…
-  name: Plain scalar with b…
+  json: "\"plain\\\\value\\\\with\\\\backslashes\"\n"
+  name: Plain scalar with backslashes
   tags: scalar
-  tree: "+STR\n +DOC ---\n  =V…"
-  yaml: "---\nplain\\value\\wit…"
+  tree: "+STR\n +DOC ---\n  =VAL :plain\\\\value\\\\with\\\\backslashes\n -DOC\n-STR\n"
+  yaml: "---\nplain\\value\\with\\backslashes\n"

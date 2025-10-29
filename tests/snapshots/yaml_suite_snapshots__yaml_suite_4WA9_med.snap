@@ -2,11 +2,11 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\n- aaa: …"
-  emit: "- aaa: |\n  …"
+- dump: "---\n- aaa: |\n    xxx\n  bbb: |\n    xxx\n"
+  emit: "- aaa: |\n    xxx\n  bbb: |\n    xxx\n"
   from: "@ingydotnet"
-  json: "[\n  {\n    \"…"
-  name: Literal sca…
-  tags: indent lite…
-  tree: "+STR\n +DOC\n…"
-  yaml: "- aaa: |2\n…"
+  json: "[\n  {\n    \"aaa\" : \"xxx\\n\",\n    \"bbb\" : \"xxx\\n\"\n  }\n]\n"
+  name: Literal scalars
+  tags: indent literal
+  tree: "+STR\n +DOC\n  +SEQ\n   +MAP\n    =VAL :aaa\n    =VAL |xxx\\n\n    =VAL :bbb\n    =V…"
+  yaml: "- aaa: |2\n    xxx\n  bbb: |\n    xxx\n"

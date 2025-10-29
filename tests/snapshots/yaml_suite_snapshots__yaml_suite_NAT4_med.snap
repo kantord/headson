@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- emit: "---\na: ' '\nb: '…"
+- emit: "---\na: ' '\nb: ' '\nc: \" \"\nd: \" \"\ne: '\n\n  '\nf:…"
   from: "@perlpunk"
-  json: "{\n  \"a\": \" \",\n …"
-  name: Various empty o…
-  tags: double scalar s…
-  tree: "+STR\n +DOC ---…"
-  yaml: "---\na: '\n  '\nb…"
+  json: "{\n  \"a\": \" \",\n  \"b\": \" \",\n  \"c\": \" \",\n  \"d\"…"
+  name: Various empty or newline only quoted string…
+  tags: double scalar single whitespace
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :a\n   =VAL '␣…"
+  yaml: "---\na: '\n  '\nb: '␣␣\n  '\nc: \"\n  \"\nd: \"␣␣\n  \"…"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "sequence:\n- one…"
-  from: "http://www.yaml…"
-  json: "{\n  \"sequence\"…"
-  name: Spec Example 5…
-  tags: spec flow sequ…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "sequence: [ on…"
+- dump: "sequence:\n- one\n- two\nmapping:\n  sky: blue\n  …"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id277…"
+  json: "{\n  \"sequence\": [\n    \"one\",\n    \"two\"\n  ],\n…"
+  name: Spec Example 5.4. Flow Collection Indicators
+  tags: spec flow sequence mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :sequence\n   +SEQ …"
+  yaml: "sequence: [ one, two, ]\nmapping: { sky: blue…"

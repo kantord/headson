@@ -4,8 +4,8 @@ expression: out_med
 ---
 - dump: "---\n\"foo\": bar\n"
   from: "@perlpunk"
-  json: "{\n  \"foo\": \"bar…"
-  name: Colon and adjac…
-  tags: double flow map…
-  tree: "+STR\n +DOC ---\n…"
-  yaml: "---\n{ \"foo\"\n  …"
+  json: "{\n  \"foo\": \"bar\"\n}\n"
+  name: Colon and adjacent value on next line
+  tags: double flow mapping
+  tree: "+STR\n +DOC ---\n  +MAP {}\n   =VAL \"foo\n   =VAL :bar\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\n{ \"foo\"\n  :bar }\n"

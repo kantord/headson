@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "--- scalar1\n...\nkey: value\n"
+  from: "@perlpunk"
+  json: "\"scalar1\"\n{\n  \"key\": \"value\"\n}\n"
+  name: Bare document after document end marker
+  tags: footer
+  tree: "+STR\n +DOC ---\n  =VAL :scalar1\n -DOC ...\n +DOC\n  +MAP\n   =VAL :key\n   =VAL :value\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\nscalar1\n...\nkey: value\n"

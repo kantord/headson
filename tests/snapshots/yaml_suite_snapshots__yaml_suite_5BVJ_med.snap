@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "literal: |\n  so…"
-  from: "http://www.yam…"
-  json: "{\n  \"literal\":…"
-  name: Spec Example 5…
-  tags: spec literal f…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "literal: |\n  s…"
+- dump: "literal: |\n  some\n  text\nfolded: >\n  some tex…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id277…"
+  json: "{\n  \"literal\": \"some\\ntext\\n\",\n  \"folded\": \"…"
+  name: Spec Example 5.7. Block Scalar Indicators
+  tags: spec literal folded scalar
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :literal\n   =VAL |…"
+  yaml: "literal: |\n  some\n  text\nfolded: >\n  some\n  …"

@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Invalid comment after end of flo…
+  name: Invalid comment after end of flow sequence
   tags: comment error flow sequence
-  tree: "+STR\n +DOC ---\n  +SEQ []\n   =VAL…"
+  tree: "+STR\n +DOC ---\n  +SEQ []\n   =VAL :a\n   =VAL :b\n   =VAL :c\n  -SEQ\n"
   yaml: "---\n[ a, b, c, ]#invalid\n"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\n- single line…"
+- dump: "---\n- single line:\n  a: b\n- multi line:\n  a: b\n"
   from: "@perlpunk"
-  json: "[\n  {\n    \"single…"
-  name: Multiline plain f…
+  json: "[\n  {\n    \"single line\": null,\n    \"a\": \"b\"\n  },\n  {\n    \"multi l…"
+  name: Multiline plain flow mapping key without value
   tags: flow mapping
-  tree: "+STR\n +DOC ---\n  …"
-  yaml: "---\n- { single l…"
+  tree: "+STR\n +DOC ---\n  +SEQ\n   +MAP {}\n    =VAL :single line\n    =VAL …"
+  yaml: "---\n- { single line, a: b}\n- { multi\n  line, a: b}\n"

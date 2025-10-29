@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\ntop1: &node…"
-  from: "U3XV, modified…"
-  json: "{\n  \"top1\": {\n…"
-  name: Node and Mappi…
-  tags: anchor comment…
-  tree: "+STR\n +DOC ---…"
-  yaml: "---\ntop1: &nod…"
+- dump: "---\ntop1: &node1\n  &k1 key1: one\ntop2: &node2\n  ke…"
+  from: "U3XV, modified for YAML 1.3"
+  json: "{\n  \"top1\": {\n    \"key1\": \"one\"\n  },\n  \"top2\": {\n …"
+  name: "Node and Mapping Key Anchors [1.3]"
+  tags: anchor comment mapping 1.3-mod
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :top1\n   +MAP &node…"
+  yaml: "---\ntop1: &node1\n  &k1 key1: one\ntop2: &node2 # c…"

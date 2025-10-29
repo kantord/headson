@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- emit: "Document\n---\n...\n%YAML 1.2\n---\nmatches %: 20\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2801896"
+  json: "\"Document\"\nnull\n{\n  \"matches %\": 20\n}\n"
+  name: Spec Example 9.6. Stream
+  tags: spec header 1.3-err
+  tree: "+STR\n +DOC\n  =VAL :Document\n -DOC\n +DOC ---\n  =VAL :\n -DOC ...\n +DOC ---\n  +MAP\n   =VAL :matches %\n   =VAL :20\n  -MAP\n -DOC\n-STR\n"
+  yaml: "Document\n---\n# Empty\n...\n%YAML 1.2\n---\nmatches %: 20\n"

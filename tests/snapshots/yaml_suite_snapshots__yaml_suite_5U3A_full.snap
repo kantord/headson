@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- fail: true
+  from: "@perlpunk"
+  name: Sequence on same Line as Mapping Key
+  tags: error sequence mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n"
+  yaml: "key: - a\n     - b\n"

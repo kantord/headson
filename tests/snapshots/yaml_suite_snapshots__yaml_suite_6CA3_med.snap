@@ -7,5 +7,5 @@ expression: out_med
   json: "[]\n"
   name: Tab indented top flow
   tags: indent whitespace
-  tree: "+STR\n +DOC\n  +SEQ []\n  -SE…"
+  tree: "+STR\n +DOC\n  +SEQ []\n  -SEQ\n -DOC\n-STR\n"
   yaml: "————»[\n————»]\n"

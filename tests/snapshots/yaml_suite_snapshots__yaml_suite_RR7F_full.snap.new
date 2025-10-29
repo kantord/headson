@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "a: 4.2\nd: 23\n"
+  from: NimYAML tests
+  json: "{\n  \"d\": 23,\n  \"a\": 4.2\n}\n"
+  name: Mixed Block Mapping (implicit to explicit)
+  tags: explicit-key mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n   =VAL :4.2\n   =VAL :d\n   =VAL :23\n  -MAP\n -DOC\n-STR\n"
+  yaml: "a: 4.2\n? d\n: 23\n"

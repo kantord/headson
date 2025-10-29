@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Comment without whitespace af…
-  tags: folded comment error whitespa…
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :b…"
+  name: Comment without whitespace after block scalar indicator
+  tags: folded comment error whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :block\n"
   yaml: "block: ># comment\n  scalar\n"

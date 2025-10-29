@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: ""
+  from: "@perlpunk"
+  json: ""
+  name: Comment and document-end marker
+  tags: comment footer
+  tree: "+STR\n-STR\n"
+  yaml: "# comment\n...\n"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- emit: "Mapping: Docume…"
-  from: "6ZKB, modified …"
-  json: "{\n  \"Mapping\": …"
-  name: Spec Example 9…
-  tags: spec header 1.…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "Mapping: Docum…"
+- emit: "Mapping: Document\n---\n...\n%YAML 1.2\n---\nmatches %: 20…"
+  from: "6ZKB, modified for YAML 1.3"
+  json: "{\n  \"Mapping\": \"Document\"\n}\nnull\n{\n  \"matches %\": 20\n…"
+  name: "Spec Example 9.6. Stream [1.3]"
+  tags: spec header 1.3-mod
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :Mapping\n   =VAL :Document…"
+  yaml: "Mapping: Document\n---\n# Empty\n...\n%YAML 1.2\n---\nmatc…"

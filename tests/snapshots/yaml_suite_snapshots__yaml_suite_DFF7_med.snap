@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "explicit: entry\nimpl…"
-  from: "http://www.yaml.org/…"
-  name: Spec Example 7.16. …
-  tags: explicit-key spec f…
-  tree: "+STR\n +DOC\n  +MAP {…"
-  yaml: "{\n? explicit: entry…"
+- dump: "explicit: entry\nimplicit: entry\n:\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2791260"
+  name: Spec Example 7.16. Flow Mapping Entries
+  tags: explicit-key spec flow mapping
+  tree: "+STR\n +DOC\n  +MAP {}\n   =VAL :explicit\n   =VAL :entry\n   =VAL :implicit\n   =VAL :entry\n   =VAL :\n   =VAL :\n  -MAP\n -DOC\n-ST…"
+  yaml: "{\n? explicit: entry,\nimplicit: entry,\n?\n}\n"

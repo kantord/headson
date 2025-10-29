@@ -4,8 +4,8 @@ expression: out_med
 ---
 - dump: "a:\n- b\n- c\n"
   from: NimYAML tests
-  json: "{\n  \"a\": [\n    \"b\"…"
-  name: Flow Sequence in B…
-  tags: flow sequence mapp…
-  tree: "+STR\n +DOC\n  +MAP…"
+  json: "{\n  \"a\": [\n    \"b\",\n    \"c\"\n  ]\n}\n"
+  name: Flow Sequence in Block Mapping
+  tags: flow sequence mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n   +SEQ []\n    =VAL :b\n    =VAL :c\n   -SEQ\n  -MAP\n -DOC\n-STR\n"
   yaml: "a: [b, c]\n"

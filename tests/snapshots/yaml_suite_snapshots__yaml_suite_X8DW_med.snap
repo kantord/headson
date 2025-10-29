@@ -4,8 +4,8 @@ expression: out_med
 ---
 - dump: "---\nkey: value\n"
   from: "@perlpunk"
-  json: "{\n  \"key\": \"valu…"
-  name: Explicit key and…
-  tags: comment explicit…
-  tree: "+STR\n +DOC ---\n…"
-  yaml: "---\n? key\n# com…"
+  json: "{\n  \"key\": \"value\"\n}\n"
+  name: Explicit key and value seperated by comment
+  tags: comment explicit-key mapping
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :key\n   =VAL :value\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\n? key\n# comment\n: value\n"

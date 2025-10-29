@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "plain: This unqu…"
-  from: "http://www.yaml…"
-  json: "{\n  \"plain\": \"T…"
-  name: Spec Example 2.…
+- dump: "plain: This unquoted scalar spans many lines.\nquote…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2761268"
+  json: "{\n  \"plain\": \"This unquoted scalar spans many lines…"
+  name: Spec Example 2.18. Multi-line Flow Scalars
   tags: spec scalar
-  tree: "+STR\n +DOC\n  +M…"
-  yaml: "plain:\n  This u…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :plain\n   =VAL :This unq…"
+  yaml: "plain:\n  This unquoted scalar\n  spans many lines.\n…"

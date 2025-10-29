@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "&a1 !!str \"foo\"…"
-  from: "http://www.yaml…"
-  json: "{\n  \"foo\": \"ba…"
-  name: Spec Example 6…
+- dump: "&a1 !!str \"foo\": !!str bar\n&a2 baz: *a1\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2783940"
+  json: "{\n  \"foo\": \"bar\",\n  \"baz\": \"foo\"\n}\n"
+  name: Spec Example 6.23. Node Properties
   tags: spec tag alias
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "!!str &a1 \"foo…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL &a1 <tag:yaml.org,2002:str> \"foo\n   =VAL <tag:yaml.org,200…"
+  yaml: "!!str &a1 \"foo\":\n  !!str bar\n&a2 baz : *a1\n"

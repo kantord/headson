@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- from: "https://github.com/ingydotnet/yaml-pegex-pm/blob/master/test/indent.tml"
+  json: "{\n  \"foo\": {\n    \"bar\": \"baz\"\n  }\n}\n"
+  name: Simple Mapping Indent
+  tags: simple mapping indent
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   +MAP\n    =VAL :bar\n    =VAL :baz\n   -MAP\n  -MAP\n -DOC\n-STR\n"
+  yaml: "foo:\n  bar: baz\n"

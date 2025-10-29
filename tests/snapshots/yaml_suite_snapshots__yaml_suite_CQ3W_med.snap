@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Double quoted string without closing q…
+  name: Double quoted string without closing quote
   tags: error double
   tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :key\n"
   yaml: "---\nkey: \"missing closing quote\n"

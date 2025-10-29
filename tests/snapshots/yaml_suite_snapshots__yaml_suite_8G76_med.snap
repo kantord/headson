@@ -3,9 +3,9 @@ source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
 - dump: ""
-  from: "http://www.yaml.org/spec…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2780544"
   json: ""
-  name: Spec Example 6.10. Comme…
-  tags: spec comment empty scala…
+  name: Spec Example 6.10. Comment Lines
+  tags: spec comment empty scalar whitespace
   tree: "+STR\n-STR\n"
   yaml: "  # Comment\n␣␣␣\n↵\n↵\n"

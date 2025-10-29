@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "!foo \"bar\"\n...\n--- !<tag:example.com,2000:app/foo> \"bar\"\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2782728"
+  json: "\"bar\"\n\"bar\"\n"
+  name: Spec Example 6.18. Primary Tag Handle
+  tags: local-tag spec directive tag unknown-tag 1.3-err
+  tree: "+STR\n +DOC\n  =VAL <!foo> \"bar\n -DOC ...\n +DOC ---\n  =VAL <tag:example.com,2000:app/foo> \"bar\n -DOC\n-STR\n"
+  yaml: "# Private\n!foo \"bar\"\n...\n# Global\n%TAG ! tag:example.com,2000:app/\n---\n!foo \"bar\"\n"

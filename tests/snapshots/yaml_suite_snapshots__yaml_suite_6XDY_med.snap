@@ -7,5 +7,5 @@ expression: out_med
   json: "null\nnull\n"
   name: Two document start markers
   tags: header
-  tree: "+STR\n +DOC ---\n  =VAL :\n -DOC\n +DOC ---\n  =VAL…"
+  tree: "+STR\n +DOC ---\n  =VAL :\n -DOC\n +DOC ---\n  =VAL :\n -DOC\n-STR\n"
   yaml: "---\n---\n"

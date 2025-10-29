@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "? - Detroit Tigers\n …"
-  from: "http://www.yaml.org…"
-  name: Spec Example 2.11. …
-  tags: complex-key explici…
-  tree: "+STR\n +DOC\n  +MAP\n …"
-  yaml: "? - Detroit Tigers\n…"
+- dump: "? - Detroit Tigers\n  - Chicago cubs\n: - 2001-07-23\n? - New Y…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2760799"
+  name: Spec Example 2.11. Mapping between Sequences
+  tags: complex-key explicit-key spec mapping sequence
+  tree: "+STR\n +DOC\n  +MAP\n   +SEQ\n    =VAL :Detroit Tigers\n    =VAL…"
+  yaml: "? - Detroit Tigers\n  - Chicago cubs\n:\n  - 2001-07-23\n\n? [ N…"

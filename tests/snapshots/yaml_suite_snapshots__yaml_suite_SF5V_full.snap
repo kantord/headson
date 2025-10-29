@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- fail: true
+  from: "@perlpunk"
+  name: Duplicate YAML directive
+  tags: directive error
+  tree: "+STR\n"
+  yaml: "%YAML 1.2\n%YAML 1.2\n---\n"

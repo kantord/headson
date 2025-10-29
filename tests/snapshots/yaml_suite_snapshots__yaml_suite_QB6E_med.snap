@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Wrong indented multiline quoted scala…
+  name: Wrong indented multiline quoted scalar
   tags: double error indent
-  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :quote…"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :quoted\n"
   yaml: "---\nquoted: \"a\nb\nc\"\n"

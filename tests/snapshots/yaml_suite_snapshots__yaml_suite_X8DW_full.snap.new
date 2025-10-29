@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "---\nkey: value\n"
+  from: "@perlpunk"
+  json: "{\n  \"key\": \"value\"\n}\n"
+  name: Explicit key and value seperated by comment
+  tags: comment explicit-key mapping
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :key\n   =VAL :value\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\n? key\n# comment\n: value\n"

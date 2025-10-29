@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "escaped slash: \"a/…"
+- dump: "escaped slash: \"a/b\"\n"
   from: "@perlpunk"
-  json: "{\n  \"escaped slash…"
-  name: Escaped slash in d…
+  json: "{\n  \"escaped slash\": \"a/b\"\n}\n"
+  name: Escaped slash in double quotes
   tags: double
-  tree: "+STR\n +DOC\n  +MAP\n…"
-  yaml: "escaped slash: \"a…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :escaped slash\n   =VAL \"a/b\n  -MAP\n -DOC\n-STR\n"
+  yaml: "escaped slash: \"a\\/b\"\n"

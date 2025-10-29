@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "unicode: \"Sosa d…"
-  from: "http://www.yaml…"
-  json: "{\n  \"unicode\": …"
-  name: Spec Example 2.…
+- dump: "unicode: \"Sosa did fine.\\u263A\"\ncontrol: \"\\b1998\\…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2761245"
+  json: "{\n  \"unicode\": \"Sosa did fine.☺\",\n  \"control\": \"…"
+  name: Spec Example 2.17. Quoted Scalars
   tags: spec scalar
-  tree: "+STR\n +DOC\n  +M…"
-  yaml: "unicode: \"Sosa …"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :unicode\n   =VAL \"Sosa…"
+  yaml: "unicode: \"Sosa did fine.\\u263A\"\ncontrol: \"\\b1998…"

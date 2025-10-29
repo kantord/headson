@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "- !!str\n- !!null : a\n  b: !…"
+- dump: "- !!str\n- !!null : a\n  b: !!str\n- !!str : !!null\n"
   from: NimYAML tests
   name: Tags on Empty Scalars
   tags: tag scalar
-  tree: "+STR\n +DOC\n  +SEQ\n   =VAL …"
-  yaml: "- !!str\n-\n  !!null : a\n  b…"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL <tag:yaml.org,2002:str> :\n   +MAP\n    =VAL <tag:yaml.org,2002:null> :\n    =VAL :a\n    =VAL :b\n    =VAL <tag:yaml.org,2002:str> :\n   -MAP\n   +MAP\n  …"
+  yaml: "- !!str\n-\n  !!null : a\n  b: !!str\n- !!str : !!null\n"

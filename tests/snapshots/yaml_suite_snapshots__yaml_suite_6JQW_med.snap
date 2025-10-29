@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "--- |\n  \\//||\\…"
-  from: "http://www.yam…"
-  json: "\"\\\\//||\\\\/||\\n…"
-  name: Spec Example 2…
-  tags: spec scalar l…
-  tree: "+STR\n +DOC --…"
-  yaml: "# ASCII Art\n-…"
+- dump: "--- |\n  \\//||\\/||\n  // ||  ||__\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2759963"
+  json: "\"\\\\//||\\\\/||\\n// ||  ||__\\n\"\n"
+  name: "Spec Example 2.13. In literals, newlines are preserved"
+  tags: spec scalar literal comment
+  tree: "+STR\n +DOC ---\n  =VAL |\\\\//||\\\\/||\\n// ||  ||__\\n\n -DOC\n-S…"
+  yaml: "# ASCII Art\n--- |\n  \\//||\\/||\n  // ||  ||__\n"

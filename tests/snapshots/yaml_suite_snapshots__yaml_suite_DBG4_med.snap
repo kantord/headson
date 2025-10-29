@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "- ::vector\n- \":…"
-  from: "http://www.yam…"
-  json: "[\n  \"::vector\"…"
-  name: Spec Example 7…
-  tags: spec flow sequ…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "# Outside flow…"
+- dump: "- ::vector\n- \": - ()\"\n- Up, up, and away!\n- -12…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id27895…"
+  json: "[\n  \"::vector\",\n  \": - ()\",\n  \"Up, up, and awa…"
+  name: Spec Example 7.10. Plain Characters
+  tags: spec flow sequence scalar
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :::vector\n   =VAL \":…"
+  yaml: "# Outside flow collection:\n- ::vector\n- \": - (…"

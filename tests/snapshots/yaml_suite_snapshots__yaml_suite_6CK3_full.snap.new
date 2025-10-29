@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- from: "http://www.yaml.org/spec/1.2/spec.html#id2785009"
+  json: "[\n  \"foo\",\n  \"bar\",\n  \"baz\"\n]\n"
+  name: Spec Example 6.26. Tag Shorthands
+  tags: spec tag local-tag
+  tree: "+STR\n +DOC ---\n  +SEQ\n   =VAL <!local> :foo\n   =VAL <tag:yaml.org,2002:str> :bar\n   =VAL <tag:example.com,2000:app/tag!> :baz\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "%TAG !e! tag:example.com,2000:app/\n---\n- !local foo\n- !!str bar\n- !e!tag%21 baz\n"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "-\n- |\n  block …"
-  from: "http://www.yam…"
-  json: "[\n  null,\n  \"b…"
-  name: Spec Example 8…
-  tags: comment spec l…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "- # Empty\n- |…"
+- dump: "-\n- |\n  block node\n- - one\n  - two\n- one: t…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id27…"
+  json: "[\n  null,\n  \"block node\\n\",\n  [\n    \"one\",\n…"
+  name: Spec Example 8.15. Block Sequence Entry Typ…
+  tags: comment spec literal sequence
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :\n   =VAL |block …"
+  yaml: "- # Empty\n- |\n block node\n- - one # Compact…"

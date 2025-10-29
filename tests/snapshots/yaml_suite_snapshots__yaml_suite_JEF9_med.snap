@@ -2,16 +2,16 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "- |…"
-  from: "@in…"
-  json: "[\n …"
-  name: Tra…
-  tags: lit…
-  tree: +ST…
-  yaml: - …
-- dump: - …
-  json: "[\n…"
-  tree: +S…
-  yaml: - …
-- dump: - …
-  yaml: - …
+- dump: "- |+\n↵\n↵\n...\n"
+  from: "@ingydotnet"
+  json: "[\n  \"\\n\\n\"\n]\n"
+  name: Trailing whitespace in streams
+  tags: literal
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL |\\n\\…"
+  yaml: "- |+\n↵\n↵\n"
+- dump: "- |+\n\n...\n"
+  json: "[\n  \"\\n\"\n]\n"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL |\\n\n…"
+  yaml: "- |+\n␣␣␣\n"
+- dump: "- |+\n\n...\n"
+  yaml: "- |+\n␣␣␣∎\n"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "--- &a1 !!str sc…"
+- dump: "--- &a1 !!str scalar1\n--- &a2 !!str scalar2\n--- &a3 !…"
   from: "@perlpunk"
-  json: "\"scalar1\"\n\"scal…"
-  name: Various combina…
-  tags: anchor mapping …
-  tree: "+STR\n +DOC ---\n…"
-  yaml: "---\n&a1\n!!str\ns…"
+  json: "\"scalar1\"\n\"scalar2\"\n\"scalar3\"\n{\n  \"key5\": \"value4\"\n}\n…"
+  name: Various combinations of tags and anchors
+  tags: anchor mapping 1.3-err tag
+  tree: "+STR\n +DOC ---\n  =VAL &a1 <tag:yaml.org,2002:str> :s…"
+  yaml: "---\n&a1\n!!str\nscalar1\n---\n!!str\n&a2\nscalar2\n---\n&a3\n…"

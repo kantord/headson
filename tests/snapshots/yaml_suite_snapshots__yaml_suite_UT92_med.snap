@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\nmatches %: …"
-  from: "http://www.yaml…"
-  json: "{\n  \"matches %…"
-  name: Spec Example 9…
-  tags: flow spec head…
-  tree: "+STR\n +DOC ---…"
-  yaml: "---\n{ matches\n…"
+- dump: "---\nmatches %: 20\n...\n---\n...\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2801448"
+  json: "{\n  \"matches %\": 20\n}\nnull\n"
+  name: Spec Example 9.4. Explicit Documents
+  tags: flow spec header footer comment
+  tree: "+STR\n +DOC ---\n  +MAP {}\n   =VAL :matches %\n   =VAL :20\n  -MAP\n -DOC ...\n +DOC ---\n…"
+  yaml: "---\n{ matches\n% : 20 }\n...\n---\n# Empty\n...\n"

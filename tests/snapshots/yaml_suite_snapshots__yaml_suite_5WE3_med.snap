@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "explicit key:\n?…"
-  from: "http://www.yaml…"
-  json: "{\n  \"explicit k…"
-  name: Spec Example 8…
-  tags: explicit-key s…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "? explicit key…"
+- dump: "explicit key:\n? |\n  block key\n: - one\n  - …"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2…"
+  json: "{\n  \"explicit key\": null,\n  \"block key\\n\"…"
+  name: Spec Example 8.17. Explicit Block Mapping…
+  tags: explicit-key spec mapping comment literal…
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :explicit key\n …"
+  yaml: "? explicit key # Empty value\n? |\n  block …"

@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "--- !<tag:example.com,2000:app/int> 1 - 3\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2782940"
+  json: "\"1 - 3\"\n"
+  name: Spec Example 6.19. Secondary Tag Handle
+  tags: spec header tag unknown-tag
+  tree: "+STR\n +DOC ---\n  =VAL <tag:example.com,2000:app/int> :1 - 3\n -DOC\n-STR\n"
+  yaml: "%TAG !! tag:example.com,2000:app/\n---\n!!int 1 - 3 # Interval, not integer\n"

@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "a: \"double quotes\"\n…"
-  from: "XW4D, modified for …"
-  name: Various Trailing Co…
-  tags: anchor comment fold…
-  tree: "+STR\n +DOC\n  +MAP\n…"
-  yaml: "a: \"double\n  quote…"
+- dump: "a: \"double quotes\"\nb: plain value\nc: d\n? - seq1\n: - seq2\ne: &node\n- x:…"
+  from: "XW4D, modified for YAML 1.3"
+  name: "Various Trailing Comments [1.3]"
+  tags: anchor comment folded mapping 1.3-mod
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n   =VAL \"double quotes\n   =VAL :b\n   =VAL…"
+  yaml: "a: \"double\n  quotes\" # lala\nb: plain\n value  # lala\nc  : #lala\n  d\n? …"

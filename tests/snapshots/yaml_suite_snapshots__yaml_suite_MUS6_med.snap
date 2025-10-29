@@ -5,10 +5,19 @@ expression: out_med
 - also: ZYU8
   fail: true
   from: "@ingydotnet"
-  name: Directive v…
+  name: Directive variants
   tags: directive
   tree: "+STR\n"
-  yaml: "%YAML 1.1#.…"
-- yaml: "%YAML ——» 1…"
-- yaml: "%YAMLL 1.1…"
-# 4 more items
+  yaml: "%YAML 1.1#...\n---\n"
+- dump: null
+  fail: true
+  yaml: "%YAML 1.2…"
+- dump: "---\n"
+  json: "null\n"
+  tree: "+STR\n +DO…"
+  yaml: "%YAML  1.…"
+- yaml: "%YAML ——» 1.1\n---\n"
+- yaml: "%YAML 1.1…"
+- note: These 2 a…
+  yaml: "%YAM 1.1…"
+- yaml: "%YAMLL 1.1\n---\n"

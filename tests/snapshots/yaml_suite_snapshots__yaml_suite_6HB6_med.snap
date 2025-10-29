@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "Not indented:\n …"
-  from: "http://www.yaml…"
-  json: "{\n  \"Not indent…"
-  name: Spec Example 6…
-  tags: comment flow s…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "  # Leading co…"
+- dump: "Not indented:\n  By one space: |\n    By four…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id27…"
+  json: "{\n  \"Not indented\": {\n    \"By one space\": \"…"
+  name: Spec Example 6.1. Indentation Spaces
+  tags: comment flow spec indent upto-1.2 whitespac…
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :Not indented\n   …"
+  yaml: "  # Leading comment line spaces are\n   # ne…"

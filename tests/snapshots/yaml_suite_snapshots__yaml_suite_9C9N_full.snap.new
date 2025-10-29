@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- fail: true
+  from: "@perlpunk"
+  name: Wrong indented flow sequence
+  tags: error flow indent sequence
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :flow\n   +SEQ []\n    =VAL :a\n"
+  yaml: "---\nflow: [a,\nb,\nc]\n"

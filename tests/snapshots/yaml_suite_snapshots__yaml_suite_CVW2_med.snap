@@ -6,5 +6,5 @@ expression: out_med
   from: "@perlpunk"
   name: Invalid comment after comma
   tags: comment error flow sequence
-  tree: "+STR\n +DOC ---\n  +SEQ []\n   =VAL :a\n  …"
+  tree: "+STR\n +DOC ---\n  +SEQ []\n   =VAL :a\n   =VAL :b\n   =VAL :c\n"
   yaml: "---\n[ a, b, c,#invalid\n]\n"

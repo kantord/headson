@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "- - YAML: separate\n-…"
-  from: "@perlpunk, Spec Exam…"
-  name: Single Pair Implici…
-  tags: flow mapping sequen…
-  tree: "+STR\n +DOC\n  +SEQ\n …"
-  yaml: "- [ YAML : separate…"
+- dump: "- - YAML: separate\n- - \"JSON like\": adjacent\n- - ? JSON: like\n    : adjacent\n"
+  from: "@perlpunk, Spec Example 7.21"
+  name: Single Pair Implicit Entries
+  tags: flow mapping sequence
+  tree: "+STR\n +DOC\n  +SEQ\n   +SEQ []\n    +MAP {}\n     =VAL :YAML\n     =VAL :separate\n    -MAP…"
+  yaml: "- [ YAML : separate ]\n- [ \"JSON like\":adjacent ]\n- [ {JSON: like}:adjacent ]\n"

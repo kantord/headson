@@ -4,8 +4,8 @@ expression: out_med
 ---
 - dump: "a: b c\nd: e f\n"
   from: NimYAML tests
-  json: "{\n  \"a\": \"b c\",\n  …"
-  name: Multiline Scalar i…
+  json: "{\n  \"a\": \"b c\",\n  \"d\": \"e f\"\n}\n"
+  name: Multiline Scalar in Mapping
   tags: scalar
-  tree: "+STR\n +DOC\n  +MAP…"
-  yaml: "a: b\n c\nd:\n e\n  f…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n   =VAL :b c\n   =VAL :d\n   =VAL :e f\n  -MAP\n -DOC\n-STR\n"
+  yaml: "a: b\n c\nd:\n e\n  f\n"

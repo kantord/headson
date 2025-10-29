@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "key: value\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2780696"
+  json: "{\n  \"key\": \"value\"\n}\n"
+  name: Spec Example 6.11. Multi-Line Comments
+  tags: spec comment
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   =VAL :value\n  -MAP\n -DOC\n-STR\n"
+  yaml: "key:    # Comment\n        # lines\n  value\n↵\n↵\n"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "a:\n- b\n- - c\n …"
-  from: "http://www.yam…"
-  json: "{\n  \"a\": [\n   …"
-  name: Spec Example …
-  tags: explicit-key …
-  tree: "+STR\n +DOC\n  …"
-  yaml: "? a\n: -»b\n  -…"
+- dump: "a:\n- b\n- - c\n  - d\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2778101"
+  json: "{\n  \"a\": [\n    \"b\",\n    [\n      \"c\",\n      \"d\"\n   …"
+  name: Spec Example 6.2. Indentation Indicators
+  tags: explicit-key spec libyaml-err indent whitespace se…
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n   +SEQ\n    =VAL :b\n …"
+  yaml: "? a\n: -»b\n  -  -—»c\n     - d\n"

@@ -4,8 +4,8 @@ expression: out_med
 ---
 - dump: "- 1\n- 2\n- 3\n"
   from: "@ingydotnet"
-  json: "[\n  1,\n  2,\n  3\n…"
-  name: Trailing spaces…
+  json: "[\n  1,\n  2,\n  3\n]\n"
+  name: Trailing spaces after flow collection
   tags: flow whitespace
-  tree: "+STR\n +DOC\n  +S…"
-  yaml: "  [1, 2, 3]␣␣\n␣…"
+  tree: "+STR\n +DOC\n  +SEQ []\n   =VAL :1\n   =VAL :2\n   =VAL :3\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "  [1, 2, 3]␣␣\n␣␣∎\n"

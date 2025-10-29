@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "Folding: \"Empt…"
-  from: "5GBF, modified…"
-  json: "{\n  \"Folding\":…"
-  name: Spec Example 6…
-  tags: literal spec s…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "Folding:\n  \"Em…"
+- dump: "Folding: \"Empty line\\nas a line feed\"\nChomping: |\n…"
+  from: "5GBF, modified for YAML 1.3"
+  json: "{\n  \"Folding\": \"Empty line\\nas a line feed\",\n  \"Ch…"
+  name: "Spec Example 6.5. Empty Lines [1.3]"
+  tags: literal spec scalar 1.3-mod
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :Folding\n   =VAL \"Empty …"
+  yaml: "Folding:\n  \"Empty line\n\n  as a line feed\"\nChomping…"

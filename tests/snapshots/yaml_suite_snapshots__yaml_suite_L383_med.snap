@@ -5,7 +5,7 @@ expression: out_med
 - dump: "--- foo\n--- foo\n"
   from: "@ingydotnet"
   json: "\"foo\"\n\"foo\"\n"
-  name: Two scalar docs with …
+  name: Two scalar docs with trailing comments
   tags: comment
-  tree: "+STR\n +DOC ---\n  =VA…"
-  yaml: "--- foo  # comment\n-…"
+  tree: "+STR\n +DOC ---\n  =VAL :foo\n -DOC\n +DOC ---\n  =VAL :foo\n -DOC\n-STR\n"
+  yaml: "--- foo  # comment\n--- foo  # comment\n"

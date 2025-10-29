@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Invalid block mapping key on same li…
+  name: Invalid block mapping key on same line as previous key
   tags: error flow mapping
-  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :x\n   …"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :x\n   +MAP {}\n    =VAL :y\n    =VAL :z\n   -MAP\n"
   yaml: "---\nx: { y: z }in: valid\n"

@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- from: "https://github.com/yam…"
-  json: "{\n  \"canonical\": \"R0lG…"
+- from: "https://github.com/yaml/pyyaml/blob/master/tests/data/construct-binary-…"
+  json: "{\n  \"canonical\": \"R0lGODlhDAAMAIQAAP//9/X17unp5WZmZgAAAOfn515eXvPz7Y6Oj…"
   name: Construct Binary
   tags: tag unknown-tag
-  tree: "+STR\n +DOC\n  +MAP\n   =…"
-  yaml: "canonical: !!binary \"…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :canonical\n   =VAL <tag:yaml.org,2002:binary>…"
+  yaml: "canonical: !!binary \"\\\n R0lGODlhDAAMAIQAAP//9/X17unp5WZmZgAAAOfn515eXvP…"

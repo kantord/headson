@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "'foo: bar\\': baz'…"
+- dump: "'foo: bar\\': baz'\n"
   from: "@perlpunk"
-  json: "{\n  \"foo: bar\\\\\"…"
-  name: Backslashes in s…
+  json: "{\n  \"foo: bar\\\\\": \"baz'\"\n}\n"
+  name: Backslashes in singlequotes
   tags: scalar single
-  tree: "+STR\n +DOC\n  +MA…"
-  yaml: "'foo: bar\\': baz…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL 'foo: bar\\\\\n   =VAL :baz'\n  -MAP\n -DOC\n-STR\n"
+  yaml: "'foo: bar\\': baz'\n"

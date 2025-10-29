@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "- a?string\n- anot…"
+- dump: "- a?string\n- another ? string\n- key: value?\n- - a?string\n- - a…"
   from: "@perlpunk"
-  json: "[\n  \"a?string\",\n …"
-  name: Question marks in…
+  json: "[\n  \"a?string\",\n  \"another ? string\",\n  {\n    \"key\": \"value?\"…"
+  name: Question marks in scalars
   tags: flow scalar
-  tree: "+STR\n +DOC\n  +SEQ…"
-  yaml: "- a?string\n- ano…"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :a?string\n   =VAL :another ? string…"
+  yaml: "- a?string\n- another ? string\n- key: value?\n- [a?string]\n- [a…"

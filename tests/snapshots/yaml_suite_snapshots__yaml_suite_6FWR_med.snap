@@ -2,11 +2,11 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "ab\n\n \n"…
-  emit: "--- |\n  ab\n…"
-  from: NimYAML tes…
-  json: "ab\n\n \n"…
-  name: Block Scala…
-  tags: literal sca…
-  tree: "+STR\n +DOC …"
-  yaml: "--- |+\n ab\n…"
+- dump: "\"ab\\n\\n \\n\"\n...\n"
+  emit: "--- |\n  ab\n\n␣␣␣\n...\n"
+  from: NimYAML tests
+  json: "\"ab\\n\\n \\n\"\n"
+  name: Block Scalar Keep
+  tags: literal scalar whitespace
+  tree: "+STR\n +DOC ---\n  =VAL |ab\\n\\n \\n\n -DOC ...\n-STR\n"
+  yaml: "--- |+\n ab\n␣\n␣␣\n...\n"

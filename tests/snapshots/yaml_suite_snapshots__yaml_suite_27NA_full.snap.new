@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "--- text\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2774058"
+  json: "\"text\"\n"
+  name: Spec Example 5.9. Directive Indicator
+  tags: spec directive 1.3-err
+  tree: "+STR\n +DOC ---\n  =VAL :text\n -DOC\n-STR\n"
+  yaml: "%YAML 1.2\n--- text\n"

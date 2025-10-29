@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "block sequence:…"
-  from: "http://www.yaml…"
-  json: "{\n  \"block sequ…"
-  name: Spec Example 8.…
-  tags: mapping spec se…
-  tree: "+STR\n +DOC\n  +M…"
-  yaml: block sequence…
+- dump: "block sequence:\n- one\n- two: three\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2797596"
+  json: "{\n  \"block sequence\": [\n    \"one\",\n    {\n      \"two\": \"three\"…"
+  name: Spec Example 8.14. Block Sequence
+  tags: mapping spec sequence
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :block sequence\n   +SEQ\n    =VAL :…"
+  yaml: "block sequence:\n  - one\n  - two : three\n"

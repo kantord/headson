@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- from: "http://www.yaml.org/s…"
-  json: "{\n  \"time\": \"20:03:20…"
-  name: Spec Example 2.8. Pla…
+- from: "http://www.yaml.org/spec/1.2/spec.html#id2760519"
+  json: "{\n  \"time\": \"20:03:20\",\n  \"player\": \"Sammy Sosa\",\n  \"action\": \"stri…"
+  name: Spec Example 2.8. Play by Play Feed from a Game
   tags: spec header
-  tree: "+STR\n +DOC ---\n  +MAP…"
-  yaml: "---\ntime: 20:03:20\np…"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :time\n   =VAL :20:03:20\n   =VAL :pla…"
+  yaml: "---\ntime: 20:03:20\nplayer: Sammy Sosa\naction: strike (miss)\n...\n--…"

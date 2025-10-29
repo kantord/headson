@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "literal: |\n  va…"
-  from: "M5C3, modified…"
-  json: "{\n  \"literal\":…"
-  name: Spec Example 8…
-  tags: indent spec li…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "literal: |2\n  …"
+- dump: "literal: |\n  value\nfolded: !foo >\n  value\n"
+  from: "M5C3, modified for YAML 1.3"
+  json: "{\n  \"literal\": \"value\\n\",\n  \"folded\": \"value\\n…"
+  name: "Spec Example 8.21. Block Scalar Nodes [1.3]"
+  tags: indent spec literal folded tag local-tag 1.3-m…
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :literal\n   =VAL |va…"
+  yaml: "literal: |2\n  value\nfolded: !foo >1\n value\n"

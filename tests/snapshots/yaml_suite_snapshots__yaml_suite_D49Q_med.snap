@@ -6,5 +6,5 @@ expression: out_med
   from: "@perlpunk"
   name: Multiline single quoted implicit keys
   tags: error single mapping
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL 'a\\\\nb\n   =…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL 'a\\\\nb\n   =VAL :1\n"
   yaml: "'a\\nb': 1\n'c\n d': 1\n"

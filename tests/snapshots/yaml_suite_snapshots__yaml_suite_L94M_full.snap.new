@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "!!str a: !!int 47\nc: !!str d\n"
+  from: NimYAML tests
+  json: "{\n  \"a\": 47,\n  \"c\": \"d\"\n}\n"
+  name: Tags in Explicit Mapping
+  tags: explicit-key tag mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL <tag:yaml.org,2002:str> :a\n   =VAL <tag:yaml.org,2002:int> :47\n   =VAL :c\n   =VAL <tag:yaml.org,2002:str> :d\n  -MAP\n -DOC\n-STR\n"
+  yaml: "? !!str a\n: !!int 47\n? c\n: !!str d\n"

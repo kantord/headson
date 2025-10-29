@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "---\nhr:\n- Mark McGwire\n- Sammy Sosa\nrbi:\n- Sammy Sosa\n- Ken Griffey\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2760633"
+  json: "{\n  \"hr\": [\n    \"Mark McGwire\",\n    \"Sammy Sosa\"\n  ],\n  \"rbi\": [\n    \"Sammy Sosa\",\n    \"Ken Griffey\"\n  ]\n}\n"
+  name: Spec Example 2.9. Single Document with Two Comments
+  tags: mapping sequence spec comment
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :hr\n   +SEQ\n    =VAL :Mark McGwire\n    =VAL :Sammy Sosa\n   -SEQ\n   =VAL :rbi\n   +SEQ\n    =VAL :Sammy Sosa\n    =VAL :Ken Griffey\n   -SEQ\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\nhr: # 1998 hr ranking\n  - Mark McGwire\n  - Sammy Sosa\nrbi:\n  # 1998 rbi ranking\n  - Sammy Sosa\n  - Ken Griffey\n"

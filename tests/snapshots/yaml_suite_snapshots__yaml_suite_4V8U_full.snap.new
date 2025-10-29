@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "--- plain\\value\\with\\backslashes\n"
+  from: "@perlpunk"
+  json: "\"plain\\\\value\\\\with\\\\backslashes\"\n"
+  name: Plain scalar with backslashes
+  tags: scalar
+  tree: "+STR\n +DOC ---\n  =VAL :plain\\\\value\\\\with\\\\backslashes\n -DOC\n-STR\n"
+  yaml: "---\nplain\\value\\with\\backslashes\n"

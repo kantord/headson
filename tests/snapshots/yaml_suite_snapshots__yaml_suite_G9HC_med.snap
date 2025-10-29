@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Invalid anchor in zero indented se…
+  name: Invalid anchor in zero indented sequence
   tags: anchor error sequence
-  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :se…"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :seq\n"
   yaml: "---\nseq:\n&anchor\n- a\n- b\n"

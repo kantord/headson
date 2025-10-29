@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@ingydotnet"
-  name: Need document footer before…
-  tags: directive error footer tag …
-  tree: "+STR\n +DOC\n  =VAL <!foo> \"b…"
-  yaml: "!foo \"bar\"\n%TAG ! tag:exam…"
+  name: Need document footer before directives
+  tags: directive error footer tag unknown-tag
+  tree: "+STR\n +DOC\n  =VAL <!foo> \"bar\n"
+  yaml: "!foo \"bar\"\n%TAG ! tag:example.com,2000:app/\n---\n!foo \"bar\"\n"

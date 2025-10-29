@@ -6,5 +6,5 @@ expression: out_med
   from: "@perlpunk"
   name: Wrong indented sequence item
   tags: error sequence indent
-  tree: "+STR\n +DOC\n  +SEQ\n   +MAP\n    =VAL :key\n    =V…"
+  tree: "+STR\n +DOC\n  +SEQ\n   +MAP\n    =VAL :key\n    =VAL :value\n   -MAP\n"
   yaml: "- key: value\n - item1\n"

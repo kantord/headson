@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "key: 'value with\n\n  tabs'\n"
+  from: "@perlpunk"
+  json: "{\n  \"key\": \"value with\\ntabs\"\n}\n"
+  name: Multiline plain value with tabs on empty lines
+  tags: scalar whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   =VAL :value with\\ntabs\n  -MAP\n -DOC\n-STR\n"
+  yaml: "key:\n  value\n  with\n  —»\n  tabs\n"

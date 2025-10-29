@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "american:\n- Bos…"
-  from: "http://www.yam…"
-  json: "{\n  \"american\"…"
-  name: Spec Example 2…
-  tags: spec mapping s…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "american:\n  - …"
+- dump: "american:\n- Boston Red Sox\n- Detroit Tigers\n-…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2759…"
+  json: "{\n  \"american\": [\n    \"Boston Red Sox\",\n    \"…"
+  name: Spec Example 2.3. Mapping Scalars to Sequence…
+  tags: spec mapping sequence
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :american\n   +SEQ\n …"
+  yaml: "american:\n  - Boston Red Sox\n  - Detroit Tige…"

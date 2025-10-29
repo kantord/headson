@@ -6,5 +6,5 @@ expression: out_med
   from: "@perlpunk"
   name: Flow sequence with invalid extra comma
   tags: error flow sequence
-  tree: "+STR\n +DOC ---\n  +SEQ []\n   =VAL :a\n   =VA…"
+  tree: "+STR\n +DOC ---\n  +SEQ []\n   =VAL :a\n   =VAL :b\n   =VAL :c\n"
   yaml: "---\n[ a, b, c, , ]\n"

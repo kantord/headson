@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "sequence:\n- one…"
-  from: "http://www.yam…"
-  json: "{\n  \"sequence\"…"
-  name: Spec Example 5…
-  tags: explicit-key s…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "sequence:\n- on…"
+- dump: "sequence:\n- one\n- two\nmapping:\n  sky: blue…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2…"
+  json: "{\n  \"sequence\": [\n    \"one\",\n    \"two\"\n  ]…"
+  name: Spec Example 5.3. Block Structure Indicato…
+  tags: explicit-key spec mapping sequence
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :sequence\n   +SE…"
+  yaml: "sequence:\n- one\n- two\nmapping:\n  ? sky\n  :…"

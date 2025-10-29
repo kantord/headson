@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- from: "https://github.com/ing…"
-  json: "[\n  \"foo\",\n  \"bar\",\n  …"
-  name: Multiple Entry Block S…
+- from: "https://github.com/ingydotnet/yaml-pegex-pm/blob/master/test/sequence.tml"
+  json: "[\n  \"foo\",\n  \"bar\",\n  42\n]\n"
+  name: Multiple Entry Block Sequence
   tags: sequence
-  tree: "+STR\n +DOC\n  +SEQ\n   =…"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :foo\n   =VAL :bar\n   =VAL :42\n  -SEQ\n -DOC\n-STR\n"
   yaml: "- foo\n- bar\n- 42\n"

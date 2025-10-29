@@ -3,9 +3,9 @@ source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
 - dump: "- foo\n- bar\n- 42\n"
-  from: "https://github.co…"
-  json: "[\n  \"foo\",\n  \"ba…"
+  from: "https://github.com/ingydotnet/yaml-pegex-pm/blob/master/test/sequence.tml"
+  json: "[\n  \"foo\",\n  \"bar\",\n  42\n]\n"
   name: Flow Sequence
   tags: flow sequence
-  tree: "+STR\n +DOC\n  +SE…"
+  tree: "+STR\n +DOC\n  +SEQ []\n   =VAL :foo\n   =VAL :bar\n   =VAL :42\n  -SEQ\n -DOC\n-STR\n"
   yaml: "[foo, bar, 42]\n"

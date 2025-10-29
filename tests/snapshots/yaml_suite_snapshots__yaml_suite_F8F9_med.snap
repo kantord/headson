@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "strip: |-\n  # …"
-  from: "http://www.yam…"
-  json: "{\n  \"strip\": \"…"
-  name: Spec Example 8…
-  tags: spec literal s…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: " # Strip\n  # C…"
+- dump: "strip: |-\n  # text\nclip: |\n  # text\nkeep: |+…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id279…"
+  json: "{\n  \"strip\": \"# text\",\n  \"clip\": \"# text\\n\",…"
+  name: Spec Example 8.5. Chomping Trailing Lines
+  tags: spec literal scalar comment
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :strip\n   =VAL |# …"
+  yaml: " # Strip\n  # Comments:\nstrip: |-\n  # text\n␣…"

@@ -3,15 +3,19 @@ source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
 - fail: true
-  from: "@in…"
-  name: Tab…
-  tags: whi…
-  tree: +ST…
-  yaml: foo…
+  from: "@ingydotnet"
+  name: Tabs in various contexts
+  tags: whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n"
+  yaml: "foo: |\n————»\nbar: 1\n"
+- {}
+- {}
 - fail: true
-  yaml: - —…
-- dump: - -…
-  json: "[\n …"
-  tree: +ST…
-  yaml: -—…
-# 8 more items
+  yaml: "- ——»-\n"
+- {}
+- {}
+- dump: "- -1\n"
+  json: "[\n  -1\n]\n"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :-1\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "-———»-1\n"
+# 4 more items

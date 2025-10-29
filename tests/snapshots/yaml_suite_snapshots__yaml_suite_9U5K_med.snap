@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\n- item: Sup…"
-  from: "http://www.yaml…"
-  json: "[\n  {\n    \"ite…"
-  name: Spec Example 2…
-  tags: spec mapping s…
-  tree: "+STR\n +DOC ---…"
-  yaml: "---\n# Products…"
+- dump: "---\n- item: Super Hoop\n  quantity: 1\n- item: Ba…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id27608…"
+  json: "[\n  {\n    \"item\": \"Super Hoop\",\n    \"quantity\"…"
+  name: Spec Example 2.12. Compact Nested Mapping
+  tags: spec mapping sequence
+  tree: "+STR\n +DOC ---\n  +SEQ\n   +MAP\n    =VAL :item\n …"
+  yaml: "---\n# Products purchased\n- item    : Super Hoo…"

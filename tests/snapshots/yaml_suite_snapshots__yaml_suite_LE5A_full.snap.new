@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- from: "http://www.yaml.org/spec/1.2/spec.html#id2793490"
+  json: "[\n  \"a\",\n  \"b\",\n  \"c\",\n  \"c\",\n  \"\"\n]\n"
+  name: Spec Example 7.24. Flow Nodes
+  tags: spec tag alias
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL <tag:yaml.org,2002:str> \"a\n   =VAL 'b\n   =VAL &anchor \"c\n   =ALI *anchor\n   =VAL <tag:yaml.org,2002:str> :\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "- !!str \"a\"\n- 'b'\n- &anchor \"c\"\n- *anchor\n- !!str\n"

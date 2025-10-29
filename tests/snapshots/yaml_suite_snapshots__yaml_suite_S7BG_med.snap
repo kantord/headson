@@ -7,5 +7,5 @@ expression: out_med
   json: "[\n  \":,\"\n]\n"
   name: Colon followed by comma
   tags: scalar
-  tree: "+STR\n +DOC ---\n  +SEQ\n   =VAL ::,\n  -SEQ\n -…"
+  tree: "+STR\n +DOC ---\n  +SEQ\n   =VAL ::,\n  -SEQ\n -DOC\n-STR\n"
   yaml: "---\n- :,\n"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\nseq: &anchor…"
+- dump: "---\nseq: &anchor\n- a\n- b\n"
   from: "@perlpunk"
-  json: "{\n  \"seq\": [\n  …"
-  name: Anchor before z…
-  tags: anchor indent s…
-  tree: "+STR\n +DOC ---\n…"
-  yaml: "---\nseq:\n &anch…"
+  json: "{\n  \"seq\": [\n    \"a\",\n    \"b\"\n  ]\n}\n"
+  name: Anchor before zero indented sequence
+  tags: anchor indent sequence
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :seq\n   +SEQ &anchor\n    =VAL :a\n    =VAL :b\n   -SEQ\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\nseq:\n &anchor\n- a\n- b\n"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "Mark McGwire:\n …"
-  from: "http://www.yaml…"
-  json: "{\n  \"Mark McGwi…"
-  name: Spec Example 2…
-  tags: flow spec mapp…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "Mark McGwire: …"
+- dump: "Mark McGwire:\n  hr: 65\n  avg: 0.278\nSammy Sosa:\n …"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2760372"
+  json: "{\n  \"Mark McGwire\": {\n    \"hr\": 65,\n    \"avg\": 0.…"
+  name: Spec Example 2.6. Mapping of Mappings
+  tags: flow spec mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :Mark McGwire\n   +MAP {…"
+  yaml: "Mark McGwire: {hr: 65, avg: 0.278}\nSammy Sosa: {…"

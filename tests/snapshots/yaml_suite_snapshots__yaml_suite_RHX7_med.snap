@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: YAML directive without document end…
+  name: YAML directive without document end marker
   tags: directive error
-  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :key…"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :key\n   =VAL :value\n"
   yaml: "---\nkey: value\n%YAML 1.2\n---\n"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "sequence: !!seq…"
-  from: "http://www.yaml…"
-  json: "{\n  \"sequence\":…"
-  name: Spec Example 8…
-  tags: sequence mappi…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "sequence: !!se…"
+- dump: "sequence: !!seq\n- entry\n- !!seq\n  - nested\nmap…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id28000…"
+  json: "{\n  \"sequence\": [\n    \"entry\",\n    [\n      \"ne…"
+  name: Spec Example 8.22. Block Collection Nodes
+  tags: sequence mapping tag
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :sequence\n   +SEQ <t…"
+  yaml: "sequence: !!seq\n- entry\n- !!seq\n - nested\nmapp…"

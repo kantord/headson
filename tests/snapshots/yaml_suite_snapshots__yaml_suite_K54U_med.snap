@@ -7,5 +7,5 @@ expression: out_med
   json: "\"scalar\"\n"
   name: Tab after document header
   tags: header whitespace
-  tree: "+STR\n +DOC ---\n  =VAL :scalar…"
+  tree: "+STR\n +DOC ---\n  =VAL :scalar\n -DOC\n-STR\n"
   yaml: "---»scalar\n"

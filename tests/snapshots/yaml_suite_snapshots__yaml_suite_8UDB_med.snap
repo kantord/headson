@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: - "double quote…
-  from: "http://www.yaml…"
-  json: "[\n  \"double quo…"
-  name: Spec Example 7…
-  tags: spec flow sequ…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "[\n\"double\n quo…"
+- dump: "- \"double quoted\"\n- 'single quoted'\n- plain tex…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id279072…"
+  json: "[\n  \"double quoted\",\n  \"single quoted\",\n  \"pla…"
+  name: Spec Example 7.14. Flow Sequence Entries
+  tags: spec flow sequence
+  tree: "+STR\n +DOC\n  +SEQ []\n   =VAL \"double quoted\n  …"
+  yaml: "[\n\"double\n quoted\", 'single\n           quoted'…"

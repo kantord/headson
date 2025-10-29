@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Trailing content after quoted v…
+  name: Trailing content after quoted value
   tags: error mapping double
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key…"
-  yaml: "key1: \"quoted1\"\nkey2: \"quoted2…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key1\n   =VAL \"quoted1\n   =VAL :key2\n   =VAL \"quoted2\n"
+  yaml: "key1: \"quoted1\"\nkey2: \"quoted2\" trailing content\nkey3: \"quoted3\"\n"

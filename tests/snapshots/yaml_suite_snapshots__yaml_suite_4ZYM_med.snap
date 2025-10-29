@@ -2,11 +2,11 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "plain: text…"
-  emit: "plain: text…"
-  from: "http://www.…"
-  json: "{\n  \"plain\"…"
-  name: Spec Exampl…
-  tags: spec scalar…
-  tree: "+STR\n +DOC\n…"
-  yaml: "plain: tex…"
+- dump: "plain: text lines\nquoted: \"text lin…"
+  emit: "plain: text lines\nquoted: \"text lin…"
+  from: "http://www.yaml.org/spec/1.2/spec.h…"
+  json: "{\n  \"plain\": \"text lines\",\n  \"quote…"
+  name: Spec Example 6.4. Line Prefixes
+  tags: spec scalar literal double upto-1.2…
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :plain\n  …"
+  yaml: "plain: text\n  lines\nquoted: \"text\n …"

@@ -2,11 +2,11 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "foo: 1\nbar:…"
-  emit: "foo: 1\nbar:…"
-  from: IRC discuss…
-  json: "{\n  \"foo\": …"
+- dump: "foo: 1\nbar: 2\ntext: \"a\\n  \\nb\\n\\nc\\n…"
+  emit: "foo: 1\nbar: 2\ntext: |\n  a\n␣␣␣␣\n  b\n\n…"
+  from: IRC discussion with leont
+  json: "{\n  \"foo\": 1,\n  \"bar\": 2,\n  \"text\": …"
   name: Blank lines
-  tags: comment lit…
-  tree: "+STR\n +DOC\n…"
-  yaml: "foo: 1\n\nbar…"
+  tags: comment literal scalar whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   =…"
+  yaml: "foo: 1\n\nbar: 2\n␣␣␣␣\ntext: |\n  a\n␣␣␣…"

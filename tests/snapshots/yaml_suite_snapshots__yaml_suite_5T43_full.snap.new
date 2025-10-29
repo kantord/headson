@@ -1,0 +1,13 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "- key: value\n- key: :value\n"
+  emit: "- \"key\": value\n- \"key\": :value\n"
+  from: "@perlpunk"
+  json: "[\n  {\n    \"key\": \"value\"\n  },\n  {\n    \"key\": \":value\"\n  }\n]\n"
+  name: Colon at the beginning of adjacent flow scalar
+  tags: flow mapping scalar
+  tree: "+STR\n +DOC\n  +SEQ\n   +MAP {}\n    =VAL \"key\n    =VAL :value\n   -MAP\n   +MAP {}\n    =VAL \"key\n    =VAL ::value\n   -MAP\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "- { \"key\":value }\n- { \"key\"::value }\n"

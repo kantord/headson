@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\n- Mark McGwi…"
-  from: "http://www.yaml.…"
-  json: "[\n  \"Mark McGwir…"
-  name: Spec Example 2.…
+- dump: "---\n- Mark McGwire\n- Sammy Sosa\n- Ken Griffey\n---…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2760493"
+  json: "[\n  \"Mark McGwire\",\n  \"Sammy Sosa\",\n  \"Ken Griffe…"
+  name: Spec Example 2.7. Two Documents in a Stream
   tags: spec header
-  tree: "+STR\n +DOC ---\n…"
-  yaml: "# Ranking of 19…"
+  tree: "+STR\n +DOC ---\n  +SEQ\n   =VAL :Mark McGwire\n   =…"
+  yaml: "# Ranking of 1998 home runs\n---\n- Mark McGwire\n-…"

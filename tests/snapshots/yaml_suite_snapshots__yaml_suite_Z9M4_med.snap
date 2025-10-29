@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\n- !<tag:exa…"
-  from: "http://www.yaml…"
+- dump: "---\n- !<tag:example.com,2000:app/foo> \"bar\"\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2783726"
   json: "[\n  \"bar\"\n]\n"
-  name: Spec Example 6.…
-  tags: spec header tag…
-  tree: "+STR\n +DOC ---\n…"
-  yaml: "%TAG !e! tag:e…"
+  name: Spec Example 6.22. Global Tag Prefix
+  tags: spec header tag unknown-tag
+  tree: "+STR\n +DOC ---\n  +SEQ\n   =VAL <tag:example.com,2000:app/foo> \"bar\n  -SEQ\n -DOC\n-ST…"
+  yaml: "%TAG !e! tag:example.com,2000:app/\n---\n- !e!foo \"bar\"\n"

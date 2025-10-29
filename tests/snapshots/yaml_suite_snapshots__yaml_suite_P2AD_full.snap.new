@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "- |\n  literal\n- >2\n   folded\n- |+\n  keep\n\n- >2-\n   strip\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2793888"
+  json: "[\n  \"literal\\n\",\n  \" folded\\n\",\n  \"keep\\n\\n\",\n  \" strip\"\n]\n"
+  name: Spec Example 8.1. Block Scalar Header
+  tags: spec literal folded comment scalar
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL |literal\\n\n   =VAL > folded\\n\n   =VAL |keep\\n\\n\n   =VAL > strip\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "- | # Empty header↓\n literal\n- >1 # Indentation indicator↓\n  folded\n- |+ # Chomping indicator↓\n keep\n\n- >1- # Both indicators↓\n  strip\n"

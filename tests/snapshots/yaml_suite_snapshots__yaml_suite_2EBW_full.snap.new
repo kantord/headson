@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "a!\"#$%&'()*+,-./09:;<=>?@AZ[\\]^_`az{|}~: safe\n?foo: safe question mark\n:foo: safe colon\n-foo: safe dash\nthis is#not: a comment\n"
+  from: "@perlpunk"
+  json: "{\n  \"a!\\\"#$%&'()*+,-./09:;<=>?@AZ[\\\\]^_`az{|}~\": \"safe\",\n  \"?foo\": \"safe question mark\",\n  \":foo\": \"safe colon\",\n  \"-foo\": \"safe dash\",\n  \"this is#not\": \"a comment\"\n}\n"
+  name: Allowed characters in keys
+  tags: mapping scalar
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a!\"#$%&'()*+,-./09:;<=>?@AZ[\\\\]^_`az{|}~\n   =VAL :safe\n   =VAL :?foo\n   =VAL :safe question mark\n   =VAL ::foo\n   =VAL :safe colon\n   =VAL :-foo\n   =VAL :safe dash\n   =VAL :this is#not\n   =VAL :a comment\n  -MAP\n -DOC\n-STR\n"
+  yaml: "a!\"#$%&'()*+,-./09:;<=>?@AZ[\\]^_`az{|}~: safe\n?foo: safe question mark\n:foo: safe colon\n-foo: safe dash\nthis is#not: a comment\n"

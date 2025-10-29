@@ -1,0 +1,13 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "---\n?foo: bar\nbar: 42\n"
+  emit: "?foo: bar\nbar: 42\n"
+  from: "@ingydotnet"
+  json: "{\n  \"?foo\" : \"bar\",\n  \"bar\" : 42\n}\n"
+  name: Question mark at start of flow key
+  tags: flow
+  tree: "+STR\n +DOC\n  +MAP {}\n   =VAL :?foo\n   =VAL :bar\n   =VAL :bar\n   =VAL :42\n  -MAP\n -DOC\n-STR\n"
+  yaml: "{ ?foo: bar,\nbar: 42\n}\n"

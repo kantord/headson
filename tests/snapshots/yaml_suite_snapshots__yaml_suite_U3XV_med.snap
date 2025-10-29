@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\ntop1: &node1…"
+- dump: "---\ntop1: &node1\n  &k1 key1: one\ntop2: &node2\n  key2: two…"
   from: "@perlpunk"
-  json: "{\n  \"top1\": {\n  …"
-  name: Node and Mappin…
-  tags: anchor comment …
-  tree: "+STR\n +DOC ---\n…"
-  yaml: "---\ntop1: &node…"
+  json: "{\n  \"top1\": {\n    \"key1\": \"one\"\n  },\n  \"top2\": {\n    \"key…"
+  name: Node and Mapping Key Anchors
+  tags: anchor comment 1.3-err
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :top1\n   +MAP &node1\n    =V…"
+  yaml: "---\ntop1: &node1\n  &k1 key1: one\ntop2: &node2 # comment\n …"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "--- !!omap\n- Ma…"
-  from: "http://www.yaml…"
-  json: "[\n  {\n    \"Mark…"
-  name: Spec Example 2…
-  tags: spec mapping t…
-  tree: "+STR\n +DOC ---…"
-  yaml: "# The !!omap t…"
+- dump: "--- !!omap\n- Mark McGwire: 65\n- Sammy Sosa: 63\n-…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2761780"
+  json: "[\n  {\n    \"Mark McGwire\": 65\n  },\n  {\n    \"Samm…"
+  name: Spec Example 2.26. Ordered Mappings
+  tags: spec mapping tag unknown-tag
+  tree: "+STR\n +DOC ---\n  +SEQ <tag:yaml.org,2002:omap>\n…"
+  yaml: "# The !!omap tag is one of the optional types\n#…"

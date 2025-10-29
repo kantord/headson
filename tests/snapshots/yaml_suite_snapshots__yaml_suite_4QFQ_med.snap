@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- emit: "- |\n  detected…"
-  from: "R4YG, modified…"
-  json: "[\n  \"detected\\…"
-  name: Spec Example 8…
-  tags: spec literal f…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "- |\n detected\n…"
+- emit: "- |\n  detected\n- >2\n\n\n  # detected\n- |2\n …"
+  from: "R4YG, modified for YAML 1.3"
+  json: "[\n  \"detected\\n\",\n  \"\\n\\n# detected\\n\",\n …"
+  name: Spec Example 8.2. Block Indentation Indic…
+  tags: spec literal folded scalar libyaml-err 1.…
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL |detected\\n\n   …"
+  yaml: "- |\n detected\n- >\n␣\n␣␣\n  # detected\n- |1\n…"

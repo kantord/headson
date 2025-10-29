@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "-\n- |\n  block node\n- - one\n  - two\n- one: two\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2797944"
+  json: "[\n  null,\n  \"block node\\n\",\n  [\n    \"one\",\n    \"two\"\n  ],\n  {\n    \"one\": \"two\"\n  }\n]\n"
+  name: Spec Example 8.15. Block Sequence Entry Types
+  tags: comment spec literal sequence
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :\n   =VAL |block node\\n\n   +SEQ\n    =VAL :one\n    =VAL :two\n   -SEQ\n   +MAP\n    =VAL :one\n    =VAL :two\n   -MAP\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "- # Empty\n- |\n block node\n- - one # Compact\n  - two # sequence\n- one: two # Compact mapping\n"

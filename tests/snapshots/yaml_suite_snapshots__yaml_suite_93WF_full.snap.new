@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "--- >-\n  trimmed\n\n\n\n  as space\n"
+  from: "K527, modified for YAML 1.3"
+  json: "\"trimmed\\n\\n\\nas space\"\n"
+  name: "Spec Example 6.6. Line Folding [1.3]"
+  tags: folded spec whitespace scalar 1.3-mod
+  tree: "+STR\n +DOC ---\n  =VAL >trimmed\\n\\n\\nas space\n -DOC\n-STR\n"
+  yaml: "--- >-\n  trimmed\n␣␣\n␣\n\n  as\n  space\n"

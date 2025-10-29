@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "\"adjacent\": va…"
-  from: "http://www.yam…"
-  json: "{\n  \"adjacent\"…"
-  name: Spec Example 7…
-  tags: spec flow mapp…
-  tree: "+STR\n +DOC\n  …"
-  yaml: "{\n\"adjacent\":…"
+- dump: "\"adjacent\": value\n\"readable\": value\n\"empty\":…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id279…"
+  json: "{\n  \"adjacent\": \"value\",\n  \"readable\": \"valu…"
+  name: Spec Example 7.18. Flow Mapping Adjacent Val…
+  tags: spec flow mapping
+  tree: "+STR\n +DOC\n  +MAP {}\n   =VAL \"adjacent\n   =…"
+  yaml: "{\n\"adjacent\":value,\n\"readable\": value,\n\"emp…"

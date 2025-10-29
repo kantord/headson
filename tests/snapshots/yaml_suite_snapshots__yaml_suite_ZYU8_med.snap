@@ -3,14 +3,14 @@ source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
 - also: MU58
-  from: "@ingy…"
+  from: "@ingydotnet"
   json: "null\n"
-  name: Direc…
-  note: The f…
+  name: Directive variants
+  note: The following cases are valid YAML according to the 1.2 productions but not at all usefully valid. We don't want to encourage parsers…
   skip: true
-  tags: direc…
-  tree: +STR…
-  yaml: "%YAM…"
-- yaml: "%***…"
-- yaml: "%YAM…"
+  tags: directive
+  tree: "+STR\n +DOC ---\n  =VAL :\n -DOC\n-STR\n"
+  yaml: "%YAML1.1\n---\n"
+- yaml: "%***\n---\n"
+- yaml: "%YAML 1.12345\n---\n"
 # 1 more items

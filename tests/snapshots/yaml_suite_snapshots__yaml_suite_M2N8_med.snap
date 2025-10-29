@@ -2,12 +2,12 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "- ? : x\n …"
-  from: "@ingydotn…"
-  name: Question …
-  tags: edge empt…
-  tree: "+STR\n +DO…"
+- dump: "- ? : x\n  :\n"
+  from: "@ingydotnet"
+  name: Question mark edge cases
+  tags: edge empty-key
+  tree: "+STR\n +DOC\n  +SEQ\n   +MAP\n    +MAP\n     =VAL :\n     =VAL :x\n    -MAP\n    =VAL :\n   -MAP\n  -SE…"
   yaml: "- ? : x\n"
-- dump: "? []: x\n:…"
-  tree: "+STR\n +D…"
+- dump: "? []: x\n:\n"
+  tree: "+STR\n +DOC\n  +MAP\n   +MAP\n    +SEQ []\n    -SEQ\n    =VAL :x\n   -MAP\n   =VAL :\n  -MAP\n -DOC\n-S…"
   yaml: "? []: x\n"

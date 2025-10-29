@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "--- !!set\nMark …"
-  from: "http://www.yaml…"
-  json: "{\n  \"Mark McGwi…"
-  name: Spec Example 2.…
-  tags: spec mapping u…
-  tree: "+STR\n +DOC ---…"
-  yaml: "# Sets are rep…"
+- dump: "--- !!set\nMark McGwire:\nSammy Sosa:\nKen Griff:…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id27617…"
+  json: "{\n  \"Mark McGwire\": null,\n  \"Sammy Sosa\": null…"
+  name: Spec Example 2.25. Unordered Sets
+  tags: spec mapping unknown-tag explicit-key
+  tree: "+STR\n +DOC ---\n  +MAP <tag:yaml.org,2002:set>\n…"
+  yaml: "# Sets are represented as a\n# Mapping where e…"

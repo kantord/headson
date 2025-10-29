@@ -6,5 +6,5 @@ expression: out_med
   from: "@perlpunk"
   name: Wrong indendation in Map
   tags: error mapping indent
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   +MAP\n    =VAL :…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   +MAP\n    =VAL :ok\n    =VAL :1\n   -MAP\n"
   yaml: "key:\n  ok: 1\n wrong: 2\n"

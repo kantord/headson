@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\nTime: 2001-…"
-  from: "http://www.yam…"
-  json: "{\n  \"Time\": \"2…"
-  name: Spec Example 2…
-  tags: spec header li…
-  tree: "+STR\n +DOC ---…"
-  yaml: "---\nTime: 2001…"
+- dump: "---\nTime: 2001-11-23 15:01:42 -5\nUser: ed\nWarni…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id27618…"
+  json: "{\n  \"Time\": \"2001-11-23 15:01:42 -5\",\n  \"User\"…"
+  name: Spec Example 2.28. Log File
+  tags: spec header literal mapping sequence
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :Time\n   =VAL :2…"
+  yaml: "---\nTime: 2001-11-23 15:01:42 -5\nUser: ed\nWarn…"

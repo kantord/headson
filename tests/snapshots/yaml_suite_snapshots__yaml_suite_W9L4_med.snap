@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Literal block scalar with …
+  name: Literal block scalar with more spaces in first line
   tags: error literal whitespace
-  tree: "+STR\n +DOC ---\n  +MAP\n   =…"
-  yaml: "---\nblock scalar: |\n␣␣␣␣␣\n…"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :block scalar\n"
+  yaml: "---\nblock scalar: |\n␣␣␣␣␣\n  more spaces at the beginning\n  are invalid\n"

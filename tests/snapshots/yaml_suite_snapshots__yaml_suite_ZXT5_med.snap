@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Implicit key followed by newline an…
+  name: Implicit key followed by newline and adjacent value
   tags: error flow mapping sequence
   tree: "+STR\n +DOC\n  +SEQ []\n   =VAL \"key\n"
   yaml: "[ \"key\"\n  :value ]\n"

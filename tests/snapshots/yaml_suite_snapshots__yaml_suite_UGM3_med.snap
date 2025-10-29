@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "--- !<tag:clark…"
-  from: "http://www.yaml…"
-  json: "{\n  \"invoice\": …"
-  name: Spec Example 2.…
-  tags: spec tag liter…
-  tree: "+STR\n +DOC ---…"
-  yaml: "--- !<tag:clar…"
+- dump: "--- !<tag:clarkevans.com,2002:invoice>\ninvoice…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2761…"
+  json: "{\n  \"invoice\": 34843,\n  \"date\": \"2001-01-23\",…"
+  name: Spec Example 2.27. Invoice
+  tags: spec tag literal mapping sequence alias unkno…
+  tree: "+STR\n +DOC ---\n  +MAP <tag:clarkevans.com,200…"
+  yaml: "--- !<tag:clarkevans.com,2002:invoice>\ninvoic…"

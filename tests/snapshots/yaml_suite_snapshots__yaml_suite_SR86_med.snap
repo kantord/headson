@@ -6,5 +6,5 @@ expression: out_med
   from: "@perlpunk"
   name: Anchor plus Alias
   tags: alias error
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key1\n   =VAL &a :value\n   =VAL :key…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key1\n   =VAL &a :value\n   =VAL :key2\n"
   yaml: "key1: &a value\nkey2: &b *a\n"

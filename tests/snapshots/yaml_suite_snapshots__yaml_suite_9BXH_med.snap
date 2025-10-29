@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "---\n- \"single li…"
+- dump: "---\n- \"single line\":\n  a: b\n- \"multi line\":\n  a: b\n"
   from: "@perlpunk"
-  json: "[\n  {\n    \"sing…"
-  name: Multiline doubl…
-  tags: double flow map…
-  tree: "+STR\n +DOC ---\n…"
-  yaml: "---\n- { \"single…"
+  json: "[\n  {\n    \"single line\": null,\n    \"a\": \"b\"\n  },\n  …"
+  name: Multiline doublequoted flow mapping key without val…
+  tags: double flow mapping
+  tree: "+STR\n +DOC ---\n  +SEQ\n   +MAP {}\n    =VAL \"single l…"
+  yaml: "---\n- { \"single line\", a: b}\n- { \"multi\n  line\", a:…"

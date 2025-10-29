@@ -6,5 +6,5 @@ expression: out_med
   json: "{\n  \"a\": \"b\",\n  \"c\": \"d\"\n}\n"
   name: Anchors in Mapping
   tags: anchor mapping
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL &a :a…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL &a :a\n   =VAL :b\n   =VAL :c\n   =VAL &d :d\n  -MAP\n -DOC\n-STR\n"
   yaml: "&a a: b\nc: &d d\n"

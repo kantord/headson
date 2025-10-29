@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: implicit block k…
-  from: "http://www.yaml…"
-  json: "{\n  \"implicit b…"
-  name: Spec Example 7.…
-  tags: spec flow mappi…
-  tree: "+STR\n +DOC\n  +M…"
-  yaml: implicit block …
+- dump: "implicit block key:\n- implicit flow key: value\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2789794"
+  json: "{\n  \"implicit block key\": [\n    {\n      \"implicit fl…"
+  name: Spec Example 7.11. Plain Implicit Keys
+  tags: spec flow mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :implicit block key\n   +SE…"
+  yaml: "implicit block key : [\n  implicit flow key : value,…"

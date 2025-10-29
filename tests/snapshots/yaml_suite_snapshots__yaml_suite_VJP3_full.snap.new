@@ -1,0 +1,16 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- fail: true
+  from: "@ingydotnet"
+  name: Flow collections over many lines
+  tags: flow indent
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :k\n   +MAP {}\n"
+  yaml: "k: {\nk\n:\nv\n}\n"
+- dump: "---\nk:\n  k: v\n"
+  emit: "k:\n  k: v\n"
+  json: "{\n  \"k\" : {\n    \"k\" : \"v\"\n  }\n}\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :k\n   +MAP {}\n    =VAL :k\n    =VAL :v\n   -MAP\n  -MAP\n -DOC\n-STR\n"
+  yaml: "k: {\n k\n :\n v\n }\n"

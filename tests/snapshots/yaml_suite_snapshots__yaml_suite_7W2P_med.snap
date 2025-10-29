@@ -4,8 +4,8 @@ expression: out_med
 ---
 - dump: "a:\nb:\nc:\n"
   from: NimYAML tests
-  json: "{\n  \"a\": null,\n  \"…"
-  name: Block Mapping with…
-  tags: explicit-key mappi…
-  tree: "+STR\n +DOC\n  +MAP…"
+  json: "{\n  \"a\": null,\n  \"b\": null,\n  \"c\": null\n}\n"
+  name: Block Mapping with Missing Values
+  tags: explicit-key mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n   =VAL :\n   =VAL :b\n   =VAL :\n   =VAL :c\n   =VAL :\n  -MAP\n -DOC\n-STR\n"
   yaml: "? a\n? b\nc:\n"

@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- fail: true
+  from: "@perlpunk"
+  name: Scalar value with two anchors
+  tags: anchor error mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :top1\n   +MAP &node1\n    =VAL &k1 :key1\n    =VAL :val1\n   -MAP\n   =VAL :top2\n"
+  yaml: "top1: &node1\n  &k1 key1: val1\ntop2: &node2\n  &v2 val2\n"

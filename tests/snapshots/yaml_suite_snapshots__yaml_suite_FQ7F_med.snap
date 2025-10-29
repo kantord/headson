@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- from: "http://www.yaml.…"
-  json: "[\n  \"Mark McGwir…"
-  name: Spec Example 2.1…
+- from: "http://www.yaml.org/spec/1.2/spec.html#id2759963"
+  json: "[\n  \"Mark McGwire\",\n  \"Sammy Sosa\",\n  \"Ken Griffey\"\n]\n"
+  name: Spec Example 2.1. Sequence of Scalars
   tags: spec sequence
-  toke: SEQ-MARK 0 1 1 …
-  tree: "+STR\n +DOC\n  +S…"
-  yaml: "- Mark McGwire\n…"
+  toke: "SEQ-MARK 0 1 1 1\nWS-SPACE 1 1 1 2\nTEXT-VAL 2 12 1 3 :M…"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :Mark McGwire\n   =VAL :Samm…"
+  yaml: "- Mark McGwire\n- Sammy Sosa\n- Ken Griffey\n"

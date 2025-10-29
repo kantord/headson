@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "&a: key: &a val…"
-  from: Mailing List Di…
-  json: "{\n  \"key\": \"val…"
-  name: Anchors With Co…
-  tags: alias edge map…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "&a: key: &a va…"
+- dump: "&a: key: &a value\nfoo: *a:\n"
+  from: Mailing List Discussion
+  json: "{\n  \"key\": \"value\",\n  \"foo\": \"key\"\n}\n"
+  name: Anchors With Colon in Name
+  tags: alias edge mapping 1.3-err
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL &a: :key\n   =VAL &a :value\n   =VAL :foo\n   =ALI *a:\n  -MAP\n -DOC\n-STR\n"
+  yaml: "&a: key: &a value\nfoo:\n  *a:\n"

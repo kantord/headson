@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "- name: Mark Mc…"
-  from: "http://www.yaml…"
-  json: "[\n  {\n    \"nam…"
-  name: Spec Example 2…
-  tags: sequence mappi…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "-\n  name: Mark…"
+- dump: "- name: Mark McGwire\n  hr: 65\n  avg: 0.278\n- na…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id276019…"
+  json: "[\n  {\n    \"name\": \"Mark McGwire\",\n    \"hr\": 65,…"
+  name: Spec Example 2.4. Sequence of Mappings
+  tags: sequence mapping spec
+  tree: "+STR\n +DOC\n  +SEQ\n   +MAP\n    =VAL :name\n    =…"
+  yaml: "-\n  name: Mark McGwire\n  hr:   65\n  avg:  0.27…"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "anchored: &anch…"
-  from: "http://www.yaml…"
-  json: "{\n  \"anchored\":…"
-  name: Spec Example 5…
-  tags: local-tag spec…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "anchored: !loc…"
+- dump: "anchored: &anchor !local value\nalias: *anchor\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2773402"
+  json: "{\n  \"anchored\": \"value\",\n  \"alias\": \"value\"\n}\n"
+  name: Spec Example 5.6. Node Property Indicators
+  tags: local-tag spec tag alias
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :anchored\n   =VAL &anchor …"
+  yaml: "anchored: !local &anchor value\nalias: *anchor\n"

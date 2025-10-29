@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "- |-\n  explicit i…"
+- dump: "- |-\n  explicit indent and chomp\n- |-\n  chomp and explicit ind…"
   from: "@perlpunk"
-  json: "[\n  \"explicit ind…"
-  name: Block scalar indi…
+  json: "[\n  \"explicit indent and chomp\",\n  \"chomp and explicit indent\"…"
+  name: Block scalar indicator order
   tags: indent literal
-  tree: "+STR\n +DOC\n  +SE…"
-  yaml: "- |2-\n  explicit…"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL |explicit indent and chomp\n   =VAL |…"
+  yaml: "- |2-\n  explicit indent and chomp\n- |-2\n  chomp and explicit i…"

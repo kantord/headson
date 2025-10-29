@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "explicit key:\n? |\n  block key\n: - one\n  - two\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2798425"
+  json: "{\n  \"explicit key\": null,\n  \"block key\\n\": [\n    \"one\",\n    \"two\"\n  ]\n}\n"
+  name: Spec Example 8.17. Explicit Block Mapping Entries
+  tags: explicit-key spec mapping comment literal sequence
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :explicit key\n   =VAL :\n   =VAL |block key\\n\n   +SEQ\n    =VAL :one\n    =VAL :two\n   -SEQ\n  -MAP\n -DOC\n-STR\n"
+  yaml: "? explicit key # Empty value\n? |\n  block key\n: - one # Explicit compact\n  - two # block value\n"

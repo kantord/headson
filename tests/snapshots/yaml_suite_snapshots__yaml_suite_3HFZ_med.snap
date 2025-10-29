@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Invalid content after document end mar…
+  name: Invalid content after document end marker
   tags: error footer
-  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :key\n  …"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :key\n   =VAL :value\n  -MAP\n -DOC ...\n"
   yaml: "---\nkey: value\n... invalid\n"

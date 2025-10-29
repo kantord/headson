@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "foo: !!str\n!!s…"
-  from: "http://www.yam…"
-  json: "{\n  \"foo\": \"\",…"
-  name: Spec Example 7…
-  tags: spec flow scal…
-  tree: "+STR\n +DOC\n  +…"
-  yaml: "{\n  foo : !!s…"
+- dump: "foo: !!str\n!!str : bar\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2786720"
+  json: "{\n  \"foo\": \"\",\n  \"\": \"bar\"\n}\n"
+  name: Spec Example 7.2. Empty Content
+  tags: spec flow scalar tag
+  tree: "+STR\n +DOC\n  +MAP {}\n   =VAL :foo\n   =VAL <tag:yaml.org,2002:str> :\n   =VAL <tag:yaml.org,2002:str> :\n   =VAL :bar…"
+  yaml: "{\n  foo : !!str,\n  !!str : bar,\n}\n"

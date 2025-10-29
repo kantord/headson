@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "? &a\n- a\n- &b b\n: *b\n…"
+- dump: "? &a\n- a\n- &b b\n: *b\n*a :\n- c\n- *b\n- d\n"
   from: NimYAML tests
-  name: Aliases in Flow Objec…
-  tags: alias complex-key flo…
-  tree: "+STR\n +DOC\n  +MAP {}\n…"
-  yaml: "{ &a [a, &b b]: *b, *…"
+  name: Aliases in Flow Objects
+  tags: alias complex-key flow
+  tree: "+STR\n +DOC\n  +MAP {}\n   +SEQ [] &a\n    =VAL :a\n    =VAL &b :b\n   -SEQ\n   =ALI *b\n   =ALI *a\n   +SEQ []\n    =VAL :c\n    =ALI *b\n    =VAL :d\n   -SEQ\n  -MAP\n -DOC\n-STR\n"
+  yaml: "{ &a [a, &b b]: *b, *a : [c, *b, d]}\n"

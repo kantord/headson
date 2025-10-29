@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+assertion_line: 62
+expression: out_full
+---
+- dump: "--- >\n  Mark McGwire's year was crippled by a knee injury.\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2761032"
+  json: "\"Mark McGwire's year was crippled by a knee injury.\\n\"\n"
+  name: "Spec Example 2.14. In the folded scalars, newlines become spaces"
+  tags: spec folded scalar
+  tree: "+STR\n +DOC ---\n  =VAL >Mark McGwire's year was crippled by a knee injury.\\n\n -DOC\n-STR\n"
+  yaml: "--- >\n  Mark McGwire's\n  year was crippled\n  by a knee injury.\n"

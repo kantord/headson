@@ -4,7 +4,7 @@ expression: out_med
 ---
 - fail: true
   from: "@perlpunk"
-  name: Comment without whitespace a…
-  tags: comment error double whitesp…
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :…"
-  yaml: "key: \"value\"# invalid comme…"
+  name: Comment without whitespace after doublequoted scalar
+  tags: comment error double whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   =VAL \"value\n"
+  yaml: "key: \"value\"# invalid comment\n"

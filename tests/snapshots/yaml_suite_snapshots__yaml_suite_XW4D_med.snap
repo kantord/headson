@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: out_med
 ---
-- dump: "a: \"double quotes\"\nb:…"
+- dump: "a: \"double quotes\"\nb: plain value\nc: d\n? - seq1\n: - seq2\ne: &node\n- x: y\nblock:…"
   from: "@perlpunk"
-  name: Various Trailing Comm…
-  tags: comment explicit-key …
-  tree: "+STR\n +DOC\n  +MAP\n   …"
-  yaml: "a: \"double\n  quotes\" …"
+  name: Various Trailing Comments
+  tags: comment explicit-key folded 1.3-err
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n   =VAL \"double quotes\n   =VAL :b\n   =VAL :plain …"
+  yaml: "a: \"double\n  quotes\" # lala\nb: plain\n value  # lala\nc  : #lala\n  d\n? # lala\n -…"
