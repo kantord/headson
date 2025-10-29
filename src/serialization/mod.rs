@@ -664,10 +664,7 @@ mod tests {
             },
         );
         assert_yaml_valid(&out_head);
-        // For YAML, we include an omitted marker comment at end when head-preferred.
-        assert!(
-            out_head.contains("# 2 more items") || out_head.contains("- 1")
-        );
+        assert_snapshot!("array_omitted_yaml_head", out_head);
 
         let out_tail = render_top_k(
             &build,
@@ -685,7 +682,7 @@ mod tests {
             },
         );
         assert_yaml_valid(&out_tail);
-        assert!(out_tail.contains("# 2 more items"));
+        assert_snapshot!("array_omitted_yaml_tail", out_tail);
     }
 
     #[test]
@@ -795,10 +792,7 @@ mod tests {
         );
         let out = s;
         assert_yaml_valid(&out);
-        // No strict assertions on gap formatting; ensure dash list rendered.
-        assert!(out.contains("- 1"));
-        assert!(out.contains("- 2") || out.contains("#"));
-        assert!(out.contains("- 3"));
+        assert_snapshot!("array_internal_gaps_yaml", out);
     }
 
     #[test]

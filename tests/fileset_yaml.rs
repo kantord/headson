@@ -63,3 +63,28 @@ fn yaml_compact_falls_back_to_json_style() {
         "expected no internal newlines in compact output: {out:?}"
     );
 }
+
+#[test]
+fn yaml_fileset_compact_snapshot() {
+    let p1 = "tests/fixtures/explicit/object_small.json";
+    let p2 = "tests/fixtures/explicit/array_numbers_50.json";
+    let budget = 500usize;
+    let budget_s = budget.to_string();
+    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let assert = cmd
+        .args([
+            "--no-color",
+            "-n",
+            &budget_s,
+            "-f",
+            "yaml",
+            "--compact",
+            p1,
+            p2,
+        ])
+        .assert()
+        .success();
+    let out =
+        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+    assert_snapshot!("yaml_fileset_compact", out);
+}
