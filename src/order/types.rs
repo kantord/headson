@@ -1,5 +1,3 @@
-use serde_json;
-
 #[derive(Clone, Debug)]
 pub struct PriorityConfig {
     pub max_string_graphemes: usize,
@@ -36,6 +34,15 @@ pub enum NodeKind {
     Object,
 }
 
+// Classification of leaf nodes by truncatability semantics.
+// Atomic: values that cannot be truncated (null, bool, number).
+// String: values that can be truncated to a prefix during rendering.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum LeafKind {
+    Atomic,
+    String,
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum ObjectType {
     Object,
@@ -60,8 +67,8 @@ pub struct RankedNode {
     pub node_id: NodeId,
     pub kind: NodeKind,
     pub key_in_object: Option<String>,
-    pub number_value: Option<serde_json::Number>,
-    pub bool_value: Option<bool>,
+    // For non-truncatable leaves (null, bool, number), store the exact token text.
+    pub atomic_token: Option<String>,
     pub string_value: Option<String>,
 }
 
@@ -87,6 +94,8 @@ pub struct PriorityOrder {
     pub by_priority: Vec<NodeId>, // ids sorted by ascending priority (PQ ids)
     pub total_nodes: usize,
     pub object_type: Vec<ObjectType>,
+    // Leaf semantics for each PQ id: Some(...) for leaves, None for containers.
+    pub leaf_kind: Vec<Option<LeafKind>>,
 }
 
 pub const ROOT_PQ_ID: usize = 0;

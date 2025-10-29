@@ -3,7 +3,7 @@ source: src/order.rs
 expression: "lines.join(\"\\n\")"
 ---
 len=4
-RankedNode { node_id: NodeId(0), parent_id: ParentId(None), kind: Array, depth: 0, index_in_array: None, key_in_object: None, priority: 1, number_value: None, bool_value: None, string_value: None } prio=1
-RankedNode { node_id: NodeId(1), parent_id: ParentId(Some(0)), kind: String, depth: 1, index_in_array: Some(0), key_in_object: None, priority: 2, number_value: None, bool_value: None, string_value: Some("ab") } prio=2
-RankedNode { node_id: NodeId(2), parent_id: ParentId(Some(1)), kind: String, depth: 2, index_in_array: Some(0), key_in_object: None, priority: 3, number_value: None, bool_value: None, string_value: None } prio=3
-RankedNode { node_id: NodeId(3), parent_id: ParentId(Some(1)), kind: String, depth: 2, index_in_array: Some(1), key_in_object: None, priority: 4, number_value: None, bool_value: None, string_value: None } prio=4
+RankedNode { node_id: NodeId(0), parent_id: ParentId(None), kind: Array, depth: 0, index_in_array: None, key_in_object: None, priority: 1, atomic_token: None, string_value: None } prio=1
+RankedNode { node_id: NodeId(1), parent_id: ParentId(Some(0)), kind: String, depth: 1, index_in_array: Some(0), key_in_object: None, priority: 2, atomic_token: None, string_value: Some("ab") } prio=2
+RankedNode { node_id: NodeId(2), parent_id: ParentId(Some(1)), kind: String, depth: 2, index_in_array: Some(0), key_in_object: None, priority: 3, atomic_token: None, string_value: None } prio=3
+RankedNode { node_id: NodeId(3), parent_id: ParentId(Some(1)), kind: String, depth: 2, index_in_array: Some(1), key_in_object: None, priority: 4, atomic_token: None, string_value: None } prio=4

@@ -1,5 +1,5 @@
 use crate::order::ObjectType;
-use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID};
+use crate::order::{LeafKind, NodeKind, PriorityOrder, ROOT_PQ_ID};
 pub mod color;
 mod fileset;
 pub mod output;
@@ -84,13 +84,15 @@ impl<'a> RenderScope<'a> {
                     if orig > kept { Some(orig - kept) } else { None }
                 })
             }
-            NodeKind::String => self.omitted_for_string(id, kept),
             NodeKind::Object => {
                 self.order.metrics[id].object_len.and_then(|orig| {
                     if orig > kept { Some(orig - kept) } else { None }
                 })
             }
-            _ => None,
+            _ => match self.order.leaf_kind.get(id).and_then(|x| *x) {
+                Some(LeafKind::String) => self.omitted_for_string(id, kept),
+                Some(LeafKind::Atomic) | None => None,
+            },
         }
     }
 
@@ -174,28 +176,13 @@ impl<'a> RenderScope<'a> {
         }
     }
 
-    fn serialize_number(&self, id: usize) -> String {
-        let it = &self.order.nodes[id];
-        if let Some(n) = it.number_value.as_ref() {
-            if let Some(i) = n.as_i64() {
-                return i.to_string();
-            }
-            if let Some(u) = n.as_u64() {
-                return u.to_string();
-            }
-            if n.as_f64().is_some() {
-                return n.to_string();
-            }
-        }
-        unreachable!("NodeKind::Number without number_value")
-    }
-
-    fn serialize_bool(&self, id: usize) -> String {
-        let it = &self.order.nodes[id];
-        match it.bool_value {
-            Some(true) => "true".to_string(),
-            Some(false) => "false".to_string(),
-            None => unreachable!("NodeKind::Bool without bool_value"),
+    fn serialize_atomic(&self, id: usize) -> String {
+        if let Some(tok) = self.order.nodes[id].atomic_token.clone() {
+            tok
+        } else {
+            // Safety: only called for Null/Bool/Number; builder sets tokens for these.
+            // Use unreachable! to satisfy clippy expect_used while keeping invariant explicit.
+            unreachable!("atomic leaf without token: id={id}")
         }
     }
 
@@ -214,15 +201,10 @@ impl<'a> RenderScope<'a> {
                 let s = self.serialize_string(id);
                 out.push_string_literal(&s);
             }
-            NodeKind::Number => {
-                let s = self.serialize_number(id);
-                out.push_number_literal(&s);
+            NodeKind::Number | NodeKind::Bool | NodeKind::Null => {
+                let s = self.serialize_atomic(id);
+                out.push_str(&s);
             }
-            NodeKind::Bool => {
-                let s = self.serialize_bool(id);
-                out.push_bool(s == "true");
-            }
-            NodeKind::Null => out.push_null(),
         }
     }
 
@@ -315,9 +297,9 @@ impl<'a> RenderScope<'a> {
                 s
             }
             NodeKind::String => self.serialize_string(id),
-            NodeKind::Number => self.serialize_number(id),
-            NodeKind::Bool => self.serialize_bool(id),
-            NodeKind::Null => "null".to_string(),
+            NodeKind::Number | NodeKind::Bool | NodeKind::Null => {
+                self.serialize_atomic(id)
+            }
         }
     }
 }

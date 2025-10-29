@@ -56,6 +56,7 @@ struct Scope<'a> {
     safety_cap: usize,
     object_type: &'a mut Vec<ObjectType>,
     index_in_parent_array: &'a mut Vec<Option<usize>>,
+    leaf_kind: &'a mut Vec<Option<LeafKind>>,
 }
 
 impl<'a> Scope<'a> {
@@ -69,9 +70,19 @@ impl<'a> Scope<'a> {
         self.parent.push(Some(NodeId(id)));
         self.children.push(Vec::new());
         self.metrics.push(NodeMetrics::default());
+        let ranked_kind = common.ranked.kind;
         self.nodes.push(common.ranked);
         self.index_in_parent_array
             .push(common.index_in_parent_array);
+        // Leaf class: containers -> None, leaves -> Some(...)
+        let lc = match ranked_kind {
+            NodeKind::Array | NodeKind::Object => None,
+            NodeKind::String => Some(LeafKind::String),
+            NodeKind::Null | NodeKind::Bool | NodeKind::Number => {
+                Some(LeafKind::Atomic)
+            }
+        };
+        self.leaf_kind.push(lc);
         // Children created from parsing regular JSON are standard objects/arrays/etc.
         // If child is an object, default to Object type.
         self.object_type.push(ObjectType::Object);
@@ -144,6 +155,10 @@ impl<'a> Scope<'a> {
         }
     }
 
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Array child expansion mixes scoring, arena index mapping, and PQ wiring; splitting would obscure the flow"
+    )]
     fn expand_array_children(&mut self, entry: &Entry, arena_id: usize) {
         let node = &self.arena.nodes[arena_id];
         let kept = node.children_len;
@@ -162,6 +177,7 @@ impl<'a> Scope<'a> {
             let extra: u128 = self.array_extra_for_index(i, kept);
             let score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
             let child_node = &self.arena.nodes[child_arena_id];
+            let atomic = child_node.atomic_token.clone();
             self.push_child_common(
                 entry,
                 child_priority_index,
@@ -172,8 +188,7 @@ impl<'a> Scope<'a> {
                         node_id: NodeId(child_priority_index),
                         kind: child_kind,
                         key_in_object: None,
-                        number_value: child_node.number_value.clone(),
-                        bool_value: child_node.bool_value,
+                        atomic_token: atomic,
                         string_value: child_node.string_value.clone(),
                     },
                     index_in_parent_array: Some(orig_index),
@@ -185,6 +200,10 @@ impl<'a> Scope<'a> {
         }
     }
 
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Object child expansion handles sorting by key, scoring, and PQ wiring in one place for clarity"
+    )]
     fn expand_object_children(&mut self, entry: &Entry, arena_id: usize) {
         let node = &self.arena.nodes[arena_id];
         let mut items: Vec<(usize, usize)> =
@@ -203,6 +222,7 @@ impl<'a> Scope<'a> {
             *self.next_pq_id += 1;
             let score = entry.score + OBJECT_CHILD_BASE_INCREMENT;
             let child_node = &self.arena.nodes[child_arena_id];
+            let atomic = child_node.atomic_token.clone();
             self.push_child_common(
                 entry,
                 child_priority_index,
@@ -215,8 +235,7 @@ impl<'a> Scope<'a> {
                         key_in_object: Some(
                             self.arena.obj_keys[key_idx].clone(),
                         ),
-                        number_value: child_node.number_value.clone(),
-                        bool_value: child_node.bool_value,
+                        atomic_token: atomic,
                         string_value: child_node.string_value.clone(),
                     },
                     index_in_parent_array: None,
@@ -257,8 +276,7 @@ impl<'a> Scope<'a> {
                         node_id: NodeId(child_priority_index),
                         kind: NodeKind::String,
                         key_in_object: None,
-                        number_value: None,
-                        bool_value: None,
+                        atomic_token: None,
                         string_value: None,
                     },
                     index_in_parent_array: None,
@@ -310,6 +328,10 @@ impl<'a> Scope<'a> {
     }
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Orchestrates the full build; further splitting would decrease readability"
+)]
 pub fn build_order(
     arena: &JsonTreeArena,
     config: &PriorityConfig,
@@ -323,6 +345,7 @@ pub fn build_order(
     let mut object_type: Vec<ObjectType> = Vec::new();
     let mut heap: BinaryHeap<Reverse<Entry>> = BinaryHeap::new();
     let mut index_in_parent_array: Vec<Option<usize>> = Vec::new();
+    let mut leaf_kind: Vec<Option<LeafKind>> = Vec::new();
 
     // Seed root from arena
     let root_ar = arena.root_id;
@@ -334,14 +357,23 @@ pub fn build_order(
     metrics.push(NodeMetrics::default());
     index_in_parent_array.push(None);
     let n = &arena.nodes[root_ar];
+    let root_atomic = n.atomic_token.clone();
     nodes.push(RankedNode {
         node_id: NodeId(root_priority_index),
         kind: root_kind,
         key_in_object: None,
-        number_value: n.number_value.clone(),
-        bool_value: n.bool_value,
+        atomic_token: root_atomic,
         string_value: n.string_value.clone(),
     });
+    // Root leaf class
+    let root_lc = match root_kind {
+        NodeKind::Array | NodeKind::Object => None,
+        NodeKind::String => Some(LeafKind::String),
+        NodeKind::Null | NodeKind::Bool | NodeKind::Number => {
+            Some(LeafKind::Atomic)
+        }
+    };
+    leaf_kind.push(root_lc);
     // Root object type: mark fileset root specially, otherwise Object.
     let root_ot = if arena.is_fileset {
         ObjectType::Fileset
@@ -369,6 +401,7 @@ pub fn build_order(
             safety_cap: SAFETY_CAP,
             object_type: &mut object_type,
             index_in_parent_array: &mut index_in_parent_array,
+            leaf_kind: &mut leaf_kind,
         };
         scope.process_entry(&entry, &mut order);
         if next_pq_id >= SAFETY_CAP {
@@ -386,6 +419,7 @@ pub fn build_order(
         by_priority: order,
         total_nodes: total,
         object_type,
+        leaf_kind,
     })
 }
 
