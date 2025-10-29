@@ -1,5 +1,0 @@
----
-source: src/tree.rs
-expression: "tree.serialize(OutputTemplate::Json)"
----
-[]

@@ -1,7 +1,0 @@
----
-source: src/tree.rs
-expression: tree.render_json()
----
-[
-  "ab"
-]

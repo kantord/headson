@@ -815,6 +815,40 @@ mod tests {
     }
 
     #[test]
+    fn string_parts_never_rendered_but_affect_truncation() {
+        // Build a long string that will generate LongLeafPart nodes.
+        let arena = crate::json_ingest::build_json_tree_arena(
+            "\"abcdefghij\"",
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let build = build_order(
+            &arena,
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+        // Include the root string node plus 5 grapheme parts (total top_k = 1 + 5).
+        let out = render_top_k(
+            &build,
+            6,
+            &mut marks,
+            99,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Json,
+                indent_unit: "".to_string(),
+                space: " ".to_string(),
+                newline: "".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        // Expect the first 5 characters plus an ellipsis, as a valid JSON string literal.
+        assert_eq!(out, "\"abcde…\"");
+    }
+
+    #[test]
     fn yaml_array_of_objects_indentation() {
         let arena = crate::json_ingest::build_json_tree_arena(
             "[{\"a\":1,\"b\":2},{\"x\":3}]",
