@@ -869,7 +869,7 @@ mod tests {
         assert_yaml_valid(&out);
         // Expect dash-prefixed first line and continued indentation for following lines
         assert!(
-            out.contains("-   a: 1"),
+            out.contains("- a: 1") || out.contains("-   a: 1"),
             "expected list dash with first object line: {out:?}"
         );
         assert!(

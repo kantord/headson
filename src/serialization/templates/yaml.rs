@@ -15,17 +15,19 @@ fn push_yaml_array_item(out: &mut Out<'_>, depth: usize, item: &str) {
         out.push_newline();
         return;
     }
-    let mut lines = item.split_inclusive(&['\n', '\r'][..]);
-    if let Some(first) = lines.next() {
-        let first_trimmed = first.trim_start_matches(['\n', '\r']);
+    // Multi-line item: print first logical line after "- ", and align
+    // all following lines under the first character after the dash.
+    let mut iter = item.lines();
+    if let Some(first) = iter.next() {
         out.push_indent(depth);
         out.push_str("- ");
-        out.push_str(first_trimmed);
+        out.push_str(first.trim_start());
+        out.push_newline();
     }
-    for rest in lines {
-        out.push_str(rest);
-    }
-    if !item.ends_with('\n') && !item.ends_with('\r') {
+    for rest in iter {
+        out.push_indent(depth);
+        out.push_str("  ");
+        out.push_str(rest.trim_start());
         out.push_newline();
     }
 }
