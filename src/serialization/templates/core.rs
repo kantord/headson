@@ -122,21 +122,6 @@ pub struct StyleNoop;
 impl Style for StyleNoop {}
 
 // Combinators and tiny building blocks
-#[allow(dead_code, reason = "Available for templates to adopt progressively")]
-pub(crate) fn with_indent(
-    out: &mut Out<'_>,
-    depth: usize,
-    f: impl FnOnce(&mut Out<'_>),
-) {
-    out.push_indent(depth);
-    f(out);
-}
-
-#[allow(dead_code, reason = "Available for templates to adopt progressively")]
-pub(crate) fn with_line(out: &mut Out<'_>, f: impl FnOnce(&mut Out<'_>)) {
-    f(out);
-    out.push_newline();
-}
 
 pub(crate) fn open_block(
     out: &mut Out<'_>,
@@ -169,23 +154,4 @@ pub(crate) fn wrap_block(
     close_block(out, depth, close_ch);
 }
 
-#[allow(dead_code, reason = "Helper for future template refactors")]
-pub(crate) fn write_comma_if_needed(out: &mut Out<'_>, i: usize, len: usize) {
-    if i + 1 < len {
-        out.push_char(',');
-    }
-}
-
-#[allow(dead_code, reason = "Helper for future template refactors")]
-pub(crate) fn emit_omitted_comment(
-    out: &mut Out<'_>,
-    label: &str,
-    count: usize,
-) {
-    out.push_comment(format!("/* {count} more {label} */"));
-}
-
-#[allow(dead_code, reason = "Helper for future template refactors")]
-pub(crate) fn write_scalar_item(out: &mut Out<'_>, depth: usize, text: &str) {
-    with_line(out, |o| with_indent(o, depth, |oo| oo.push_str(text)));
-}
+// (reserved for future shared helpers as needed)

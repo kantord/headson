@@ -1,4 +1,6 @@
-use super::core::{Style, push_array_items_with, push_object_items};
+use super::core::{
+    Style, push_array_items_with, push_object_items, wrap_block,
+};
 use super::{ArrayCtx, ObjectCtx};
 use crate::serialization::output::Out;
 
@@ -48,20 +50,15 @@ fn render_array_empty(ctx: &ArrayCtx, out: &mut Out<'_>) {
 }
 
 fn render_array_nonempty(ctx: &ArrayCtx, out: &mut Out<'_>) {
-    if !ctx.inline_open {
-        out.push_indent(ctx.depth);
-    }
-    out.push_char('[');
-    out.push_newline();
-    if ctx.omitted_at_start {
-        <Pseudo as Style>::array_push_omitted(out, ctx);
-    }
-    push_array_items_with::<Pseudo>(out, ctx);
-    if !ctx.omitted_at_start {
-        <Pseudo as Style>::array_push_omitted(out, ctx);
-    }
-    out.push_indent(ctx.depth);
-    out.push_char(']');
+    wrap_block(out, ctx.depth, ctx.inline_open, '[', ']', |o| {
+        if ctx.omitted_at_start {
+            <Pseudo as Style>::array_push_omitted(o, ctx);
+        }
+        push_array_items_with::<Pseudo>(o, ctx);
+        if !ctx.omitted_at_start {
+            <Pseudo as Style>::array_push_omitted(o, ctx);
+        }
+    });
 }
 
 pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
@@ -86,13 +83,8 @@ pub(super) fn render_object(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
         out.push_char('}');
         return;
     }
-    if !ctx.inline_open {
-        out.push_indent(ctx.depth);
-    }
-    out.push_char('{');
-    out.push_newline();
-    push_object_items(out, ctx);
-    <Pseudo as Style>::object_push_omitted(out, ctx);
-    out.push_indent(ctx.depth);
-    out.push_char('}');
+    wrap_block(out, ctx.depth, ctx.inline_open, '{', '}', |o| {
+        push_object_items(o, ctx);
+        <Pseudo as Style>::object_push_omitted(o, ctx);
+    });
 }
