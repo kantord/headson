@@ -5,6 +5,10 @@
     clippy::print_stdout,
     clippy::print_stderr
 )]
+#![allow(
+    clippy::multiple_crate_versions,
+    reason = "Dependency graph pulls distinct versions (e.g., yaml-rust2)."
+)]
 #![cfg_attr(
     test,
     allow(
@@ -21,6 +25,7 @@ mod json_ingest;
 mod order;
 mod serialization;
 mod utils;
+mod yaml_ingest;
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
 pub use order::{
     NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
@@ -48,6 +53,32 @@ pub fn headson_many(
     budget: usize,
 ) -> Result<String> {
     let arena = crate::ingest::parse_json_many(inputs, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    let out = find_largest_render_under_budget(&order_build, config, budget);
+    Ok(out)
+}
+
+/// Same as `headson` but using the YAML ingest path.
+pub fn headson_yaml(
+    input: Vec<u8>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budget: usize,
+) -> Result<String> {
+    let arena = crate::ingest::parse_yaml_one(input, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    let out = find_largest_render_under_budget(&order_build, config, budget);
+    Ok(out)
+}
+
+/// Same as `headson_many` but using the YAML ingest path.
+pub fn headson_many_yaml(
+    inputs: Vec<(String, Vec<u8>)>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budget: usize,
+) -> Result<String> {
+    let arena = crate::ingest::parse_yaml_many(inputs, priority_cfg)?;
     let order_build = order::build_order(&arena, priority_cfg)?;
     let out = find_largest_render_under_budget(&order_build, config, budget);
     Ok(out)
