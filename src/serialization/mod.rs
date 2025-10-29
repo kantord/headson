@@ -802,6 +802,118 @@ mod tests {
     }
 
     #[test]
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Aggregated YAML quoting cases in one test to reuse setup."
+    )]
+    fn yaml_key_and_scalar_quoting() {
+        // Keys and values that exercise YAML quoting heuristics.
+        let json = "{\n            \"true\": 1,\n            \"010\": \"010\",\n            \"-dash\": \"ok\",\n            \"normal\": \"simple\",\n            \"a:b\": \"a:b\",\n            \" spaced \": \" spaced \",\n            \"reserved\": \"yes\",\n            \"multiline\": \"line1\\nline2\"\n        }";
+        let arena = crate::json_ingest::build_json_tree_arena(
+            json,
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let build = build_order(
+            &arena,
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+        let out = render_top_k(
+            &build,
+            usize::MAX,
+            &mut marks,
+            27,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Yaml,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_yaml_valid(&out);
+        // Unquoted safe key
+        assert!(
+            out.contains("normal: simple"),
+            "expected unquoted normal key/value: {out:?}"
+        );
+        // Quoted key starting with digit and quoted numeric-looking value
+        assert!(
+            out.contains("\"010\": \"010\""),
+            "expected quoted numeric-like key and value: {out:?}"
+        );
+        // Quoted key with punctuation ':' and quoted value with ':'
+        assert!(
+            out.contains("\"a:b\": \"a:b\""),
+            "expected quoted punctuated key/value: {out:?}"
+        );
+        // Quoted key/value with outer whitespace
+        assert!(
+            out.contains("\" spaced \": \" spaced \""),
+            "expected quotes for outer whitespace: {out:?}"
+        );
+        // Reserved word value quoted
+        assert!(
+            out.contains("reserved: \"yes\""),
+            "expected reserved word value quoted: {out:?}"
+        );
+        // Multiline string stays quoted and appears on a single line token here
+        assert!(
+            out.contains("multiline: \"line1\\nline2\""),
+            "expected JSON-escaped newline token for strings: {out:?}"
+        );
+        // Key 'true' must be quoted to avoid YAML boolean
+        assert!(
+            out.contains("\"true\": 1"),
+            "expected quoted boolean-like key: {out:?}"
+        );
+    }
+
+    #[test]
+    fn yaml_array_of_objects_indentation() {
+        let arena = crate::json_ingest::build_json_tree_arena(
+            "[{\"a\":1,\"b\":2},{\"x\":3}]",
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let build = build_order(
+            &arena,
+            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let mut marks = vec![0u32; build.total_nodes];
+        let out = render_top_k(
+            &build,
+            usize::MAX,
+            &mut marks,
+            28,
+            &crate::RenderConfig {
+                template: crate::OutputTemplate::Yaml,
+                indent_unit: "  ".to_string(),
+                space: " ".to_string(),
+                newline: "\n".to_string(),
+                prefer_tail_arrays: false,
+                color_mode: crate::ColorMode::Off,
+                color_enabled: false,
+            },
+        );
+        assert_yaml_valid(&out);
+        // Expect dash-prefixed first line and continued indentation for following lines
+        assert!(
+            out.contains("-   a: 1"),
+            "expected list dash with first object line: {out:?}"
+        );
+        assert!(
+            out.contains("  b: 2"),
+            "expected subsequent object key indented: {out:?}"
+        );
+    }
+
+    #[test]
     fn inline_open_array_in_object_json() {
         let arena = crate::json_ingest::build_json_tree_arena(
             "{\"a\":[1,2,3]}",
