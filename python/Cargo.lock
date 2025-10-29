@@ -169,7 +169,7 @@ dependencies = [
 
 [[package]]
 name = "headson"
-version = "0.4.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "clap",

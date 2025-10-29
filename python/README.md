@@ -5,7 +5,7 @@ Minimal Python API for the `headson` JSON preview renderer.
 Currently exported function:
 
 - `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None, skew: str = "balanced") -> str`
-  - `template`: one of `"json" | "pseudo" | "js"`.
+  - `template`: one of `"json" | "pseudo" | "js" | "yaml"`.
   - `character_budget`: maximum output size in characters (defaults to 500 if not set).
   - `skew`: one of `"balanced" | "head" | "tail"`.
     - `balanced`: default behavior.
@@ -26,6 +26,9 @@ print(headson.summarize('{"a": 1, "b": {"c": 2}}', template="json", character_bu
 # JS template with tail skew: prefer the end of arrays when truncating
 arr = ','.join(str(i) for i in range(100))
 print(headson.summarize('{"arr": [' + arr + ']}', template="js", character_budget=60, skew="tail"))
+
+# YAML template renders a human-friendly preview
+print(headson.summarize('{"a": 1, "b": [1,2,3]}', template="yaml", character_budget=80))
 
 # Note: tail mode affects only pseudo/js display templates; the json template stays strict.
 ```

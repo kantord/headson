@@ -9,7 +9,8 @@ fn to_template(s: &str) -> Result<OutputTemplate> {
         "json" => Ok(OutputTemplate::Json),
         "pseudo" | "ps" => Ok(OutputTemplate::Pseudo),
         "js" | "javascript" => Ok(OutputTemplate::Js),
-        _ => bail!("unknown template: {} (expected 'json' | 'pseudo' | 'js')", s),
+        "yaml" | "yml" => Ok(OutputTemplate::Yaml),
+        _ => bail!("unknown template: {} (expected 'json' | 'pseudo' | 'js' | 'yaml')", s),
     }
 }
 

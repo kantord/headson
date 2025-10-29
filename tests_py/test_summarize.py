@@ -13,7 +13,7 @@ def test_summarize_json_roundtrip():
     assert obj["b"]["c"] == 2
 
 
-@pytest.mark.parametrize("template", ["json", "pseudo", "js"])
+@pytest.mark.parametrize("template", ["json", "pseudo", "js", "yaml"])
 def test_summarize_budget_affects_length(template):
     text = json.dumps({"arr": list(range(100))})
     out_small = headson.summarize(
