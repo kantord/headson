@@ -3,4 +3,4 @@ source: src/order/build.rs
 expression: "lines.join(\"\\n\")"
 ---
 len=1
-RankedNode { node_id: NodeId(0), kind: Array, key_in_object: None, number_value: None, bool_value: None, string_value: None }
+RankedNode { node_id: NodeId(0), kind: Array, key_in_object: None, atomic_token: None, string_value: None }

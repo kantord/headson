@@ -1,5 +1,3 @@
-use serde_json;
-
 #[derive(Clone, Debug)]
 pub struct PriorityConfig {
     pub max_string_graphemes: usize,
@@ -69,8 +67,8 @@ pub struct RankedNode {
     pub node_id: NodeId,
     pub kind: NodeKind,
     pub key_in_object: Option<String>,
-    pub number_value: Option<serde_json::Number>,
-    pub bool_value: Option<bool>,
+    // For non-truncatable leaves (null, bool, number), store the exact token text.
+    pub atomic_token: Option<String>,
     pub string_value: Option<String>,
 }
 

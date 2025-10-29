@@ -3,7 +3,7 @@ source: src/order.rs
 expression: "lines.join(\"\\n\")"
 ---
 len=4
-RankedNode { node_id: NodeId(0), kind: Array, key_in_object: None, number_value: None, bool_value: None, string_value: None }
-RankedNode { node_id: NodeId(1), kind: String, key_in_object: None, number_value: None, bool_value: None, string_value: Some("ab") }
-RankedNode { node_id: NodeId(2), kind: String, key_in_object: None, number_value: None, bool_value: None, string_value: None }
-RankedNode { node_id: NodeId(3), kind: String, key_in_object: None, number_value: None, bool_value: None, string_value: None }
+RankedNode { node_id: NodeId(0), kind: Array, key_in_object: None, atomic_token: None, string_value: None }
+RankedNode { node_id: NodeId(1), kind: String, key_in_object: None, atomic_token: None, string_value: Some("ab") }
+RankedNode { node_id: NodeId(2), kind: String, key_in_object: None, atomic_token: None, string_value: None }
+RankedNode { node_id: NodeId(3), kind: String, key_in_object: None, atomic_token: None, string_value: None }

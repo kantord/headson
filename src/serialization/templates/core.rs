@@ -69,38 +69,13 @@ pub(crate) fn push_array_items_with<S: Style>(
     }
 }
 
-fn as_bool(v: &str) -> Option<bool> {
-    if v == "true" {
-        Some(true)
-    } else if v == "false" {
-        Some(false)
-    } else {
-        None
-    }
-}
-
-fn is_number_text(v: &str) -> bool {
-    matches!(v.as_bytes().first().copied(), Some(b'-' | b'0'..=b'9'))
-}
-
 fn push_value_token(out: &mut Out<'_>, v: &str) {
+    // Preserve exact token text; only color string literals.
     if v.starts_with('"') {
         out.push_string_literal(v);
-        return;
+    } else {
+        out.push_str(v);
     }
-    if let Some(b) = as_bool(v) {
-        out.push_bool(b);
-        return;
-    }
-    if v == "null" {
-        out.push_null();
-        return;
-    }
-    if is_number_text(v) {
-        out.push_number_literal(v);
-        return;
-    }
-    out.push_str(v);
 }
 
 pub(crate) fn push_object_items(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {

@@ -155,6 +155,10 @@ impl<'a> Scope<'a> {
         }
     }
 
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Array child expansion mixes scoring, arena index mapping, and PQ wiring; splitting would obscure the flow"
+    )]
     fn expand_array_children(&mut self, entry: &Entry, arena_id: usize) {
         let node = &self.arena.nodes[arena_id];
         let kept = node.children_len;
@@ -173,6 +177,21 @@ impl<'a> Scope<'a> {
             let extra: u128 = self.array_extra_for_index(i, kept);
             let score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
             let child_node = &self.arena.nodes[child_arena_id];
+            let atomic = match child_kind {
+                NodeKind::Null => Some("null".to_string()),
+                NodeKind::Bool => {
+                    Some(if child_node.bool_value.unwrap_or(false) {
+                        "true".to_string()
+                    } else {
+                        "false".to_string()
+                    })
+                }
+                NodeKind::Number => child_node
+                    .number_value
+                    .as_ref()
+                    .map(std::string::ToString::to_string),
+                _ => None,
+            };
             self.push_child_common(
                 entry,
                 child_priority_index,
@@ -183,8 +202,7 @@ impl<'a> Scope<'a> {
                         node_id: NodeId(child_priority_index),
                         kind: child_kind,
                         key_in_object: None,
-                        number_value: child_node.number_value.clone(),
-                        bool_value: child_node.bool_value,
+                        atomic_token: atomic,
                         string_value: child_node.string_value.clone(),
                     },
                     index_in_parent_array: Some(orig_index),
@@ -196,6 +214,10 @@ impl<'a> Scope<'a> {
         }
     }
 
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Object child expansion handles sorting by key, scoring, and PQ wiring in one place for clarity"
+    )]
     fn expand_object_children(&mut self, entry: &Entry, arena_id: usize) {
         let node = &self.arena.nodes[arena_id];
         let mut items: Vec<(usize, usize)> =
@@ -214,6 +236,21 @@ impl<'a> Scope<'a> {
             *self.next_pq_id += 1;
             let score = entry.score + OBJECT_CHILD_BASE_INCREMENT;
             let child_node = &self.arena.nodes[child_arena_id];
+            let atomic = match child_kind {
+                NodeKind::Null => Some("null".to_string()),
+                NodeKind::Bool => {
+                    Some(if child_node.bool_value.unwrap_or(false) {
+                        "true".to_string()
+                    } else {
+                        "false".to_string()
+                    })
+                }
+                NodeKind::Number => child_node
+                    .number_value
+                    .as_ref()
+                    .map(std::string::ToString::to_string),
+                _ => None,
+            };
             self.push_child_common(
                 entry,
                 child_priority_index,
@@ -226,8 +263,7 @@ impl<'a> Scope<'a> {
                         key_in_object: Some(
                             self.arena.obj_keys[key_idx].clone(),
                         ),
-                        number_value: child_node.number_value.clone(),
-                        bool_value: child_node.bool_value,
+                        atomic_token: atomic,
                         string_value: child_node.string_value.clone(),
                     },
                     index_in_parent_array: None,
@@ -268,8 +304,7 @@ impl<'a> Scope<'a> {
                         node_id: NodeId(child_priority_index),
                         kind: NodeKind::String,
                         key_in_object: None,
-                        number_value: None,
-                        bool_value: None,
+                        atomic_token: None,
                         string_value: None,
                     },
                     index_in_parent_array: None,
@@ -321,6 +356,10 @@ impl<'a> Scope<'a> {
     }
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Orchestrates the full build; further splitting would decrease readability"
+)]
 pub fn build_order(
     arena: &JsonTreeArena,
     config: &PriorityConfig,
@@ -346,12 +385,24 @@ pub fn build_order(
     metrics.push(NodeMetrics::default());
     index_in_parent_array.push(None);
     let n = &arena.nodes[root_ar];
+    let root_atomic = match root_kind {
+        NodeKind::Null => Some("null".to_string()),
+        NodeKind::Bool => Some(if n.bool_value.unwrap_or(false) {
+            "true".to_string()
+        } else {
+            "false".to_string()
+        }),
+        NodeKind::Number => n
+            .number_value
+            .as_ref()
+            .map(std::string::ToString::to_string),
+        _ => None,
+    };
     nodes.push(RankedNode {
         node_id: NodeId(root_priority_index),
         kind: root_kind,
         key_in_object: None,
-        number_value: n.number_value.clone(),
-        bool_value: n.bool_value,
+        atomic_token: root_atomic,
         string_value: n.string_value.clone(),
     });
     // Root leaf class

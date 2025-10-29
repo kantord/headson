@@ -69,33 +69,6 @@ impl<'a> Out<'a> {
         self.buf.push_str(&s);
     }
 
-    pub fn push_number_literal(&mut self, number_text: &str) {
-        let s = color::wrap_role(
-            number_text,
-            color::ColorRole::Number,
-            self.color_enabled,
-        );
-        self.buf.push_str(&s);
-    }
-
-    pub fn push_bool(&mut self, val: bool) {
-        let s = color::wrap_role(
-            if val { "true" } else { "false" },
-            color::ColorRole::Bool,
-            self.color_enabled,
-        );
-        self.buf.push_str(&s);
-    }
-
-    pub fn push_null(&mut self) {
-        let s = color::wrap_role(
-            "null",
-            color::ColorRole::Null,
-            self.color_enabled,
-        );
-        self.buf.push_str(&s);
-    }
-
     // Formatting mode queries
     pub fn is_compact_mode(&self) -> bool {
         self.newline.is_empty() && self.indent_unit.is_empty()

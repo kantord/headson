@@ -6,17 +6,12 @@ use crate::serialization::types::ColorMode;
 const RESET: &str = "\u{001b}[0m";
 const BOLD_BLUE: &str = "\u{001b}[1;34m";
 const GREEN: &str = "\u{001b}[32m";
-const CYAN: &str = "\u{001b}[36m";
-const BRIGHT_GRAY: &str = "\u{001b}[37m";
 const DARK_GRAY: &str = "\u{001b}[90m";
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ColorRole {
     Key,
     String,
-    Number,
-    Bool,
-    Null,
 }
 
 pub fn wrap_role<S: Into<String>>(
@@ -31,8 +26,6 @@ pub fn wrap_role<S: Into<String>>(
     let prefix = match role {
         ColorRole::Key => BOLD_BLUE,
         ColorRole::String => GREEN,
-        ColorRole::Number => CYAN,
-        ColorRole::Bool | ColorRole::Null => BRIGHT_GRAY,
     };
     let mut out = String::with_capacity(8 + 8 + s.len());
     out.push_str(prefix);
