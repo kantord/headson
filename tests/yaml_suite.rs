@@ -34,7 +34,7 @@ fn is_yaml_file(path: &Path) -> bool {
     path.extension().map(|e| e == "yaml").unwrap_or(false)
 }
 
-test_each_path! { in "yaml-test-suite" => yaml_suite_case }
+test_each_path! { in "tests/fixtures/yaml/yaml-test-suite" => yaml_suite_case }
 
 fn yaml_suite_case(path: &Path) {
     if !is_yaml_file(path) {

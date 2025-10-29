@@ -29,7 +29,7 @@ fn is_n(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-test_each_path! { in "JSONTestSuite/test_parsing" => jsonsuite_case }
+test_each_path! { in "tests/fixtures/json/JSONTestSuite/test_parsing" => jsonsuite_case }
 
 fn file_name_str(path: &Path) -> Option<&str> {
     path.file_name().and_then(|s| s.to_str())
