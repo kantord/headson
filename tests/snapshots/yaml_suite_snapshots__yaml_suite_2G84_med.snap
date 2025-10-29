@@ -1,0 +1,16 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@ingy…"
+  name: Liter…
+  tags: liter…
+  tree: "+STR\n…"
+  yaml: "--- |…"
+- fail: true
+  yaml: "--- |…"
+- emit: --- …
+  tree: +STR…
+  yaml: --- …
+# 1 more items

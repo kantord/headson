@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: "http://www.yaml.org/sp…"
+  json: "here's to \"quotes\"…
+  name: Spec Example 7.7. Sin…
+  tags: spec scalar 1.3-err
+  tree: "+STR\n +DOC\n  =VAL 'he…"
+  yaml: 'here''s to "quotes"'…

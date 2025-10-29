@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- k:#foo &a !t …"
+  from: "https://gist.git…"
+  json: "\"k:#foo &a !t s\"…"
+  name: Plain Scalar loo…
+  tags: scalar
+  tree: "+STR\n +DOC ---\n …"
+  yaml: "---\nk:#foo\n &a !…"

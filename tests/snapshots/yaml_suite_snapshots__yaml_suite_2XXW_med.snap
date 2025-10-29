@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- !!set\nMark …"
+  from: "http://www.yaml…"
+  json: "{\n  \"Mark McGwi…"
+  name: Spec Example 2.…
+  tags: spec mapping u…
+  tree: "+STR\n +DOC ---…"
+  yaml: "# Sets are rep…"

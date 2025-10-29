@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "literal: |\n  va…"
+  from: "http://www.yam…"
+  json: "{\n  \"literal\":…"
+  name: Spec Example 8…
+  tags: indent spec li…
+  tree: "+STR\n +DOC\n  +…"
+  yaml: "literal: |2\n  …"

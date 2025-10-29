@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\n- !!int 1\n- !!…"
+  from: IRC
+  json: "[\n  1,\n  -2,\n  33\n…"
+  name: Three explicit int…
+  tags: sequence tag
+  tree: "+STR\n +DOC ---\n  +…"
+  yaml: "---\n- !!int 1\n- !…"

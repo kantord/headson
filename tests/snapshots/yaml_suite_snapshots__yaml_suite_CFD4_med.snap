@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "- - : empty key\n- - : …"
+  from: "@perlpunk"
+  name: Empty implicit key in …
+  tags: empty-key flow sequenc…
+  tree: "+STR\n +DOC\n  +SEQ\n   +…"
+  yaml: "- [ : empty key ]\n- […"

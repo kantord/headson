@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "plain: text…"
+  emit: "plain: text…"
+  from: "http://www.…"
+  json: "{\n  \"plain\"…"
+  name: Spec Exampl…
+  tags: spec scalar…
+  tree: "+STR\n +DOC\n…"
+  yaml: "plain: tex…"

@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: "http://www.yaml.org/s…"
+  json: "{\n  \"time\": \"20:03:20…"
+  name: Spec Example 2.8. Pla…
+  tags: spec header
+  tree: "+STR\n +DOC ---\n  +MAP…"
+  yaml: "---\ntime: 20:03:20\np…"

@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "strip: |-\n  # …"
+  from: "http://www.yam…"
+  json: "{\n  \"strip\": \"…"
+  name: Spec Example 8…
+  tags: spec literal s…
+  tree: "+STR\n +DOC\n  +…"
+  yaml: " # Strip\n  # C…"

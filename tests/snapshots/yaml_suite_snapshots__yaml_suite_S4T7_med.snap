@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: "https://github.com/ingydotn…"
+  json: "{\n  \"aaa\": \"bbb\"\n}\n"
+  name: Document with footer
+  tags: mapping footer
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :…"
+  yaml: "aaa: bbb\n...\n"

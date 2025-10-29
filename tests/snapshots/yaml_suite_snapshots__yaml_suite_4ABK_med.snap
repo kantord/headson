@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "unquoted: \"separate\"\n…"
+  from: "http://www.yaml.org/s…"
+  name: Flow Mapping Separate…
+  tags: flow mapping
+  tree: "+STR\n +DOC\n  +MAP {}…"
+  yaml: "{\nunquoted : \"separa…"

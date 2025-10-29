@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "key:\n- item1\n- …"
+  from: NimYAML tests
+  json: "{\n  \"key\": [\n  …"
+  name: Block Sequence …
+  tags: mapping sequenc…
+  tree: "+STR\n +DOC\n  +…"
+  yaml: "key:\n - item1\n…"

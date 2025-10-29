@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "key: value\n"
+  from: "http://www.yaml.o…"
+  json: "{\n  \"key\": \"value…"
+  name: Spec Example 6.1…
+  tags: spec comment
+  tree: "+STR\n +DOC\n  +MA…"
+  yaml: "key:    # Commen…"

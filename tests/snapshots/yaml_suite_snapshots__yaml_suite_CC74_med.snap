@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- !<tag:example…"
+  from: "http://www.yaml.o…"
+  json: "\"bar\"\n"
+  name: Spec Example 6.2…
+  tags: spec directive t…
+  tree: "+STR\n +DOC ---\n …"
+  yaml: "%TAG !e! tag:exa…"

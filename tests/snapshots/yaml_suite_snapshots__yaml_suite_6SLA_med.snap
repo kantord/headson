@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "? \"foo\\nbar:baz…"
+  from: "@perlpunk"
+  json: "{\n  \"foo\\nbar:b…"
+  name: Allowed charact…
+  tags: mapping single …
+  tree: "+STR\n +DOC\n  +M…"
+  yaml: "\"foo\\nbar:baz\\t…"

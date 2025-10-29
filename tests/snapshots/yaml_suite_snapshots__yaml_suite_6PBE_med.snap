@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- emit: "---\n? - a\n  - b\n: - c…"
+  from: "@perlpunk"
+  name: Zero-indented sequenc…
+  tags: explicit-key mapping …
+  tree: "+STR\n +DOC ---\n  +MA…"
+  yaml: "---\n?\n- a\n- b\n:\n- c\n…"

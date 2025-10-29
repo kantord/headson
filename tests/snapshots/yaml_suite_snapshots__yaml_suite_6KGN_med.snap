@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\na: &anchor\n…"
+  from: "https://github.…"
+  json: "{\n  \"a\": null,\n…"
+  name: Anchor for empt…
+  tags: alias anchor
+  tree: "+STR\n +DOC ---…"
+  yaml: "---\na: &anchor…"

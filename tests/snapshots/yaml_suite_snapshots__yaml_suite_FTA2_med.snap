@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- &sequence\n- a…"
+  from: "@perlpunk"
+  json: "[\n  \"a\"\n]\n"
+  name: Single block sequ…
+  tags: anchor header seq…
+  tree: "+STR\n +DOC ---\n  …"
+  yaml: "--- &sequence\n- …"

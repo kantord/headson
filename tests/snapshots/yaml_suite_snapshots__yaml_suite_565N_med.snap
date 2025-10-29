@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: "https://github.com/yam…"
+  json: "{\n  \"canonical\": \"R0lG…"
+  name: Construct Binary
+  tags: tag unknown-tag
+  tree: "+STR\n +DOC\n  +MAP\n   =…"
+  yaml: "canonical: !!binary \"…"

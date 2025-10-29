@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Invalid anchor in zero indented se…
+  tags: anchor error sequence
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :se…"
+  yaml: "---\nseq:\n&anchor\n- a\n- b\n"

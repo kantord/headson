@@ -1,0 +1,16 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "-\n"
+  from: "@ingy…"
+  json: "[null…"
+  name: Singl…
+  tags: seque…
+  tree: "+STR\n…"
+  yaml: "-∎\n"
+- dump: ":\n"
+  json: null
+  tags: mappi…
+  tree: +STR…
+  yaml: ":∎\n"

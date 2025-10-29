@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\n\"foo\": bar\n"
+  from: "@perlpunk"
+  json: "{\n  \"foo\": \"bar…"
+  name: Colon and adjac…
+  tags: double flow map…
+  tree: "+STR\n +DOC ---\n…"
+  yaml: "---\n{ \"foo\"\n  …"

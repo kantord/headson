@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "!foo \"bar\"\n...…"
+  from: "http://www.yam…"
+  json: "\"bar\"\n\"bar\"\n"
+  name: Spec Example 6…
+  tags: local-tag spec…
+  tree: "+STR\n +DOC\n  =…"
+  yaml: "# Private\n!foo…"

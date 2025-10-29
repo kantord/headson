@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: "https://github.com/i…"
+  json: "{\n  \"foo\": {\n    \"ba…"
+  name: Simple Mapping Inde…
+  tags: simple mapping inde…
+  tree: "+STR\n +DOC\n  +MAP\n …"
+  yaml: "foo:\n  bar: baz\n"

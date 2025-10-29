@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\ntop1:\n- item…"
+  from: "@perlpunk"
+  json: "{\n  \"top1\": [\n …"
+  name: Nested flow map…
+  tags: flow mapping se…
+  tree: "+STR\n +DOC ---\n…"
+  yaml: "---\n{ top1: [it…"

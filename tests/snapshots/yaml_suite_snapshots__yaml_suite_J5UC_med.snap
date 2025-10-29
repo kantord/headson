@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: "https://github.com/in…"
+  json: "{\n  \"foo\": \"blue\",\n  …"
+  name: Multiple Pair Block M…
+  tags: mapping
+  tree: "+STR\n +DOC\n  +MAP\n   …"
+  yaml: "foo: blue\nbar: arrr\nb…"

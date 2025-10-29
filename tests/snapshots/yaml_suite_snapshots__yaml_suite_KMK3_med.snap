@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: "https://github.com/ingydo…"
+  json: "{\n  \"foo\": {\n    \"bar\": …"
+  name: Block Submapping
+  tags: mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VA…"
+  yaml: "foo:\n  bar: 1\nbaz: 2\n"

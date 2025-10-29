@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\nkey: &an:chor …"
+  from: "@perlpunk"
+  json: "{\n  \"key\": \"value\"…"
+  name: Anchor with colon …
+  tags: anchor
+  tree: "+STR\n +DOC ---\n  …"
+  yaml: "---\nkey: &an:chor…"

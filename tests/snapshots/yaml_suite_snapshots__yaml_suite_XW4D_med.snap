@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "a: \"double quotes\"\nb:…"
+  from: "@perlpunk"
+  name: Various Trailing Comm…
+  tags: comment explicit-key …
+  tree: "+STR\n +DOC\n  +MAP\n   …"
+  yaml: "a: \"double\n  quotes\" …"

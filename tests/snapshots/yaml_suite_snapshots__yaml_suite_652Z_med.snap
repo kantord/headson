@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\n?foo: bar…"
+  emit: "?foo: bar\nbar…"
+  from: "@ingydotnet"
+  json: "{\n  \"?foo\" : …"
+  name: Question mark…
+  tags: flow
+  tree: "+STR\n +DOC\n …"
+  yaml: "{ ?foo: bar,…"

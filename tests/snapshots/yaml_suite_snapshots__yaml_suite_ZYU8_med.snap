@@ -1,0 +1,16 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- also: MU58
+  from: "@ingy…"
+  json: "null\n"
+  name: Direc…
+  note: The f…
+  skip: true
+  tags: direc…
+  tree: +STR…
+  yaml: "%YAM…"
+- yaml: "%***…"
+- yaml: "%YAM…"
+# 1 more items

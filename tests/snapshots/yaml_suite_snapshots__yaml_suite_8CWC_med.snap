@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\n'key ends wit…"
+  from: "@perlpunk"
+  json: "{\n  \"key ends wit…"
+  name: Plain mapping key…
+  tags: mapping scalar
+  tree: "+STR\n +DOC ---\n …"
+  yaml: "---\nkey ends wit…"

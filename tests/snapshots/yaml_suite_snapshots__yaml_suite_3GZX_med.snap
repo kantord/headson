@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: "http://www.yaml.org/…"
+  json: "{\n  \"First occurrenc…"
+  name: Spec Example 7.1. Al…
+  tags: mapping spec alias
+  tree: "+STR\n +DOC\n  +MAP\n  …"
+  yaml: "First occurrence: &a…"

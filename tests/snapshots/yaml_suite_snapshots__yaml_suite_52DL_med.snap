@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- ! a\n"
+  from: "8MK2, modified for YAML 1.3"
+  json: "\"a\"\n"
+  name: "Explicit Non-Specific Tag […"
+  tags: tag 1.3-mod
+  tree: "+STR\n +DOC ---\n  =VAL <!> …"
+  yaml: "---\n! a\n"

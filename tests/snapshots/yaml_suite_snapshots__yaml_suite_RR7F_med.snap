@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "a: 4.2\nd: 23\n"
+  from: NimYAML tests
+  json: "{\n  \"d\": 23,\n  \"…"
+  name: Mixed Block Mapp…
+  tags: explicit-key ma…
+  tree: "+STR\n +DOC\n  +M…"
+  yaml: "a: 4.2\n? d\n: 23…"

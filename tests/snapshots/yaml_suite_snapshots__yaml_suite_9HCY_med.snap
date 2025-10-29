@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@ingydotnet"
+  name: Need document footer before…
+  tags: directive error footer tag …
+  tree: "+STR\n +DOC\n  =VAL <!foo> \"b…"
+  yaml: "!foo \"bar\"\n%TAG ! tag:exam…"

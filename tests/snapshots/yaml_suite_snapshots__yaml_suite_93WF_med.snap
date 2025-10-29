@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- >-\n  trimme…"
+  from: "K527, modified …"
+  json: "trimmed\n\n\na…
+  name: Spec Example 6.…
+  tags: folded spec whi…
+  tree: "+STR\n +DOC ---\n…"
+  yaml: "--- >-\n  trimm…"

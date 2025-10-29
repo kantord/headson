@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: NimYAML tests
+  json: "{\n  \"one\": [\n    2,\n …"
+  name: Sequence With Same I…
+  tags: indent mapping seque…
+  tree: "+STR\n +DOC\n  +MAP\n  …"
+  yaml: "one:\n- 2\n- 3\nfour: 5…"

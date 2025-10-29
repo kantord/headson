@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- emit: "Bare document\n.…"
+  from: "http://www.yaml…"
+  json: "Bare document"…
+  name: Spec Example 9.…
+  tags: spec footer 1.3…
+  tree: "+STR\n +DOC\n  =…"
+  yaml: "Bare\ndocument\n…"

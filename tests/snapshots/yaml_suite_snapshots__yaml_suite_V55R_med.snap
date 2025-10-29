@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: NimYAML tests
+  json: "[\n  \"a\",\n  \"b\",\n  \"a\",…"
+  name: Aliases in Block Seque…
+  tags: alias sequence
+  tree: "+STR\n +DOC\n  +SEQ\n   …"
+  yaml: "- &a a\n- &b b\n- *a\n- …"

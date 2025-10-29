@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "? - flow\n: block\n"
+  from: "@perlpunk"
+  name: Implicit Flow Mapping Key on…
+  tags: complex-key mapping flow seq…
+  tree: "+STR\n +DOC\n  +MAP\n   +SEQ […"
+  yaml: "[flow]: block\n"

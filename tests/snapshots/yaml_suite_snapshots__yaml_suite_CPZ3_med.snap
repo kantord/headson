@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\ntab: \"\\tstri…"
+  from: "@perlpunk"
+  json: "{\n  \"tab\": \"\\tst…"
+  name: Doublequoted sc…
+  tags: double scalar
+  tree: "+STR\n +DOC ---\n…"
+  yaml: "---\ntab: \"\\tstr…"

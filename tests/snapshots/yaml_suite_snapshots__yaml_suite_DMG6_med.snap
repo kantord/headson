@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Wrong indendation in Map
+  tags: error mapping indent
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   +MAP\n    =VAL :…"
+  yaml: "key:\n  ok: 1\n wrong: 2\n"

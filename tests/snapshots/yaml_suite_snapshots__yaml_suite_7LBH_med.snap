@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Multiline double quoted implicit keys
+  tags: error double
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL \"a\\nb\n   =VAL :…"
+  yaml: "\"a\\nb\": 1\n\"c\n d\": 1\n"

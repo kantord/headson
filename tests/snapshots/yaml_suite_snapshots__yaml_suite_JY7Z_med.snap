@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Trailing content that looks lik…
+  tags: error mapping double
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key…"
+  yaml: "key1: \"quoted1\"\nkey2: \"quoted2…"

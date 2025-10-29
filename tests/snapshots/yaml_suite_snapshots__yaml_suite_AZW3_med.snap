@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: NimYAML tests
+  json: "[\n  {\n    \"bla\\\"keks\": \"f…"
+  name: Lookahead test cases
+  tags: mapping edge
+  tree: "+STR\n +DOC\n  +SEQ\n   +MAP…"
+  yaml: "- bla\"keks: foo\n- bla]ke…"

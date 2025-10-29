@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "- &a\n- a\n- &a : a\n  b:…"
+  from: NimYAML tests
+  name: Anchors on Empty Scala…
+  tags: anchor explicit-key
+  tree: "+STR\n +DOC\n  +SEQ\n   …"
+  yaml: "- &a\n- a\n-\n  &a : a\n …"

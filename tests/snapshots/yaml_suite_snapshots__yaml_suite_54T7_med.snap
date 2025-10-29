@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "foo: you\nbar: fa…"
+  from: "https://github.c…"
+  json: "{\n  \"foo\": \"you\"…"
+  name: Flow Mapping
+  tags: flow mapping
+  tree: "+STR\n +DOC\n  +MA…"
+  yaml: "{foo: you, bar: …"

@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "https://github.com/n…"
+  name: Invalid tabs as inde…
+  tags: error mapping whites…
+  tree: "+STR\n +DOC ---\n  +MA…"
+  yaml: "---\na:\n———»b:\n———»—…"

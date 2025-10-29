@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- emit: "- |\n  detected…"
+  from: "R4YG, modified…"
+  json: "[\n  \"detected\\…"
+  name: Spec Example 8…
+  tags: spec literal f…
+  tree: "+STR\n +DOC\n  +…"
+  yaml: "- |\n detected\n…"

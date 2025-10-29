@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\na: b\n---\n...\n"
+  from: "@perlpunk"
+  json: "{\n  \"a\": \"b\"\n}\nnull\n"
+  name: Document start on la…
+  tags: header
+  tree: "+STR\n +DOC ---\n  +M…"
+  yaml: "---\na: b\n---\n"

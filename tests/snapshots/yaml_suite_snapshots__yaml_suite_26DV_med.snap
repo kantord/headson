@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "\"top1\":\n  \"key…"
+  from: "@perlpunk"
+  json: "{\n  \"top1\": {\n…"
+  name: Whitespace aro…
+  tags: alias mapping …
+  tree: "+STR\n +DOC\n  +…"
+  yaml: "\"top1\" :␣\n  \"k…"

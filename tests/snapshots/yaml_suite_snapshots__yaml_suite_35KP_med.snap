@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- !!map\na: b\n…"
+  from: NimYAML tests
+  json: "{\n  \"a\": \"b\"\n}\n…"
+  name: Tags for Root …
+  tags: explicit-key h…
+  tree: "+STR\n +DOC ---…"
+  yaml: "--- !!map\n? a\n…"

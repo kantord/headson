@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- from: "http://www.yaml.org/spec/1.2/spec.html#id2759963"
+  json: "[\n  \"Mark McGwire\",\n  \"Sammy Sosa\",\n  \"Ken Griffey\"\n]\n"
+  name: Spec Example 2.1. Sequence of Scalars
+  tags: spec sequence
+  toke: "SEQ-MARK 0 1 1 1\nWS-SPACE 1 1 1 2\nTEXT-VAL 2 12 1 3 :Mark McGwire\nWS-NEWLN 14 1 1 15\nSEQ-MARK 15 1 2 1\nWS-SPACE 1 1 1 2\nTEXT-VAL 2 12 1 3 :Sammy Sosa\nWS-NEWLN 14 1 1 15\n"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :Mark McGwire\n   =VAL :Sammy Sosa\n   =VAL :Ken Griffey\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "- Mark McGwire\n- Sammy Sosa\n- Ken Griffey\n"

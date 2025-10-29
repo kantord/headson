@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\n!foo \"b…"
+  emit: "--- !foo \"b…"
+  from: "9WXW, modif…"
+  json: "\"bar\"\n\"bar…"
+  name: Spec Examp…
+  tags: local-tag …
+  tree: "+STR\n +DOC…"
+  yaml: "# Private\n…"

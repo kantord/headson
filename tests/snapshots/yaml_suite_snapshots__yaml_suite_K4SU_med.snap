@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: "https://github.com/ing…"
+  json: "[\n  \"foo\",\n  \"bar\",\n  …"
+  name: Multiple Entry Block S…
+  tags: sequence
+  tree: "+STR\n +DOC\n  +SEQ\n   =…"
+  yaml: "- foo\n- bar\n- 42\n"

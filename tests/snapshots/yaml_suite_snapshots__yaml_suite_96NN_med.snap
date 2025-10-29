@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "foo: |-\n  …"
+  from: "@ingydotne…"
+  json: "{\"foo\":\"\\t…"
+  name: Leading ta…
+  tags: indent lit…
+  tree: "+STR\n +DOC…"
+  yaml: "foo: |-\n —…"
+- yaml: "foo: |-\n —…"

@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "-\n- |\n  block …"
+  from: "http://www.yam…"
+  json: "[\n  null,\n  \"b…"
+  name: Spec Example 8…
+  tags: comment spec l…
+  tree: "+STR\n +DOC\n  +…"
+  yaml: "- # Empty\n- |…"

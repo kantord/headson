@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "- !!str\n- !!null : a\n  b: !…"
+  from: NimYAML tests
+  name: Tags on Empty Scalars
+  tags: tag scalar
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL …"
+  yaml: "- !!str\n-\n  !!null : a\n  b…"

@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- |-\n  ab\n...…"
+  from: "MYW6, modified …"
+  json: "\"ab\"\n"
+  name: Block Scalar St…
+  tags: literal scalar …
+  tree: "+STR\n +DOC ---\n…"
+  yaml: "--- |-\n ab\n␣\n␣…"

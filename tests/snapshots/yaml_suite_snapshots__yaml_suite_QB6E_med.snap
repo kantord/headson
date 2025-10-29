@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Wrong indented multiline quoted scala…
+  tags: double error indent
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :quote…"
+  yaml: "---\nquoted: \"a\nb\nc\"\n"

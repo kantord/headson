@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- emit: "---\nkey: value\n: empty k…"
+  from: "@perlpunk"
+  name: Empty keys in block and…
+  tags: empty-key mapping
+  tree: "+STR\n +DOC ---\n  +MAP\n …"
+  yaml: "---\nkey: value\n: empty …"

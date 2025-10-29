@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\nhr:\n- Mark…"
+  from: "http://www.yam…"
+  json: "{\n  \"hr\": [\n  …"
+  name: Spec Example 2…
+  tags: mapping sequen…
+  tree: "+STR\n +DOC ---…"
+  yaml: "---\nhr: # 1998…"

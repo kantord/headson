@@ -1,0 +1,14 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- also: ZYU8
+  fail: true
+  from: "@ingydotnet"
+  name: Directive v…
+  tags: directive
+  tree: "+STR\n"
+  yaml: "%YAML 1.1#.…"
+- yaml: "%YAML ——» 1…"
+- yaml: "%YAMLL 1.1…"
+# 4 more items

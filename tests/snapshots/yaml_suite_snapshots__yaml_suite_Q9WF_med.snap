@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "? first: Sammy\n  las…"
+  from: "http://www.yaml.org/…"
+  name: Spec Example 6.12. …
+  tags: complex-key flow sp…
+  tree: "+STR\n +DOC\n  +MAP\n …"
+  yaml: "{ first: Sammy, las…"

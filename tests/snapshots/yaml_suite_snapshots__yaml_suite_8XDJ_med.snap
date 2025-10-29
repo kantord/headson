@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "https://gist.github.com/a…"
+  name: Comment in plain multilin…
+  tags: error comment scalar
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL…"
+  yaml: "key: word1\n#  xxx\n  word…"

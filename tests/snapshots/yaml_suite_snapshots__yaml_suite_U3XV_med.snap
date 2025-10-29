@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\ntop1: &node1…"
+  from: "@perlpunk"
+  json: "{\n  \"top1\": {\n  …"
+  name: Node and Mappin…
+  tags: anchor comment …
+  tree: "+STR\n +DOC ---\n…"
+  yaml: "---\ntop1: &node…"

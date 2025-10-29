@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\n\"foo\"\n"
+  emit: "--- \"foo\"\n"
+  from: "6LVF, modifie…"
+  json: "\"foo\"\n"
+  name: Spec Example …
+  tags: spec directiv…
+  tree: "+STR\n +DOC --…"
+  yaml: "%FOO  bar ba…"

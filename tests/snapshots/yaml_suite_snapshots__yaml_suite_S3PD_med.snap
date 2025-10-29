@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- emit: "plain key: in-line v…"
+  from: "http://www.yaml.org/…"
+  name: Spec Example 8.18. I…
+  tags: empty-key spec mapp…
+  tree: "+STR\n +DOC\n  +MAP\n …"
+  yaml: "plain key: in-line …"

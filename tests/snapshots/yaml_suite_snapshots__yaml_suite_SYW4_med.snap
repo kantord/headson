@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "hr: 65\navg: 0.2…"
+  from: "http://www.yam…"
+  json: "{\n  \"hr\": 65,\n…"
+  name: Spec Example 2…
+  tags: spec scalar co…
+  tree: "+STR\n +DOC\n  +…"
+  yaml: "hr:  65    # H…"

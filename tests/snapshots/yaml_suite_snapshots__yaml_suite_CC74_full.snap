@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "--- !<tag:example.com,2000:app/foo> \"bar\"\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2783195"
+  json: "\"bar\"\n"
+  name: Spec Example 6.20. Tag Handles
+  tags: spec directive tag unknown-tag
+  tree: "+STR\n +DOC ---\n  =VAL <tag:example.com,2000:app/foo> \"bar\n -DOC\n-STR\n"
+  yaml: "%TAG !e! tag:example.com,2000:app/\n---\n!e!foo \"bar\"\n"

@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: "https://github.com/i…"
+  json: "{\n  \"a\": {\n    \"b\": …"
+  name: Multi-level Mapping…
+  tags: mapping indent
+  tree: "+STR\n +DOC\n  +MAP\n …"
+  yaml: "a:\n  b:\n    c: d\n  …"

@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "block sequence:…"
+  from: "http://www.yaml…"
+  json: "{\n  \"block sequ…"
+  name: Spec Example 8.…
+  tags: mapping spec se…
+  tree: "+STR\n +DOC\n  +M…"
+  yaml: block sequence…

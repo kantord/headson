@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "foo: 1\nbar:…"
+  emit: "foo: 1\nbar:…"
+  from: IRC discuss…
+  json: "{\n  \"foo\": …"
+  name: Blank lines
+  tags: comment lit…
+  tree: "+STR\n +DOC\n…"
+  yaml: "foo: 1\n\nbar…"

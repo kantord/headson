@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "? - Detroit Tigers\n …"
+  from: "http://www.yaml.org…"
+  name: Spec Example 2.11. …
+  tags: complex-key explici…
+  tree: "+STR\n +DOC\n  +MAP\n …"
+  yaml: "? - Detroit Tigers\n…"

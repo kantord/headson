@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "https://gist.github.com/anonymous…"
+  name: Invalid mapping in plain single …
+  tags: error mapping scalar
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n"
+  yaml: "a: b: c: d\n"

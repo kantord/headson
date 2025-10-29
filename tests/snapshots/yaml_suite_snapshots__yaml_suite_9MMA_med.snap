@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@ingydotnet"
+  name: Directive by itself with no document
+  tags: error directive
+  tree: "+STR\n"
+  yaml: "%YAML 1.2\n"

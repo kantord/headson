@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "- &a !!str a\n- !!i…"
+  from: NimYAML tests
+  json: "[\n  \"a\",\n  2,\n  4…"
+  name: Anchors and Tags
+  tags: anchor tag
+  tree: "+STR\n +DOC\n  +SEQ…"
+  yaml: " - &a !!str a\n - …"

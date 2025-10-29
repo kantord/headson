@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "- ::vector\n- \":…"
+  from: "http://www.yam…"
+  json: "[\n  \"::vector\"…"
+  name: Spec Example 7…
+  tags: spec flow sequ…
+  tree: "+STR\n +DOC\n  +…"
+  yaml: "# Outside flow…"

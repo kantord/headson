@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: "http://www.yaml.org/…"
+  json: "[\n  \"foo\",\n  \"bar\",…"
+  name: Spec Example 6.26. …
+  tags: spec tag local-tag
+  tree: "+STR\n +DOC ---\n  +S…"
+  yaml: "%TAG !e! tag:exampl…"

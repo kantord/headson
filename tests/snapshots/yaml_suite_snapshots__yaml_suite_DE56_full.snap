@@ -1,0 +1,31 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "\"1 trailing\\t tab\"\n"
+  from: "@ingydotnet"
+  json: "\"1 trailing\\t tab\"\n"
+  name: Trailing tabs in double quoted
+  tags: double whitespace
+  tree: "+STR\n +DOC\n  =VAL \"1 trailing\\t tab\n -DOC\n-STR\n"
+  yaml: "\"1 trailing\\t\n    tab\"\n"
+- dump: "\"2 trailing\\t tab\"\n"
+  json: "\"2 trailing\\t tab\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"2 trailing\\t tab\n -DOC\n-STR\n"
+  yaml: "\"2 trailing\\t␣␣\n    tab\"\n"
+- dump: "\"3 trailing\\t tab\"\n"
+  json: "\"3 trailing\\t tab\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"3 trailing\\t tab\n -DOC\n-STR\n"
+  yaml: "\"3 trailing\\————»\n    tab\"\n"
+- dump: "\"4 trailing\\t tab\"\n"
+  json: "\"4 trailing\\t tab\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"4 trailing\\t tab\n -DOC\n-STR\n"
+  yaml: "\"4 trailing\\————»␣␣\n    tab\"\n"
+- dump: "\"5 trailing tab\"\n"
+  json: "\"5 trailing tab\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"5 trailing tab\n -DOC\n-STR\n"
+  yaml: "\"5 trailing—»\n    tab\"\n"
+- dump: "\"6 trailing tab\"\n"
+  json: "\"6 trailing tab\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"6 trailing tab\n -DOC\n-STR\n"
+  yaml: "\"6 trailing—»␣␣\n    tab\"\n"

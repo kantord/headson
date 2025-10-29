@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: NimYAML tests
+  json: "[\n  [\n    \"s1_i1\",\n    \"…"
+  name: Block Sequence in Block …
+  tags: sequence
+  tree: "+STR\n +DOC\n  +SEQ\n   +SE…"
+  yaml: "- - s1_i1\n  - s1_i2\n- s2…"

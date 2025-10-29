@@ -205,12 +205,13 @@ impl YamlArenaBuilder {
                 n.atomic_token = Some("null".to_string());
                 id
             }
-            // Represent aliases as strings to avoid needing anchor resolution.
-            Yaml::Alias(n) => {
+            // Represent aliases as a fixed string to avoid unstable parser IDs
+            // and keep output deterministic.
+            Yaml::Alias(_n) => {
                 let id = self.push_default();
                 let node = &mut self.arena.nodes[id];
                 node.kind = NodeKind::String;
-                node.string_value = Some(format!("*{n}"));
+                node.string_value = Some("*alias".to_string());
                 id
             }
         }

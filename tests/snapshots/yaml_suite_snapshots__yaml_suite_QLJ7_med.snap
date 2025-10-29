@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: IRC
+  name: Tag shorthand used in documents but…
+  tags: error directive tag
+  tree: "+STR\n +DOC ---\n  +MAP <tag:example.…"
+  yaml: "%TAG !prefix! tag:example.com,2011:…"

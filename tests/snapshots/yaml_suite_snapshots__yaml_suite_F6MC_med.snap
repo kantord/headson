@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- emit: "---\na: >2\n   mor…"
+  from: "@perlpunk"
+  json: "{\n  \"a\": \" more …"
+  name: More indented li…
+  tags: folded indent
+  tree: "+STR\n +DOC ---\n …"
+  yaml: "---\na: >2\n   mor…"

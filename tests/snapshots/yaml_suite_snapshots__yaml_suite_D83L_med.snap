@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "- |-\n  explicit i…"
+  from: "@perlpunk"
+  json: "[\n  \"explicit ind…"
+  name: Block scalar indi…
+  tags: indent literal
+  tree: "+STR\n +DOC\n  +SE…"
+  yaml: "- |2-\n  explicit…"

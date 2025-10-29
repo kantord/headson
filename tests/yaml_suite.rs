@@ -94,7 +94,8 @@ fn normalize_yaml(y: &Yaml) -> J {
         // Keep numeric tokens as strings to avoid representation diffs
         Yaml::Integer(i) => J::String(i.to_string()),
         Yaml::Real(s) | Yaml::String(s) => J::String(s.clone()),
-        Yaml::Alias(n) => J::String(format!("*{n}")),
+        // Match ingester behavior: represent any alias as the fixed token "*alias"
+        Yaml::Alias(_n) => J::String("*alias".to_string()),
         Yaml::Array(v) => J::Array(v.iter().map(normalize_yaml).collect()),
         Yaml::Hash(map) => {
             let mut obj: BTreeMap<String, J> = BTreeMap::new();

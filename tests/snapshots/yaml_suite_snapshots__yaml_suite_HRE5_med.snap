@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "https://github.com/yaml/l…"
+  name: Double quoted scalar with…
+  tags: double error single
+  tree: "+STR\n +DOC ---\n  +MAP\n   …"
+  yaml: "---\ndouble: \"quoted \\' s…"

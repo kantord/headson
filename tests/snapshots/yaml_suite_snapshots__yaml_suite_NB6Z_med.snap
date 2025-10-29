@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "key: 'value with…"
+  from: "@perlpunk"
+  json: "{\n  \"key\": \"valu…"
+  name: Multiline plain…
+  tags: scalar whitespa…
+  tree: "+STR\n +DOC\n  +M…"
+  yaml: "key:\n  value\n  …"

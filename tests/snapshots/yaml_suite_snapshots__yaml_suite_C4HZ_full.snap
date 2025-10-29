@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "--- !<tag:clarkevans.com,2002:shape>\n- !<tag:clarkevans.com,2002:circle>\n  center: &ORIGIN\n    x: 73\n    y: 129\n  radius: 7\n- !<tag:clarkevans.com,2002:line>\n  start: *ORIGIN\n  finish:\n    x: 89\n    y: 102\n- !<tag:clarkevans.com,2002:label>\n  start: *ORIGIN\n  color: 0xFFEEBB\n  text: Pretty vector drawing.\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2761719"
+  json: "[\n  {\n    \"center\": {\n      \"x\": 73,\n      \"y\": 129\n    },\n    \"radius\": 7\n  },\n  {\n    \"start\": {\n      \"x\": 73,\n      \"y\": 129\n    },\n    \"finish\": {\n      \"x\": 89,\n      \"y\": 102\n    }\n  },\n  {\n    \"start\": {\n      \"x\": 73,\n      \"y\": 129\n    },\n    \"color\": 16772795,\n    \"text\": \"Pretty vector drawing.\"\n  }\n]\n"
+  name: Spec Example 2.24. Global Tags
+  tags: spec tag alias directive local-tag
+  tree: "+STR\n +DOC ---\n  +SEQ <tag:clarkevans.com,2002:shape>\n   +MAP <tag:clarkevans.com,2002:circle>\n    =VAL :center\n    +MAP {} &ORIGIN\n     =VAL :x\n     =VAL :73\n     =VAL :y\n     =VAL :129\n    -MAP\n    =VAL :radius\n    =VAL :7\n   -MAP\n   +MAP <tag:clarkevans.com,2002:line>\n    =VAL :start\n    =ALI *ORIGIN\n    =VAL :finish\n    +MAP {}\n     =VAL :x\n     =VAL :89\n     =VAL :y\n     =VAL :102\n    -MAP\n   -MAP\n   +MAP <tag:clarkevans.com,2002:label>\n    =VAL :start\n    =ALI *ORIGIN\n    =VAL :color\n    =VAL :0xFFEEBB\n    =VAL :text\n    =VAL :Pretty vector drawing.\n   -MAP\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "%TAG ! tag:clarkevans.com,2002:\n--- !shape\n  # Use the ! handle for presenting\n  # tag:clarkevans.com,2002:circle\n- !circle\n  center: &ORIGIN {x: 73, y: 129}\n  radius: 7\n- !line\n  start: *ORIGIN\n  finish: { x: 89, y: 102 }\n- !label\n  start: *ORIGIN\n  color: 0xFFEEBB\n  text: Pretty vector drawing.\n"

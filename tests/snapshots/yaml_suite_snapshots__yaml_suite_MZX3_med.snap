@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: NimYAML tests
+  json: "[\n  \"plain\",\n  \"double …"
+  name: Non-Specific Tags on Sc…
+  tags: folded scalar
+  tree: "+STR\n +DOC\n  +SEQ\n   =V…"
+  yaml: "- plain\n- \"double quote…"

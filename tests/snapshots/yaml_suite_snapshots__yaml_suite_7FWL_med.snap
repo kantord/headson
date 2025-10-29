@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "!!str foo: !bar…"
+  from: "http://www.yaml…"
+  json: "{\n  \"foo\": \"ba…"
+  name: Spec Example 6…
+  tags: mapping spec t…
+  tree: "+STR\n +DOC\n  +…"
+  yaml: "!<tag:yaml.org…"

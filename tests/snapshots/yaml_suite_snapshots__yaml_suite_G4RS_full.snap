@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "unicode: \"Sosa did fine.\\u263A\"\ncontrol: \"\\b1998\\t1999\\t2000\\n\"\nhex esc: \"\\r\\n is \\r\\n\"\nsingle: '\"Howdy!\" he cried.'\nquoted: ' # Not a ''comment''.'\ntie-fighter: '|\\-*-/|'\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2761245"
+  json: "{\n  \"unicode\": \"Sosa did fine.☺\",\n  \"control\": \"\\b1998\\t1999\\t2000\\n\",\n  \"hex esc\": \"\\r\\n is \\r\\n\",\n  \"single\": \"\\\"Howdy!\\\" he cried.\",\n  \"quoted\": \" # Not a 'comment'.\",\n  \"tie-fighter\": \"|\\\\-*-/|\"\n}\n"
+  name: Spec Example 2.17. Quoted Scalars
+  tags: spec scalar
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :unicode\n   =VAL \"Sosa did fine.☺\n   =VAL :control\n   =VAL \"\\b1998\\t1999\\t2000\\n\n   =VAL :hex esc\n   =VAL \"\\r\\n is \\r\\n\n   =VAL :single\n   =VAL '\"Howdy!\" he cried.\n   =VAL :quoted\n   =VAL ' # Not a 'comment'.\n   =VAL :tie-fighter\n   =VAL '|\\\\-*-/|\n  -MAP\n -DOC\n-STR\n"
+  yaml: "unicode: \"Sosa did fine.\\u263A\"\ncontrol: \"\\b1998\\t1999\\t2000\\n\"\nhex esc: \"\\x0d\\x0a is \\r\\n\"\n\nsingle: '\"Howdy!\" he cried.'\nquoted: ' # Not a ''comment''.'\ntie-fighter: '|\\-*-/|'\n"

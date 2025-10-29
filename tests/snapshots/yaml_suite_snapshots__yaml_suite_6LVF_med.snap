@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- \"foo\"\n"
+  from: "http://www.yaml.or…"
+  json: "\"foo\"\n"
+  name: Spec Example 6.13.…
+  tags: spec directive hea…
+  tree: "+STR\n +DOC ---\n  …"
+  yaml: "%FOO  bar baz # S…"

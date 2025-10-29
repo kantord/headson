@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\na:\n- b\n- c\n…"
+  from: "@perlpunk"
+  json: "{\n  \"a\": [\n    …"
+  name: Nested flow col…
+  tags: flow mapping se…
+  tree: "+STR\n +DOC ---\n…"
+  yaml: "---\n{ a: [b, c…"

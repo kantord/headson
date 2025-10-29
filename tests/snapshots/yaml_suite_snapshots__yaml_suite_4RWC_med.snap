@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "- 1\n- 2\n- 3\n"
+  from: "@ingydotnet"
+  json: "[\n  1,\n  2,\n  3\n…"
+  name: Trailing spaces…
+  tags: flow whitespace
+  tree: "+STR\n +DOC\n  +S…"
+  yaml: "  [1, 2, 3]␣␣\n␣…"

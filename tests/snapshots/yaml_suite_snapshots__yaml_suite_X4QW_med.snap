@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Comment without whitespace af…
+  tags: folded comment error whitespa…
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :b…"
+  yaml: "block: ># comment\n  scalar\n"

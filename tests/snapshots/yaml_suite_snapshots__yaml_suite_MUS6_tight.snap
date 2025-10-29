@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_tight
+---
+- also: …
+  fail: true
+  # 5 more properties
+- {}
+- {}
+# 4 more items

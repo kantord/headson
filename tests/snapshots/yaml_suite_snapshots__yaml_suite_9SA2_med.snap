@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\n- \"single li…"
+  from: "@perlpunk"
+  json: "[\n  {\n    \"sing…"
+  name: Multiline doubl…
+  tags: double flow map…
+  tree: "+STR\n +DOC ---\n…"
+  yaml: "---\n- { \"single…"

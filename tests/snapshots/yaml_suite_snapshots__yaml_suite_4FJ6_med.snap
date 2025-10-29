@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\n- ? - a\n    - - ? …"
+  from: "@perlpunk"
+  name: Nested implicit comple…
+  tags: complex-key flow mappi…
+  tree: "+STR\n +DOC ---\n  +SEQ…"
+  yaml: "---\n[\n  [ a, [ [[b,c]…"

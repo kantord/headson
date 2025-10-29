@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: - "double quote…
+  from: "http://www.yaml…"
+  json: "[\n  \"double quo…"
+  name: Spec Example 7…
+  tags: spec flow sequ…
+  tree: "+STR\n +DOC\n  +…"
+  yaml: "[\n\"double\n quo…"

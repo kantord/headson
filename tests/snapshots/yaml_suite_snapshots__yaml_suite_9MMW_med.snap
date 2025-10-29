@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "- - YAML: separate\n-…"
+  from: "@perlpunk, Spec Exam…"
+  name: Single Pair Implici…
+  tags: flow mapping sequen…
+  tree: "+STR\n +DOC\n  +SEQ\n …"
+  yaml: "- [ YAML : separate…"

@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\n- word1\n- w…"
+  from: "@perlpunk"
+  json: "[\n  \"word1\",\n  …"
+  name: Comment in flow…
+  tags: comment flow se…
+  tree: "+STR\n +DOC ---\n…"
+  yaml: "---\n[ word1\n# c…"

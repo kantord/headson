@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: - single multiline…
+  from: "@perlpunk"
+  json: "[\n  \"single multil…"
+  name: Sequence entry tha…
+  tags: scalar sequence
+  tree: "+STR\n +DOC\n  +SEQ…"
+  yaml: - single multilin…

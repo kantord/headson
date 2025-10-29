@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "complex1:\n  ? - a\n  :\n…"
+  from: "@perlpunk"
+  name: Various combinations …
+  tags: explicit-key mapping …
+  tree: "+STR\n +DOC\n  +MAP\n   …"
+  yaml: "complex1:\n  ? - a\ncom…"

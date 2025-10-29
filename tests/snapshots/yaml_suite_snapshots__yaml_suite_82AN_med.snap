@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "'---word1 word2'\n"
+  from: "@perlpunk"
+  json: "\"---word1 word2\"\n"
+  name: Three dashes and cont…
+  tags: scalar 1.3-err
+  tree: "+STR\n +DOC\n  =VAL :-…"
+  yaml: "---word1\nword2\n"

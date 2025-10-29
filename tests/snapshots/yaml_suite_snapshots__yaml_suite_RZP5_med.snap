@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "a: \"double quotes\"\n…"
+  from: "XW4D, modified for …"
+  name: Various Trailing Co…
+  tags: anchor comment fold…
+  tree: "+STR\n +DOC\n  +MAP\n…"
+  yaml: "a: \"double\n  quote…"

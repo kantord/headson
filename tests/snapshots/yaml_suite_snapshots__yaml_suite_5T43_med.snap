@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "- key: valu…"
+  emit: "- \"key\": va…"
+  from: "@perlpunk"
+  json: "[\n  {\n    \"…"
+  name: Colon at th…
+  tags: flow mappin…
+  tree: "+STR\n +DOC\n…"
+  yaml: "- { \"key\":v…"

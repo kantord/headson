@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\na: 1\nb:\n&an…"
+  from: "@perlpunk"
+  json: "{\n  \"a\": 1,\n  \"…"
+  name: Key with anchor…
+  tags: anchor explicit…
+  tree: "+STR\n +DOC ---…"
+  yaml: "---\na: 1\n? b\n&…"

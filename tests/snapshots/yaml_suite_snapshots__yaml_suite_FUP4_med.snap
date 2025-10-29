@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "- a\n- - b\n  - c\n"
+  from: NimYAML tests
+  json: "[\n  \"a\",\n  [\n    \"…"
+  name: Flow Sequence in F…
+  tags: sequence flow
+  tree: "+STR\n +DOC\n  +SEQ …"
+  yaml: "[a, [b, c]]\n"

@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\n- &😁 unicode…"
+  from: "https://github.…"
+  json: "[\n  \"unicode an…"
+  name: Anchor with uni…
+  tags: anchor
+  tree: "+STR\n +DOC ---\n…"
+  yaml: "---\n- &😁 unicod…"
