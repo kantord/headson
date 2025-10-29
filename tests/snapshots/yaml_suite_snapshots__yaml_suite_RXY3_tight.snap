@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: "@perlpunk"
+  name: Invalid …
+  tags: footer s…
+  tree: "+STR\n +D…"
+  yaml: "---\n'\n..…"

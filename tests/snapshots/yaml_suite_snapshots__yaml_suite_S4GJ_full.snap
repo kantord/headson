@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- fail: true
+  from: "@perlpunk"
+  name: Invalid text after block scalar indicator
+  tags: error folded
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :folded\n"
+  yaml: "---\nfolded: > first line\n  second line\n"

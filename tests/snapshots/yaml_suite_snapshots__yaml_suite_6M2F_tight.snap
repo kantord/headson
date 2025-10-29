@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- dump: "&a a: &…"
+  from: NimYAML…
+  name: Aliases…
+  tags: alias e…
+  tree: "+STR\n +…"
+  yaml: "? &a a…"

@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- dump: - - YAM…
+  from: "@perlpu…"
+  name: Single …
+  tags: flow ma…
+  tree: "+STR\n +…"
+  yaml: "- [ YA…"

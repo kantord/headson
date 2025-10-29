@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: NimYAML …
+  name: Invalid …
+  tags: flow edg…
+  tree: "+STR\n +D…"
+  yaml: "[\n--- ,\n…"

@@ -1,0 +1,6 @@
+---
+source: tests/yaml_snapshots.rs
+expression: out
+---
+"010": "010"
+

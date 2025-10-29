@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "- \"double quoted\"\n- 'single quoted'\n- plain text\n- - nested\n- single: pair\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2790726"
+  json: "[\n  \"double quoted\",\n  \"single quoted\",\n  \"plain text\",\n  [\n    \"nested\"\n  ],\n  {\n    \"single\": \"pair\"\n…"
+  name: Spec Example 7.14. Flow Sequence Entries
+  tags: spec flow sequence
+  tree: "+STR\n +DOC\n  +SEQ []\n   =VAL \"double quoted\n   =VAL 'single quoted\n   =VAL :plain text\n   +SEQ []\n    …"
+  yaml: "[\n\"double\n quoted\", 'single\n           quoted',\nplain\n text, [ nested ],\nsingle: pair,\n]\n"

@@ -1,0 +1,8 @@
+---
+source: tests/yaml_snapshots.rs
+expression: out
+---
+a: 1
+arr:
+  - x
+  - "y"

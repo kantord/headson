@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@ingydotnet"
+  name: Multiline unidented double quoted block key
+  tags: indent
+  tree: "+STR\n +DOC\n  +SEQ\n   +SEQ\n"
+  yaml: "- - \"bar\nbar\": x\n"

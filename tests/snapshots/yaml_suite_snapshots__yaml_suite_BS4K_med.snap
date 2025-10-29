@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "https://gist.github.com/anonymous/269f16d582fdd30a7dcf8c9249c5da7f via @ingydotnet"
+  name: Comment between plain scalar lines
+  tags: error scalar
+  tree: "+STR\n +DOC\n  =VAL :word1\n -DOC\n"
+  yaml: "word1  # comment\nword2\n"

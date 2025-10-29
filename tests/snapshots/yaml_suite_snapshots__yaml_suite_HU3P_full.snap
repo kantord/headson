@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- fail: true
+  from: "https://gist.github.com/anonymous/d305fd8e54cfe7a484088c91a8a2e533 via @ingydotnet"
+  name: Invalid Mapping in plain scalar
+  tags: error mapping scalar
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n"
+  yaml: "key:\n  word1 word2\n  no: key\n"

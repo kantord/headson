@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- from: NimYAML tests
+  json: "{\n  \"one\": [\n    2,\n    3\n  ],\n  \"four\": 5\n}\n"
+  name: Sequence With Same Indentation as Parent Mapping
+  tags: indent mapping sequence
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :one\n   +SEQ\n    =VAL :2\n    =VAL :3\n   -SEQ\n   =VAL :four\n   =VAL :5\n  -MAP\n -DOC\n-STR\n"
+  yaml: "one:\n- 2\n- 3\nfour: 5\n"

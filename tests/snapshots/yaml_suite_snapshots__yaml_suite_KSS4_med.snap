@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- \"quoted string\"\n--- &node foo\n...\n"
+  emit: "--- \"quoted string\"\n--- &node foo\n"
+  from: "@perlpunk"
+  json: "\"quoted string\"\n\"foo\"\n"
+  name: Scalars on --- line
+  tags: anchor header scalar 1.3-err
+  tree: "+STR\n +DOC ---\n  =VAL \"quoted string\n -DOC\n +DOC ---\n  =VAL &node :foo\n -DOC\n-STR\n"
+  yaml: "--- \"quoted\nstring\"\n--- &node foo\n"

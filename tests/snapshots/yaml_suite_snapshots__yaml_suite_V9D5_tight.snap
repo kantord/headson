@@ -1,0 +1,9 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- from: "http://www.…"
+  name: Spec Exampl…
+  tags: complex-key…
+  tree: "+STR\n +DOC…"
+  yaml: "- sun: yel…"

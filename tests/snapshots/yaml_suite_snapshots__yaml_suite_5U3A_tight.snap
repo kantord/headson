@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: "@perlpunk"
+  name: Sequence …
+  tags: error seq…
+  tree: "+STR\n +D…"
+  yaml: "key: - a…"

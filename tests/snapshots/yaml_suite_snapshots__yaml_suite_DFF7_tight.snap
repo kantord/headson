@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- dump: explici…
+  from: "http://…"
+  name: Spec Ex…
+  tags: explici…
+  tree: "+STR\n …"
+  yaml: "{\n? ex…"

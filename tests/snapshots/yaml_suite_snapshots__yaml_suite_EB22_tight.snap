@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: "@perlpun…"
+  name: Missing …
+  tags: error di…
+  tree: "+STR\n +D…"
+  yaml: "---\nsca…"

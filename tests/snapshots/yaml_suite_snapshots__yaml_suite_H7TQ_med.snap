@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@ingydotnet"
+  name: "Extra words on %YAML directive"
+  tags: directive
+  tree: "+STR\n"
+  yaml: "%YAML 1.2 foo\n---\n"

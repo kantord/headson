@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "- ::vector\n- \": - ()\"\n- Up, up, and away!\n- -123\n- http://example.com/foo#bar\n- - ::vector\n  …"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2789510"
+  json: "[\n  \"::vector\",\n  \": - ()\",\n  \"Up, up, and away!\",\n  -123,\n  \"http://example.com/foo#bar\",\n  …"
+  name: Spec Example 7.10. Plain Characters
+  tags: spec flow sequence scalar
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :::vector\n   =VAL \": - ()\n   =VAL :Up, up, and away!\n   =VAL :-123…"
+  yaml: "# Outside flow collection:\n- ::vector\n- \": - ()\"\n- Up, up, and away!\n- -123\n- http://example…"

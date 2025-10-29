@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: "https://…"
+  name: Comment …
+  tags: error sc…
+  tree: "+STR\n +D…"
+  yaml: "word1  #…"

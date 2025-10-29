@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- fail: true
+  from: "@ingydotnet"
+  name: Plain dashes in flow sequence
+  tags: flow sequence
+  tree: "+STR\n +DOC ---\n  +SEQ\n   +SEQ []\n"
+  yaml: "---\n- [-, -]\n"

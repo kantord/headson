@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- from: "https:/…"
+  json: "{\n  \"ca…"
+  name: Constru…
+  tags: tag un…
+  tree: "+STR\n …"
+  yaml: canoni…

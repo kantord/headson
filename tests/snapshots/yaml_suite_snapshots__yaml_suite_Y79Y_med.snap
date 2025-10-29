@@ -1,0 +1,27 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- fail: true
+  from: "@ingydotnet"
+  name: Tabs in various contexts
+  tags: whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n"
+  yaml: "foo: |\n————»\nbar: 1\n"
+- dump: "foo: |\n  ——…"
+  json: "{\n  \"foo\": …"
+  tree: "+STR\n +DOC\n…"
+  yaml: "foo: |\n ———…"
+- fail: true
+  yaml: "-———»-\n"
+- fail: true
+  yaml: "- ——»-\n"
+- fail: true
+  yaml: "?———»-\n"
+- fail: true
+  yaml: "? key:\n:——…"
+- dump: "- -1\n"
+  json: "[\n  -1\n]\n"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :-1\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "-———»-1\n"
+# 4 more items

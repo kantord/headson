@@ -205,12 +205,13 @@ impl YamlArenaBuilder {
                 n.atomic_token = Some("null".to_string());
                 id
             }
-            // Represent aliases as strings to avoid needing anchor resolution.
-            Yaml::Alias(n) => {
+            // Represent aliases as a fixed string to avoid unstable parser IDs
+            // and keep output deterministic.
+            Yaml::Alias(_n) => {
                 let id = self.push_default();
                 let node = &mut self.arena.nodes[id];
                 node.kind = NodeKind::String;
-                node.string_value = Some(format!("*{n}"));
+                node.string_value = Some("*alias".to_string());
                 id
             }
         }
@@ -218,20 +219,32 @@ impl YamlArenaBuilder {
 }
 
 fn stringify_yaml_key(y: &Yaml) -> String {
-    match y {
-        Yaml::String(s) => s.clone(),
-        // For non-string keys, serialize to a compact one-line representation.
-        other => {
-            let mut out = String::new();
-            {
-                let mut emitter = yaml_rust2::YamlEmitter::new(&mut out);
-                // Dumping a single scalar or structure inline; errors are unlikely here.
-                let _ = emitter.dump(other);
+    fn canon(y: &Yaml) -> String {
+        match y {
+            Yaml::Null | Yaml::BadValue => "null".to_string(),
+            Yaml::Boolean(b) => if *b { "true" } else { "false" }.to_string(),
+            Yaml::Integer(i) => i.to_string(),
+            Yaml::Real(s) | Yaml::String(s) => s.clone(),
+            Yaml::Alias(_) => "*alias".to_string(),
+            Yaml::Array(v) => {
+                let parts: Vec<String> = v.iter().map(canon).collect();
+                format!("[{}]", parts.join(", "))
             }
-            // Ensure keys don't contain newlines; replace with spaces for readability.
-            out.replace('\n', " ")
+            Yaml::Hash(map) => {
+                // Sort by canonicalized key text to ensure deterministic output
+                let mut items: Vec<(String, String)> =
+                    map.iter().map(|(k, v)| (canon(k), canon(v))).collect();
+                items.sort_by(|a, b| a.0.cmp(&b.0));
+                let inner = items
+                    .into_iter()
+                    .map(|(k, v)| format!("{k}: {v}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{{{inner}}}")
+            }
         }
     }
+    canon(y)
 }
 
 #[cfg(test)]

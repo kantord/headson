@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Invalid mapping after sequence
+  tags: error mapping sequence
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :item1\n   =VAL :item2\n"
+  yaml: "- item1\n- item2\ninvalid: x\n"

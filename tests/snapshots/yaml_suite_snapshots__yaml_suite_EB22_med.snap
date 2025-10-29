@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Missing document-end marker before directive
+  tags: error directive footer
+  tree: "+STR\n +DOC ---\n  =VAL :scalar1\n -DOC\n"
+  yaml: "---\nscalar1 # comment\n%YAML 1.2\n---\nscalar2\n"

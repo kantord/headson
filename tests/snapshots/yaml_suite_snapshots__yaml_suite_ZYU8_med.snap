@@ -1,0 +1,16 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- also: MU58
+  from: "@ingydotnet"
+  json: "null\n"
+  name: Directive variants
+  note: The following cases are valid YAML according to the 1.2 productions but not at all usefully valid. We don't want to encourage parsers to support them when we'll likely make them invalid later.
+  skip: true
+  tags: directive
+  tree: "+STR\n +DOC ---\n  =VAL :\n -DOC\n-STR\n"
+  yaml: "%YAML1.1\n---\n"
+- yaml: "%***\n---\n"
+- yaml: "%YAML 1.1 1.2\n---\n"
+- yaml: "%YAML 1.12345\n---\n"

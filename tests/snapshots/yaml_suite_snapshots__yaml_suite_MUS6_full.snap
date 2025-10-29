@@ -1,0 +1,23 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- also: ZYU8
+  fail: true
+  from: "@ingydotnet"
+  name: Directive variants
+  tags: directive
+  tree: "+STR\n"
+  yaml: "%YAML 1.1#...\n---\n"
+- dump: null
+  fail: true
+  yaml: "%YAML 1.2\n---\n%YAML 1.2\n---\n"
+- dump: "---\n"
+  json: "null\n"
+  tree: "+STR\n +DOC ---\n  =VAL :\n -DOC\n-STR\n"
+  yaml: "%YAML  1.1\n---\n"
+- yaml: "%YAML ——» 1.1\n---\n"
+- yaml: "%YAML 1.1  # comment\n---\n"
+- note: These 2 are reserved directives
+  yaml: "%YAM 1.1\n---\n"
+- yaml: "%YAMLL 1.1\n---\n"

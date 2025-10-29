@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: "@perlpun…"
+  name: Trailing…
+  tags: error ma…
+  tree: "+STR\n +D…"
+  yaml: "key1: \"…"

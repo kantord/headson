@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- from: "https://github.com/ingydotnet/yaml-pegex-pm/blob/master/test/footer.tml"
+  json: "{\n  \"aaa\": \"bbb\"\n}\n"
+  name: Document with footer
+  tags: mapping footer
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :aaa\n   =VAL :bbb\n  -MAP\n -DOC ...\n-STR\n"
+  yaml: "aaa: bbb\n...\n"

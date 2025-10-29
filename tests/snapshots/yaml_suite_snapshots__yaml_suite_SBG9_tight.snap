@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- dump: "a:\n- b\n…"
+  from: NimYAML…
+  name: Flow Se…
+  tags: comple…
+  tree: "+STR\n …"
+  yaml: "{a: [b…"

@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- from: "@perlpu…"
+  json: "{\n  \"a…"
+  name: Allowe…
+  tags: alias …
+  tree: "+STR\n …"
+  yaml: "a: &:@…"

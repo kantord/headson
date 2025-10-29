@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- fail: true
+  from: "https://gist.github.com/anonymous/f192e7dab6da31831f264dbf1947cb83 via @ingydotnet"
+  name: Node anchor not indented
+  tags: anchor error indent tag
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   =VAL &x :\n"
+  yaml: "key: &x\n!!map\n  a: b\n"

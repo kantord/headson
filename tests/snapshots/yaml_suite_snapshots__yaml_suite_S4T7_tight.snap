@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- from: "https:/…"
+  json: "{\n  \"a…"
+  name: Docume…
+  tags: mappin…
+  tree: "+STR\n …"
+  yaml: "aaa: b…"

@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- from: "http://…"
+  json: "[\n  \"f…"
+  name: Spec E…
+  tags: spec t…
+  tree: "+STR\n …"
+  yaml: "%TAG !…"

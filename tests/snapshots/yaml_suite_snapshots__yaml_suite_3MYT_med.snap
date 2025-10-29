@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- k:#foo &a !t s\n"
+  from: "https://gist.github.com/anonymous/a98d50ce42a59b1e999552bea7a31f57 via @ingydotnet"
+  json: "\"k:#foo &a !t s\"\n"
+  name: "Plain Scalar looking like key, comment, anchor and tag"
+  tags: scalar
+  tree: "+STR\n +DOC ---\n  =VAL :k:#foo &a !t s\n -DOC\n-STR\n"
+  yaml: "---\nk:#foo\n &a !t s\n"

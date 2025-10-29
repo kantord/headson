@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- from: "https://github.com/ing…"
+  json: ""
+  name: Empty Stream
+  tags: edge
+  tree: "+STR\n-STR\n"
+  yaml: "∎\n"

@@ -1,0 +1,9 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- from: NimYAML test…
+  name: Block Mappin…
+  tags: duplicate-ke…
+  tree: "+STR\n +DOC\n…"
+  yaml: ": a\n: b\n"

@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "--- Document\n...\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2800866"
+  json: "\"Document\"\n"
+  name: Spec Example 9.2. Document Markers
+  tags: spec header footer
+  tree: "+STR\n +DOC ---\n  =VAL :Document\n -DOC ...\n-STR\n"
+  yaml: "%YAML 1.2\n---\nDocument\n... # Suffix\n"

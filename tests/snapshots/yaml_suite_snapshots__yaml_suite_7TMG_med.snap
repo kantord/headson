@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\n- word1\n- word2\n"
+  from: "@perlpunk"
+  json: "[\n  \"word1\",\n  \"word2\"\n]\n"
+  name: Comment in flow sequence before comma
+  tags: comment flow sequence
+  tree: "+STR\n +DOC ---\n  +SEQ []\n   =VAL :word1\n   =VAL :word2\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "---\n[ word1\n# comment\n, word2]\n"

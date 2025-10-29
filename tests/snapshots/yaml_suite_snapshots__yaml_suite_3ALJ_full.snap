@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- from: NimYAML tests
+  json: "[\n  [\n    \"s1_i1\",\n    \"s1_i2\"\n  ],\n  \"s2\"\n]\n"
+  name: Block Sequence in Block Sequence
+  tags: sequence
+  tree: "+STR\n +DOC\n  +SEQ\n   +SEQ\n    =VAL :s1_i1\n    =VAL :s1_i2\n   -SEQ\n   =VAL :s2\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "- - s1_i1\n  - s1_i2\n- s2\n"

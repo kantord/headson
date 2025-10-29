@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: "@perlpun…"
+  name: Flow seq…
+  tags: error fl…
+  tree: "+STR\n +D…"
+  yaml: "---\n[ […"

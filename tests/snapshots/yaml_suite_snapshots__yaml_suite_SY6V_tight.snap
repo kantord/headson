@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: "@perlpunk"
+  name: Anchor befo…
+  tags: anchor erro…
+  tree: "+STR\n"
+  yaml: "&anchor - …"

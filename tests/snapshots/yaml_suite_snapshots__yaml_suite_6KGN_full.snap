@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "---\na: &anchor\nb: *anchor\n"
+  from: "https://github.com/nodeca/js-yaml/issues/301"
+  json: "{\n  \"a\": null,\n  \"b\": null\n}\n"
+  name: Anchor for empty node
+  tags: alias anchor
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :a\n   =VAL &anchor :\n   =VAL :b\n   =ALI *anchor\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\na: &anchor\nb: *anchor\n"

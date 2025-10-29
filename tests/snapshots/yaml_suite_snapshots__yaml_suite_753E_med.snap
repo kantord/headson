@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- |-\n  ab\n...\n"
+  from: "MYW6, modified for YAML 1.3"
+  json: "\"ab\"\n"
+  name: "Block Scalar Strip [1.3]"
+  tags: literal scalar 1.3-mod whitespace
+  tree: "+STR\n +DOC ---\n  =VAL |ab\n -DOC ...\n-STR\n"
+  yaml: "--- |-\n ab\n␣\n␣\n...\n"

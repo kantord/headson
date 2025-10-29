@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: AdaYaml te…
+  name: Directive …
+  tags: error dire…
+  tree: "+STR\n"
+  yaml: "%YAML 1.2…"

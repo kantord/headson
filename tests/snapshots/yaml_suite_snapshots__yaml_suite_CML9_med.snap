@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "ihttps://gist.github.com/anonymous/4ba3365607cc14b4f656e391b45bf4f4 via @ingydotnet"
+  name: Missing comma in flow
+  tags: error flow comment
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   +SEQ []\n    =VAL :word1\n"
+  yaml: "key: [ word1\n#  xxx\n  word2 ]\n"

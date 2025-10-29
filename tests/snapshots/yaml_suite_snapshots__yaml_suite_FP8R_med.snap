@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- >\n  line1 line2 line3\n"
+  from: "@perlpunk"
+  json: "\"line1 line2 line3\\n\"\n"
+  name: Zero indented block scalar
+  tags: folded indent scalar
+  tree: "+STR\n +DOC ---\n  =VAL >line1 line2 line3\\n\n -DOC\n-STR\n"
+  yaml: "--- >\nline1\nline2\nline3\n"

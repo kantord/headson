@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: "@perlpunk"
+  name: Invalid co…
+  tags: error tag
+  tree: "+STR\n +DO…"
+  yaml: "- !!str, …"

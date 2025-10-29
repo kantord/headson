@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Block scalar with more spaces than first content line
+  tags: error folded comment scalar whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :empty block scalar\n"
+  yaml: "empty block scalar: >\n␣\n␣␣\n␣␣␣\n # comment\n"

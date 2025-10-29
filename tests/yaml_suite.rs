@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 use test_each_file::test_each_path;
-use yaml_rust2::{Yaml, YamlEmitter, YamlLoader};
+use yaml_rust2::{Yaml, YamlLoader};
 
 fn run_cli_yaml(input: &[u8]) -> (bool, String, String) {
     let assert = Command::cargo_bin("headson")
@@ -94,7 +94,8 @@ fn normalize_yaml(y: &Yaml) -> J {
         // Keep numeric tokens as strings to avoid representation diffs
         Yaml::Integer(i) => J::String(i.to_string()),
         Yaml::Real(s) | Yaml::String(s) => J::String(s.clone()),
-        Yaml::Alias(n) => J::String(format!("*{n}")),
+        // Match ingester behavior: represent any alias as the fixed token "*alias"
+        Yaml::Alias(_n) => J::String("*alias".to_string()),
         Yaml::Array(v) => J::Array(v.iter().map(normalize_yaml).collect()),
         Yaml::Hash(map) => {
             let mut obj: BTreeMap<String, J> = BTreeMap::new();
@@ -109,13 +110,29 @@ fn normalize_yaml(y: &Yaml) -> J {
 }
 
 fn stringify_yaml_key(y: &Yaml) -> String {
-    if let Yaml::String(s) = y {
-        return s.clone();
+    fn canon(y: &Yaml) -> String {
+        match y {
+            Yaml::Null | Yaml::BadValue => "null".to_string(),
+            Yaml::Boolean(b) => if *b { "true" } else { "false" }.to_string(),
+            Yaml::Integer(i) => i.to_string(),
+            Yaml::Real(s) | Yaml::String(s) => s.clone(),
+            Yaml::Alias(_) => "*alias".to_string(),
+            Yaml::Array(v) => {
+                let parts: Vec<String> = v.iter().map(canon).collect();
+                format!("[{}]", parts.join(", "))
+            }
+            Yaml::Hash(map) => {
+                let mut items: Vec<(String, String)> =
+                    map.iter().map(|(k, v)| (canon(k), canon(v))).collect();
+                items.sort_by(|a, b| a.0.cmp(&b.0));
+                let inner = items
+                    .into_iter()
+                    .map(|(k, v)| format!("{k}: {v}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{{{inner}}}")
+            }
+        }
     }
-    let mut out = String::new();
-    {
-        let mut emitter = YamlEmitter::new(&mut out);
-        let _ = emitter.dump(y);
-    }
-    out.replace('\n', " ")
+    canon(y)
 }

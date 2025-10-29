@@ -1,0 +1,18 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- emit: "\"foo\": \"bar\"\n"
+  from: "@ingydotnet"
+  json: "{\n  \"foo\": \"bar\"\n}\n"
+  name: Flow mapping colon on line after key
+  tags: flow mapping
+  tree: "+STR\n +DOC\n  +MAP {}\n   =VAL \"foo\n   =VAL \"bar\n  -MAP\n -DOC\n-STR\n"
+  yaml: "{\"foo\"\n: \"bar\"}\n"
+- emit: "\"foo\": bar\n"
+  tree: "+STR\n +DOC\n  +MAP {}\n   =VAL \"foo\n   =VAL :bar\n  -MAP\n -DOC\n-STR\n"
+  yaml: "{\"foo\"\n: bar}\n"
+- emit: "foo: bar\n"
+  json: "{\n  \"foo\": \"bar\"\n}\n"
+  tree: "+STR\n +DOC\n  +MAP {}\n   =VAL :foo\n   =VAL :bar\n  -MAP\n -DOC\n-STR\n"
+  yaml: "{foo\n: bar}\n"

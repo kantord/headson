@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- fail: true
+  from: "@perlpunk"
+  name: Invalid nested mapping
+  tags: error mapping
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :a\n   =VAL 'b\n"
+  yaml: "---\na: 'b': c\n"

@@ -226,7 +226,12 @@ impl<'a> Scope<'a> {
             items.push((key_idx, child_arena_id));
         }
         items.sort_by(|a, b| {
-            self.arena.obj_keys[a.0].cmp(&self.arena.obj_keys[b.0])
+            let ka = &self.arena.obj_keys[a.0];
+            let kb = &self.arena.obj_keys[b.0];
+            match ka.cmp(kb) {
+                std::cmp::Ordering::Equal => a.0.cmp(&b.0),
+                other => other,
+            }
         });
         for (key_idx, child_arena_id) in items {
             let child_kind = self.arena.nodes[child_arena_id].kind;

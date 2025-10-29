@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "&a a: &b b\n: *a\n"
+  from: NimYAML tests
+  name: Aliases in Explicit Block Mapping
+  tags: alias explicit-key empty-key
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL &a :a\n   =VAL &b :b\n   =VAL :\n   =ALI *a\n  -MAP\n -DOC\n-STR\n"
+  yaml: "? &a a\n: &b b\n: *a\n"

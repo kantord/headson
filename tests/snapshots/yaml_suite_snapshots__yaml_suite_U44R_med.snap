@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Bad indentation in mapping (2)
+  tags: error mapping indent double
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :map\n   +MAP\n    =VAL :key1\n    =VAL \"quoted1\n"
+  yaml: "map:\n  key1: \"quoted1\"\n   key2: \"bad indentation\"\n"

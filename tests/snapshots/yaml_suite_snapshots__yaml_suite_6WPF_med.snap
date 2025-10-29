@@ -1,0 +1,12 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "\" foo\\nbar\\nbaz \"\n"
+  emit: "--- \" foo\\nbar\\nbaz \"\n"
+  from: "TL85, modified for YAML 1.3"
+  json: "\" foo\\nbar\\nbaz \"\n"
+  name: "Spec Example 6.8. Flow Folding [1.3]"
+  tags: double spec whitespace scalar 1.3-mod
+  tree: "+STR\n +DOC ---\n  =VAL \" foo\\nbar\\nbaz␣\n -DOC\n-STR\n"
+  yaml: "---\n\"\n  foo␣\n␣\n    bar\n\n  baz\n\"\n"

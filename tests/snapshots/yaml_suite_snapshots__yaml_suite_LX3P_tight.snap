@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- dump: "? - flo…"
+  from: "@perlpu…"
+  name: Implici…
+  tags: comple…
+  tree: "+STR\n …"
+  yaml: "[flow]…"

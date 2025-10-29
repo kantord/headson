@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "- |\n  detected\n- >2\n\n\n  # detected\n- |2\n   explicit\n- \"\\t\\ndetected\\n\"\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2794311"
+  json: "[\n  \"detected\\n\",\n  \"\\n\\n# detected\\n\",\n  \" explicit\\n\",\n  \"\\t\\ndetected\\n\"\n]\n"
+  name: Spec Example 8.2. Block Indentation Indicator
+  tags: spec literal folded scalar whitespace libyaml-err upto-1.2
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL |detected\\n\n   =VAL >\\n\\n# detected\\n\n   =VAL | explicit\\n…"
+  yaml: "- |\n detected\n- >\n␣\n␣␣\n  # detected\n- |1\n  explicit\n- >\n ——»\n detected\n"

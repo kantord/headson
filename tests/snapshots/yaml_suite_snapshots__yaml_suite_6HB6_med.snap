@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "Not indented:\n  By one space: |\n    By four\n      spaces\n  Flow style:\n  - By two\n  - Al…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2777865"
+  json: "{\n  \"Not indented\": {\n    \"By one space\": \"By four\\n  spaces\\n\",\n    \"Flow style\": [\n   …"
+  name: Spec Example 6.1. Indentation Spaces
+  tags: comment flow spec indent upto-1.2 whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :Not indented\n   +MAP\n    =VAL :By one space\n    =VAL |By fou…"
+  yaml: "  # Leading comment line spaces are\n   # neither content nor indentation.\n␣␣␣␣\nNot inde…"

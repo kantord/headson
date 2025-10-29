@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- fail: true
+  from: "@perlpunk"
+  name: Comment that looks like a mapping key
+  tags: comment error mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   =VAL :value\n"
+  yaml: "key: value\nthis is #not a: key\n"

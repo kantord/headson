@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "--- !<tag:clarkevans.com,2002:shape>\n- !<tag:clarkevans.com,2002:circle>\n  center: &ORIGIN\n   …"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2761719"
+  json: "[\n  {\n    \"center\": {\n      \"x\": 73,\n      \"y\": 129\n    },\n    \"radius\": 7\n  },\n  {\n    \"start…"
+  name: Spec Example 2.24. Global Tags
+  tags: spec tag alias directive local-tag
+  tree: "+STR\n +DOC ---\n  +SEQ <tag:clarkevans.com,2002:shape>\n   +MAP <tag:clarkevans.com,2002:circle>…"
+  yaml: "%TAG ! tag:clarkevans.com,2002:\n--- !shape\n  # Use the ! handle for presenting\n  # tag:clarkev…"

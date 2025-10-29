@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "a: \"double quotes\"\nb: plain value\nc: d\n? - seq1\n: - seq2\ne: &node\n- x: y\nblock: >\n  abcde\n"
+  from: "@perlpunk"
+  name: Various Trailing Comments
+  tags: comment explicit-key folded 1.3-err
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n   =VAL \"double quotes\n   =VAL :b\n   =VAL :plain value\n   =VAL :c\n   =VAL :d\n   +SEQ\n    =VAL :seq1\n   -SEQ\n   +SEQ\n    =VAL :seq2\n   -SEQ\n   =V…"
+  yaml: "a: \"double\n  quotes\" # lala\nb: plain\n value  # lala\nc  : #lala\n  d\n? # lala\n - seq1\n: # lala\n - #lala\n  seq2\ne:\n &node # lala\n - x: y\nblock: > # lala\n  abcde\n"

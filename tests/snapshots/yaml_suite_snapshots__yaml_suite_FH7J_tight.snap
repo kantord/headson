@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- dump: "- !!str…"
+  from: NimYAML…
+  name: Tags on…
+  tags: tag sca…
+  tree: "+STR\n +…"
+  yaml: "- !!st…"

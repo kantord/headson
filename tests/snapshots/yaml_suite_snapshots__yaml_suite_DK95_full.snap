@@ -1,0 +1,41 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- emit: "---\nfoo: bar\n"
+  from: "@ingydotnet"
+  json: "{\n  \"foo\" : \"bar\"\n}\n"
+  name: Tabs that look like indentation
+  tags: indent whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   =VAL :bar\n  -MAP\n -DOC\n-STR\n"
+  yaml: "foo:\n ———»bar\n"
+- fail: true
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n"
+  yaml: "foo: \"bar\n————»baz\"\n"
+- emit: "---\nfoo: \"bar baz\"\n"
+  json: "{\n  \"foo\" : \"bar baz\"\n}\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   =VAL \"bar baz\n  -MAP\n -DOC\n-STR\n"
+  yaml: "foo: \"bar\n  ——»baz\"\n"
+- emit: "---\nfoo: 1\n"
+  json: "{\n  \"foo\" : 1\n}\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   =VAL :1\n  -MAP\n -DOC\n-STR\n"
+  yaml: " ———»\nfoo: 1\n"
+- emit: "---\nfoo: 1\nbar: 2\n"
+  json: "{\n  \"foo\" : 1,\n  \"bar\" : 2\n}\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   =VAL :1\n   =VAL :bar\n   =VAL :2\n  -MAP\n -DOC\n-STR\n"
+  yaml: "foo: 1\n————»\nbar: 2\n"
+- emit: "---\nfoo: 1\nbar: 2\n"
+  json: "{\n  \"foo\" : 1,\n  \"bar\" : 2\n}\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   =VAL :1\n   =VAL :bar\n   =VAL :2\n  -MAP\n -DOC\n-STR\n"
+  yaml: "foo: 1\n ———»\nbar: 2\n"
+- fail: true
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   +MAP\n    =VAL :a\n    =VAL :1\n"
+  yaml: "foo:\n  a: 1\n  ——»b: 2\n"
+- emit: "--- null\n"
+  json: "null\n"
+  tree: "+STR\n +DOC ---\n  =VAL :\n -DOC\n-STR\n"
+  yaml: "%YAML 1.2\n————»\n---\n"
+- emit: "---\nfoo: \"bar baz \\t \\t \"\n"
+  json: "{\n  \"foo\" : \"bar baz \\t \\t \"\n}\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   =VAL \"bar baz \\t \\t␣\n  -MAP\n -DOC\n-STR\n"
+  yaml: "foo: \"bar\n ———» ——» baz ——» ——» \"\n"

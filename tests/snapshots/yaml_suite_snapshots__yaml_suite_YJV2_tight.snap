@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: "@ingydotne…"
+  name: Dash in fl…
+  tags: flow sequ…
+  tree: "+STR\n +DO…"
+  yaml: "[-]\n"

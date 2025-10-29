@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- emit: ":\n"
+  from: NimYAML …
+  name: Empty Li…
+  tags: empty-ke…
+  tree: "+STR\n +…"
+  yaml: ":\n↵\n↵\n"

@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: "@perlpunk"
+  name: Multilin…
+  tags: error ma…
+  tree: "+STR\n +D…"
+  yaml: "a\\nb: 1\n…"

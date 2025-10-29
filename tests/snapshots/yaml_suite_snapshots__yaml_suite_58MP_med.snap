@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "x: :x\n"
+  from: "@ingydotnet"
+  json: "{\n  \"x\": \":x\"\n}\n"
+  name: Flow mapping edge cases
+  tags: edge flow mapping
+  tree: "+STR\n +DOC\n  +MAP {}\n   =VAL :x\n   =VAL ::x\n  -MAP\n -DOC\n-STR\n"
+  yaml: "{x: :x}\n"

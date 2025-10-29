@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "--- >\n  ab cd\n\n  ef\n\n\n  gh\n"
+  from: "TS54, modified for YAML 1.3"
+  json: "\"ab cd\\nef\\n\\ngh\\n\"\n"
+  name: "Folded Block Scalar [1.3]"
+  tags: folded scalar 1.3-mod whitespace
+  tree: "+STR\n +DOC ---\n  =VAL >ab cd\\nef\\n\\ngh\\n\n -DOC\n-STR\n"
+  yaml: "--- >\n ab\n cd\n␣\n ef\n\n\n gh\n"

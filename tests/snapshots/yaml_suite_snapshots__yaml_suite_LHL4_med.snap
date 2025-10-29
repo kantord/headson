@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Invalid tag
+  tags: error tag
+  tree: "+STR\n +DOC ---\n"
+  yaml: "---\n!invalid{}tag scalar\n"

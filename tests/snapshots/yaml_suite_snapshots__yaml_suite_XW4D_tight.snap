@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- dump: "a: \"dou…"
+  from: "@perlp…"
+  name: Variou…
+  tags: commen…
+  tree: "+STR\n …"
+  yaml: "a: \"do…"

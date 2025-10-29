@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "american:\n- Boston Red Sox\n- Detroit Tigers\n- New York Yankees\nnational:\n- New York Mets\n- Ch…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2759963"
+  json: "{\n  \"american\": [\n    \"Boston Red Sox\",\n    \"Detroit Tigers\",\n    \"New York Yankees\"\n  ],\n  …"
+  name: Spec Example 2.3. Mapping Scalars to Sequences
+  tags: spec mapping sequence
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :american\n   +SEQ\n    =VAL :Boston Red Sox\n    =VAL :Detroit Tiger…"
+  yaml: "american:\n  - Boston Red Sox\n  - Detroit Tigers\n  - New York Yankees\nnational:\n  - New York …"

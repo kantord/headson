@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "---\n- item: Super Hoop\n  quantity: 1\n- item: Basketball\n  quantity: 4\n- item: Big Shoes\n  qua…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2760821"
+  json: "[\n  {\n    \"item\": \"Super Hoop\",\n    \"quantity\": 1\n  },\n  {\n    \"item\": \"Basketball\",\n    \"qu…"
+  name: Spec Example 2.12. Compact Nested Mapping
+  tags: spec mapping sequence
+  tree: "+STR\n +DOC ---\n  +SEQ\n   +MAP\n    =VAL :item\n    =VAL :Super Hoop\n    =VAL :quantity\n    =VA…"
+  yaml: "---\n# Products purchased\n- item    : Super Hoop\n  quantity: 1\n- item    : Basketball\n  quant…"

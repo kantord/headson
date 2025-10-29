@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "--- \"foo\"\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2781929"
+  json: "\"foo\"\n"
+  name: Spec Example 6.14. “YAML” directive
+  tags: spec directive
+  tree: "+STR\n +DOC ---\n  =VAL \"foo\n -DOC\n-STR\n"
+  yaml: "%YAML 1.3 # Attempt parsing\n          # with a warning\n---\n\"foo\"\n"

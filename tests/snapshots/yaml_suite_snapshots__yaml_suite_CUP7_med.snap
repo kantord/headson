@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "anchored: &anchor !local value\nalias: *anchor\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2773402"
+  json: "{\n  \"anchored\": \"value\",\n  \"alias\": \"value\"\n}\n"
+  name: Spec Example 5.6. Node Property Indicators
+  tags: local-tag spec tag alias
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :anchored\n   =VAL &anchor <!local> :value\n   =VAL :alias\n   =ALI *anchor\n  -MAP\n -DOC\n-STR\n"
+  yaml: "anchored: !local &anchor value\nalias: *anchor\n"

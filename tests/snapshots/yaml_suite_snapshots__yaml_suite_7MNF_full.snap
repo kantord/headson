@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- fail: true
+  from: "@perlpunk"
+  name: Missing colon
+  tags: error mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :top1\n   +MAP\n    =VAL :key1\n    =VAL :val1\n   -MAP\n"
+  yaml: "top1:\n  key1: val1\ntop2\n"

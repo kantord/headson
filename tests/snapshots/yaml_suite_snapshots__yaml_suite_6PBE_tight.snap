@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- emit: "---\n? …"
+  from: "@perlp…"
+  name: Zero-i…
+  tags: explic…
+  tree: "+STR\n …"
+  yaml: "---\n?\n…"

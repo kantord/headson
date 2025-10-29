@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "- single multiline - sequence entry\n"
+  from: "@perlpunk"
+  json: "[\n  \"single multiline - sequence entry\"\n]\n"
+  name: Sequence entry that looks like two with wrong indentation
+  tags: scalar sequence
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :single multiline - sequence entry\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "- single multiline\n - sequence entry\n"

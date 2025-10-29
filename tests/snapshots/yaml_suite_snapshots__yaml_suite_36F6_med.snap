@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- dump: "---\nplain: 'a b\n\n  c'\n"
+  from: "@perlpunk"
+  json: "{\n  \"plain\": \"a b\\nc\"\n}\n"
+  name: Multiline plain scalar with empty line
+  tags: mapping scalar
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :plain\n   =VAL :a b\\nc\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\nplain: a\n b\n\n c\n"

@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Invalid sequene item on same line as previous item
+  tags: error flow mapping sequence
+  tree: "+STR\n +DOC ---\n  +SEQ\n   +MAP {}\n    =VAL :y\n    =VAL :z\n   -MAP\n"
+  yaml: "---\n- { y: z }- invalid\n"

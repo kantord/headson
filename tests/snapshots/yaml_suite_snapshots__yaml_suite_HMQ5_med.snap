@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "&a1 !!str \"foo\": !!str bar\n&a2 baz: *a1\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2783940"
+  json: "{\n  \"foo\": \"bar\",\n  \"baz\": \"foo\"\n}\n"
+  name: Spec Example 6.23. Node Properties
+  tags: spec tag alias
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL &a1 <tag:yaml.org,2002:str> \"foo\n   =VAL <tag:yaml.org,2002:str> :bar\n   =VAL &a2 :baz\n   =ALI *a1\n  -MAP\n -DOC\n-STR\n"
+  yaml: "!!str &a1 \"foo\":\n  !!str bar\n&a2 baz : *a1\n"

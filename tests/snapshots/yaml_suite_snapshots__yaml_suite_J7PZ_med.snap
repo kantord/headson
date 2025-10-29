@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "--- !!omap\n- Mark McGwire: 65\n- Sammy Sosa: 63\n- Ken Griffy: 58\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2761780"
+  json: "[\n  {\n    \"Mark McGwire\": 65\n  },\n  {\n    \"Sammy Sosa\": 63\n  },\n  {\n    \"Ken Griffy\": 58\n  }\n]\n"
+  name: Spec Example 2.26. Ordered Mappings
+  tags: spec mapping tag unknown-tag
+  tree: "+STR\n +DOC ---\n  +SEQ <tag:yaml.org,2002:omap>\n   +MAP\n    =VAL :Mark McGwire\n    =VAL :65\n   -MAP\n   +MAP\n   …"
+  yaml: "# The !!omap tag is one of the optional types\n# introduced for YAML 1.1. In 1.2, it is not\n# part of the stand…"

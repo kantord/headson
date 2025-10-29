@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- fail: true
+  from: "@perlpunk"
+  name: Invalid escape in double quoted string
+  tags: error double
+  tree: "+STR\n +DOC ---\n"
+  yaml: "---\n\"\\.\"\n"

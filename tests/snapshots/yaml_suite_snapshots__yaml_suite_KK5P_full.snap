@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "complex1:\n  ? - a\n  :\ncomplex2:\n  ? - a\n  : b\ncomplex3:\n  ? - a\n  : >\n    b\ncomplex4:\n  ? >\n    a\n  :\ncomplex5:\n  ? - a\n  : - b\n"
+  from: "@perlpunk"
+  name: Various combinations of explicit block mappings
+  tags: explicit-key mapping sequence
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :complex1\n   +MAP\n    +SEQ\n     =VAL :a\n    -SEQ\n    =VAL :\n   -MAP\n   =VAL :complex2\n   +MAP\n    +SEQ\n     =VAL :a\n    -SEQ\n    =VAL :b\n   -MAP\n   =VAL :complex3\n   +MAP\n    +SEQ\n     =VAL :a\n    -SEQ\n    =VAL >b\\n\n   -MAP\n   =VAL :complex4\n   +MAP\n    =VAL >a\\n\n    =VAL :\n   -MAP\n   =VAL :complex5\n   +MAP\n    +SEQ\n     =VAL :a\n    -SEQ\n    +SEQ\n     =VAL :b\n    -SEQ\n   -MAP\n  -MAP\n -DOC\n-STR\n"
+  yaml: "complex1:\n  ? - a\ncomplex2:\n  ? - a\n  : b\ncomplex3:\n  ? - a\n  : >\n    b\ncomplex4:\n  ? >\n    a\n  :\ncomplex5:\n  ? - a\n  : - b\n"

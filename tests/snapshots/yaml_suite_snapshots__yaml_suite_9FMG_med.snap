@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- from: "https://github.com/ingydotnet/yaml-pegex-pm/blob/master/test/indent.tml"
+  json: "{\n  \"a\": {\n    \"b\": {\n      \"c\": \"d\"\n    },\n    \"e\": {\n      \"f\": \"g\"\n    }\n  },\n  \"h\": \"i\"\n}\n"
+  name: Multi-level Mapping Indent
+  tags: mapping indent
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n   +MAP\n    =VAL :b\n    +MAP\n     =VAL :c\n     =VAL :d\n    -MAP\n    =VAL :e\n    +MAP\n     =VAL :f\n     =VAL :g\n    -MAP\n   -MAP\n   =VAL :h\n   =VAL :i\n  -MAP\n -DOC\n-STR\n"
+  yaml: "a:\n  b:\n    c: d\n  e:\n    f: g\nh: i\n"

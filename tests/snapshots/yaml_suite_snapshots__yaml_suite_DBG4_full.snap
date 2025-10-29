@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "- ::vector\n- \": - ()\"\n- Up, up, and away!\n- -123\n- http://example.com/foo#bar\n- - ::vector\n  - \": - ()\"\n  - \"Up, up and away!\"\n  - -123\n  - http://example.com/foo#bar\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2789510"
+  json: "[\n  \"::vector\",\n  \": - ()\",\n  \"Up, up, and away!\",\n  -123,\n  \"http://example.com/foo#bar\",\n  [\n    \"::vector\",\n    \": - ()\",\n    \"Up, up and away!\",\n    -123,\n    \"http://example.com/foo#bar\"\n  ]\n]\n"
+  name: Spec Example 7.10. Plain Characters
+  tags: spec flow sequence scalar
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :::vector\n   =VAL \": - ()\n   =VAL :Up, up, and away!\n   =VAL :-123\n   =VAL :http://example.com/foo#bar\n   +SEQ []\n    =VAL :::vector\n    =VAL \": - ()\n    =VAL \"Up, up and away!\n    =VAL :-123\n    =VAL :http://example.com/foo#bar\n   -SEQ\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "# Outside flow collection:\n- ::vector\n- \": - ()\"\n- Up, up, and away!\n- -123\n- http://example.com/foo#bar\n# Inside flow collection:\n- [ ::vector,\n  \": - ()\",\n  \"Up, up and away!\",\n  -123,\n  http://example.com/foo#bar ]\n"

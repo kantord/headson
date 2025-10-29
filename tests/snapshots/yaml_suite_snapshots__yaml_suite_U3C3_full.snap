@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "--- !!str \"foo\"\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2782252"
+  json: "\"foo\"\n"
+  name: Spec Example 6.16. “TAG” directive
+  tags: spec header tag
+  tree: "+STR\n +DOC ---\n  =VAL <tag:yaml.org,2002:str> \"foo\n -DOC\n-STR\n"
+  yaml: "%TAG !yaml! tag:yaml.org,2002:\n---\n!yaml!str \"foo\"\n"

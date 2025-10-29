@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Node anchor in sequence
+  tags: anchor error sequence
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :item1\n"
+  yaml: "- item1\n&node\n- item2\n"

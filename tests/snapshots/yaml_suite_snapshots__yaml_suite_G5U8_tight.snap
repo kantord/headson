@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: "@ingydot…"
+  name: Plain da…
+  tags: flow seq…
+  tree: "+STR\n +D…"
+  yaml: "---\n- […"

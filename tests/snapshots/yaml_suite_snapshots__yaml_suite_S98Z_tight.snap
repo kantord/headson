@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- fail: true
+  from: "@perlpunk"
+  name: Block sca…
+  tags: error fol…
+  tree: "+STR\n +DO…"
+  yaml: empty blo…

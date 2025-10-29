@@ -1,0 +1,20 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- emit: "\"1 leading \\ttab\"\n"
+  from: "@ingydotnet"
+  json: "\"1 leading \\ttab\"\n"
+  name: Leading tabs in double quoted
+  tags: double whitespace
+  tree: "+STR\n +DOC\n  =VAL \"1 leading \\ttab\n -DOC…"
+  yaml: "\"1 leading\n    \\ttab\"\n"
+- emit: "\"3 leading tab\"\n"
+  json: "\"3 leading tab\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"3 leading tab\n -DOC\n…"
+  yaml: "\"3 leading\n    ————»tab\"\n"
+- emit: "\"6 leading tab\"\n"
+  json: "\"6 leading tab\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"6 leading tab\n -DOC\n…"
+  yaml: "\"6 leading\n    ————»  tab\"\n"
+# 3 more items

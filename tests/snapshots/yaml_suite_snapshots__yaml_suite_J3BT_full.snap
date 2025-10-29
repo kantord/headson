@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "quoted: \"Quoted \\t\"\nblock: |\n  void main() {\n  —»printf(\"Hello, world!\\n\");\n  }\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2775350"
+  json: "{\n  \"quoted\": \"Quoted \\t\",\n  \"block\": \"void main() {\\n\\tprintf(\\\"Hello, world!\\\\n\\\");\\n}\\n\"\n}\n"
+  name: Spec Example 5.12. Tabs and Spaces
+  tags: spec whitespace upto-1.2
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :quoted\n   =VAL \"Quoted \\t\n   =VAL :block\n   =VAL |void main() {\\n\\tprintf(\"Hello, world!\\\\n\");\\n}\\n\n  -MAP\n -DOC\n-STR\n"
+  yaml: "# Tabs and spaces\nquoted: \"Quoted ———»\"\nblock:—»|\n  void main() {\n  —»printf(\"Hello, world!\\n\");\n  }\n"

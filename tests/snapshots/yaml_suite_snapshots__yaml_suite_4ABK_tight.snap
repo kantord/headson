@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- dump: unquote…
+  from: "http://…"
+  name: Flow Ma…
+  tags: flow ma…
+  tree: "+STR\n …"
+  yaml: "{\nunqu…"

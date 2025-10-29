@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: tight
+---
+- dump: "a: b…"
+  from: "@per…"
+  json: "{\n  …"
+  name: Vari…
+  tags: comm…
+  tree: +STR…
+  yaml: "a: …"

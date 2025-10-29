@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "unquoted: \"separate\"\nhttp://foo.com: null\nomitted value: null\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2791704"
+  name: Flow Mapping Separate Values
+  tags: flow mapping
+  tree: "+STR\n +DOC\n  +MAP {}\n   =VAL :unquoted\n   =VAL \"separate\n   =VAL :http://foo.com\n   =VAL :\n   =VAL :omitted value\n   =VAL :\n  -MAP\n -DOC\n-STR\n"
+  yaml: "{\nunquoted : \"separate\",\nhttp://foo.com,\nomitted value:,\n}\n"

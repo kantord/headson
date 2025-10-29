@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_full
+---
+- dump: "\"adjacent\": value\n\"readable\": value\n\"empty\":\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2792073"
+  json: "{\n  \"adjacent\": \"value\",\n  \"readable\": \"value\",\n  \"empty\": null\n}\n"
+  name: Spec Example 7.18. Flow Mapping Adjacent Values
+  tags: spec flow mapping
+  tree: "+STR\n +DOC\n  +MAP {}\n   =VAL \"adjacent\n   =VAL :value\n   =VAL \"readable\n   =VAL :value\n   =VAL \"empty\n   =VAL :\n  -MAP\n -DOC\n-STR\n"
+  yaml: "{\n\"adjacent\":value,\n\"readable\": value,\n\"empty\":\n}\n"

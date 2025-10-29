@@ -1,0 +1,10 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: out_med
+---
+- fail: true
+  from: "@perlpunk"
+  name: Flow mapping missing a separating comma
+  tags: error flow mapping
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :foo\n"
+  yaml: "---\n{\n foo: 1\n bar: 2 }\n"

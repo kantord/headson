@@ -1,0 +1,11 @@
+---
+source: tests/yaml_suite_snapshots.rs
+expression: med
+---
+- dump: "!!map\nk: !!seq\n- a\n- !!str b\n"
+  from: NimYAML tests
+  json: "{\n  \"k\": [\n    \"a\",\n    \"b\"\n  ]\n}\n"
+  name: Tags for Flow Objects
+  tags: tag flow mapping sequence
+  tree: "+STR\n +DOC\n  +MAP {} <tag:yaml.org,2002:map>\n   =VAL :k\n   +SEQ [] <tag:yaml.org,2002:seq>\n    =VAL :a\n    =VAL <tag:yaml.org,2002:str> :b\n   -SEQ\n  -MAP\n -DOC\n-STR\n"
+  yaml: "!!map {\n  k: !!seq\n  [ a, !!str b]\n}\n"
