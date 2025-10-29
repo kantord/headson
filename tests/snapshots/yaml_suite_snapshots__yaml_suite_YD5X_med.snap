@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "- - name\n  - hr\n  - avg\n- - Mark McGwire\n  - 65\n…"
+- dump: "- - name\n  - hr\n  - avg\n- - Mark McGwire\n  - 65\n  - 0.278\n- - Sammy Sosa\n  - 63\n  - 0.288\n"
   from: "http://www.yaml.org/spec/1.2/spec.html#id2760351"
-  json: "[\n  [\n    \"name\",\n    \"hr\",\n    \"avg\"\n  ],\n  [\n …"
+  json: "[\n  [\n    \"name\",\n    \"hr\",\n    \"avg\"\n  ],\n  [\n    \"Mark McGwire\",\n    65,\n    0.278\n  ],\n  [\n    \"Samm…"
   name: Spec Example 2.5. Sequence of Sequences
   tags: spec sequence
-  tree: "+STR\n +DOC\n  +SEQ\n   +SEQ []\n    =VAL :name\n    …"
-  yaml: "- [name        , hr, avg  ]\n- [Mark McGwire, 65…"
+  tree: "+STR\n +DOC\n  +SEQ\n   +SEQ []\n    =VAL :name\n    =VAL :hr\n    =VAL :avg\n   -SEQ\n   +SEQ []\n    =VAL :Ma…"
+  yaml: "- [name        , hr, avg  ]\n- [Mark McGwire, 65, 0.278]\n- [Sammy Sosa  , 63, 0.288]\n"

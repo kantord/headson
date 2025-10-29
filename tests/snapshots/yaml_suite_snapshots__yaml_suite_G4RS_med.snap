@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "unicode: \"Sosa did fine.\\u263A\"\ncontrol: \"\\b1998\\…"
+- dump: "unicode: \"Sosa did fine.\\u263A\"\ncontrol: \"\\b1998\\t1999\\t2000\\n\"\nhex esc: \"\\r\\n is \\r\\n\"\ns…"
   from: "http://www.yaml.org/spec/1.2/spec.html#id2761245"
-  json: "{\n  \"unicode\": \"Sosa did fine.☺\",\n  \"control\": \"…"
+  json: "{\n  \"unicode\": \"Sosa did fine.☺\",\n  \"control\": \"\\b1998\\t1999\\t2000\\n\",\n  \"hex esc\": \"\\r\\n…"
   name: Spec Example 2.17. Quoted Scalars
   tags: spec scalar
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :unicode\n   =VAL \"Sosa…"
-  yaml: "unicode: \"Sosa did fine.\\u263A\"\ncontrol: \"\\b1998…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :unicode\n   =VAL \"Sosa did fine.☺\n   =VAL :control\n   =VAL \"\\b1…"
+  yaml: "unicode: \"Sosa did fine.\\u263A\"\ncontrol: \"\\b1998\\t1999\\t2000\\n\"\nhex esc: \"\\x0d\\x0a is \\r\\…"

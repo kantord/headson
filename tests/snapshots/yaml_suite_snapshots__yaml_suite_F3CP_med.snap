@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - dump: "---\na:\n- b\n- c\n- d:\n  - e\n  - f\n"
   from: "@perlpunk"
-  json: "{\n  \"a\": [\n    \"b\",\n    \"c\",\n    {\n      \"d\": [\n        \"e\",\n        \"f\"\n    …"
+  json: "{\n  \"a\": [\n    \"b\",\n    \"c\",\n    {\n      \"d\": [\n        \"e\",\n        \"f\"\n      ]\n    }\n  ]\n}\n"
   name: Nested flow collections on one line
   tags: flow mapping sequence
-  tree: "+STR\n +DOC ---\n  +MAP {}\n   =VAL :a\n   +SEQ []\n    =VAL :b\n    =VAL :c\n    +M…"
+  tree: "+STR\n +DOC ---\n  +MAP {}\n   =VAL :a\n   +SEQ []\n    =VAL :b\n    =VAL :c\n    +MAP {}\n     =VAL :d\n     +SEQ []\n      =VAL :e\n      =VAL :f\n     -SEQ\n    -MAP\n   -SEQ\n  -MAP\n -DOC\n-STR\n"
   yaml: "---\n{ a: [b, c, { d: [e, f] } ] }\n"

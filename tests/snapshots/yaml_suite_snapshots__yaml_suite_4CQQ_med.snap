@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "plain: This unquoted scalar spans many lines.\nquote…"
+- dump: "plain: This unquoted scalar spans many lines.\nquoted: \"So does this quoted scalar.\\n\"\n"
   from: "http://www.yaml.org/spec/1.2/spec.html#id2761268"
-  json: "{\n  \"plain\": \"This unquoted scalar spans many lines…"
+  json: "{\n  \"plain\": \"This unquoted scalar spans many lines.\",\n  \"quoted\": \"So does this quoted scalar.\\n\"\n}\n"
   name: Spec Example 2.18. Multi-line Flow Scalars
   tags: spec scalar
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :plain\n   =VAL :This unq…"
-  yaml: "plain:\n  This unquoted scalar\n  spans many lines.\n…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :plain\n   =VAL :This unquoted scalar spans many lines.\n   =VAL :quoted\n   =VAL \"So …"
+  yaml: "plain:\n  This unquoted scalar\n  spans many lines.\n\nquoted: \"So does this\n  quoted scalar.\\n\"\n"

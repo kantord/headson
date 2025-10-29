@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "---\nhr:\n- Mark McGwire\n- &SS Sammy Sosa\nrbi…"
-  from: "http://www.yaml.org/spec/1.2/spec.html#id27…"
-  json: "{\n  \"hr\": [\n    \"Mark McGwire\",\n    \"Sammy …"
-  name: Spec Example 2.10. Node for “Sammy Sosa” ap…
+- dump: "---\nhr:\n- Mark McGwire\n- &SS Sammy Sosa\nrbi:\n- *SS\n- Ken Griffey\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2760658"
+  json: "{\n  \"hr\": [\n    \"Mark McGwire\",\n    \"Sammy Sosa\"\n  ],\n  \"rbi\": [\n    \"Sammy Sosa\",\n    \"K…"
+  name: Spec Example 2.10. Node for “Sammy Sosa” appears twice in this document
   tags: mapping sequence spec alias
-  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :hr\n   +SEQ\n …"
-  yaml: "---\nhr:\n  - Mark McGwire\n  # Following node…"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :hr\n   +SEQ\n    =VAL :Mark McGwire\n    =VAL &SS :Sammy Sosa…"
+  yaml: "---\nhr:\n  - Mark McGwire\n  # Following node labeled SS\n  - &SS Sammy Sosa\nrbi:\n  - *SS #…"

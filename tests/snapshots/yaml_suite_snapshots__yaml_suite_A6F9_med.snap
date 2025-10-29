@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "strip: |-\n  text\nclip: |\n  text\nkeep: |\n  tex…"
-  from: "http://www.yaml.org/spec/1.2/spec.html#id2795…"
-  json: "{\n  \"strip\": \"text\",\n  \"clip\": \"text\\n\",\n  \"k…"
+- dump: "strip: |-\n  text\nclip: |\n  text\nkeep: |\n  text\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2795034"
+  json: "{\n  \"strip\": \"text\",\n  \"clip\": \"text\\n\",\n  \"keep\": \"text\\n\"\n}\n"
   name: Spec Example 8.4. Chomping Final Line Break
   tags: spec literal scalar
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :strip\n   =VAL |te…"
-  yaml: "strip: |-\n  text\nclip: |\n  text\nkeep: |+\n  t…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :strip\n   =VAL |text\n   =VAL :clip\n   =VAL |text\\n\n   =VAL :keep\n   =VAL |text\\n\n  -MAP\n -DOC\n-STR\n"
+  yaml: "strip: |-\n  text\nclip: |\n  text\nkeep: |+\n  text\n"

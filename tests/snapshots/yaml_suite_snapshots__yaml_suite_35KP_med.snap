@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - dump: "--- !!map\na: b\n--- !!seq\n- !!str c\n--- !!str d e\n"
   from: NimYAML tests
   json: "{\n  \"a\": \"b\"\n}\n[\n  \"c\"\n]\n\"d e\"\n"
   name: Tags for Root Objects
   tags: explicit-key header mapping tag
-  tree: "+STR\n +DOC ---\n  +MAP <tag:yaml.org,2002:map>\n   =VAL :a\n   =VAL :b\n  -MAP\n -DOC\n +DOC ---\n  …"
+  tree: "+STR\n +DOC ---\n  +MAP <tag:yaml.org,2002:map>\n   =VAL :a\n   =VAL :b\n  -MAP\n -DOC\n +DOC ---\n  +SEQ <tag:yaml.org,2002:seq>\n   =VAL <tag:yaml.org,2002:str> :c\n  -SEQ\n -DOC\n +DOC ---\n  =VAL <tag:yaml.org,2002:str> :d e\n -DOC\n-STR\n"
   yaml: "--- !!map\n? a\n: b\n--- !!seq\n- !!str c\n--- !!str\nd\ne\n"

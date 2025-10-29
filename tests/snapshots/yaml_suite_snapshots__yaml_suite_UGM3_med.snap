@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "--- !<tag:clarkevans.com,2002:invoice>\ninvoice…"
-  from: "http://www.yaml.org/spec/1.2/spec.html#id2761…"
-  json: "{\n  \"invoice\": 34843,\n  \"date\": \"2001-01-23\",…"
+- dump: "--- !<tag:clarkevans.com,2002:invoice>\ninvoice: 34843\ndate: 2001-01-23\nbill-to: &id001\n  g…"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2761823"
+  json: "{\n  \"invoice\": 34843,\n  \"date\": \"2001-01-23\",\n  \"bill-to\": {\n    \"given\": \"Chris\",\n    \"fa…"
   name: Spec Example 2.27. Invoice
-  tags: spec tag literal mapping sequence alias unkno…
-  tree: "+STR\n +DOC ---\n  +MAP <tag:clarkevans.com,200…"
-  yaml: "--- !<tag:clarkevans.com,2002:invoice>\ninvoic…"
+  tags: spec tag literal mapping sequence alias unknown-tag
+  tree: "+STR\n +DOC ---\n  +MAP <tag:clarkevans.com,2002:invoice>\n   =VAL :invoice\n   =VAL :34843\n  …"
+  yaml: "--- !<tag:clarkevans.com,2002:invoice>\ninvoice: 34843\ndate   : 2001-01-23\nbill-to: &id001…"

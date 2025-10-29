@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - from: "http://www.yaml.org/spec/1.2/spec.html#id2786448"
-  json: "{\n  \"First occurrence\": \"Foo\",\n  \"Second occurrence\": \"Foo\",\n  \"Override…"
+  json: "{\n  \"First occurrence\": \"Foo\",\n  \"Second occurrence\": \"Foo\",\n  \"Override anchor\": \"Bar\",\n  \"Reuse anchor\": \"Bar\"\n}\n"
   name: Spec Example 7.1. Alias Nodes
   tags: mapping spec alias
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :First occurrence\n   =VAL &anchor :Foo\n   =VAL…"
-  yaml: "First occurrence: &anchor Foo\nSecond occurrence: *anchor\nOverride ancho…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :First occurrence\n   =VAL &anchor :Foo\n   =VAL :Second occurrence\n   =ALI *anchor\n   =VAL :Override anchor\n   =VAL &anchor :Bar\n   =VAL :Reuse anchor\n   =A…"
+  yaml: "First occurrence: &anchor Foo\nSecond occurrence: *anchor\nOverride anchor: &anchor Bar\nReuse anchor: *anchor\n"

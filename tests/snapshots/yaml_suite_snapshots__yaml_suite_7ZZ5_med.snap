@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - dump: "---\nnested sequences:\n- - - []\n- - - {}\nkey1: []\nkey2: {}\n"
   from: "@perlpunk"
-  json: "{\n  \"nested sequences\": [\n    [\n      [\n        []\n      ]\n    ]…"
+  json: "{\n  \"nested sequences\": [\n    [\n      [\n        []\n      ]\n    ],\n    [\n      [\n        {}\n      ]\n    ]\n  ],\n  \"key1\": [],\n  \"key2\": {}\n}\n"
   name: Empty flow collections
   tags: flow mapping sequence
-  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :nested sequences\n   +SEQ\n    +SEQ…"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :nested sequences\n   +SEQ\n    +SEQ\n     +SEQ\n      +SEQ []\n      -SEQ\n     -SEQ\n    -SEQ\n    +SEQ\n     +SEQ\n      +MAP {}\n      -MAP\n     …"
   yaml: "---\nnested sequences:\n- - - []\n- - - {}\nkey1: []\nkey2: {}\n"

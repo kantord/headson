@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - dump: "foo: !!seq\n- !!str a\n- !!map\n  key: !!str value\n"
   from: NimYAML tests
   json: "{\n  \"foo\": [\n    \"a\",\n    {\n      \"key\": \"value\"\n    }\n  ]\n}\n"
   name: Tags for Block Objects
   tags: mapping sequence tag
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   +SEQ <tag:yaml.org,2002:seq>\n    =VAL <tag:ya…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   +SEQ <tag:yaml.org,2002:seq>\n    =VAL <tag:yaml.org,2002:str> :a\n    +MAP <tag:yaml.org,2002:map>\n     =VAL :key\n     =VAL <tag:yaml.org,2002:str> :value\n    -MAP\n   -SEQ\n  -MAP\n -DOC\n-STR\n"
   yaml: "foo: !!seq\n  - !!str a\n  - !!map\n    key: !!str value\n"

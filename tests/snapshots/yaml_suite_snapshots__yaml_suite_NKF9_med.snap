@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - emit: "---\nkey: value\n: empty key\n---\nkey: value\n: empty key\n---\n:\n---\n:\n"
   from: "@perlpunk"
   name: Empty keys in block and flow mapping
   tags: empty-key mapping
-  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :key\n   =VAL :value\n   =VAL :\n   =VAL :empty key\n  -MAP\n -…"
-  yaml: "---\nkey: value\n: empty key\n---\n{\n key: value, : empty key\n}\n---\n# empty key and value\n:\n…"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :key\n   =VAL :value\n   =VAL :\n   =VAL :empty key\n  -MAP\n -DOC\n +DOC ---\n  +MAP {}\n   =VAL :key\n   =VAL :value\n   =VAL :\n   =VAL :empty key\n  -MAP\n -DOC\n +DOC ---\n  +MAP\n   =VAL :\n   =VAL :\n  -MAP\n -DOC\n +DOC ---…"
+  yaml: "---\nkey: value\n: empty key\n---\n{\n key: value, : empty key\n}\n---\n# empty key and value\n:\n---\n# empty key and value\n{ : }\n"

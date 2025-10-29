@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - dump: "---\ntop1:\n- item1\n- key2: value2\n- item3\ntop2: value2\n"
   from: "@perlpunk"
-  json: "{\n  \"top1\": [\n    \"item1\",\n    {\n      \"key2\": \"value2\"\n…"
+  json: "{\n  \"top1\": [\n    \"item1\",\n    {\n      \"key2\": \"value2\"\n    },\n    \"item3\"\n  ],\n  \"top2\": \"value2\"\n}\n"
   name: Nested flow mapping sequence and mappings
   tags: flow mapping sequence
-  tree: "+STR\n +DOC ---\n  +MAP {}\n   =VAL :top1\n   +SEQ []\n    =V…"
-  yaml: "---\n{ top1: [item1, {key2: value2}, item3], top2: value2…"
+  tree: "+STR\n +DOC ---\n  +MAP {}\n   =VAL :top1\n   +SEQ []\n    =VAL :item1\n    +MAP {}\n     =VAL :key2\n     =VAL :value2\n    -MAP\n    =VAL :item3\n   -SEQ\n   =VAL :top2\n   =VAL :value2\n  -MAP\n -DOC\n-ST…"
+  yaml: "---\n{ top1: [item1, {key2: value2}, item3], top2: value2 }\n"

@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - dump: "foo:\n- 42\nbar:\n- 44\n"
   from: "https://github.com/ingydotnet/yaml-pegex-pm/blob/master/test/indent.tml"
   json: "{\n  \"foo\": [\n    42\n  ],\n  \"bar\": [\n    44\n  ]\n}\n"
   name: Sequence Indent
   tags: sequence indent
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   +SEQ\n    =VAL :42\n   -SEQ\n   =VAL :bar\n   +SEQ\n    =VAL :44\n   -SEQ…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   +SEQ\n    =VAL :42\n   -SEQ\n   =VAL :bar\n   +SEQ\n    =VAL :44\n   -SEQ\n  -MAP\n -DOC\n-STR\n"
   yaml: "foo:\n- 42\nbar:\n  - 44\n"

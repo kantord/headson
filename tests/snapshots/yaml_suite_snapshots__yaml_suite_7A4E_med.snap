@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: " 1st non-empty\n2nd non-empty 3rd non-empty "…
-  from: "http://www.yaml.org/spec/1.2/spec.html#id27879…"
-  json: " 1st non-empty\n2nd non-empty 3rd non-empty "…
+- dump: "\" 1st non-empty\\n2nd non-empty 3rd non-empty \"\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2787994"
+  json: "\" 1st non-empty\\n2nd non-empty 3rd non-empty \"\n"
   name: Spec Example 7.6. Double Quoted Lines
   tags: spec scalar upto-1.2 whitespace
-  tree: "+STR\n +DOC\n  =VAL \" 1st non-empty\\n2nd non-emp…"
-  yaml: "\" 1st non-empty\n\n 2nd non-empty␣\n———»3rd non-e…"
+  tree: "+STR\n +DOC\n  =VAL \" 1st non-empty\\n2nd non-empty 3rd non-empty␣\n -DOC\n-STR\n"
+  yaml: "\" 1st non-empty\n\n 2nd non-empty␣\n———»3rd non-empty \"\n"

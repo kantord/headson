@@ -1,6 +1,6 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - fail: true
   from: "@ingydotnet"
@@ -11,5 +11,5 @@ expression: out_med
 - dump: "---\nk:\n  k: v\n"
   emit: "k:\n  k: v\n"
   json: "{\n  \"k\" : {\n    \"k\" : \"v\"\n  }\n}\n"
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :k\n   +MAP {}\n    =VAL :k\n    =VAL …"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :k\n   +MAP {}\n    =VAL :k\n    =VAL :v\n   -MAP\n  -MAP\n -DOC\n-STR\n"
   yaml: "k: {\n k\n :\n v\n }\n"

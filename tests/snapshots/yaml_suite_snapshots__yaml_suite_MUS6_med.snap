@@ -1,6 +1,6 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - also: ZYU8
   fail: true
@@ -11,13 +11,13 @@ expression: out_med
   yaml: "%YAML 1.1#...\n---\n"
 - dump: null
   fail: true
-  yaml: "%YAML 1.2…"
+  yaml: "%YAML 1.2\n---\n%YAML 1.2\n---\n"
 - dump: "---\n"
   json: "null\n"
-  tree: "+STR\n +DO…"
-  yaml: "%YAML  1.…"
+  tree: "+STR\n +DOC ---\n  =VAL :\n -DOC\n-STR\n"
+  yaml: "%YAML  1.1\n---\n"
 - yaml: "%YAML ——» 1.1\n---\n"
-- yaml: "%YAML 1.1…"
-- note: These 2 a…
-  yaml: "%YAM 1.1…"
+- yaml: "%YAML 1.1  # comment\n---\n"
+- note: These 2 are reserved directives
+  yaml: "%YAM 1.1\n---\n"
 - yaml: "%YAMLL 1.1\n---\n"

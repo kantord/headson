@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - dump: "- - : empty key\n- - : another empty key\n"
   from: "@perlpunk"
   name: Empty implicit key in single pair flow sequences
   tags: empty-key flow sequence
-  tree: "+STR\n +DOC\n  +SEQ\n   +SEQ []\n    +MAP {}\n     =VAL :\n     =VAL :empty key\n    -MAP\n   -SEQ\n   +SEQ []\n    +MAP {}\n     =VAL :\n     =VAL :another empty key\n …"
+  tree: "+STR\n +DOC\n  +SEQ\n   +SEQ []\n    +MAP {}\n     =VAL :\n     =VAL :empty key\n    -MAP\n   -SEQ\n   +SEQ []\n    +MAP {}\n     =VAL :\n     =VAL :another empty key\n    -MAP\n   -SEQ\n  -SEQ\n -DOC\n-STR\n"
   yaml: "- [ : empty key ]\n- [: another empty key]\n"

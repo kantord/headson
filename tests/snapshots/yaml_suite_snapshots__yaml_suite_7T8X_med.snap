@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: ">\n\n  folded line\n\n  next line\n    * bullet…"
-  from: "http://www.yaml.org/spec/1.2/spec.html#id2…"
-  json: "\"\\nfolded line\\nnext line\\n  * bullet\\n\\n …"
-  name: Spec Example 8.10. Folded Lines - 8.13. Fi…
+- dump: ">\n\n  folded line\n\n  next line\n    * bullet\n\n    * list\n    * lines\n\n  last line\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2796543"
+  json: "\"\\nfolded line\\nnext line\\n  * bullet\\n\\n  * list\\n  * lines\\n\\nlast line\\n\"\n"
+  name: Spec Example 8.10. Folded Lines - 8.13. Final Empty Lines
   tags: spec folded scalar comment 1.3-err
-  tree: "+STR\n +DOC\n  =VAL >\\nfolded line\\nnext lin…"
-  yaml: ">\n\n folded\n line\n\n next\n line\n   * bullet\n…"
+  tree: "+STR\n +DOC\n  =VAL >\\nfolded line\\nnext line\\n  * bullet\\n\\n  * list\\n  * lines\\n\\nlast line…"
+  yaml: ">\n\n folded\n line\n\n next\n line\n   * bullet\n\n   * list\n   * lines\n\n last\n line\n\n# Comment\n"

@@ -127,10 +127,10 @@ fn stringify_yaml_key(y: &Yaml) -> String {
                 items.sort_by(|a, b| a.0.cmp(&b.0));
                 let inner = items
                     .into_iter()
-                    .map(|(k, v)| format!("{}: {}", k, v))
+                    .map(|(k, v)| format!("{k}: {v}"))
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("{{{}}}", inner)
+                format!("{{{inner}}}")
             }
         }
     }

@@ -1,12 +1,12 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "foo: 1\nbar: 2\ntext: \"a\\n  \\nb\\n\\nc\\n…"
-  emit: "foo: 1\nbar: 2\ntext: |\n  a\n␣␣␣␣\n  b\n\n…"
+- dump: "foo: 1\nbar: 2\ntext: \"a\\n  \\nb\\n\\nc\\n\\nd\\n\"\n"
+  emit: "foo: 1\nbar: 2\ntext: |\n  a\n␣␣␣␣\n  b\n\n  c\n\n  d\n"
   from: IRC discussion with leont
-  json: "{\n  \"foo\": 1,\n  \"bar\": 2,\n  \"text\": …"
+  json: "{\n  \"foo\": 1,\n  \"bar\": 2,\n  \"text\": \"a\\n  \\nb\\n\\nc\\n\\nd\\n\"\n}\n"
   name: Blank lines
   tags: comment literal scalar whitespace
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   =…"
-  yaml: "foo: 1\n\nbar: 2\n␣␣␣␣\ntext: |\n  a\n␣␣␣…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   =VAL :1\n   =VAL :bar\n   =VAL :2\n   =VAL :text\n   =VAL |a\\n  \\nb\\n\\nc\\n\\nd\\n\n  -MAP\n -DOC\n-STR\n"
+  yaml: "foo: 1\n\nbar: 2\n␣␣␣␣\ntext: |\n  a\n␣␣␣␣\n  b\n\n  c\n␣\n  d\n"

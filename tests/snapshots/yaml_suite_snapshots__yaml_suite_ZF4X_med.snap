@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "Mark McGwire:\n  hr: 65\n  avg: 0.278\nSammy Sosa:\n …"
+- dump: "Mark McGwire:\n  hr: 65\n  avg: 0.278\nSammy Sosa:\n  hr: 63\n  avg: 0.288\n"
   from: "http://www.yaml.org/spec/1.2/spec.html#id2760372"
-  json: "{\n  \"Mark McGwire\": {\n    \"hr\": 65,\n    \"avg\": 0.…"
+  json: "{\n  \"Mark McGwire\": {\n    \"hr\": 65,\n    \"avg\": 0.278\n  },\n  \"Sammy Sosa\": {\n    \"hr\": 63,\n    \"avg\": 0.288\n  }\n}\n"
   name: Spec Example 2.6. Mapping of Mappings
   tags: flow spec mapping
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :Mark McGwire\n   +MAP {…"
-  yaml: "Mark McGwire: {hr: 65, avg: 0.278}\nSammy Sosa: {…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :Mark McGwire\n   +MAP {}\n    =VAL :hr\n    =VAL :65\n    =VAL :avg\n    =VAL :0.278\n   -MAP\n …"
+  yaml: "Mark McGwire: {hr: 65, avg: 0.278}\nSammy Sosa: {\n    hr: 63,\n    avg: 0.288\n  }\n"

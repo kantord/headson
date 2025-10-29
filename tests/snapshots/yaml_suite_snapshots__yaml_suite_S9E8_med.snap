@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "sequence:\n- one\n- two\nmapping:\n  sky: blue…"
-  from: "http://www.yaml.org/spec/1.2/spec.html#id2…"
-  json: "{\n  \"sequence\": [\n    \"one\",\n    \"two\"\n  ]…"
-  name: Spec Example 5.3. Block Structure Indicato…
+- dump: "sequence:\n- one\n- two\nmapping:\n  sky: blue\n  sea: green\n"
+  from: "http://www.yaml.org/spec/1.2/spec.html#id2772312"
+  json: "{\n  \"sequence\": [\n    \"one\",\n    \"two\"\n  ],\n  \"mapping\": {\n    \"sky\": \"blue\",\n    \"sea\": \"green\"\n  }\n}\n"
+  name: Spec Example 5.3. Block Structure Indicators
   tags: explicit-key spec mapping sequence
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :sequence\n   +SE…"
-  yaml: "sequence:\n- one\n- two\nmapping:\n  ? sky\n  :…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :sequence\n   +SEQ\n    =VAL :one\n    =VAL :two\n   -SEQ\n   =VAL :mapping\n   +MAP\n    =VAL :sky\n    =VAL…"
+  yaml: "sequence:\n- one\n- two\nmapping:\n  ? sky\n  : blue\n  sea : green\n"

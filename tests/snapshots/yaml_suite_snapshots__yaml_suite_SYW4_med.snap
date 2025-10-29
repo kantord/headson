@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - dump: "hr: 65\navg: 0.278\nrbi: 147\n"
   from: "http://www.yaml.org/spec/1.2/spec.html#id2759963"
   json: "{\n  \"hr\": 65,\n  \"avg\": 0.278,\n  \"rbi\": 147\n}\n"
   name: Spec Example 2.2. Mapping Scalars to Scalars
   tags: spec scalar comment
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :hr\n   =VAL :65\n   =VAL :avg\n   …"
-  yaml: "hr:  65    # Home runs\navg: 0.278 # Batting average\nrbi: 1…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :hr\n   =VAL :65\n   =VAL :avg\n   =VAL :0.278\n   =VAL :rbi\n   =VAL :147\n  -MAP\n -DOC\n-STR\n"
+  yaml: "hr:  65    # Home runs\navg: 0.278 # Batting average\nrbi: 147   # Runs Batted In\n"

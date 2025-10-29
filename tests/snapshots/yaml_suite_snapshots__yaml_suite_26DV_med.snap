@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "\"top1\":\n  \"key1\": &alias1 scalar1\n'top2':\n  'key2': &…"
+- dump: "\"top1\":\n  \"key1\": &alias1 scalar1\n'top2':\n  'key2': &alias2 scalar2\ntop3: &node3\n  *alias1 : scala…"
   from: "@perlpunk"
-  json: "{\n  \"top1\": {\n    \"key1\": \"scalar1\"\n  },\n  \"top2\": {…"
+  json: "{\n  \"top1\": {\n    \"key1\": \"scalar1\"\n  },\n  \"top2\": {\n    \"key2\": \"scalar2\"\n  },\n  \"top3\": {\n    \"s…"
   name: Whitespace around colon in mappings
   tags: alias mapping whitespace
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL \"top1\n   +MAP\n    =VAL \"ke…"
-  yaml: "\"top1\" :␣\n  \"key1\" : &alias1 scalar1\n'top2' :␣\n  'ke…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL \"top1\n   +MAP\n    =VAL \"key1\n    =VAL &alias1 :scalar1\n   -MAP\n   =VAL …"
+  yaml: "\"top1\" :␣\n  \"key1\" : &alias1 scalar1\n'top2' :␣\n  'key2' : &alias2 scalar2\ntop3: &node3␣\n  *alias1…"

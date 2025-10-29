@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
 - dump: "- foo: bar\n- - baz\n  - baz\n"
   from: "http://www.yaml.org/spec/1.2/spec.html#id2778394"
-  json: "[\n  {\n    \"foo\": \"bar\"\n  },\n  [\n    \"baz\",\n    \"baz\"\n …"
+  json: "[\n  {\n    \"foo\": \"bar\"\n  },\n  [\n    \"baz\",\n    \"baz\"\n  ]\n]\n"
   name: Spec Example 6.3. Separation Spaces
   tags: spec libyaml-err sequence whitespace upto-1.2
-  tree: "+STR\n +DOC\n  +SEQ\n   +MAP\n    =VAL :foo\n    =VAL :bar…"
+  tree: "+STR\n +DOC\n  +SEQ\n   +MAP\n    =VAL :foo\n    =VAL :bar\n   -MAP\n   +SEQ\n    =VAL :baz\n    =VAL :baz\n   -SEQ\n  -SEQ\n -DOC\n-STR\n"
   yaml: "- foo:—» bar\n- - baz\n  -»baz\n"

@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- from: "https://github.com/yaml/pyyaml/blob/master/tests/data/construct-binary-…"
-  json: "{\n  \"canonical\": \"R0lGODlhDAAMAIQAAP//9/X17unp5WZmZgAAAOfn515eXvPz7Y6Oj…"
+- from: "https://github.com/yaml/pyyaml/blob/master/tests/data/construct-binary-py2.data"
+  json: "{\n  \"canonical\": \"R0lGODlhDAAMAIQAAP//9/X17unp5WZmZgAAAOfn515eXvPz7Y6OjuDg4J+fn5OTk6enp56enmlpaWNjY6Ojo4SEhP/++f/++f/++f/++f/++f/++f/++…"
   name: Construct Binary
   tags: tag unknown-tag
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :canonical\n   =VAL <tag:yaml.org,2002:binary>…"
-  yaml: "canonical: !!binary \"\\\n R0lGODlhDAAMAIQAAP//9/X17unp5WZmZgAAAOfn515eXvP…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :canonical\n   =VAL <tag:yaml.org,2002:binary> \"R0lGODlhDAAMAIQAAP//9/X17unp5WZmZgAAAOfn515eXvPz7Y6OjuDg4J+fn5…"
+  yaml: "canonical: !!binary \"\\\n R0lGODlhDAAMAIQAAP//9/X17unp5WZmZgAAAOfn515eXvPz7Y6OjuDg4J+fn5\\\n OTk6enp56enmlpaWNjY6Ojo4SEhP/++f/++f/++f/++f/+…"
