@@ -33,18 +33,14 @@ fn push_yaml_array_item(out: &mut Out<'_>, depth: usize, item: &str) {
 }
 
 fn push_yaml_scalar(out: &mut Out<'_>, token: &str) {
-    // If it's a JSON string literal, decode, then decide quoting and color.
     if let Some(raw) = decode_json_string(token) {
         if !needs_quotes_yaml_value(&raw) {
-            // Unquoted YAML string value: color the raw text via Out.
             out.push_string_unquoted(&raw);
             return;
         }
-        // Quoted string: reuse JSON quoting and let Out color the literal (including quotes).
         out.push_string_literal(token);
         return;
     }
-    // Non-string token (number, bool, null) → pass through unchanged.
     out.push_str(token);
 }
 
@@ -129,7 +125,6 @@ fn yaml_key_text_from_json_quoted(k: &str) -> String {
 
 fn push_object_kv(out: &mut Out<'_>, depth: usize, key_text: &str, v: &str) {
     out.push_indent(depth);
-    // Color the key according to role; colon and space remain uncolored.
     out.push_key(key_text);
     if !has_newline(v) {
         out.push_str(": ");
