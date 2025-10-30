@@ -69,6 +69,16 @@ impl<'a> Out<'a> {
         self.buf.push_str(&s);
     }
 
+    // Push an unquoted string value using the string color role.
+    pub fn push_string_unquoted(&mut self, value: &str) {
+        let s = color::wrap_role(
+            value,
+            color::ColorRole::String,
+            self.color_enabled,
+        );
+        self.buf.push_str(&s);
+    }
+
     // Formatting mode queries
     pub fn is_compact_mode(&self) -> bool {
         self.newline.is_empty() && self.indent_unit.is_empty()

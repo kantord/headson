@@ -11,7 +11,7 @@ fn push_yaml_array_item(out: &mut Out<'_>, depth: usize, item: &str) {
     if !has_newline(item) {
         out.push_indent(depth);
         out.push_str("- ");
-        out.push_str(&yaml_printable_scalar(item.trim()));
+        push_yaml_scalar(out, item.trim());
         out.push_newline();
         return;
     }
@@ -32,16 +32,16 @@ fn push_yaml_array_item(out: &mut Out<'_>, depth: usize, item: &str) {
     }
 }
 
-fn yaml_printable_scalar(token: &str) -> String {
-    // If it's a JSON string literal, decode, then decide quoting.
+fn push_yaml_scalar(out: &mut Out<'_>, token: &str) {
     if let Some(raw) = decode_json_string(token) {
         if !needs_quotes_yaml_value(&raw) {
-            return raw;
+            out.push_string_unquoted(&raw);
+            return;
         }
-        return token.to_string();
+        out.push_string_literal(token);
+        return;
     }
-    // Non-string token (number, bool, null) → pass through.
-    token.to_string()
+    out.push_str(token);
 }
 
 fn push_array_omitted_start(ctx: &ArrayCtx, out: &mut Out<'_>) {
@@ -125,12 +125,14 @@ fn yaml_key_text_from_json_quoted(k: &str) -> String {
 
 fn push_object_kv(out: &mut Out<'_>, depth: usize, key_text: &str, v: &str) {
     out.push_indent(depth);
+    out.push_key(key_text);
     if !has_newline(v) {
-        out.push_str(&format!("{key_text}: "));
-        out.push_str(&yaml_printable_scalar(v));
+        out.push_str(": ");
+        push_yaml_scalar(out, v);
         out.push_newline();
     } else {
-        out.push_str(&format!("{key_text}:"));
+        // Multiline value: print key and start block on next line.
+        out.push_str(":");
         out.push_newline();
         out.push_str(v);
         if !v.ends_with('\n') && !v.ends_with('\r') {
