@@ -1,5 +1,7 @@
 use super::RenderScope;
+use crate::format::Format;
 use crate::order::{ObjectType, ROOT_PQ_ID};
+use crate::serialization::types::OutputTemplate;
 
 impl<'a> RenderScope<'a> {
     pub(super) fn try_render_fileset_root(
@@ -16,6 +18,10 @@ impl<'a> RenderScope<'a> {
         None
     }
 
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Straight-line rendering with early-continues; splitting would harm locality."
+    )]
     fn render_fileset_sections(&mut self, depth: usize) -> String {
         let nl = &self.config.newline;
         let mut out = String::new();
@@ -41,8 +47,22 @@ impl<'a> RenderScope<'a> {
             out.push_str(" <==");
             out.push_str(nl);
 
+            // In Auto mode select per-file template by extension; otherwise
+            // honor the user-chosen template globally.
             let rendered =
-                self.render_node_to_string(child_id.0, depth, false);
+                if matches!(self.config.template, OutputTemplate::Auto) {
+                    let fmt = Format::from_filename(raw_key);
+                    let template = match fmt {
+                        Format::Json => OutputTemplate::Json,
+                        Format::Yaml => OutputTemplate::Yaml,
+                        Format::Unknown => OutputTemplate::Pseudo,
+                    };
+                    self.render_node_to_string_with_template(
+                        child_id.0, depth, false, template,
+                    )
+                } else {
+                    self.render_node_to_string(child_id.0, depth, false)
+                };
             out.push_str(&rendered);
         }
         let total = self

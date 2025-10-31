@@ -135,7 +135,12 @@ impl<'a> RenderScope<'a> {
                 && self.order.object_type.get(id)
                     == Some(&ObjectType::Fileset),
         };
-        render_object(config.template, &ctx, out)
+        // Map Auto -> Pseudo by default for non-fileset contexts.
+        let tmpl = match config.template {
+            crate::OutputTemplate::Auto => crate::OutputTemplate::Pseudo,
+            other => other,
+        };
+        render_object(tmpl, &ctx, out)
     }
 
     fn serialize_string(&mut self, id: usize) -> String {
@@ -276,6 +281,99 @@ impl<'a> RenderScope<'a> {
                     self.config.color_enabled,
                 );
                 self.write_object(id, depth, inline, &mut ow);
+                s
+            }
+            RankedNode::SplittableLeaf { .. } => self.serialize_string(id),
+            RankedNode::AtomicLeaf { .. } => self.serialize_atomic(id),
+            RankedNode::LeafPart { .. } => {
+                unreachable!("string part not rendered")
+            }
+        }
+    }
+
+    // Variant writers that allow overriding the output template. Used when
+    // rendering fileset children according to their detected file format.
+    fn write_array_with_template(
+        &mut self,
+        id: usize,
+        depth: usize,
+        inline: bool,
+        out: &mut Out<'_>,
+        template: crate::serialization::types::OutputTemplate,
+    ) {
+        let config = self.config;
+        let (children_pairs, kept) = self.gather_array_children(id, depth);
+        let omitted = self.omitted_for(id, kept).unwrap_or(0);
+        let ctx = ArrayCtx {
+            children: children_pairs,
+            children_len: kept,
+            omitted,
+            depth,
+            inline_open: inline,
+            omitted_at_start: config.prefer_tail_arrays,
+        };
+        render_array(template, &ctx, out)
+    }
+
+    fn write_object_with_template(
+        &mut self,
+        id: usize,
+        depth: usize,
+        inline: bool,
+        out: &mut Out<'_>,
+        template: crate::serialization::types::OutputTemplate,
+    ) {
+        let config = self.config;
+        let (children_pairs, kept) = self.gather_object_children(id, depth);
+        let omitted = self.omitted_for(id, kept).unwrap_or(0);
+        let ctx = ObjectCtx {
+            children: children_pairs,
+            children_len: kept,
+            omitted,
+            depth,
+            inline_open: inline,
+            space: &config.space,
+            fileset_root: id == ROOT_PQ_ID
+                && self.order.object_type.get(id)
+                    == Some(&ObjectType::Fileset),
+        };
+        render_object(template, &ctx, out)
+    }
+
+    // Render a node to string but force a specific output template
+    // (used for fileset children based on detected data format).
+    fn render_node_to_string_with_template(
+        &mut self,
+        id: usize,
+        depth: usize,
+        inline: bool,
+        template: crate::serialization::types::OutputTemplate,
+    ) -> String {
+        match &self.order.nodes[id] {
+            RankedNode::Array { .. } => {
+                let mut s = String::new();
+                let mut ow = Out::new(
+                    &mut s,
+                    &self.config.newline,
+                    &self.config.indent_unit,
+                    self.config.color_enabled,
+                );
+                self.write_array_with_template(
+                    id, depth, inline, &mut ow, template,
+                );
+                s
+            }
+            RankedNode::Object { .. } => {
+                let mut s = String::new();
+                let mut ow = Out::new(
+                    &mut s,
+                    &self.config.newline,
+                    &self.config.indent_unit,
+                    self.config.color_enabled,
+                );
+                self.write_object_with_template(
+                    id, depth, inline, &mut ow, template,
+                );
                 s
             }
             RankedNode::SplittableLeaf { .. } => self.serialize_string(id),

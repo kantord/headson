@@ -20,6 +20,7 @@
 
 use anyhow::Result;
 
+mod format;
 mod ingest;
 mod json_ingest;
 mod order;
