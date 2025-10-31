@@ -1,9 +1,8 @@
-use assert_cmd::Command;
 use insta::assert_snapshot;
 
 fn run_yaml(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     // newline mode
     let mut args = vec!["--no-color", "-n", &budget_s, "-f", "yaml"];
     args.extend_from_slice(paths);
@@ -40,7 +39,7 @@ fn yaml_compact_falls_back_to_json_style() {
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let budget = 500usize;
     let budget_s = budget.to_string();
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     // Compact => no newlines; YAML template renders via JSON style
     let assert = cmd
         .args([
@@ -70,7 +69,7 @@ fn yaml_fileset_compact_snapshot() {
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let budget = 500usize;
     let budget_s = budget.to_string();
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert = cmd
         .args([
             "--no-color",

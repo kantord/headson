@@ -1,11 +1,10 @@
-use assert_cmd::Command;
 use serde_json::Value;
 
 #[path = "../test_support/mod.rs"]
 mod util;
 
 fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let mut full_args = vec!["--no-color", "-f", "json"];
     full_args.extend_from_slice(args);
     full_args.extend_from_slice(paths);
@@ -19,7 +18,7 @@ fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
 }
 
 fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let limit_s = limit.to_string();
     let mut args = vec!["--no-color", "-f", "js", "-N", &limit_s];
     args.extend_from_slice(extra);
@@ -54,7 +53,7 @@ fn find_js_summary_output(
 }
 
 fn run_pseudo_with_limit(paths: &[&str], limit: usize) -> String {
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let limit_s = limit.to_string();
     let args = vec!["--no-color", "-f", "pseudo", "-N", &limit_s];
     let assert = cmd
@@ -143,7 +142,7 @@ fn budget_and_global_limit_can_be_used_together() {
     let path = "tests/fixtures/explicit/object_small.json";
     // When both are set, the effective global limit is min(n, N).
     // Here min(200, 100) = 100; using both should match using only -N 100.
-    let mut cmd_both = Command::cargo_bin("headson").expect("bin");
+    let mut cmd_both = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let out_both = cmd_both
         .args(["--no-color", "-f", "json", "-n", "200", "-N", "100", path])
         .assert()
@@ -151,7 +150,7 @@ fn budget_and_global_limit_can_be_used_together() {
     let stdout_both =
         String::from_utf8_lossy(&out_both.get_output().stdout).into_owned();
 
-    let mut cmd_global_only = Command::cargo_bin("headson").expect("bin");
+    let mut cmd_global_only = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let out_global_only = cmd_global_only
         .args(["--no-color", "-f", "json", "-N", "100", path])
         .assert()

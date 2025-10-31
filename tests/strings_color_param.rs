@@ -1,8 +1,7 @@
-use assert_cmd::Command;
 use insta::assert_snapshot;
 
 fn run_color(input: &str, template: &str) -> String {
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert = cmd
         .args(["--color", "-n", "1000", "-f", template])
         .write_stdin(input)

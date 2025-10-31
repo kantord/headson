@@ -1,8 +1,6 @@
-use assert_cmd::Command;
-
 #[test]
 fn color_and_no_color_flags_conflict() {
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert = cmd
         .args(["--color", "--no-color", "-n", "10", "-f", "json"]) // no input; parse-only
         .assert();
@@ -21,7 +19,7 @@ fn color_and_no_color_flags_parse_and_run() {
     // Provide minimal JSON via stdin so the command runs.
     let input = b"{}";
     for flag in ["--color", "--no-color"] {
-        let mut cmd = Command::cargo_bin("headson").expect("bin");
+        let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
         let assert = cmd
             .args([flag, "-n", "10", "-f", "json"]) // simple json output
             .write_stdin(input.as_slice())
