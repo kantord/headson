@@ -1,8 +1,6 @@
-use assert_cmd::Command;
-
 #[test]
 fn head_and_tail_flags_conflict() {
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     // Pass both flags; clap should error with a conflict.
     let assert = cmd
         .args(["--no-color", "--head", "--tail", "-n", "20", "-f", "json"]) // no inputs (stdin not used)

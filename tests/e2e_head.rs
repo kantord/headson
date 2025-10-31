@@ -1,12 +1,11 @@
 use std::fs;
 use std::path::Path;
 
-use assert_cmd::Command;
 use insta::assert_snapshot;
 
 fn run_case_with_head(path: &Path, template: &str, n: u32) -> String {
     let input = fs::read_to_string(path).expect("read fixture");
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let output = cmd
         .arg("--no-color")
         .arg("-n")

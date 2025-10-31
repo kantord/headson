@@ -1,9 +1,8 @@
-use assert_cmd::Command;
 use insta::assert_snapshot;
 
 fn run_pseudo(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let mut args = vec!["--no-color", "-n", &budget_s, "-f", "pseudo"]; // newline mode
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert().success();
@@ -41,7 +40,7 @@ fn pseudo_fileset_compact_shows_ellipsis_for_omitted() {
     let p3 = "tests/fixtures/explicit/string_escaping.json";
     let budget = 50usize;
     let budget_s = budget.to_string();
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     // Compact mode => object-style rendering; expect ellipsis for omitted content
     let assert = cmd
         .args([

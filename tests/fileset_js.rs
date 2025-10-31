@@ -1,9 +1,8 @@
-use assert_cmd::Command;
 use insta::assert_snapshot;
 
 fn run_js(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let mut args = vec!["--no-color", "-n", &budget_s, "-f", "js"]; // newline mode
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert().success();
@@ -39,7 +38,7 @@ fn js_fileset_compact_shows_inline_omitted_summary() {
     let p3 = "tests/fixtures/explicit/string_escaping.json";
     let budget = 50usize;
     let budget_s = budget.to_string();
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     // Compact mode => no newlines, but object-style rendering includes inline summary
     let assert = cmd
         .args([

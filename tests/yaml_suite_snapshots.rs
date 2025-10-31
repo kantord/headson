@@ -1,4 +1,3 @@
-use assert_cmd::Command;
 use insta::assert_snapshot;
 use std::fs;
 use std::path::Path;
@@ -6,8 +5,7 @@ use test_each_file::test_each_path;
 
 fn run_cli_yaml_with_budget(input: &[u8], budget: usize) -> String {
     let budget_s = budget.to_string();
-    let assert = Command::cargo_bin("headson")
-        .unwrap()
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
         .args([
             "--no-color",
             "-n",

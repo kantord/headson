@@ -1,4 +1,3 @@
-use assert_cmd::Command;
 use serde_json::Value as J;
 use std::collections::BTreeMap;
 use std::fs;
@@ -7,8 +6,7 @@ use test_each_file::test_each_path;
 use yaml_rust2::{Yaml, YamlLoader};
 
 fn run_cli_yaml(input: &[u8]) -> (bool, String, String) {
-    let assert = Command::cargo_bin("headson")
-        .unwrap()
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
         .args([
             "--no-color",
             "-n",

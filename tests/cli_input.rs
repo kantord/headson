@@ -1,6 +1,5 @@
 #[path = "../test_support/mod.rs"]
 mod util;
-use assert_cmd::Command;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
@@ -25,7 +24,7 @@ fn run_with_input_path(
     extra: &[&str],
 ) -> (bool, String, String) {
     let budget_s = budget.to_string();
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let mut args = vec!["--no-color", "-n", &budget_s, "-f", template, path];
     args.extend_from_slice(extra);
     let assert = cmd.args(args).assert();
@@ -72,7 +71,7 @@ fn directories_and_binary_files_are_ignored_with_notices() {
     let json_path = tmpdir.path().join("data.json");
     write_json_file(&json_path, b"{\"a\":1}");
 
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert = cmd
         .args([
             "--no-color",
@@ -112,7 +111,7 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
     write_binary_file(&bin_path);
 
     // Case 1: single ignored path -> falls into included == 0 branch, empty output
-    let mut cmd1 = Command::cargo_bin("headson").expect("bin");
+    let mut cmd1 = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert1 = cmd1
         .args([
             "--no-color",
@@ -131,7 +130,7 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
     assert!(err1.contains("Ignored directory:"));
 
     // Case 2: multiple ignored paths -> fileset mode renders empty object
-    let mut cmd2 = Command::cargo_bin("headson").expect("bin");
+    let mut cmd2 = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert2 = cmd2
         .args([
             "--no-color",
@@ -170,7 +169,7 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
     fs::write(&b, b"[1,2,3,4,5,6,7,8,9,10]").unwrap();
 
     // Per-file budget (-n) scenario
-    let mut cmd_pf = Command::cargo_bin("headson").expect("bin");
+    let mut cmd_pf = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert_pf = cmd_pf
         .args([
             "--no-color",
@@ -187,7 +186,7 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
         String::from_utf8_lossy(&assert_pf.get_output().stdout).into_owned();
 
     // Global budget scenario
-    let mut cmd_g = Command::cargo_bin("headson").expect("bin");
+    let mut cmd_g = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert_g = cmd_g
         .args([
             "--no-color",

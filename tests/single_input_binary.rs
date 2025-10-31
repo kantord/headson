@@ -1,4 +1,3 @@
-use assert_cmd::Command;
 use std::fs;
 use tempfile::tempdir;
 
@@ -8,7 +7,7 @@ fn single_binary_file_is_ignored_with_notice() {
     let bin = dir.path().join("binfile");
     fs::write(&bin, [0x00, 0x01, 0xFF, 0xFE]).expect("write bin");
 
-    let mut cmd = Command::cargo_bin("headson").expect("bin");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert = cmd
         .arg("--no-color")
         .arg(bin.to_string_lossy().to_string())
