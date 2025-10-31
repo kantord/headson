@@ -10,7 +10,9 @@ API
   - `input_format`: ingestion format — `"json" | "yaml"`.
   - `character_budget`: maximum output size in characters (defaults to 500 if not set).
   - `skew`: one of `"balanced" | "head" | "tail"`.
-    - `balanced` (default), `head` keeps first N, `tail` keeps last N. Pseudo/JS place omission markers accordingly.
+    - `balanced` (default), `head` keeps first N, `tail` keeps last N. Display styles place omission markers accordingly; strict JSON remains unannotated.
+  - Notes:
+    - For single inputs, `format="auto"` maps to the JSON family; set `format="yaml"` to emit YAML.
 
 Examples:
 
@@ -33,7 +35,7 @@ print(headson.summarize(doc, format="yaml", style="strict", input_format="yaml",
 print(headson.summarize(doc, format="yaml", style="default", input_format="yaml", character_budget=60))
 print(headson.summarize(doc, format="yaml", style="detailed", input_format="yaml", character_budget=60))
 
-# Note: tail mode affects only pseudo/js display templates; the json template stays strict.
+# Note: tail mode affects only display styles; strict JSON stays strict.
 ```
 
 Install for development:
