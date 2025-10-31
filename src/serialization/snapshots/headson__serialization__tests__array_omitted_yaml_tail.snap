@@ -1,8 +1,7 @@
 ---
 source: src/serialization/mod.rs
-assertion_line: 685
+assertion_line: 806
 expression: out_tail
 ---
 # 2 more items
 - 1
-

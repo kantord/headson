@@ -1,7 +1,15 @@
 fn run_js(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
-    let mut args = vec!["--no-color", "-n", &budget_s, "-f", "js"]; // newline mode
+    let mut args = vec![
+        "--no-color",
+        "-n",
+        &budget_s,
+        "-f",
+        "json",
+        "-t",
+        "detailed",
+    ]; // newline mode
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert().success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
@@ -44,7 +52,9 @@ fn js_fileset_compact_shows_inline_omitted_summary() {
             "-n",
             &budget_s,
             "-f",
-            "js",
+            "json",
+            "-t",
+            "detailed",
             "--compact",
             p1,
             p2,

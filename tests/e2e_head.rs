@@ -6,16 +6,17 @@ use insta::assert_snapshot;
 fn run_case_with_head(path: &Path, template: &str, n: u32) -> String {
     let input = fs::read_to_string(path).expect("read fixture");
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
-    let output = cmd
-        .arg("--no-color")
-        .arg("-n")
-        .arg(n.to_string())
-        .arg("-f")
-        .arg(template)
-        .arg("--head")
-        .write_stdin(input)
-        .output()
-        .expect("run");
+    let n_s = n.to_string();
+    let mut args = vec!["--no-color", "-n", &n_s, "--head"];
+    let lower = template.to_ascii_lowercase();
+    match lower.as_str() {
+        "json" => args.extend(["-f", "json", "-t", "strict"]),
+        "yaml" => args.extend(["-f", "yaml", "-i", "yaml"]),
+        "pseudo" => args.extend(["-f", "json", "-t", "default"]),
+        "js" => args.extend(["-f", "json", "-t", "detailed"]),
+        other => args.extend(["-f", other]),
+    }
+    let output = cmd.args(args).write_stdin(input).output().expect("run");
     String::from_utf8_lossy(&output.stdout).into_owned()
 }
 

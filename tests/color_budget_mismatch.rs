@@ -38,6 +38,7 @@ fn colored_and_plain_outputs_should_match_after_stripping() {
         prefer_tail_arrays: false,
         color_mode: headson::ColorMode::On,
         color_enabled: false,
+        style: headson::Style::Strict,
     };
     let cfg_color = headson::RenderConfig {
         color_enabled: true,

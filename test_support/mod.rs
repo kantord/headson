@@ -20,7 +20,15 @@ pub fn run_template_budget(
     extra: &[&str],
 ) -> String {
     let budget_s = budget.to_string();
-    let mut args = vec!["-n", &budget_s, "-f", template];
+    let mut args: Vec<&str> = vec!["-n", &budget_s];
+    let lower = template.to_ascii_lowercase();
+    match lower.as_str() {
+        "json" => args.extend(["-f", "json", "-t", "strict"]),
+        "yaml" => args.extend(["-f", "yaml"]),
+        "pseudo" => args.extend(["-f", "json", "-t", "default"]),
+        "js" => args.extend(["-f", "json", "-t", "detailed"]),
+        other => args.extend(["-f", other]),
+    }
     args.extend_from_slice(extra);
     run_stdout(input, &args)
 }
@@ -34,7 +42,15 @@ pub fn run_template_budget_assert(
 ) -> Assert {
     let budget_s = budget.to_string();
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
-    let mut args = vec!["-n", &budget_s, "-f", template];
+    let mut args: Vec<&str> = vec!["-n", &budget_s];
+    let lower = template.to_ascii_lowercase();
+    match lower.as_str() {
+        "json" => args.extend(["-f", "json", "-t", "strict"]),
+        "yaml" => args.extend(["-f", "yaml"]),
+        "pseudo" => args.extend(["-f", "json", "-t", "default"]),
+        "js" => args.extend(["-f", "json", "-t", "detailed"]),
+        other => args.extend(["-f", other]),
+    }
     args.extend_from_slice(extra);
     cmd.arg("--no-color").args(args).write_stdin(input).assert()
 }

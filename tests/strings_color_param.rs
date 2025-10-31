@@ -2,11 +2,15 @@ use insta::assert_snapshot;
 
 fn run_color(input: &str, template: &str) -> String {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
-    let assert = cmd
-        .args(["--color", "-n", "1000", "-f", template])
-        .write_stdin(input)
-        .assert()
-        .success();
+    let mut args = vec!["--color", "-n", "1000"];
+    let lower = template.to_ascii_lowercase();
+    match lower.as_str() {
+        "json" => args.extend(["-f", "json", "-t", "strict"]),
+        "pseudo" => args.extend(["-f", "json", "-t", "default"]),
+        "js" => args.extend(["-f", "json", "-t", "detailed"]),
+        other => args.extend(["-f", other]),
+    }
+    let assert = cmd.args(args).write_stdin(input).assert().success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
 }
 

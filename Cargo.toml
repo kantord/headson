@@ -34,6 +34,9 @@ yaml-rust2 = "0.10"
 [features]
 default = []
 
+[lib]
+doctest = false
+
 [dev-dependencies]
 insta = "1.40.0"
 assert_cmd = "2"

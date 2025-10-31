@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
-use headson_core::{ArraySamplerStrategy, ColorMode, OutputTemplate, PriorityConfig, RenderConfig};
+use headson_core::{ArraySamplerStrategy, ColorMode, OutputTemplate, PriorityConfig, RenderConfig, Style};
 
 fn to_template(s: &str) -> Result<OutputTemplate> {
     match s.to_ascii_lowercase().as_str() {
@@ -23,7 +23,7 @@ fn render_config_with_sampler(
     let newline = "\n".to_string();
     let indent_unit = "  ".to_string();
     let prefer_tail_arrays = matches!(sampler, ArraySamplerStrategy::Tail);
-    Ok(RenderConfig { template: t, indent_unit, space, newline, prefer_tail_arrays, color_mode: ColorMode::Auto, color_enabled: false })
+    Ok(RenderConfig { template: t, indent_unit, space, newline, prefer_tail_arrays, color_mode: ColorMode::Auto, color_enabled: false, style: Style::Default })
 }
 
 fn parse_skew(skew: &str) -> Result<ArraySamplerStrategy> {

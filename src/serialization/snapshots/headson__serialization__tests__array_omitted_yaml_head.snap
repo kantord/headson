@@ -1,8 +1,7 @@
 ---
 source: src/serialization/mod.rs
-assertion_line: 667
+assertion_line: 787
 expression: out_head
 ---
 - 1
 # 2 more items
-

@@ -83,7 +83,20 @@ impl<'a> RenderScope<'a> {
     ) -> String {
         if matches!(self.config.template, OutputTemplate::Auto) {
             let fmt = Format::from_filename(raw_key);
-            let template = fmt.to_output_template(OutputTemplate::Pseudo);
+            let template = match fmt {
+                Format::Yaml => OutputTemplate::Yaml,
+                Format::Json | Format::Unknown => match self.config.style {
+                    crate::serialization::types::Style::Strict => {
+                        OutputTemplate::Json
+                    }
+                    crate::serialization::types::Style::Default => {
+                        OutputTemplate::Pseudo
+                    }
+                    crate::serialization::types::Style::Detailed => {
+                        OutputTemplate::Js
+                    }
+                },
+            };
             return self.render_node_to_string_with_template(
                 child_id, depth, false, template,
             );

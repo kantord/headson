@@ -7,6 +7,13 @@ pub enum OutputTemplate {
     Yaml,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Style {
+    Strict,
+    Default,
+    Detailed,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RenderConfig {
     pub template: OutputTemplate,
@@ -22,6 +29,8 @@ pub struct RenderConfig {
     pub color_mode: ColorMode,
     // Resolved color enablement after considering `color_mode` and stdout TTY.
     pub color_enabled: bool,
+    // Output styling mode (controls omission annotations), orthogonal to template.
+    pub style: Style,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

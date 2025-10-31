@@ -34,6 +34,7 @@ impl Format {
 
     /// Preferred output template for this format. Falls back to caller’s
     /// template for `Unknown`.
+    #[allow(dead_code, reason = "kept for compatibility and potential reuse")]
     pub fn to_output_template(
         self,
         fallback: crate::serialization::types::OutputTemplate,

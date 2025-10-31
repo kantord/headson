@@ -33,7 +33,9 @@ pub use order::{
 };
 
 pub use serialization::color::resolve_color_enabled;
-pub use serialization::types::{ColorMode, OutputTemplate, RenderConfig};
+pub use serialization::types::{
+    ColorMode, OutputTemplate, RenderConfig, Style,
+};
 
 pub fn headson(
     input: Vec<u8>,

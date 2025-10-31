@@ -14,6 +14,8 @@ fn run_cli_yaml_with_budget(input: &[u8], budget: usize) -> String {
             "1000000",
             "-f",
             "yaml",
+            "-t",
+            "detailed",
             "-i",
             "yaml",
         ])

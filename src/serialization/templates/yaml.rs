@@ -46,17 +46,38 @@ fn push_yaml_scalar(out: &mut Out<'_>, token: &str) {
 
 fn push_array_omitted_start(ctx: &ArrayCtx, out: &mut Out<'_>) {
     if ctx.omitted_at_start && ctx.omitted > 0 {
-        out.push_indent(ctx.depth);
-        out.push_comment(format!("# {} more items", ctx.omitted));
-        out.push_newline();
+        // Style controls comment content; strict emits nothing.
+        match out.style() {
+            crate::serialization::types::Style::Strict => {}
+            crate::serialization::types::Style::Default => {
+                out.push_indent(ctx.depth);
+                out.push_comment("# …");
+                out.push_newline();
+            }
+            crate::serialization::types::Style::Detailed => {
+                out.push_indent(ctx.depth);
+                out.push_comment(format!("# {} more items", ctx.omitted));
+                out.push_newline();
+            }
+        }
     }
 }
 
 fn push_array_omitted_end(ctx: &ArrayCtx, out: &mut Out<'_>) {
     if !ctx.omitted_at_start && ctx.omitted > 0 {
-        out.push_indent(ctx.depth);
-        out.push_comment(format!("# {} more items", ctx.omitted));
-        out.push_newline();
+        match out.style() {
+            crate::serialization::types::Style::Strict => {}
+            crate::serialization::types::Style::Default => {
+                out.push_indent(ctx.depth);
+                out.push_comment("# …");
+                out.push_newline();
+            }
+            crate::serialization::types::Style::Detailed => {
+                out.push_indent(ctx.depth);
+                out.push_comment(format!("# {} more items", ctx.omitted));
+                out.push_newline();
+            }
+        }
     }
 }
 
@@ -203,14 +224,24 @@ fn needs_quotes_yaml_value(s: &str) -> bool {
 
 fn push_object_omitted(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
     if ctx.omitted > 0 {
-        out.push_indent(ctx.depth);
-        let label = if ctx.fileset_root {
-            "files"
-        } else {
-            "properties"
-        };
-        out.push_comment(format!("# {} more {label}", ctx.omitted));
-        out.push_newline();
+        match out.style() {
+            crate::serialization::types::Style::Strict => {}
+            crate::serialization::types::Style::Default => {
+                out.push_indent(ctx.depth);
+                out.push_comment("# …");
+                out.push_newline();
+            }
+            crate::serialization::types::Style::Detailed => {
+                out.push_indent(ctx.depth);
+                let label = if ctx.fileset_root {
+                    "files"
+                } else {
+                    "properties"
+                };
+                out.push_comment(format!("# {} more {label}", ctx.omitted));
+                out.push_newline();
+            }
+        }
     }
 }
 
