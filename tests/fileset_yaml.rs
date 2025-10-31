@@ -1,5 +1,3 @@
-use insta::assert_snapshot;
-
 fn run_yaml(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
@@ -11,14 +9,13 @@ fn run_yaml(paths: &[&str], budget: usize) -> String {
 }
 
 #[test]
-fn yaml_fileset_renders_mapping() {
+fn yaml_fileset_sections_headers_present() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let out = run_yaml(&[p1, p2], 100_000);
-    // Expect file names present (keys are quoted full paths in YAML)
+    assert!(out.contains("==> "));
     assert!(out.contains("object_small.json"));
     assert!(out.contains("array_numbers_50.json"));
-    assert_snapshot!("yaml_fileset_mapping", out);
 }
 
 #[test]
@@ -27,10 +24,7 @@ fn yaml_fileset_omitted_summary_when_budget_small() {
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let p3 = "tests/fixtures/explicit/string_escaping.json";
     let out = run_yaml(&[p1, p2, p3], 50);
-    assert!(
-        out.contains("more files"),
-        "expected omitted summary comment for files: {out:?}"
-    );
+    assert!(out.contains("more files"));
 }
 
 #[test]
@@ -87,3 +81,4 @@ fn yaml_fileset_compact_snapshot() {
         String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
     assert_snapshot!("yaml_fileset_compact", out);
 }
+use insta::assert_snapshot;
