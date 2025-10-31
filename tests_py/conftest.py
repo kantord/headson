@@ -3,13 +3,27 @@ import pathlib
 import subprocess
 import sys
 import shutil
+import importlib
 
 
 def _has_headson_with_summarize() -> bool:
     try:
         import headson  # type: ignore
 
-        return hasattr(headson, "summarize")
+        if not hasattr(headson, "summarize"):
+            return False
+        # Probe the compiled extension directly for new-style kwargs support.
+        try:
+            ext = importlib.import_module("headson.headson")
+        except Exception:
+            return False
+        try:
+            _ = ext.summarize("{}", format="json", style="strict", character_budget=1)
+        except TypeError:
+            return False
+        except Exception:
+            return True
+        return True
     except Exception:
         return False
 
@@ -19,10 +33,13 @@ def pytest_sessionstart(session):  # noqa: D401
     if os.environ.get("SKIP_RUST_BUILD") == "1":
         return
 
-    if _has_headson_with_summarize():
-        return
+    # Always (re)build to avoid stale binary signature mismatches.
 
     repo_root = pathlib.Path(__file__).resolve().parents[1]
+    # Ensure local Python package (wrapper) is importable ahead of any globally installed extension.
+    pkg_dir = repo_root / "python"
+    if str(pkg_dir) not in sys.path:
+        sys.path.insert(0, str(pkg_dir))
     pyproject = repo_root / "pyproject.toml"
     if not pyproject.exists():
         return

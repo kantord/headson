@@ -123,7 +123,8 @@ def test_head_affects_arrays_pseudo():
     text = json.dumps(list(range(50)))
     out_head = headson.summarize(
         text,
-        template="pseudo",
+        format="json",
+        style="default",
         character_budget=30,
         skew="head",
     )
@@ -150,7 +151,8 @@ def test_head_affects_arrays_js():
     text = json.dumps(list(range(50)))
     out_head = headson.summarize(
         text,
-        template="js",
+        format="json",
+        style="detailed",
         character_budget=30,
         skew="head",
     )
