@@ -8,10 +8,6 @@ pub mod types;
 use self::templates::{ArrayCtx, ObjectCtx, render_array, render_object};
 use crate::serialization::output::Out;
 
-fn indent(depth: usize, unit: &str) -> String {
-    unit.repeat(depth)
-}
-
 type ArrayChildPair = (usize, (NodeKind, String));
 type ObjectChildPair = (usize, (String, String));
 

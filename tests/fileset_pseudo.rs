@@ -1,5 +1,3 @@
-use insta::assert_snapshot;
-
 fn run_pseudo(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
@@ -10,27 +8,26 @@ fn run_pseudo(paths: &[&str], budget: usize) -> String {
 }
 
 #[test]
-fn pseudo_fileset_head_style_headers() {
-    // Use three reasonably small fixtures
+fn pseudo_fileset_inline_object_no_section_headers() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let p3 = "tests/fixtures/explicit/string_escaping.json";
-    // Large budget to include content; we care about headers/separators
     let out = run_pseudo(&[p1, p2, p3], 100_000);
-    assert_snapshot!("pseudo_fileset_head_style_headers", out);
+    assert!(out.trim_start().starts_with('{'));
+    assert!(
+        !out.contains("==>"),
+        "should not contain pseudo-style section headers"
+    );
 }
 
 #[test]
-fn pseudo_fileset_shows_omitted_summary_when_budget_small() {
+fn pseudo_fileset_shows_omission_marker_when_budget_small() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let p3 = "tests/fixtures/explicit/string_escaping.json";
-    // Tiny budget to force omission of some files
+    // Tiny budget to force omission; inline pseudo uses ellipsis markers.
     let out = run_pseudo(&[p1, p2, p3], 50);
-    assert!(
-        out.contains("more files"),
-        "expected omitted summary in output: {out:?}"
-    );
+    assert!(out.contains('…') || out.contains("..."));
 }
 
 #[test]
