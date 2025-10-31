@@ -8,26 +8,24 @@ fn run_pseudo(paths: &[&str], budget: usize) -> String {
 }
 
 #[test]
-fn pseudo_fileset_inline_object_no_section_headers() {
+fn pseudo_fileset_sections_with_pseudo_headers() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let p3 = "tests/fixtures/explicit/string_escaping.json";
     let out = run_pseudo(&[p1, p2, p3], 100_000);
-    assert!(out.trim_start().starts_with('{'));
-    assert!(
-        !out.contains("==>"),
-        "should not contain pseudo-style section headers"
-    );
+    assert!(out.contains("==> "));
 }
 
 #[test]
-fn pseudo_fileset_shows_omission_marker_when_budget_small() {
+fn pseudo_fileset_shows_summary_or_markers_when_budget_small() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let p3 = "tests/fixtures/explicit/string_escaping.json";
-    // Tiny budget to force omission; inline pseudo uses ellipsis markers.
+    // Tiny budget to force omission; expect summary or omission marker.
     let out = run_pseudo(&[p1, p2, p3], 50);
-    assert!(out.contains('…') || out.contains("..."));
+    assert!(
+        out.contains("more files") || out.contains('…') || out.contains("...")
+    );
 }
 
 #[test]

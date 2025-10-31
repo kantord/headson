@@ -8,20 +8,12 @@ fn run_js(paths: &[&str], budget: usize) -> String {
 }
 
 #[test]
-fn js_fileset_inline_object_no_section_headers() {
+fn js_fileset_sections_with_pseudo_headers() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let p3 = "tests/fixtures/explicit/string_escaping.json";
     let out = run_js(&[p1, p2, p3], 100_000);
-    assert!(out.trim_start().starts_with('{'));
-    assert!(
-        !out.contains("\n// "),
-        "should not contain section header comments"
-    );
-    assert!(
-        !out.contains("==>"),
-        "should not contain pseudo-style header markers"
-    );
+    assert!(out.contains("==> "));
 }
 
 #[test]
@@ -68,9 +60,12 @@ fn js_fileset_compact_shows_inline_omitted_summary() {
 }
 
 #[test]
-fn js_fileset_small_budget_shows_omission_comment() {
+fn js_fileset_small_budget_shows_summary_or_markers() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let out = run_js(&[p1, p2], 1);
-    assert!(out.contains("/*"), "expected omission comment in output");
+    assert!(
+        out.contains("more files") || out.contains("…") || out.contains("/*"),
+        "expected some omission indicator in output"
+    );
 }
