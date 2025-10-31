@@ -24,7 +24,7 @@ type IgnoreNotices = Vec<String>;
 struct Cli {
     #[arg(short = 'n', long = "budget")]
     budget: Option<usize>,
-    #[arg(short = 'f', long = "template", value_enum, default_value_t = Template::Pseudo)]
+    #[arg(short = 'f', long = "template", value_enum, default_value_t = Template::Auto)]
     template: Template,
     #[arg(long = "indent", default_value = "  ")]
     indent: String,
@@ -103,6 +103,7 @@ struct Cli {
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
 enum Template {
+    Auto,
     Json,
     Pseudo,
     Js,
@@ -170,16 +171,23 @@ fn run_from_stdin(
     let input_count = 1usize;
     let eff = compute_effective_budget(cli, input_count);
     let prio = compute_priority(cli, eff, input_count);
+    // In Auto mode on stdin, prefer JSON template for output.
+    let mut cfg = render_cfg.clone();
+    if matches!(cfg.template, headson::OutputTemplate::Auto) {
+        cfg.template = headson::OutputTemplate::Json;
+    }
     match cli.input_format {
-        InputFormat::Json => {
-            headson::headson(input_bytes, render_cfg, &prio, eff)
-        }
+        InputFormat::Json => headson::headson(input_bytes, &cfg, &prio, eff),
         InputFormat::Yaml => {
-            headson::headson_yaml(input_bytes, render_cfg, &prio, eff)
+            headson::headson_yaml(input_bytes, &cfg, &prio, eff)
         }
     }
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Keeps ingest selection and rendering logic co-located for clarity."
+)]
 fn run_from_paths(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
@@ -189,8 +197,24 @@ fn run_from_paths(
     let input_count = included.max(1);
     let eff = compute_effective_budget(cli, input_count);
     let prio = compute_priority(cli, eff, input_count);
+    // In Auto template mode, choose ingestion strategy based on extensions for filesets:
+    // if any included input has a YAML extension, prefer YAML ingest (can parse JSON too).
+    fn any_yaml_ext(entries: &InputEntries) -> bool {
+        entries.iter().any(|(name, _)| {
+            let lower = name.to_ascii_lowercase();
+            lower.ends_with(".yaml") || lower.ends_with(".yml")
+        })
+    }
     if cli.inputs.len() > 1 {
-        let out = match cli.input_format {
+        let chosen_input =
+            if matches!(render_cfg.template, headson::OutputTemplate::Auto)
+                && any_yaml_ext(&entries)
+            {
+                InputFormat::Yaml
+            } else {
+                cli.input_format
+            };
+        let out = match chosen_input {
             InputFormat::Json => {
                 headson::headson_many(entries, render_cfg, &prio, eff)?
             }
@@ -282,6 +306,7 @@ fn ingest_paths(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
 fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
     fn to_output_template(t: Template) -> headson::OutputTemplate {
         match t {
+            Template::Auto => headson::OutputTemplate::Auto,
             Template::Json => headson::OutputTemplate::Json,
             Template::Pseudo => headson::OutputTemplate::Pseudo,
             Template::Js => headson::OutputTemplate::Js,

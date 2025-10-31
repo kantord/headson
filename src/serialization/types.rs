@@ -1,5 +1,6 @@
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum OutputTemplate {
+    Auto,
     Json,
     Pseudo,
     Js,

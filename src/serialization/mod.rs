@@ -135,7 +135,12 @@ impl<'a> RenderScope<'a> {
                 && self.order.object_type.get(id)
                     == Some(&ObjectType::Fileset),
         };
-        render_object(config.template, &ctx, out)
+        // Default Auto behavior for non-fileset contexts: treat as Pseudo.
+        let tmpl = match config.template {
+            crate::OutputTemplate::Auto => crate::OutputTemplate::Pseudo,
+            other => other,
+        };
+        render_object(tmpl, &ctx, out)
     }
 
     fn serialize_string(&mut self, id: usize) -> String {
@@ -225,6 +230,45 @@ impl<'a> RenderScope<'a> {
         (children_pairs, kept)
     }
 
+    fn gather_array_children_with_template(
+        &mut self,
+        id: usize,
+        depth: usize,
+        template: crate::serialization::types::OutputTemplate,
+    ) -> (Vec<ArrayChildPair>, usize) {
+        let mut children_pairs: Vec<ArrayChildPair> = Vec::new();
+        let mut kept = 0usize;
+        if let Some(children_ids) = self.order.children.get(id) {
+            for (i, &child_id) in children_ids.iter().enumerate() {
+                if self.inclusion_flags[child_id.0] != self.render_set_id {
+                    continue;
+                }
+                kept += 1;
+                let child_kind = self.order.nodes[child_id.0].display_kind();
+                let rendered = self.render_node_to_string_with_template(
+                    child_id.0,
+                    depth + 1,
+                    false,
+                    template,
+                );
+                let orig_index = self
+                    .order
+                    .index_in_parent_array
+                    .get(child_id.0)
+                    .and_then(|o| *o)
+                    .unwrap_or(i);
+                self.push_array_child_line(
+                    &mut children_pairs,
+                    orig_index,
+                    child_kind,
+                    depth,
+                    rendered,
+                );
+            }
+        }
+        (children_pairs, kept)
+    }
+
     fn gather_object_children(
         &mut self,
         id: usize,
@@ -243,6 +287,35 @@ impl<'a> RenderScope<'a> {
                 let key = crate::utils::json::json_string(raw_key);
                 let val =
                     self.render_node_to_string(child_id.0, depth + 1, true);
+                children_pairs.push((i, (key, val)));
+            }
+        }
+        (children_pairs, kept)
+    }
+
+    fn gather_object_children_with_template(
+        &mut self,
+        id: usize,
+        depth: usize,
+        template: crate::serialization::types::OutputTemplate,
+    ) -> (Vec<ObjectChildPair>, usize) {
+        let mut children_pairs: Vec<ObjectChildPair> = Vec::new();
+        let mut kept = 0usize;
+        if let Some(children_ids) = self.order.children.get(id) {
+            for (i, &child_id) in children_ids.iter().enumerate() {
+                if self.inclusion_flags[child_id.0] != self.render_set_id {
+                    continue;
+                }
+                kept += 1;
+                let child = &self.order.nodes[child_id.0];
+                let raw_key = child.key_in_object().unwrap_or("");
+                let key = crate::utils::json::json_string(raw_key);
+                let val = self.render_node_to_string_with_template(
+                    child_id.0,
+                    depth + 1,
+                    true,
+                    template,
+                );
                 children_pairs.push((i, (key, val)));
             }
         }
@@ -276,6 +349,100 @@ impl<'a> RenderScope<'a> {
                     self.config.color_enabled,
                 );
                 self.write_object(id, depth, inline, &mut ow);
+                s
+            }
+            RankedNode::SplittableLeaf { .. } => self.serialize_string(id),
+            RankedNode::AtomicLeaf { .. } => self.serialize_atomic(id),
+            RankedNode::LeafPart { .. } => {
+                unreachable!("string part not rendered")
+            }
+        }
+    }
+
+    // Render helpers that apply a specific OutputTemplate instead of config.template.
+    // Enables per-node template overrides (e.g., per-file rendering in filesets).
+    fn write_array_with_template(
+        &mut self,
+        id: usize,
+        depth: usize,
+        inline: bool,
+        out: &mut Out<'_>,
+        template: crate::serialization::types::OutputTemplate,
+    ) {
+        let config = self.config;
+        let (children_pairs, kept) =
+            self.gather_array_children_with_template(id, depth, template);
+        let omitted = self.omitted_for(id, kept).unwrap_or(0);
+        let ctx = ArrayCtx {
+            children: children_pairs,
+            children_len: kept,
+            omitted,
+            depth,
+            inline_open: inline,
+            omitted_at_start: config.prefer_tail_arrays,
+        };
+        render_array(template, &ctx, out)
+    }
+
+    fn write_object_with_template(
+        &mut self,
+        id: usize,
+        depth: usize,
+        inline: bool,
+        out: &mut Out<'_>,
+        template: crate::serialization::types::OutputTemplate,
+    ) {
+        let config = self.config;
+        let (children_pairs, kept) =
+            self.gather_object_children_with_template(id, depth, template);
+        let omitted = self.omitted_for(id, kept).unwrap_or(0);
+        let ctx = ObjectCtx {
+            children: children_pairs,
+            children_len: kept,
+            omitted,
+            depth,
+            inline_open: inline,
+            space: &config.space,
+            fileset_root: id == ROOT_PQ_ID
+                && self.order.object_type.get(id)
+                    == Some(&ObjectType::Fileset),
+        };
+        render_object(template, &ctx, out)
+    }
+
+    // Render a node using an explicit OutputTemplate override.
+    fn render_node_to_string_with_template(
+        &mut self,
+        id: usize,
+        depth: usize,
+        inline: bool,
+        template: crate::serialization::types::OutputTemplate,
+    ) -> String {
+        match &self.order.nodes[id] {
+            RankedNode::Array { .. } => {
+                let mut s = String::new();
+                let mut ow = Out::new(
+                    &mut s,
+                    &self.config.newline,
+                    &self.config.indent_unit,
+                    self.config.color_enabled,
+                );
+                self.write_array_with_template(
+                    id, depth, inline, &mut ow, template,
+                );
+                s
+            }
+            RankedNode::Object { .. } => {
+                let mut s = String::new();
+                let mut ow = Out::new(
+                    &mut s,
+                    &self.config.newline,
+                    &self.config.indent_unit,
+                    self.config.color_enabled,
+                );
+                self.write_object_with_template(
+                    id, depth, inline, &mut ow, template,
+                );
                 s
             }
             RankedNode::SplittableLeaf { .. } => self.serialize_string(id),
