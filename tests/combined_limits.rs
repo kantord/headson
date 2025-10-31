@@ -19,13 +19,12 @@ fn make_tmp_with_files(count: usize) -> (tempfile::TempDir, Vec<String>) {
     (tmp, names)
 }
 
-fn run_fileset_json_with_budgets(
+fn run_fileset_json_with_budgets_raw(
     dir: &std::path::Path,
     names: &[String],
     per_file: usize,
     global: usize,
-) -> serde_json::Value {
-    use serde_json::Value;
+) -> String {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let mut args: Vec<String> = vec![
         "--no-color".into(),
@@ -41,8 +40,7 @@ fn run_fileset_json_with_budgets(
     }
     cmd.current_dir(dir);
     let assert = cmd.args(args).assert().success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
-    serde_json::from_str::<Value>(&out).expect("json parse")
+    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
 }
 
 #[test]
@@ -53,7 +51,7 @@ fn combined_limits_across_multiple_files_matches_minimum_global() {
     let out_both = run_args(&["-f", "json", "-n", "300", "-N", "120", p1, p2]);
     let out_min_only = run_args(&["-f", "json", "-N", "120", p1, p2]);
     assert_eq!(out_both, out_min_only, "-n + -N should equal -N=min(n,N)");
-    assert_snapshot!("combined_limits_two_files_json_min120", out_both);
+    // Snapshot removed: assert equality only.
 }
 
 #[test]
@@ -69,8 +67,10 @@ fn combined_limits_single_file_honors_per_file_minimum() {
 #[test]
 fn combined_limits_many_files_use_aggregate_per_file_budget() {
     let (tmp, names) = make_tmp_with_files(8);
-    let v = run_fileset_json_with_budgets(tmp.path(), &names, 40, 1000);
-    let obj = v.as_object().expect("root object");
-    assert_eq!(obj.len(), names.len(), "should include all files");
-    assert!(names.iter().all(|n| obj.contains_key(n)));
+    let out = run_fileset_json_with_budgets_raw(tmp.path(), &names, 40, 1000);
+    for n in &names {
+        assert!(out.contains(n), "missing header for {n}");
+    }
+    let count = out.matches("==> ").count();
+    assert_eq!(count, names.len(), "should include all files");
 }

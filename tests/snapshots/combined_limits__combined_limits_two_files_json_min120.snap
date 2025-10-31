@@ -2,10 +2,10 @@
 source: tests/combined_limits.rs
 expression: out_both
 ---
-{
-  "tests/fixtures/explicit/array_numbers_50.json": [
-    0
-  ],
-  "tests/fixtures/explicit/object_small.json": {}
-}
+==> tests/fixtures/explicit/array_numbers_50.json <==
+[
+  0
+]
 
+==> tests/fixtures/explicit/object_small.json <==
+{}

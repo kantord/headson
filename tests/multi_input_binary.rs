@@ -1,4 +1,3 @@
-use serde_json::Value;
 use std::fs;
 use std::io::Write;
 use tempfile::tempdir;
@@ -21,6 +20,10 @@ fn run_with_paths_json(
 }
 
 #[test]
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "test sets up temp files and validates multiple conditions clearly in one place"
+)]
 fn binary_file_is_ignored_and_reported_in_stderr() {
     let dir = tempdir().expect("tempdir");
 
@@ -40,16 +43,9 @@ fn binary_file_is_ignored_and_reported_in_stderr() {
         ok,
         "multi-file should succeed even with binary input; stderr: {err}"
     );
-    let v: Value = serde_json::from_str(&out).expect("json output parses");
-    let obj = v.as_object().expect("root should be object");
-    assert!(
-        obj.contains_key(&json_s.to_string()),
-        "JSON file key present"
-    );
-    assert!(
-        !obj.contains_key(&bin_s.to_string()),
-        "binary file key absent"
-    );
+    assert!(out.contains("==> "));
+    assert!(out.contains(&*json_s));
+    assert!(!out.contains(&format!("==> {bin_s} <==")));
 
     let msg = format!("Ignored binary file: {bin_s}");
     let err_trimmed = err.trim_end();
@@ -83,11 +79,10 @@ fn multiple_binary_files_each_reported_once_at_end() {
         run_with_paths_json(&[&json_s, &bin1_s, &bin2_s], 10_000);
 
     assert!(ok, "should succeed: {err}");
-    let v: Value = serde_json::from_str(&out).expect("json output parses");
-    let obj = v.as_object().expect("root object");
-    assert!(obj.contains_key(&json_s), "json file present");
-    assert!(!obj.contains_key(&bin1_s), "bin1 absent");
-    assert!(!obj.contains_key(&bin2_s), "bin2 absent");
+    assert!(out.contains("==> "));
+    assert!(out.contains(&*json_s));
+    assert!(!out.contains(&format!("==> {bin1_s} <==")));
+    assert!(!out.contains(&format!("==> {bin2_s} <==")));
 
     let lines: Vec<&str> = err.trim().lines().collect();
     assert!(

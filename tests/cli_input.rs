@@ -129,7 +129,7 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
     assert_eq!(out1, "\n", "expected empty output when nothing included");
     assert!(err1.contains("Ignored directory:"));
 
-    // Case 2: multiple ignored paths -> fileset mode renders empty object
+    // Case 2: multiple ignored paths -> no included inputs, empty output
     let mut cmd2 = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert2 = cmd2
         .args([
@@ -146,10 +146,7 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
     let out2 = String::from_utf8_lossy(&assert2.get_output().stdout);
     let err2 = String::from_utf8_lossy(&assert2.get_output().stderr);
     assert!(ok2, "cli should succeed: {err2}");
-    assert_eq!(
-        out2, "{}\n",
-        "expected empty fileset object when multiple inputs"
-    );
+    assert_eq!(out2, "\n", "expected empty output when nothing included");
     assert!(
         err2.contains("Ignored directory:")
             && err2.contains("Ignored binary file:"),
