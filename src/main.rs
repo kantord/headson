@@ -226,13 +226,35 @@ fn run_from_paths(
     } else if included == 0 {
         Ok((String::new(), ignored))
     } else {
-        let bytes = entries.into_iter().next().unwrap().1;
-        let out = match cli.input_format {
-            InputFormat::Json => {
-                headson::headson(bytes, render_cfg, &prio, eff)?
-            }
+        let (name, bytes) = entries.into_iter().next().unwrap();
+        // In Auto template mode for a single file, select ingest and output
+        // template based on filename extension.
+        let lower = name.to_ascii_lowercase();
+        let is_yaml_ext = lower.ends_with(".yaml") || lower.ends_with(".yml");
+        let chosen_input =
+            if matches!(render_cfg.template, headson::OutputTemplate::Auto) {
+                if is_yaml_ext {
+                    InputFormat::Yaml
+                } else {
+                    InputFormat::Json
+                }
+            } else {
+                cli.input_format
+            };
+        let mut cfg = render_cfg.clone();
+        if matches!(cfg.template, headson::OutputTemplate::Auto) {
+            cfg.template = if is_yaml_ext {
+                headson::OutputTemplate::Yaml
+            } else if lower.ends_with(".json") {
+                headson::OutputTemplate::Json
+            } else {
+                headson::OutputTemplate::Pseudo
+            };
+        }
+        let out = match chosen_input {
+            InputFormat::Json => headson::headson(bytes, &cfg, &prio, eff)?,
             InputFormat::Yaml => {
-                headson::headson_yaml(bytes, render_cfg, &prio, eff)?
+                headson::headson_yaml(bytes, &cfg, &prio, eff)?
             }
         };
         Ok((out, ignored))
