@@ -2,7 +2,6 @@ use super::RenderScope;
 use crate::order::{ObjectType, ROOT_PQ_ID};
 
 impl<'a> RenderScope<'a> {
-    // Keep fileset layout policy isolated from item templates.
     pub(super) fn try_render_fileset_root(
         &mut self,
         id: usize,

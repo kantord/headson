@@ -118,7 +118,6 @@ impl<'a> RenderScope<'a> {
         out: &mut Out<'_>,
     ) {
         let config = self.config;
-        // Keep fileset concerns isolated from this path.
         if let Some(rendered) = self.try_render_fileset_root(id, depth) {
             out.push_str(&rendered);
             return;
