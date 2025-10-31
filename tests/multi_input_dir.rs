@@ -1,4 +1,3 @@
-use serde_json::Value;
 use std::fs;
 use tempfile::tempdir;
 
@@ -17,6 +16,10 @@ fn run_with_paths_json(paths: &[&str]) -> (bool, String, String) {
 }
 
 #[test]
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "single test composes setup + assertions succinctly"
+)]
 fn directory_inputs_are_ignored_and_reported() {
     let dir = tempdir().expect("tmp");
     let sub = dir.path().join("subdir");
@@ -31,10 +34,9 @@ fn directory_inputs_are_ignored_and_reported() {
     let (ok, out, err) = run_with_paths_json(&[&json_s, &sub_s]);
     assert!(ok, "should succeed: {err}");
 
-    let v: Value = serde_json::from_str(&out).expect("json parses");
-    let obj = v.as_object().expect("root obj");
-    assert!(obj.contains_key(&json_s));
-    assert!(!obj.contains_key(&sub_s));
+    assert!(out.contains("==> "));
+    assert!(out.contains(&json_s));
+    assert!(!out.contains(&format!("==> {sub_s} <==")));
 
     let err_t = err.trim_end();
     assert!(

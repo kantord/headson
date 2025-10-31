@@ -25,4 +25,3 @@ fn json_fileset_small_budget_shows_summary() {
     let out = run_json(&[p1, p2, p3], 50);
     assert!(out.contains("more files"));
 }
-

@@ -1,5 +1,3 @@
-use serde_json::Value;
-
 #[path = "../test_support/mod.rs"]
 mod util;
 
@@ -28,9 +26,11 @@ fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
 }
 
-fn count_js_headers(out: &str) -> usize {
+fn count_section_headers(out: &str) -> usize {
     out.lines()
-        .filter(|l| l.trim_start().starts_with("// "))
+        .map(str::trim_start)
+        .filter(|l| l.starts_with("==> "))
+        .filter(|l| !l.contains(" more files "))
         .count()
 }
 
@@ -41,9 +41,9 @@ fn find_js_summary_output(
 ) -> Option<(String, usize)> {
     for &b in budgets {
         let out = run_js_with_limit(paths, b, extra);
-        let omitted = paths.len().saturating_sub(count_js_headers(&out));
+        let omitted = paths.len().saturating_sub(count_section_headers(&out));
         if omitted > 0 {
-            let summary = format!("/* {omitted} more files */");
+            let summary = format!("==> {omitted} more files <==");
             if out.contains(&summary) {
                 return Some((out, omitted));
             }
@@ -129,12 +129,8 @@ fn global_limit_can_omit_entire_files() {
     // Impose a small global limit so not all files fit.
     let (ok, out, err) = run_paths_json(&paths, &["-N", "120"]);
     assert!(ok, "should succeed: {err}");
-    let v: Value = serde_json::from_str(&out).expect("json parse");
-    let obj = v.as_object().expect("root object");
-    assert!(
-        obj.len() < paths.len(),
-        "expected some files omitted: {out}"
-    );
+    let kept = count_section_headers(&out);
+    assert!(kept < paths.len(), "expected some files omitted: {out}");
 }
 
 #[test]
@@ -175,18 +171,18 @@ fn js_fileset_summary_shows_more_files_with_newlines() {
     let budgets = [20usize, 40, 60, 80, 100, 120];
     let (out, omitted) = find_js_summary_output(&paths, &budgets, &[])
         .expect("expected some budget to omit files and show summary");
-    let summary = format!("/* {omitted} more files */");
+    let summary = format!("==> {omitted} more files <==");
     // Ensure exactly one blank line before the summary
     let trimmed = out.trim_end_matches('\n');
     if let Some(pos) = trimmed.rfind(&summary) {
         let before = &trimmed[..pos];
         assert!(
             before.ends_with("\n\n"),
-            "expected exactly one blank line before JS summary"
+            "expected exactly one blank line before summary"
         );
         assert!(
             !before.ends_with("\n\n\n"),
-            "should not have more than one blank line before JS summary"
+            "should not have more than one blank line before summary"
         );
     }
 }
