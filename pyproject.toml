@@ -32,7 +32,7 @@ python-source = "python"
 dev = [
   "pytest>=8",
   "maturin>=1.7,<2",
-  "ruff==0.14.2",
+  "ruff==0.14.3",
 ]
 
 [tool.ruff]
