@@ -4,6 +4,7 @@ import subprocess
 import sys
 import shutil
 import importlib
+import pytest
 
 
 def _has_headson_with_summarize() -> bool:
@@ -40,6 +41,23 @@ def pytest_sessionstart(session):  # noqa: D401
     pkg_dir = repo_root / "python"
     if str(pkg_dir) not in sys.path:
         sys.path.insert(0, str(pkg_dir))
+
+    # Remove previously built extension artifacts to avoid stale native modules.
+    try:
+        so_glob = list((pkg_dir / "headson").glob("headson*.so"))
+        for p in so_glob:
+            try:
+                p.unlink()
+            except Exception:
+                pass
+        # Also clear cargo target for the python crate to force rebuild
+        py_target = pkg_dir / "target"
+        if py_target.exists():
+            import shutil as _shutil
+
+            _shutil.rmtree(py_target, ignore_errors=True)
+    except Exception:
+        pass
     pyproject = repo_root / "pyproject.toml"
     if not pyproject.exists():
         return
@@ -52,10 +70,16 @@ def pytest_sessionstart(session):  # noqa: D401
         print(f"[conftest] Building extension: {' '.join(cmd)}")
         subprocess.run(cmd, check=True)
 
+    # Proactively remove any previously installed `headson` to avoid stale binaries.
+    try:
+        subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "headson"], check=False)
+    except Exception:
+        pass
+
     cmd = (
         ["maturin", "develop", "--quiet"]
         if use_maturin
-        else [sys.executable, "-m", "pip", "install", "-e", str(repo_root)]
+        else [sys.executable, "-m", "pip", "install", "-e", str(repo_root / "python")]
     )
     if use_maturin and os.environ.get("RELEASE") == "1":
         cmd.append("--release")
@@ -73,29 +97,24 @@ def pytest_sessionstart(session):  # noqa: D401
         import importlib
 
         importlib.invalidate_caches()
+        # Drop both the package and extension submodule from sys.modules
         sys.modules.pop("headson", None)
+        sys.modules.pop("headson.headson", None)
+
+        import headson  # type: ignore
+
+        print(f"[conftest] headson from: {getattr(headson, '__file__', '?')}")
+        # Ensure extension submodule is the freshly built one and supports new kwargs
+        ext = importlib.import_module("headson.headson")
+        print(f"[conftest] headson.headson from: {getattr(ext, '__file__', '?')}")
         try:
-            import headson  # type: ignore
-
-            print(f"[conftest] headson from: {getattr(headson, '__file__', '?')}")
-        except Exception as e:
-            print(f"[conftest] primary import failed: {e}; attempting direct extension import...")
-            ext = importlib.import_module("headson.headson")
-            sys.modules["headson"] = ext  # expose extension as package
-            headson = ext  # type: ignore
-            print(f"[conftest] using extension as package: {getattr(headson, '__file__', '?')}")
-
-        if not hasattr(headson, "summarize"):
-            if use_maturin:
-                print("[conftest] summarize() missing; retry maturin develop...")
-                build_with(["maturin", "develop", "--quiet"])
-                importlib.invalidate_caches()
-                sys.modules.pop("headson", None)
-                try:
-                    import headson as _headson  # type: ignore
-                except Exception:
-                    _headson = importlib.import_module("headson.headson")
-                    sys.modules["headson"] = _headson
-                print(f"[conftest] reloaded headson from: {getattr(_headson, '__file__', '?')}")
+            _ = ext.summarize("{}", format="json", style="strict", character_budget=1)
+        except TypeError as e:
+            msg = (
+                f"headson extension lacks new kwargs (format/style): {e}\n"
+                "Tests require a fresh build. Try: pip uninstall -y headson &&\n"
+                "maturin develop --quiet"
+            )
+            pytest.exit(msg, returncode=1)
     except Exception as e:
-        print(f"[conftest] Post-build import failed: {e}")
+        pytest.exit(f"[conftest] Post-build import failed: {e}", returncode=1)
