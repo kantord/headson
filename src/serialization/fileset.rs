@@ -25,7 +25,7 @@ impl<'a> RenderScope<'a> {
         }
         None
     }
-    pub(super) fn append_js_fileset_section(
+    fn append_js_fileset_section(
         &mut self,
         out: &mut String,
         depth: usize,
@@ -44,7 +44,7 @@ impl<'a> RenderScope<'a> {
         out.push_str(nl);
     }
 
-    pub(super) fn append_js_fileset_summary(
+    fn append_js_fileset_summary(
         &self,
         out: &mut String,
         depth: usize,
@@ -63,7 +63,7 @@ impl<'a> RenderScope<'a> {
         }
     }
 
-    pub(super) fn append_pseudo_fileset_section(
+    fn append_pseudo_fileset_section(
         &mut self,
         out: &mut String,
         depth: usize,
@@ -81,7 +81,7 @@ impl<'a> RenderScope<'a> {
         out.push_str(&rendered);
     }
 
-    pub(super) fn append_pseudo_fileset_summary(
+    fn append_pseudo_fileset_summary(
         &self,
         out: &mut String,
         depth: usize,
@@ -104,10 +104,7 @@ impl<'a> RenderScope<'a> {
     // Render multi-input fileset as head-style sections for JS template using
     // line comments for file names. Ensure valid JS by terminating each section
     // with a semicolon.
-    pub(super) fn serialize_fileset_root_js(
-        &mut self,
-        depth: usize,
-    ) -> String {
+    fn serialize_fileset_root_js(&mut self, depth: usize) -> String {
         let nl = &self.config.newline;
         let mut out = String::new();
         let Some(children_ids) = self.order.children.get(ROOT_PQ_ID) else {
@@ -125,7 +122,7 @@ impl<'a> RenderScope<'a> {
         out
     }
 
-    pub(super) fn render_js_fileset_sections(
+    fn render_js_fileset_sections(
         &mut self,
         out: &mut String,
         depth: usize,
@@ -146,10 +143,7 @@ impl<'a> RenderScope<'a> {
         kept
     }
 
-    pub(super) fn serialize_fileset_root_pseudo(
-        &mut self,
-        depth: usize,
-    ) -> String {
+    fn serialize_fileset_root_pseudo(&mut self, depth: usize) -> String {
         let nl = &self.config.newline;
         let mut out = String::new();
         if let Some(children_ids) = self.order.children.get(ROOT_PQ_ID) {
