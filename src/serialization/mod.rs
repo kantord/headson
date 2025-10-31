@@ -122,24 +122,10 @@ impl<'a> RenderScope<'a> {
         out: &mut Out<'_>,
     ) {
         let config = self.config;
-        // Special-case: fileset root in Pseudo/JS templates → head-style sections
-        if id == ROOT_PQ_ID
-            && self.order.object_type.get(id) == Some(&ObjectType::Fileset)
-            && !config.newline.is_empty()
-        {
-            match config.template {
-                crate::OutputTemplate::Pseudo => {
-                    let s = self.serialize_fileset_root_pseudo(depth);
-                    out.push_str(&s);
-                    return;
-                }
-                crate::OutputTemplate::Js => {
-                    let s = self.serialize_fileset_root_js(depth);
-                    out.push_str(&s);
-                    return;
-                }
-                _ => {}
-            }
+        // Keep fileset concerns isolated from this path.
+        if let Some(rendered) = self.try_render_fileset_root(id, depth) {
+            out.push_str(&rendered);
+            return;
         }
         let (children_pairs, kept) = self.gather_object_children(id, depth);
         let omitted = self.omitted_for(id, kept).unwrap_or(0);

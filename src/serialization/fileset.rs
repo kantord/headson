@@ -1,7 +1,30 @@
 use super::{RenderScope, indent};
-use crate::order::ROOT_PQ_ID;
+use crate::OutputTemplate;
+use crate::order::{ObjectType, ROOT_PQ_ID};
 
 impl<'a> RenderScope<'a> {
+    // Keep fileset layout policy isolated from item templates.
+    pub(super) fn try_render_fileset_root(
+        &mut self,
+        id: usize,
+        depth: usize,
+    ) -> Option<String> {
+        if id == ROOT_PQ_ID
+            && self.order.object_type.get(id) == Some(&ObjectType::Fileset)
+            && !self.config.newline.is_empty()
+        {
+            match self.config.template {
+                OutputTemplate::Pseudo => {
+                    return Some(self.serialize_fileset_root_pseudo(depth));
+                }
+                OutputTemplate::Js => {
+                    return Some(self.serialize_fileset_root_js(depth));
+                }
+                _ => {}
+            }
+        }
+        None
+    }
     pub(super) fn append_js_fileset_section(
         &mut self,
         out: &mut String,
