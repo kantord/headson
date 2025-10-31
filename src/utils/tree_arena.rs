@@ -10,7 +10,7 @@ pub struct JsonTreeArena {
     pub arr_indices: Vec<usize>,
     pub root_id: usize,
     // True when root is a synthetic wrapper object for multi-input ingest.
-    // Rendering remains standard JSON; used to select fileset-specific headers.
+    // Used to trigger fileset-specific rendering (section headers and summary).
     pub is_fileset: bool,
 }
 

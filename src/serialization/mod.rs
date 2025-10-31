@@ -135,7 +135,7 @@ impl<'a> RenderScope<'a> {
                 && self.order.object_type.get(id)
                     == Some(&ObjectType::Fileset),
         };
-        // Map Auto -> Pseudo by default for non-fileset contexts.
+        // Default Auto behavior for non-fileset contexts: treat as Pseudo.
         let tmpl = match config.template {
             crate::OutputTemplate::Auto => crate::OutputTemplate::Pseudo,
             other => other,
@@ -359,8 +359,8 @@ impl<'a> RenderScope<'a> {
         }
     }
 
-    // Variant writers that allow overriding the output template. Used when
-    // rendering fileset children according to their detected file format.
+    // Render helpers that apply a specific OutputTemplate instead of config.template.
+    // Enables per-node template overrides (e.g., per-file rendering in filesets).
     fn write_array_with_template(
         &mut self,
         id: usize,
@@ -410,8 +410,7 @@ impl<'a> RenderScope<'a> {
         render_object(template, &ctx, out)
     }
 
-    // Render a node to string but force a specific output template
-    // (used for fileset children based on detected data format).
+    // Render a node using an explicit OutputTemplate override.
     fn render_node_to_string_with_template(
         &mut self,
         id: usize,
