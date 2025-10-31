@@ -135,9 +135,19 @@ impl<'a> RenderScope<'a> {
                 && self.order.object_type.get(id)
                     == Some(&ObjectType::Fileset),
         };
-        // Default Auto behavior for non-fileset contexts: treat as Pseudo.
+        // In non-fileset contexts, Auto uses JSON-family renderer based on style.
         let tmpl = match config.template {
-            crate::OutputTemplate::Auto => crate::OutputTemplate::Pseudo,
+            crate::OutputTemplate::Auto => match config.style {
+                crate::serialization::types::Style::Strict => {
+                    crate::OutputTemplate::Json
+                }
+                crate::serialization::types::Style::Default => {
+                    crate::OutputTemplate::Pseudo
+                }
+                crate::serialization::types::Style::Detailed => {
+                    crate::OutputTemplate::Js
+                }
+            },
             other => other,
         };
         render_object(tmpl, &ctx, out)
@@ -336,6 +346,7 @@ impl<'a> RenderScope<'a> {
                     &self.config.newline,
                     &self.config.indent_unit,
                     self.config.color_enabled,
+                    self.config.style,
                 );
                 self.write_array(id, depth, inline, &mut ow);
                 s
@@ -347,6 +358,7 @@ impl<'a> RenderScope<'a> {
                     &self.config.newline,
                     &self.config.indent_unit,
                     self.config.color_enabled,
+                    self.config.style,
                 );
                 self.write_object(id, depth, inline, &mut ow);
                 s
@@ -426,6 +438,7 @@ impl<'a> RenderScope<'a> {
                     &self.config.newline,
                     &self.config.indent_unit,
                     self.config.color_enabled,
+                    self.config.style,
                 );
                 self.write_array_with_template(
                     id, depth, inline, &mut ow, template,
@@ -439,6 +452,7 @@ impl<'a> RenderScope<'a> {
                     &self.config.newline,
                     &self.config.indent_unit,
                     self.config.color_enabled,
+                    self.config.style,
                 );
                 self.write_object_with_template(
                     id, depth, inline, &mut ow, template,
@@ -494,6 +508,7 @@ pub fn render_from_render_set(
         &config.newline,
         &config.indent_unit,
         config.color_enabled,
+        config.style,
     );
     scope.write_node(root_id, 0, false, &mut out);
     s
@@ -555,6 +570,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Strict,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -589,6 +605,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Strict,
             },
         );
         // Sanity: output should contain CRLF newlines and render the object child across lines.
@@ -625,6 +642,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Strict,
             },
         );
         assert_snapshot!("arena_render_single", out);
@@ -660,6 +678,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Default,
             },
         );
         assert_snapshot!("array_omitted_pseudo_head", out_head);
@@ -678,6 +697,7 @@ mod tests {
                 prefer_tail_arrays: true,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Default,
             },
         );
         assert_snapshot!("array_omitted_pseudo_tail", out_tail);
@@ -711,6 +731,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Detailed,
             },
         );
         assert_snapshot!("array_omitted_js_head", out_head);
@@ -728,6 +749,7 @@ mod tests {
                 prefer_tail_arrays: true,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Detailed,
             },
         );
         assert_snapshot!("array_omitted_js_tail", out_tail);
@@ -761,6 +783,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Detailed,
             },
         );
         assert_yaml_valid(&out_head);
@@ -779,6 +802,7 @@ mod tests {
                 prefer_tail_arrays: true,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Detailed,
             },
         );
         assert_yaml_valid(&out_tail);
@@ -811,6 +835,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Default,
             },
         );
         assert_yaml_valid(&out);
@@ -843,6 +868,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Default,
             },
         );
         assert_yaml_valid(&out);
@@ -873,6 +899,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Detailed,
             },
         );
         assert_yaml_valid(&out);
@@ -883,8 +910,13 @@ mod tests {
     fn array_internal_gaps_yaml() {
         let ctx = mk_gap_ctx();
         let mut s = String::new();
-        let mut outw =
-            crate::serialization::output::Out::new(&mut s, "\n", "  ", false);
+        let mut outw = crate::serialization::output::Out::new(
+            &mut s,
+            "\n",
+            "  ",
+            false,
+            crate::serialization::types::Style::Default,
+        );
         super::templates::render_array(
             crate::OutputTemplate::Yaml,
             &ctx,
@@ -927,6 +959,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Default,
             },
         );
         assert_yaml_valid(&out);
@@ -996,6 +1029,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Strict,
             },
         );
         // Expect the first 5 characters plus an ellipsis, as a valid JSON string literal.
@@ -1028,6 +1062,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Default,
             },
         );
         assert_yaml_valid(&out);
@@ -1067,6 +1102,7 @@ mod tests {
             prefer_tail_arrays: false,
             color_mode: crate::ColorMode::Off,
             color_enabled: false,
+            style: crate::serialization::types::Style::Strict,
         };
         let scope = RenderScope {
             order: &build,
@@ -1103,6 +1139,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Strict,
             },
         );
         assert_snapshot!("inline_open_array_in_object_json", out);
@@ -1136,6 +1173,7 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
+                style: crate::serialization::types::Style::Detailed,
             },
         );
         // Should be a valid JS object with one property and an omitted summary.
@@ -1174,8 +1212,13 @@ mod tests {
     fn array_internal_gaps_pseudo() {
         let ctx = mk_gap_ctx();
         let mut s = String::new();
-        let mut outw =
-            crate::serialization::output::Out::new(&mut s, "\n", "  ", false);
+        let mut outw = crate::serialization::output::Out::new(
+            &mut s,
+            "\n",
+            "  ",
+            false,
+            crate::serialization::types::Style::Default,
+        );
         super::templates::render_array(
             crate::OutputTemplate::Pseudo,
             &ctx,
@@ -1192,8 +1235,13 @@ mod tests {
     fn array_internal_gaps_js() {
         let ctx = mk_gap_ctx();
         let mut s = String::new();
-        let mut outw =
-            crate::serialization::output::Out::new(&mut s, "\n", "  ", false);
+        let mut outw = crate::serialization::output::Out::new(
+            &mut s,
+            "\n",
+            "  ",
+            false,
+            crate::serialization::types::Style::Default,
+        );
         super::templates::render_array(
             crate::OutputTemplate::Js,
             &ctx,

@@ -6,72 +6,47 @@ import pytest
 
 def test_summarize_json_roundtrip():
     text = '{"a": 1, "b": {"c": 2}}'
-    out = headson.summarize(text, template="json", character_budget=10_000)
+    out = headson.summarize(text, format="json", style="strict", character_budget=10_000)
     # Must be valid JSON and contain original structure
     obj = json.loads(out)
     assert obj["a"] == 1
     assert obj["b"]["c"] == 2
 
 
-@pytest.mark.parametrize("template", ["json", "pseudo", "js", "yaml"])
-def test_summarize_budget_affects_length(template):
+@pytest.mark.parametrize(
+    "fmt,style",
+    [("json", "strict"), ("json", "default"), ("json", "detailed"), ("yaml", "default")],
+)
+def test_summarize_budget_affects_length(fmt, style):
     text = json.dumps({"arr": list(range(100))})
-    out_small = headson.summarize(
-        text,
-        template=template,
-        character_budget=40,
-    )
-    out_large = headson.summarize(
-        text,
-        template=template,
-        character_budget=400,
-    )
+    out_small = headson.summarize(text, format=fmt, style=style, character_budget=40)
+    out_large = headson.summarize(text, format=fmt, style=style, character_budget=400)
     assert len(out_small) <= len(out_large)
 
 
 def test_summarize_budget_only_kw():
     text = json.dumps({"x": [1, 2, 3, 4, 5, 6, 7, 8, 9]})
-    out_10 = headson.summarize(
-        text,
-        template="json",
-        character_budget=10,
-    )
-    out_100 = headson.summarize(
-        text,
-        template="json",
-        character_budget=100,
-    )
+    out_10 = headson.summarize(text, format="json", style="strict", character_budget=10)
+    out_100 = headson.summarize(text, format="json", style="strict", character_budget=100)
     assert len(out_10) <= len(out_100)
 
 
 def test_pseudo_shows_ellipsis_on_truncation():
     text = json.dumps({"arr": list(range(50))})
-    out = headson.summarize(
-        text,
-        template="pseudo",
-        character_budget=30,
-    )
+    out = headson.summarize(text, format="json", style="default", character_budget=30)
     assert "…" in out
 
 
 def test_js_shows_comment_on_truncation():
     text = json.dumps({"arr": list(range(50))})
-    out = headson.summarize(
-        text,
-        template="js",
-        character_budget=30,
-    )
+    out = headson.summarize(text, format="json", style="detailed", character_budget=30)
     assert "/*" in out and "more" in out
 
 
 def test_exact_string_output_json_template():
     # Exact output check for simple string input
     text = '"hello"'
-    out = headson.summarize(
-        text,
-        template="json",
-        character_budget=100,
-    )
+    out = headson.summarize(text, format="json", style="strict", character_budget=100)
     assert out == '"hello"'
 
 
@@ -79,16 +54,10 @@ def test_tail_affects_arrays_pseudo():
     # Use a raw array to simplify assertions about leading markers.
     text = json.dumps(list(range(50)))
     out_tail = headson.summarize(
-        text,
-        template="pseudo",
-        character_budget=30,
-        skew="tail",
+        text, format="json", style="default", character_budget=30, skew="tail"
     )
     out_head = headson.summarize(
-        text,
-        template="pseudo",
-        character_budget=30,
-        skew="balanced",
+        text, format="json", style="default", character_budget=30, skew="balanced"
     )
     assert out_tail != out_head
     # In tail mode (non-compact by default), the first non-empty line after '['
@@ -113,16 +82,10 @@ def test_tail_affects_arrays_pseudo():
 def test_tail_affects_arrays_js():
     text = json.dumps(list(range(50)))
     out_tail = headson.summarize(
-        text,
-        template="js",
-        character_budget=30,
-        skew="tail",
+        text, format="json", style="detailed", character_budget=30, skew="tail"
     )
     out_head = headson.summarize(
-        text,
-        template="js",
-        character_budget=30,
-        skew="balanced",
+        text, format="json", style="detailed", character_budget=30, skew="balanced"
     )
     assert out_tail != out_head
     # Tail mode may render as multi-line (with '[' on its own line) or as a
@@ -150,12 +113,7 @@ def test_tail_affects_arrays_js():
 
 def test_tail_json_remains_strict():
     text = json.dumps(list(range(50)))
-    out = headson.summarize(
-        text,
-        template="json",
-        character_budget=30,
-        skew="tail",
-    )
+    out = headson.summarize(text, format="json", style="strict", character_budget=30, skew="tail")
     # Valid JSON and no visual omission markers.
     json.loads(out)
     assert "…" not in out and "/*" not in out
@@ -165,7 +123,8 @@ def test_head_affects_arrays_pseudo():
     text = json.dumps(list(range(50)))
     out_head = headson.summarize(
         text,
-        template="pseudo",
+        format="json",
+        style="default",
         character_budget=30,
         skew="head",
     )
@@ -192,7 +151,8 @@ def test_head_affects_arrays_js():
     text = json.dumps(list(range(50)))
     out_head = headson.summarize(
         text,
-        template="js",
+        format="json",
+        style="detailed",
         character_budget=30,
         skew="head",
     )
@@ -225,12 +185,7 @@ def test_head_affects_arrays_js():
 
 def test_head_json_remains_strict():
     text = json.dumps(list(range(50)))
-    out = headson.summarize(
-        text,
-        template="json",
-        character_budget=30,
-        skew="head",
-    )
+    out = headson.summarize(text, format="json", style="strict", character_budget=30, skew="head")
     # Valid JSON and no visual omission markers.
     json.loads(out)
     assert "…" not in out and "/*" not in out

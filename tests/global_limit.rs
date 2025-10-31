@@ -18,7 +18,8 @@ fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
 fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let limit_s = limit.to_string();
-    let mut args = vec!["--no-color", "-f", "js", "-N", &limit_s];
+    let mut args =
+        vec!["--no-color", "-f", "json", "-t", "detailed", "-N", &limit_s];
     args.extend_from_slice(extra);
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert();
@@ -55,7 +56,8 @@ fn find_js_summary_output(
 fn run_pseudo_with_limit(paths: &[&str], limit: usize) -> String {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let limit_s = limit.to_string();
-    let args = vec!["--no-color", "-f", "pseudo", "-N", &limit_s];
+    let args =
+        vec!["--no-color", "-f", "json", "-t", "default", "-N", &limit_s];
     let assert = cmd
         .args(args.into_iter().chain(paths.iter().copied()))
         .assert();

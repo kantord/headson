@@ -1,31 +1,37 @@
 # headson Python bindings
 
-Minimal Python API for the `headson` JSON preview renderer.
+Minimal Python API for the `headson` preview renderer.
 
-Currently exported function:
+API
 
-- `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None, skew: str = "balanced") -> str`
-  - `template`: one of `"json" | "pseudo" | "js" | "yaml"`.
+- `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", character_budget: int | None = None, skew: str = "balanced") -> str`
+  - `format`: output format — `"auto" | "json" | "yaml"`.
+  - `style`: output style — `"strict" | "default" | "detailed"`.
+  - `input_format`: ingestion format — `"json" | "yaml"`.
   - `character_budget`: maximum output size in characters (defaults to 500 if not set).
   - `skew`: one of `"balanced" | "head" | "tail"`.
-    - `balanced`: default behavior.
-    - `head`: focus arrays on the beginning (keep first N).
-    - `tail`: focus arrays on the end (keep last N); pseudo/js place omission markers at the start.
+    - `balanced` (default), `head` keeps first N, `tail` keeps last N. Pseudo/JS place omission markers accordingly.
 
 Examples:
 
 ```python
 import headson
 
-# Pseudo template with a small budget (structure-aware preview)
-print(headson.summarize('{"a": 1, "b": [1,2,3]}', template="pseudo", character_budget=80))
+# Human-friendly JSON (Pseudo) with a small budget
+print(headson.summarize('{"a": 1, "b": [1,2,3]}', format="json", style="default", character_budget=80))
 
-# Strict JSON template preserves valid JSON output
-print(headson.summarize('{"a": 1, "b": {"c": 2}}', template="json", character_budget=10_000))
+# Strict JSON stays valid JSON
+print(headson.summarize('{"a": 1, "b": {"c": 2}}', format="json", style="strict", character_budget=10_000))
 
-# JS template with tail skew: prefer the end of arrays when truncating
+# Annotated JSON (JS) with tail skew: prefer the end of arrays when truncating
 arr = ','.join(str(i) for i in range(100))
-print(headson.summarize('{"arr": [' + arr + ']}', template="js", character_budget=60, skew="tail"))
+print(headson.summarize('{"arr": [' + arr + ']}', format="json", style="detailed", character_budget=60, skew="tail"))
+
+# YAML styles: strict (no comments), default (… comments), detailed (counts)
+doc = 'root:\n  items: [1,2,3,4,5,6,7,8,9,10]\n'
+print(headson.summarize(doc, format="yaml", style="strict", input_format="yaml", character_budget=60))
+print(headson.summarize(doc, format="yaml", style="default", input_format="yaml", character_budget=60))
+print(headson.summarize(doc, format="yaml", style="detailed", input_format="yaml", character_budget=60))
 
 # Note: tail mode affects only pseudo/js display templates; the json template stays strict.
 ```

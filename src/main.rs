@@ -24,8 +24,22 @@ type IgnoreNotices = Vec<String>;
 struct Cli {
     #[arg(short = 'n', long = "budget")]
     budget: Option<usize>,
-    #[arg(short = 'f', long = "template", value_enum, default_value_t = Template::Auto)]
-    template: Template,
+    #[arg(
+        short = 'f',
+        long = "format",
+        value_enum,
+        default_value_t = OutputFormat::Auto,
+        help = "Output format: auto|json|yaml (filesets: auto is per-file)."
+    )]
+    format: OutputFormat,
+    #[arg(
+        short = 't',
+        long = "template",
+        value_enum,
+        default_value_t = StyleArg::Default,
+        help = "Output style: strict|default|detailed."
+    )]
+    style: StyleArg,
     #[arg(long = "indent", default_value = "  ")]
     indent: String,
     #[arg(long = "no-space", default_value_t = false)]
@@ -102,12 +116,17 @@ struct Cli {
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
-enum Template {
+enum OutputFormat {
     Auto,
     Json,
-    Pseudo,
-    Js,
     Yaml,
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum StyleArg {
+    Strict,
+    Default,
+    Detailed,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -171,11 +190,9 @@ fn run_from_stdin(
     let input_count = 1usize;
     let eff = compute_effective_budget(cli, input_count);
     let prio = compute_priority(cli, eff, input_count);
-    // In Auto mode on stdin, prefer JSON template for output.
     let mut cfg = render_cfg.clone();
-    if matches!(cfg.template, headson::OutputTemplate::Auto) {
-        cfg.template = headson::OutputTemplate::Json;
-    }
+    // Resolve effective output template for stdin:
+    cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
     match cli.input_format {
         InputFormat::Json => headson::headson(input_bytes, &cfg, &prio, eff),
         InputFormat::Yaml => {
@@ -206,20 +223,26 @@ fn run_from_paths(
         })
     }
     if cli.inputs.len() > 1 {
-        let chosen_input =
-            if matches!(render_cfg.template, headson::OutputTemplate::Auto)
-                && any_yaml_ext(&entries)
-            {
-                InputFormat::Yaml
-            } else {
-                cli.input_format
-            };
+        let chosen_input = if matches!(cli.format, OutputFormat::Auto)
+            && any_yaml_ext(&entries)
+        {
+            InputFormat::Yaml
+        } else {
+            cli.input_format
+        };
+        let mut cfg = render_cfg.clone();
+        // For filesets: if format=auto, enable per-file template selection.
+        cfg.template = match cli.format {
+            OutputFormat::Auto => headson::OutputTemplate::Auto,
+            OutputFormat::Json => map_json_template_for_style(cfg.style),
+            OutputFormat::Yaml => headson::OutputTemplate::Yaml,
+        };
         let out = match chosen_input {
             InputFormat::Json => {
-                headson::headson_many(entries, render_cfg, &prio, eff)?
+                headson::headson_many(entries, &cfg, &prio, eff)?
             }
             InputFormat::Yaml => {
-                headson::headson_many_yaml(entries, render_cfg, &prio, eff)?
+                headson::headson_many_yaml(entries, &cfg, &prio, eff)?
             }
         };
         Ok((out, ignored))
@@ -227,30 +250,23 @@ fn run_from_paths(
         Ok((String::new(), ignored))
     } else {
         let (name, bytes) = entries.into_iter().next().unwrap();
-        // In Auto template mode for a single file, select ingest and output
-        // template based on filename extension.
+        // Single file: pick ingest and output template per CLI format+style.
         let lower = name.to_ascii_lowercase();
         let is_yaml_ext = lower.ends_with(".yaml") || lower.ends_with(".yml");
-        let chosen_input =
-            if matches!(render_cfg.template, headson::OutputTemplate::Auto) {
+        let chosen_input = match cli.format {
+            OutputFormat::Auto => {
                 if is_yaml_ext {
                     InputFormat::Yaml
                 } else {
                     InputFormat::Json
                 }
-            } else {
-                cli.input_format
-            };
+            }
+            _ => cli.input_format,
+        };
         let mut cfg = render_cfg.clone();
-        if matches!(cfg.template, headson::OutputTemplate::Auto) {
-            cfg.template = if is_yaml_ext {
-                headson::OutputTemplate::Yaml
-            } else if lower.ends_with(".json") {
-                headson::OutputTemplate::Json
-            } else {
-                headson::OutputTemplate::Pseudo
-            };
-        }
+        cfg.template = resolve_effective_template_for_single(
+            cli.format, cfg.style, &lower,
+        );
         let out = match chosen_input {
             InputFormat::Json => headson::headson(bytes, &cfg, &prio, eff)?,
             InputFormat::Yaml => {
@@ -326,15 +342,6 @@ fn ingest_paths(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
 }
 
 fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
-    fn to_output_template(t: Template) -> headson::OutputTemplate {
-        match t {
-            Template::Auto => headson::OutputTemplate::Auto,
-            Template::Json => headson::OutputTemplate::Json,
-            Template::Pseudo => headson::OutputTemplate::Pseudo,
-            Template::Js => headson::OutputTemplate::Js,
-            Template::Yaml => headson::OutputTemplate::Yaml,
-        }
-    }
     fn color_mode_from_flags(cli: &Cli) -> headson::ColorMode {
         if cli.color {
             headson::ColorMode::On
@@ -345,7 +352,14 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         }
     }
 
-    let template = to_output_template(cli.template);
+    // Select a baseline template; may be overridden per-input later.
+    let template = match cli.format {
+        OutputFormat::Auto => headson::OutputTemplate::Auto,
+        OutputFormat::Json => {
+            map_json_template_for_style(map_style(cli.style))
+        }
+        OutputFormat::Yaml => headson::OutputTemplate::Yaml,
+    };
     let space = if cli.compact || cli.no_space { "" } else { " " }.to_string();
     let newline = if cli.compact || cli.no_newline {
         ""
@@ -369,6 +383,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         prefer_tail_arrays: cli.tail,
         color_mode,
         color_enabled,
+        style: map_style(cli.style),
     }
 }
 
@@ -388,5 +403,56 @@ fn get_priority_config(
         } else {
             headson::ArraySamplerStrategy::Default
         },
+    }
+}
+
+fn map_style(s: StyleArg) -> headson::Style {
+    match s {
+        StyleArg::Strict => headson::Style::Strict,
+        StyleArg::Default => headson::Style::Default,
+        StyleArg::Detailed => headson::Style::Detailed,
+    }
+}
+
+fn map_json_template_for_style(
+    style: headson::Style,
+) -> headson::OutputTemplate {
+    match style {
+        headson::Style::Strict => headson::OutputTemplate::Json,
+        headson::Style::Default => headson::OutputTemplate::Pseudo,
+        headson::Style::Detailed => headson::OutputTemplate::Js,
+    }
+}
+
+fn resolve_effective_template_for_stdin(
+    fmt: OutputFormat,
+    style: headson::Style,
+) -> headson::OutputTemplate {
+    match fmt {
+        OutputFormat::Auto | OutputFormat::Json => {
+            map_json_template_for_style(style)
+        }
+        OutputFormat::Yaml => headson::OutputTemplate::Yaml,
+    }
+}
+
+fn resolve_effective_template_for_single(
+    fmt: OutputFormat,
+    style: headson::Style,
+    lower_name: &str,
+) -> headson::OutputTemplate {
+    match fmt {
+        OutputFormat::Json => map_json_template_for_style(style),
+        OutputFormat::Yaml => headson::OutputTemplate::Yaml,
+        OutputFormat::Auto => {
+            if lower_name.ends_with(".yaml") || lower_name.ends_with(".yml") {
+                headson::OutputTemplate::Yaml
+            } else if lower_name.ends_with(".json") {
+                map_json_template_for_style(style)
+            } else {
+                // Unknown: pick based on style for JSON family.
+                map_json_template_for_style(style)
+            }
+        }
     }
 }

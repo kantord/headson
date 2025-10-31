@@ -4,7 +4,7 @@ fn pseudo_ellipsis_is_dark_gray() {
     let input = "[1,2,3,4,5,6,7,8,9,10]";
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert = cmd
-        .args(["--color", "-n", "10", "-f", "pseudo"]) // small budget
+        .args(["--color", "-n", "10", "-f", "json", "-t", "default"]) // small budget
         .write_stdin(input)
         .assert()
         .success();
@@ -20,7 +20,7 @@ fn js_omission_comment_is_dark_gray() {
     let input = "[1,2,3,4,5,6,7,8,9,10]";
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert = cmd
-        .args(["--color", "-n", "10", "-f", "js"]) // small budget
+        .args(["--color", "-n", "10", "-f", "json", "-t", "detailed"]) // small budget
         .write_stdin(input)
         .assert()
         .success();

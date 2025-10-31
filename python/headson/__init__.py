@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-# Directly re-export the compiled extension function with the final signature.
+from __future__ import annotations
+
+# Re-export the compiled extension API directly.
 from .headson import summarize  # type: ignore
+
+__all__ = ["summarize"]
+
 
 __all__ = ["summarize"]

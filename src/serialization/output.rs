@@ -7,6 +7,7 @@ pub struct Out<'a> {
     newline: String,
     indent_unit: String,
     color_enabled: bool,
+    style: crate::serialization::types::Style,
 }
 
 impl<'a> Out<'a> {
@@ -15,12 +16,14 @@ impl<'a> Out<'a> {
         newline: &str,
         indent_unit: &str,
         color_enabled: bool,
+        style: crate::serialization::types::Style,
     ) -> Self {
         Self {
             buf,
             newline: newline.to_string(),
             indent_unit: indent_unit.to_string(),
             color_enabled,
+            style,
         }
     }
 
@@ -82,5 +85,9 @@ impl<'a> Out<'a> {
     // Formatting mode queries
     pub fn is_compact_mode(&self) -> bool {
         self.newline.is_empty() && self.indent_unit.is_empty()
+    }
+
+    pub fn style(&self) -> crate::serialization::types::Style {
+        self.style
     }
 }

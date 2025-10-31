@@ -25,7 +25,16 @@ fn run_with_input_path(
 ) -> (bool, String, String) {
     let budget_s = budget.to_string();
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
-    let mut args = vec!["--no-color", "-n", &budget_s, "-f", template, path];
+    let mut args = vec!["--no-color", "-n", &budget_s];
+    let lower = template.to_ascii_lowercase();
+    match lower.as_str() {
+        "json" => args.extend(["-f", "json"]),
+        "yaml" => args.extend(["-f", "yaml", "-i", "yaml"]),
+        "pseudo" => args.extend(["-f", "json", "-t", "default"]),
+        "js" => args.extend(["-f", "json", "-t", "detailed"]),
+        other => args.extend(["-f", other]),
+    }
+    args.push(path);
     args.extend_from_slice(extra);
     let assert = cmd.args(args).assert();
     let ok = assert.get_output().status.success();

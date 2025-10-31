@@ -58,8 +58,10 @@ fn combined_limits_across_multiple_files_matches_minimum_global() {
 fn combined_limits_single_file_honors_per_file_minimum() {
     let p = "tests/fixtures/explicit/string_escaping.json";
     // -n 80, -N 200 => effective global limit 80
-    let out_both = run_args(&["-f", "pseudo", "-n", "80", "-N", "200", p]);
-    let out_min_only = run_args(&["-f", "pseudo", "-N", "80", p]);
+    let out_both =
+        run_args(&["-f", "json", "-t", "default", "-n", "80", "-N", "200", p]);
+    let out_min_only =
+        run_args(&["-f", "json", "-t", "default", "-N", "80", p]);
     assert_eq!(out_both, out_min_only, "-n + -N should equal -N=min(n,N)");
     assert_snapshot!("combined_limits_single_file_pseudo_min80", out_both);
 }
