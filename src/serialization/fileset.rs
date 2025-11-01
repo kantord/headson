@@ -85,7 +85,7 @@ impl<'a> RenderScope<'a> {
             let fmt = Format::from_filename(raw_key);
             let template = match fmt {
                 Format::Yaml => OutputTemplate::Yaml,
-                Format::Json | Format::Unknown => match self.config.style {
+                Format::Json => match self.config.style {
                     crate::serialization::types::Style::Strict => {
                         OutputTemplate::Json
                     }
@@ -96,6 +96,7 @@ impl<'a> RenderScope<'a> {
                         OutputTemplate::Js
                     }
                 },
+                Format::Unknown => OutputTemplate::Text,
             };
             return self.render_node_to_string_with_template(
                 child_id, depth, false, template,

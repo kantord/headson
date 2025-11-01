@@ -6,6 +6,7 @@ mod core;
 mod js;
 mod json;
 mod pseudo;
+mod text;
 mod yaml;
 //
 pub struct ArrayCtx {
@@ -42,6 +43,7 @@ pub fn render_array(
         }
         OutputTemplate::Js => js::render_array(ctx, out),
         OutputTemplate::Yaml => yaml::render_array(ctx, out),
+        OutputTemplate::Text => text::render_array(ctx, out),
     }
 }
 
@@ -57,5 +59,6 @@ pub fn render_object(
         }
         OutputTemplate::Js => js::render_object(ctx, out),
         OutputTemplate::Yaml => yaml::render_object(ctx, out),
+        OutputTemplate::Text => text::render_object(ctx, out),
     }
 }

@@ -13,71 +13,15 @@ pub trait Ingest {
     ) -> Result<TreeArena>;
 }
 
-/// JSON adapter for the ingest boundary. Delegates to the existing
-/// JSON builder to produce the neutral TreeArena.
-pub struct JsonIngest;
+// Submodules for per-format adapters
+pub mod json;
+pub mod text;
+pub mod yaml;
 
-impl Ingest for JsonIngest {
-    fn parse_one(bytes: Vec<u8>, cfg: &PriorityConfig) -> Result<TreeArena> {
-        crate::json_ingest::build_json_tree_arena_from_bytes(bytes, cfg)
-    }
-
-    fn parse_many(
-        inputs: Vec<(String, Vec<u8>)>,
-        cfg: &PriorityConfig,
-    ) -> Result<TreeArena> {
-        crate::json_ingest::build_json_tree_arena_from_many(inputs, cfg)
-    }
-}
-
-/// Convenience functions for the default (JSON) ingest path.
-pub fn parse_json_one(
-    bytes: Vec<u8>,
-    cfg: &PriorityConfig,
-) -> Result<TreeArena> {
-    JsonIngest::parse_one(bytes, cfg)
-}
-
-pub fn parse_json_many(
-    inputs: Vec<(String, Vec<u8>)>,
-    cfg: &PriorityConfig,
-) -> Result<TreeArena> {
-    JsonIngest::parse_many(inputs, cfg)
-}
-
-/// YAML adapter for the ingest boundary. Parses YAML using `yaml-rust2`
-/// and builds the neutral TreeArena. Multi-document YAML in a single
-/// input is wrapped in an array; multi-file inputs produce a fileset
-/// object whose values may be arrays when a file contains multiple docs.
-pub struct YamlIngest;
-
-impl Ingest for YamlIngest {
-    fn parse_one(bytes: Vec<u8>, cfg: &PriorityConfig) -> Result<TreeArena> {
-        crate::yaml_ingest::build_yaml_tree_arena_from_bytes(bytes, cfg)
-    }
-
-    fn parse_many(
-        inputs: Vec<(String, Vec<u8>)>,
-        cfg: &PriorityConfig,
-    ) -> Result<TreeArena> {
-        crate::yaml_ingest::build_yaml_tree_arena_from_many(inputs, cfg)
-    }
-}
-
-/// Convenience functions for the YAML ingest path.
-pub fn parse_yaml_one(
-    bytes: Vec<u8>,
-    cfg: &PriorityConfig,
-) -> Result<TreeArena> {
-    YamlIngest::parse_one(bytes, cfg)
-}
-
-pub fn parse_yaml_many(
-    inputs: Vec<(String, Vec<u8>)>,
-    cfg: &PriorityConfig,
-) -> Result<TreeArena> {
-    YamlIngest::parse_many(inputs, cfg)
-}
+// Re-export commonly used helpers for convenience (keep adapter types private)
+pub use json::{parse_json_many, parse_json_one};
+pub use text::{parse_text_many, parse_text_one};
+pub use yaml::{parse_yaml_many, parse_yaml_one};
 
 #[cfg(test)]
 mod tests {

@@ -49,3 +49,17 @@ Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson --head -n
 Sleep 6s
 Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson --tail -n 120 --format json --template detailed" Sleep 400ms Enter
 Sleep 6s
+
+Type "# Download two public-domain books (text/plain)" Sleep 200ms Enter
+Type "rm -f book*.txt" Sleep 200ms Enter
+Type "curl -L -sS https://www.gutenberg.org/cache/epub/77164/pg77164.txt -o book1.txt" Sleep 400ms Enter
+Sleep 2s
+Type "curl -L -sS https://www.gutenberg.org/cache/epub/2701/pg2701.txt -o book2.txt" Sleep 400ms Enter
+Sleep 2s
+Type "headson -n 200 book*.txt" Sleep 400ms Enter
+Sleep 6s
+Type "# Single-file text with styles (default vs detailed)" Sleep 200ms Enter
+Type "headson -n 120 -t default book1.txt" Sleep 400ms Enter
+Sleep 4s
+Type "headson -n 120 -t detailed book1.txt" Sleep 400ms Enter
+Sleep 4s

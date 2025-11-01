@@ -6,7 +6,7 @@
   <br/>
 </p>
 
-Head/tail for JSON and YAML — but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict character budget.
+`heal`/`tail` for JSON, YAML - but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict character budget. (Just like `head`/`tail`, `headson` can also work with unstructured text files.)
 
 Available as:
 - CLI (see [Usage](#usage))
@@ -27,10 +27,11 @@ From source:
 ## Features
 
 - Budgeted output: specify exactly how much you want to see
-- Output formats: `auto | json | yaml`
+- Output formats: `auto | json | yaml | text`
   - Styles: `strict | default | detailed`
     - JSON family: `strict` → strict JSON, `default` → human‑friendly Pseudo, `detailed` → JS with inline comments
     - YAML: always YAML; `strict` has no comments, `default` uses “# …”, `detailed` uses “# N more …”
+    - Text: prints raw lines. In `default` style, omissions are shown as a single line `…`; in `detailed`, as `… N more lines …`. `strict` omits array‑level summaries.
 - Multiple inputs: preview many files at once with a shared or per‑file budget
 - Fast: processes gigabyte‑scale files in seconds (mostly disk‑bound)
 - Available as a CLI app and as a Python library
@@ -54,12 +55,12 @@ Common flags:
 
 - `-n, --budget <BYTES>`: per‑file output budget. For multiple inputs, default total budget is `<BYTES> * number_of_inputs`.
 - `-N, --global-budget <BYTES>`: total output budget across all inputs. With `--budget`, the effective total is the smaller of the two.
-- `-f, --format <auto|json|yaml>`: output format (default: `auto`).
-  - Auto: stdin → JSON family; filesets → per‑file based on extension (`.json` → JSON family, `.yaml`/`.yml` → YAML).
+- `-f, --format <auto|json|yaml|text>`: output format (default: `auto`).
+  - Auto: stdin → JSON family; filesets → per‑file based on extension (`.json` → JSON family, `.yaml`/`.yml` → YAML, unknown → Text).
 - `-t, --template <strict|default|detailed>`: output style (default: `default`).
   - JSON family: `strict` → strict JSON; `default` → Pseudo; `detailed` → JS with inline comments.
   - YAML: always YAML; style only affects comments (`strict` none, `default` “# …”, `detailed` “# N more …”).
-- `-i, --input-format <json|yaml>`: ingestion format (default: `json`). For filesets in `auto` format, ingestion is chosen by extensions.
+- `-i, --input-format <json|yaml|text>`: ingestion format (default: `json`). For filesets in `auto` format, ingestion is chosen by extensions.
 - `-m, --compact`: no indentation, no spaces, no newlines
 - `--no-newline`: single line output
 - `--no-space`: no space after `:` in objects
@@ -72,7 +73,8 @@ Notes:
 
 - Multiple inputs:
   - With newlines enabled, file sections are rendered with human‑readable headers. In compact/single‑line modes, headers are omitted.
-  - In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
+- In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
+  - Unknown extensions are treated as Text (raw lines) — safe for logs and `.txt` files.
   - `--global-budget` may truncate or omit entire files to respect the total budget.
   - The tool finds the largest preview that fits the budget; even if extremely tight, you still get a minimal, valid preview.
   - Directories and binary files are ignored; a notice is printed to stderr for each. Stdin reads the stream as‑is.
@@ -95,6 +97,25 @@ Quick one‑liners:
 - YAML with detailed comments:
 
       headson -n 400 -f yaml -t detailed config.yaml
+
+### Text mode
+
+- Single file (auto):
+
+      headson -n 200 notes.txt
+
+- Force Text ingest/output (useful when mixing with other extensions):
+
+      headson -n 200 -i text -f text notes.txt
+
+- Many text files (fileset):
+
+      headson -n 800 -i text -f text logs/*.txt
+
+- Styles on Text:
+  - default: omission as a standalone `…` line.
+  - detailed: omission as `… N more lines …`.
+  - strict: no array‑level omission line (individual long lines may still truncate with `…`).
 
 Show help:
 
@@ -142,6 +163,7 @@ Regenerate locally:
 - Place tapes under docs/tapes (e.g., docs/tapes/demo.tape)
 - Run: cargo make tapes
 - Outputs are written to docs/assets/tapes
+
 
 ## Python Bindings
 

@@ -1,0 +1,13 @@
+---
+source: tests/text_snapshots.rs
+assertion_line: 45
+expression: out
+---
+==> a.txt <==
+one
+two
+
+
+==> b.log <==
+alpha
+beta

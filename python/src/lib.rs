@@ -31,7 +31,11 @@ fn map_output_template(format: &str, style: Style) -> Result<OutputTemplate> {
         "auto" => Ok(map_json_template_for_style(style)), // stdin => JSON family
         "json" => Ok(map_json_template_for_style(style)),
         "yaml" | "yml" => Ok(OutputTemplate::Yaml),
-        other => bail!("unknown format: {} (expected 'auto' | 'json' | 'yaml')", other),
+        "text" => Ok(OutputTemplate::Text),
+        other => bail!(
+            "unknown format: {} (expected 'auto' | 'json' | 'yaml' | 'text')",
+            other
+        ),
     }
 }
 
@@ -107,14 +111,12 @@ fn summarize(
     let input = text.as_bytes().to_vec();
     py.detach(|| {
         match input_format.to_ascii_lowercase().as_str() {
-            "json" => headson_core::headson(input, &cfg, &prio, budget)
+            "json" => headson_core::headson(input, &cfg, &prio, budget).map_err(to_pyerr),
+            "yaml" | "yml" => headson_core::headson_yaml(input, &cfg, &prio, budget)
                 .map_err(to_pyerr),
-            "yaml" | "yml" => {
-                headson_core::headson_yaml(input, &cfg, &prio, budget)
-                    .map_err(to_pyerr)
-            }
+            "text" => headson_core::headson_text(input, &cfg, &prio, budget).map_err(to_pyerr),
             other => Err(to_pyerr(anyhow::anyhow!(
-                "unknown input_format: {} (expected 'json' | 'yaml')",
+                "unknown input_format: {} (expected 'json' | 'yaml' | 'text')",
                 other
             ))),
         }

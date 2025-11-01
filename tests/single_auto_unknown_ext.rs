@@ -1,22 +1,25 @@
 use std::fs;
 
 #[test]
-fn single_file_auto_unknown_ext_renders_pseudo_and_uses_json_ingest() {
+fn single_file_auto_unknown_ext_defaults_to_text() {
     let dir = tempfile::tempdir().expect("tmpdir");
     let p = dir.path().join("data.txt");
-    // Valid JSON content so JSON ingest succeeds
-    fs::write(&p, b"{\n  \"a\": 1, \"b\": 2, \"c\": 3\n}\n").unwrap();
+    fs::write(&p, b"alpha\nbeta\ngamma\n").unwrap();
 
-    // Use a small budget to encourage omission so Pseudo shows an ellipsis.
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert = cmd
-        .args(["--no-color", "-n", "2", "-f", "auto", p.to_str().unwrap()])
+        .args([
+            "--no-color",
+            "-n",
+            "10000",
+            "-f",
+            "auto",
+            p.to_str().unwrap(),
+        ])
         .assert()
         .success();
     let out = String::from_utf8_lossy(&assert.get_output().stdout);
-    // Pseudo prints an ellipsis marker when properties are omitted.
-    assert!(
-        out.contains('…'),
-        "expected omission ellipsis in output: {out:?}"
-    );
+    // headson prints the rendered output and adds a trailing println newline.
+    // Text template emitted a newline per line; println adds one more.
+    assert_eq!(out, "alpha\nbeta\ngamma\n\n");
 }
