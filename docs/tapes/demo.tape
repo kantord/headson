@@ -49,3 +49,19 @@ Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson --head -n
 Sleep 6s
 Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson --tail -n 120 --format json --template detailed" Sleep 400ms Enter
 Sleep 6s
+
+# Text mode: raw lines + auto fileset
+Type "printf 'one\\ntwo\\n' > a.txt" Sleep 200ms Enter
+Sleep 300ms
+Type "printf 'alpha\\nbeta\\n' > b.log" Sleep 200ms Enter
+Sleep 300ms
+Type "headson -n 60 -f auto a.txt b.log" Sleep 400ms Enter
+Sleep 6s
+
+# Single file text with styles
+Type "printf 'a\\nb\\nc\\n' > lines.txt" Sleep 200ms Enter
+Sleep 300ms
+Type "headson -n 12 -i text -f text -t default lines.txt" Sleep 400ms Enter
+Sleep 4s
+Type "headson -n 10 -i text -f text -t detailed lines.txt" Sleep 400ms Enter
+Sleep 4s
