@@ -1,0 +1,8 @@
+---
+source: tests/text_snapshots.rs
+assertion_line: 18
+expression: out
+---
+a
+b
+c
