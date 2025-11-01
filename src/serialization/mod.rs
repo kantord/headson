@@ -153,6 +153,10 @@ impl<'a> RenderScope<'a> {
         render_object(tmpl, &ctx, out)
     }
 
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Keeps string omission logic in one place for clarity."
+    )]
     fn serialize_string(&mut self, id: usize) -> String {
         let kept = self.count_kept_children(id);
         let omitted = self.omitted_for(id, kept).unwrap_or(0);
@@ -162,7 +166,53 @@ impl<'a> RenderScope<'a> {
                 "serialize_string called for non-string node: id={id}"
             ),
         };
-        if omitted == 0 {
+        if matches!(
+            self.config.template,
+            crate::serialization::types::OutputTemplate::Text
+        ) {
+            if omitted == 0 {
+                full.to_string()
+            } else {
+                let prefix = crate::utils::text::take_n_graphemes(full, kept);
+                format!("{prefix}…")
+            }
+        } else if omitted == 0 {
+            crate::utils::json::json_string(full)
+        } else {
+            let prefix = crate::utils::text::take_n_graphemes(full, kept);
+            let truncated = format!("{prefix}…");
+            crate::utils::json::json_string(&truncated)
+        }
+    }
+
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Keeps string omission logic in one place for clarity."
+    )]
+    fn serialize_string_with_template(
+        &mut self,
+        id: usize,
+        template: crate::serialization::types::OutputTemplate,
+    ) -> String {
+        let kept = self.count_kept_children(id);
+        let omitted = self.omitted_for(id, kept).unwrap_or(0);
+        let full: &str = match &self.order.nodes[id] {
+            RankedNode::SplittableLeaf { value, .. } => value.as_str(),
+            _ => unreachable!(
+                "serialize_string called for non-string node: id={id}"
+            ),
+        };
+        if matches!(
+            template,
+            crate::serialization::types::OutputTemplate::Text
+        ) {
+            if omitted == 0 {
+                full.to_string()
+            } else {
+                let prefix = crate::utils::text::take_n_graphemes(full, kept);
+                format!("{prefix}…")
+            }
+        } else if omitted == 0 {
             crate::utils::json::json_string(full)
         } else {
             let prefix = crate::utils::text::take_n_graphemes(full, kept);
@@ -194,7 +244,15 @@ impl<'a> RenderScope<'a> {
             }
             RankedNode::SplittableLeaf { .. } => {
                 let s = self.serialize_string(id);
-                out.push_string_literal(&s);
+                if matches!(
+                    self.config.template,
+                    crate::serialization::types::OutputTemplate::Text
+                ) {
+                    // For text template, push raw string without quotes or color.
+                    out.push_str(&s);
+                } else {
+                    out.push_string_literal(&s);
+                }
             }
             RankedNode::AtomicLeaf { .. } => {
                 let s = self.serialize_atomic(id);
@@ -459,7 +517,9 @@ impl<'a> RenderScope<'a> {
                 );
                 s
             }
-            RankedNode::SplittableLeaf { .. } => self.serialize_string(id),
+            RankedNode::SplittableLeaf { .. } => {
+                self.serialize_string_with_template(id, template)
+            }
             RankedNode::AtomicLeaf { .. } => self.serialize_atomic(id),
             RankedNode::LeafPart { .. } => {
                 unreachable!("string part not rendered")

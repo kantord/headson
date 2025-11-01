@@ -79,6 +79,39 @@ pub fn parse_yaml_many(
     YamlIngest::parse_many(inputs, cfg)
 }
 
+/// Text adapter for the ingest boundary. Interprets input as UTF-8 text (lossy),
+/// splits into lines, and builds an array of string nodes. Multi-file inputs
+/// produce a fileset object whose values are arrays of lines.
+pub struct TextIngest;
+
+impl Ingest for TextIngest {
+    fn parse_one(bytes: Vec<u8>, cfg: &PriorityConfig) -> Result<TreeArena> {
+        crate::text_ingest::build_text_tree_arena_from_bytes(bytes, cfg)
+    }
+
+    fn parse_many(
+        inputs: Vec<(String, Vec<u8>)>,
+        cfg: &PriorityConfig,
+    ) -> Result<TreeArena> {
+        crate::text_ingest::build_text_tree_arena_from_many(inputs, cfg)
+    }
+}
+
+/// Convenience functions for the Text ingest path.
+pub fn parse_text_one(
+    bytes: Vec<u8>,
+    cfg: &PriorityConfig,
+) -> Result<TreeArena> {
+    TextIngest::parse_one(bytes, cfg)
+}
+
+pub fn parse_text_many(
+    inputs: Vec<(String, Vec<u8>)>,
+    cfg: &PriorityConfig,
+) -> Result<TreeArena> {
+    TextIngest::parse_many(inputs, cfg)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

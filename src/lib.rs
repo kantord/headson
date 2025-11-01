@@ -25,6 +25,7 @@ mod ingest;
 mod json_ingest;
 mod order;
 mod serialization;
+mod text_ingest;
 mod utils;
 mod yaml_ingest;
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
@@ -82,6 +83,32 @@ pub fn headson_many_yaml(
     budget: usize,
 ) -> Result<String> {
     let arena = crate::ingest::parse_yaml_many(inputs, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    let out = find_largest_render_under_budget(&order_build, config, budget);
+    Ok(out)
+}
+
+/// Same as `headson` but using the Text ingest path.
+pub fn headson_text(
+    input: Vec<u8>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budget: usize,
+) -> Result<String> {
+    let arena = crate::ingest::parse_text_one(input, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    let out = find_largest_render_under_budget(&order_build, config, budget);
+    Ok(out)
+}
+
+/// Same as `headson_many` but using the Text ingest path.
+pub fn headson_many_text(
+    inputs: Vec<(String, Vec<u8>)>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budget: usize,
+) -> Result<String> {
+    let arena = crate::ingest::parse_text_many(inputs, priority_cfg)?;
     let order_build = order::build_order(&arena, priority_cfg)?;
     let out = find_largest_render_under_budget(&order_build, config, budget);
     Ok(out)

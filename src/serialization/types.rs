@@ -5,6 +5,7 @@ pub enum OutputTemplate {
     Pseudo,
     Js,
     Yaml,
+    Text,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

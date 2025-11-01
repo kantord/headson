@@ -29,7 +29,7 @@ struct Cli {
         long = "format",
         value_enum,
         default_value_t = OutputFormat::Auto,
-        help = "Output format: auto|json|yaml (filesets: auto is per-file)."
+        help = "Output format: auto|json|yaml|text (filesets: auto is per-file)."
     )]
     format: OutputFormat,
     #[arg(
@@ -110,7 +110,7 @@ struct Cli {
         long = "input-format",
         value_enum,
         default_value_t = InputFormat::Json,
-        help = "Input ingestion format: json or yaml."
+        help = "Input ingestion format: json|yaml|text."
     )]
     input_format: InputFormat,
 }
@@ -120,6 +120,7 @@ enum OutputFormat {
     Auto,
     Json,
     Yaml,
+    Text,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -133,6 +134,7 @@ enum StyleArg {
 enum InputFormat {
     Json,
     Yaml,
+    Text,
 }
 
 fn main() -> Result<()> {
@@ -198,6 +200,9 @@ fn run_from_stdin(
         InputFormat::Yaml => {
             headson::headson_yaml(input_bytes, &cfg, &prio, eff)
         }
+        InputFormat::Text => {
+            headson::headson_text(input_bytes, &cfg, &prio, eff)
+        }
     }
 }
 
@@ -222,11 +227,22 @@ fn run_from_paths(
             lower.ends_with(".yaml") || lower.ends_with(".yml")
         })
     }
+    fn all_json_ext(entries: &InputEntries) -> bool {
+        entries.iter().all(|(name, _)| {
+            let lower = name.to_ascii_lowercase();
+            lower.ends_with(".json")
+        })
+    }
     if cli.inputs.len() > 1 {
-        let chosen_input = if matches!(cli.format, OutputFormat::Auto)
-            && any_yaml_ext(&entries)
-        {
-            InputFormat::Yaml
+        let chosen_input = if matches!(cli.format, OutputFormat::Auto) {
+            if any_yaml_ext(&entries) {
+                InputFormat::Yaml
+            } else if all_json_ext(&entries) {
+                InputFormat::Json
+            } else {
+                // Mixed or unknown extensions: treat as text to avoid JSON/YAML parse errors
+                InputFormat::Text
+            }
         } else {
             cli.input_format
         };
@@ -236,6 +252,7 @@ fn run_from_paths(
             OutputFormat::Auto => headson::OutputTemplate::Auto,
             OutputFormat::Json => map_json_template_for_style(cfg.style),
             OutputFormat::Yaml => headson::OutputTemplate::Yaml,
+            OutputFormat::Text => headson::OutputTemplate::Text,
         };
         let out = match chosen_input {
             InputFormat::Json => {
@@ -243,6 +260,9 @@ fn run_from_paths(
             }
             InputFormat::Yaml => {
                 headson::headson_many_yaml(entries, &cfg, &prio, eff)?
+            }
+            InputFormat::Text => {
+                headson::headson_many_text(entries, &cfg, &prio, eff)?
             }
         };
         Ok((out, ignored))
@@ -257,8 +277,10 @@ fn run_from_paths(
             OutputFormat::Auto => {
                 if is_yaml_ext {
                     InputFormat::Yaml
-                } else {
+                } else if lower.ends_with(".json") {
                     InputFormat::Json
+                } else {
+                    InputFormat::Text
                 }
             }
             _ => cli.input_format,
@@ -271,6 +293,9 @@ fn run_from_paths(
             InputFormat::Json => headson::headson(bytes, &cfg, &prio, eff)?,
             InputFormat::Yaml => {
                 headson::headson_yaml(bytes, &cfg, &prio, eff)?
+            }
+            InputFormat::Text => {
+                headson::headson_text(bytes, &cfg, &prio, eff)?
             }
         };
         Ok((out, ignored))
@@ -359,6 +384,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
             map_json_template_for_style(map_style(cli.style))
         }
         OutputFormat::Yaml => headson::OutputTemplate::Yaml,
+        OutputFormat::Text => headson::OutputTemplate::Text,
     };
     let space = if cli.compact || cli.no_space { "" } else { " " }.to_string();
     let newline = if cli.compact || cli.no_newline {
@@ -433,6 +459,7 @@ fn resolve_effective_template_for_stdin(
             map_json_template_for_style(style)
         }
         OutputFormat::Yaml => headson::OutputTemplate::Yaml,
+        OutputFormat::Text => headson::OutputTemplate::Text,
     }
 }
 
@@ -444,14 +471,15 @@ fn resolve_effective_template_for_single(
     match fmt {
         OutputFormat::Json => map_json_template_for_style(style),
         OutputFormat::Yaml => headson::OutputTemplate::Yaml,
+        OutputFormat::Text => headson::OutputTemplate::Text,
         OutputFormat::Auto => {
             if lower_name.ends_with(".yaml") || lower_name.ends_with(".yml") {
                 headson::OutputTemplate::Yaml
             } else if lower_name.ends_with(".json") {
                 map_json_template_for_style(style)
             } else {
-                // Unknown: pick based on style for JSON family.
-                map_json_template_for_style(style)
+                // Unknown extension: prefer text template.
+                headson::OutputTemplate::Text
             }
         }
     }
