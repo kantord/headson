@@ -34,8 +34,10 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
 }
 
 pub(super) fn render_object(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
-    // In practice, text objects appear only at fileset roots, which are
-    // rendered via the fileset path before template dispatch. For any other
-    // object, fall back to pseudo’s object rendering to maintain consistency.
+    // Text template defines custom rendering only for arrays (raw lines).
+    // Objects should not normally appear under the text template because
+    // fileset roots are handled by the dedicated fileset renderer before
+    // template dispatch. If an object does reach here (defensive case),
+    // delegate to the generic pseudo object renderer for a consistent shape.
     super::pseudo::render_object(ctx, out);
 }
