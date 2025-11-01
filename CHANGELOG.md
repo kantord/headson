@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2](https://github.com/kantord/headson/compare/v0.6.1...v0.6.2) - 2025-11-01
+
+### Added
+
+- separate format/template semantics ([#123](https://github.com/kantord/headson/pull/123))
+- use auto format detection when using a single file ([#120](https://github.com/kantord/headson/pull/120))
+- automatically pick format based on file extension ([#119](https://github.com/kantord/headson/pull/119))
+- add color support for yaml ([#116](https://github.com/kantord/headson/pull/116))
+- add yaml loader ([#112](https://github.com/kantord/headson/pull/112))
+- add yaml template ([#105](https://github.com/kantord/headson/pull/105))
+
+### Other
+
+- update readme ([#125](https://github.com/kantord/headson/pull/125))
+- update demo gif ([#122](https://github.com/kantord/headson/pull/122))
+- implement fileset rendering in a single place ([#118](https://github.com/kantord/headson/pull/118))
+- *(deps)* update rust crate assert_cmd to v2.1.1 ([#106](https://github.com/kantord/headson/pull/106))
+- add snapshot tests for yaml ([#115](https://github.com/kantord/headson/pull/115))
+- create common folder for text fixtures ([#113](https://github.com/kantord/headson/pull/113))
+- *(deps)* update rust crate clap to v4.5.51 ([#111](https://github.com/kantord/headson/pull/111))
+- flatted node structure ([#110](https://github.com/kantord/headson/pull/110))
+- add atomic nodes ([#109](https://github.com/kantord/headson/pull/109))
+
 ## [0.6.1](https://github.com/kantord/headson/compare/v0.6.0...v0.6.1) - 2025-10-28
 
 ### Other
