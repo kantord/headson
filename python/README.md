@@ -5,9 +5,9 @@ Minimal Python API for the `headson` preview renderer.
 API
 
 - `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", character_budget: int | None = None, skew: str = "balanced") -> str`
-  - `format`: output format — `"auto" | "json" | "yaml"`.
+  - `format`: output format — `"auto" | "json" | "yaml" | "text"`.
   - `style`: output style — `"strict" | "default" | "detailed"`.
-  - `input_format`: ingestion format — `"json" | "yaml"`.
+  - `input_format`: ingestion format — `"json" | "yaml" | "text"`.
   - `character_budget`: maximum output size in characters (defaults to 500 if not set).
   - `skew`: one of `"balanced" | "head" | "tail"`.
     - `balanced` (default), `head` keeps first N, `tail` keeps last N. Display styles place omission markers accordingly; strict JSON remains unannotated.
@@ -36,6 +36,10 @@ print(headson.summarize(doc, format="yaml", style="default", input_format="yaml"
 print(headson.summarize(doc, format="yaml", style="detailed", input_format="yaml", character_budget=60))
 
 # Note: tail mode affects only display styles; strict JSON stays strict.
+
+# Text: render raw lines with omission markers depending on style
+text = "one\ntwo\nthree\n"
+print(headson.summarize(text, format="text", style="default", input_format="text", character_budget=10))
 ```
 
 Install for development:
