@@ -50,18 +50,17 @@ Sleep 6s
 Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson --tail -n 120 --format json --template detailed" Sleep 400ms Enter
 Sleep 6s
 
-# Text mode: raw lines + auto fileset
-Type "printf 'one\\ntwo\\n' > a.txt" Sleep 200ms Enter
-Sleep 300ms
-Type "printf 'alpha\\nbeta\\n' > b.log" Sleep 200ms Enter
-Sleep 300ms
-Type "headson -n 60 -f auto a.txt b.log" Sleep 400ms Enter
+# Text mode: public-domain books (Project Gutenberg)
+Type "# Download two public-domain books (text/plain)" Sleep 200ms Enter
+Type "curl -L -sS https://www.gutenberg.org/cache/epub/77164/pg77164.txt -o book1.txt" Sleep 400ms Enter
+Sleep 2s
+Type "curl -L -sS https://www.gutenberg.org/cache/epub/2701/pg2701.txt -o book2.txt" Sleep 400ms Enter
+Sleep 2s
+Type "# Auto format picks Text for unknown extensions in filesets" Sleep 200ms Enter
+Type "headson -n 200 book1.txt book2.txt" Sleep 400ms Enter
 Sleep 6s
-
-# Single file text with styles
-Type "printf 'a\\nb\\nc\\n' > lines.txt" Sleep 200ms Enter
-Sleep 300ms
-Type "headson -n 12 -i text -f text -t default lines.txt" Sleep 400ms Enter
+Type "# Single-file text with styles (default vs detailed)" Sleep 200ms Enter
+Type "headson -n 120 -t default book1.txt" Sleep 400ms Enter
 Sleep 4s
-Type "headson -n 10 -i text -f text -t detailed lines.txt" Sleep 400ms Enter
+Type "headson -n 120 -t detailed book1.txt" Sleep 400ms Enter
 Sleep 4s
