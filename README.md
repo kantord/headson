@@ -6,7 +6,7 @@
   <br/>
 </p>
 
-Head/tail for JSON — but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict character budget.
+Head/tail for JSON and YAML — but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict character budget.
 
 Available as:
 - CLI (see [Usage](#usage))
@@ -26,11 +26,14 @@ From source:
 
 ## Features
 
-- *Budgeted output*: specify exactly how much JSON you want to see
-- *Multiple output formats* : `json` (machine‑readable), `pseudo` (human‑friendly), `js` (valid JavaScript, most detailed metadata).
-- *Multiple inputs*: preview many files at once with a shared or per‑file budget.
-- *Fast*: can process gigabyte-scale files in seconds (mostly disk-constrained)
-- *Available as a CLI app and as a Python library*
+- Budgeted output: specify exactly how much you want to see
+- Output formats: `auto | json | yaml`
+  - Styles: `strict | default | detailed`
+    - JSON family: `strict` → strict JSON, `default` → human‑friendly Pseudo, `detailed` → JS with inline comments
+    - YAML: always YAML; `strict` has no comments, `default` uses “# …”, `detailed` uses “# N more …”
+- Multiple inputs: preview many files at once with a shared or per‑file budget
+- Fast: processes gigabyte‑scale files in seconds (mostly disk‑bound)
+- Available as a CLI app and as a Python library
 
 ## Fits into command line workflows
 
@@ -49,42 +52,49 @@ If you’re comfortable with tools like `head` and `tail`, use `headson` when yo
 
 Common flags:
 
-- `-n, --budget <BYTES>`: per‑file output budget. When multiple input files are provided, the default total budget equals `<BYTES> * number_of_inputs`.
-- `-N, --global-budget <BYTES>`: total output budget across all inputs. Useful when you want a fixed-size preview across many files (may omit entire files).
-  - When used together with `--budget`, the final total budget is `min(global, per_file * number_of_inputs)`. Files are only truncated if they don't fit into this final global limit, and no single file expands beyond the per‑file budget.
-- `-f, --template <json|pseudo|js>`: output style (default: `pseudo`)
+- `-n, --budget <BYTES>`: per‑file output budget. For multiple inputs, default total budget is `<BYTES> * number_of_inputs`.
+- `-N, --global-budget <BYTES>`: total output budget across all inputs. With `--budget`, the effective total is the smaller of the two.
+- `-f, --format <auto|json|yaml>`: output format (default: `auto`).
+  - Auto: stdin → JSON family; filesets → per‑file based on extension (`.json` → JSON family, `.yaml`/`.yml` → YAML).
+- `-t, --template <strict|default|detailed>`: output style (default: `default`).
+  - JSON family: `strict` → strict JSON; `default` → Pseudo; `detailed` → JS with inline comments.
+  - YAML: always YAML; style only affects comments (`strict` none, `default` “# …”, `detailed` “# N more …”).
+- `-i, --input-format <json|yaml>`: ingestion format (default: `json`). For filesets in `auto` format, ingestion is chosen by extensions.
 - `-m, --compact`: no indentation, no spaces, no newlines
 - `--no-newline`: single line output
 - `--no-space`: no space after `:` in objects
 - `--indent <STR>`: indentation unit (default: two spaces)
 - `--string-cap <N>`: max graphemes to consider per string (default: 500)
-- `--head`: prefer the beginning of arrays when truncating (keep first N). Strings are unaffected. In `pseudo`/`js` templates the omission marker appears near the end; `json` remains strict. Mutually exclusive with `--tail`.
-- `--tail`: prefer the end of arrays when truncating (keep last N). Strings are unaffected. In `pseudo`/`js` templates the omission marker appears at the start; `json` remains strict. Mutually exclusive with `--head`.
+- `--head`: prefer the beginning of arrays when truncating (keep first N). Strings are unaffected. Display styles place omission markers accordingly; strict JSON remains unannotated. Mutually exclusive with `--tail`.
+- `--tail`: prefer the end of arrays when truncating (keep last N). Strings are unaffected. Display styles place omission markers accordingly; strict JSON remains unannotated. Mutually exclusive with `--head`.
 
 Notes:
 
-- With multiple input files:
-  - JSON template outputs a single JSON object keyed by the input file paths.
-  - Pseudo and JS templates render file sections with human-readable headers when newlines are enabled.
-    - If you use `--compact` or `--no-newline` (both disable newlines), fileset output falls back to standard inline rendering (no per-file headers) to remain compact.
-  - Using `--global-budget` may truncate or omit entire files to respect the total budget.
-  - The tool finds the largest preview that fits the budget; if even the tiniest preview exceeds it, you still get a minimal, valid preview.
-  - When passing file paths, directories and binary files are ignored; a notice is printed to stderr for each (e.g., `Ignored binary file: ./path/to/file`). Stdin mode reads the stream as-is.
-  - Head vs Tail sampling: these options bias which part of arrays are kept before rendering. They guarantee the kept segment is contiguous at the chosen side (prefix for `--head`, suffix for `--tail`). Display templates may still insert additional internal gap markers inside that kept segment to honor very small budgets; `json` remains strict and unannotated.
+- Multiple inputs:
+  - With newlines enabled, file sections are rendered with human‑readable headers. In compact/single‑line modes, headers are omitted.
+  - In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
+  - `--global-budget` may truncate or omit entire files to respect the total budget.
+  - The tool finds the largest preview that fits the budget; even if extremely tight, you still get a minimal, valid preview.
+  - Directories and binary files are ignored; a notice is printed to stderr for each. Stdin reads the stream as‑is.
+  - Head vs Tail sampling: these options bias which part of arrays are kept before rendering. Display styles may still insert internal gap markers to honor very small budgets; strict JSON stays unannotated.
 
 Quick one‑liners:
 
 - Peek a big JSON stream (keeps structure):
 
-      zstdcat huge.json.zst | headson -n 800 -f pseudo
+      zstdcat huge.json.zst | headson -n 800 -f json -t default
 
 - Many files with a fixed overall size:
 
-      headson -N 1200 -f json logs/*.json
+      headson -N 1200 -f json -t strict logs/*.json
 
 - Glance at a file, JavaScript‑style comments for omissions:
 
-      headson -n 400 -f js data.json
+      headson -n 400 -f json -t detailed data.json
+
+- YAML with detailed comments:
+
+      headson -n 400 -f yaml -t detailed config.yaml
 
 Show help:
 
@@ -105,10 +115,10 @@ jq -c . users.json | head -c 80
 # {"users":[{"id":1,"name":"Ana","roles":["admin","dev"]},{"id":2,"name":"Bo"}],"me
 ```
 
-Structured preview with headson (pseudo):
+Structured preview with headson (JSON family, default style → Pseudo):
 
 ```bash
-headson -n 120 -f pseudo users.json
+headson -n 120 -f json -t default users.json
 # {
 #   users: [
 #     { id: 1, name: "Ana", roles: [ "admin", … ] },
@@ -118,10 +128,10 @@ headson -n 120 -f pseudo users.json
 # }
 ```
 
-Machine‑readable preview (json):
+Machine‑readable preview (JSON family, strict style → strict JSON):
 
 ```bash
-headson -n 120 -f json users.json
+headson -n 120 -f json -t strict users.json
 # {"users":[{"id":1,"name":"Ana","roles":["admin"]}],"meta":{"count":2}}
 ```
 
@@ -137,32 +147,39 @@ Regenerate locally:
 
 A thin Python extension module is available on PyPI as `headson`.
 
- - Install: `pip install headson` (ABI3 wheels for Python 3.10+ on Linux/macOS/Windows).
+- Install: `pip install headson` (ABI3 wheels for Python 3.10+ on Linux/macOS/Windows).
 - API:
-  - `headson.summarize(text: str, *, template: str = "pseudo", character_budget: int | None = None, skew: str = "balanced") -> str`
-    - `template`: one of `"json" | "pseudo" | "js"`
+  - `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", character_budget: int | None = None, skew: str = "balanced") -> str`
+    - `format`: `"auto" | "json" | "yaml"` (auto maps to JSON family for single inputs)
+    - `style`: `"strict" | "default" | "detailed"`
+    - `input_format`: `"json" | "yaml"` (ingestion)
     - `character_budget`: maximum output size in characters (default: 500)
-    - `skew`: one of `"balanced" | "head" | "tail"` (focus arrays on start vs end; only affects display templates; `json` remains strict).
+    - `skew`: `"balanced" | "head" | "tail"` (affects display styles; strict JSON remains unannotated)
 
-Example:
+Examples:
 
 ```python
 import json
 import headson
 
 data = {"foo": [1, 2, 3], "bar": {"x": "y"}}
-preview = headson.summarize(json.dumps(data), template="json", character_budget=200)
+preview = headson.summarize(json.dumps(data), format="json", style="strict", character_budget=200)
 print(preview)
 
-# Prefer the tail of arrays (annotations show in pseudo/js only)
+# Prefer the tail of arrays (annotations show with style="default"/"detailed")
 print(
     headson.summarize(
         json.dumps(list(range(100))),
-        template="pseudo",
+        format="json",
+        style="detailed",
         character_budget=80,
         skew="tail",
     )
 )
+
+# YAML support
+doc = "root:\n  items: [1,2,3,4,5,6,7,8,9,10]\n"
+print(headson.summarize(doc, format="yaml", style="default", input_format="yaml", character_budget=60))
 ```
 
 # Algorithm
