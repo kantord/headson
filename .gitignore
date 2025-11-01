@@ -45,3 +45,8 @@ __pycache__/
 # Coverage artifacts
 coverage/
 lcov.info
+
+# Tape demo ephemeral files
+docs/tapes/page1.json
+docs/tapes/page2.json
+docs/tapes/tmp.yaml
