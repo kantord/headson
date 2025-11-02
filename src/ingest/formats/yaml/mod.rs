@@ -309,3 +309,30 @@ pub fn parse_yaml_many(
 ) -> Result<JsonTreeArena> {
     YamlIngest::parse_many(inputs, cfg)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ArraySamplerStrategy;
+
+    #[test]
+    fn tail_sampler_keeps_last_n_indices_yaml() {
+        let input = b"[0,1,2,3,4,5,6,7,8,9]".to_vec();
+        let mut cfg = PriorityConfig::new(usize::MAX, 5);
+        cfg.array_sampler = ArraySamplerStrategy::Tail;
+        let arena =
+            build_yaml_tree_arena_from_bytes(input, &cfg).expect("arena");
+        let root = &arena.nodes[arena.root_id];
+        assert_eq!(root.children_len, 5, "kept 5");
+        let mut orig_indices = Vec::new();
+        for i in 0..root.children_len {
+            let oi = if root.arr_indices_len > 0 {
+                arena.arr_indices[root.arr_indices_start + i]
+            } else {
+                i
+            };
+            orig_indices.push(oi);
+        }
+        assert_eq!(orig_indices, vec![5, 6, 7, 8, 9]);
+    }
+}

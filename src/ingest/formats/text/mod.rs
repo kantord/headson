@@ -245,4 +245,30 @@ mod tests {
         let out = headson_text(input.into_bytes(), &cfg, &prio, 20).unwrap();
         assert!(out.contains("…\n"));
     }
+
+    #[test]
+    fn tail_sampler_keeps_last_n_indices_text() {
+        // Build 10 lines; with array_max_items=5 and tail sampler we should keep last 5
+        let lines = (0..10)
+            .map(|i| i.to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mut cfg = PriorityConfig::new(usize::MAX, 5);
+        cfg.array_sampler = crate::ArraySamplerStrategy::Tail;
+        let arena =
+            super::build_text_tree_arena_from_bytes(lines.into_bytes(), &cfg)
+                .expect("arena");
+        let root = &arena.nodes[arena.root_id];
+        assert_eq!(root.children_len, 5, "kept 5");
+        let mut orig_indices = Vec::new();
+        for i in 0..root.children_len {
+            let oi = if root.arr_indices_len > 0 {
+                arena.arr_indices[root.arr_indices_start + i]
+            } else {
+                i
+            };
+            orig_indices.push(oi);
+        }
+        assert_eq!(orig_indices, vec![5, 6, 7, 8, 9]);
+    }
 }
