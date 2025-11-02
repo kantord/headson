@@ -4,7 +4,8 @@ use crate::PriorityConfig;
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
-use super::Ingest;
+use crate::ingest::Ingest;
+use crate::ingest::sampling::{ArraySamplerKind, choose_indices};
 use yaml_rust2::Yaml;
 
 pub fn build_yaml_tree_arena_from_bytes(
@@ -14,7 +15,10 @@ pub fn build_yaml_tree_arena_from_bytes(
     let s = String::from_utf8(bytes)
         .map_err(|_| anyhow!("input is not valid UTF-8 text"))?;
     let docs = yaml_rust2::YamlLoader::load_from_str(&s)?;
-    let mut b = YamlArenaBuilder::new(config.array_max_items);
+    let mut b = YamlArenaBuilder::new(
+        config.array_max_items,
+        config.array_sampler.into(),
+    );
     let root_id = if docs.len() <= 1 {
         match docs.first() {
             Some(doc) => b.build(doc),
@@ -26,7 +30,7 @@ pub fn build_yaml_tree_arena_from_bytes(
         for d in &docs {
             children.push(b.build(d));
         }
-        b.push_array(children, docs.len())
+        b.push_array(&children, docs.len(), (0..docs.len()).collect())
     };
     let mut arena = b.finish();
     arena.root_id = root_id;
@@ -37,7 +41,10 @@ pub fn build_yaml_tree_arena_from_many(
     mut inputs: Vec<(String, Vec<u8>)>,
     config: &PriorityConfig,
 ) -> Result<JsonTreeArena> {
-    let mut b = YamlArenaBuilder::new(config.array_max_items);
+    let mut b = YamlArenaBuilder::new(
+        config.array_max_items,
+        config.array_sampler.into(),
+    );
     let mut keys: Vec<String> = Vec::with_capacity(inputs.len());
     let mut children: Vec<usize> = Vec::with_capacity(inputs.len());
     for (key, bytes) in inputs.drain(..) {
@@ -54,7 +61,7 @@ pub fn build_yaml_tree_arena_from_many(
             for d in &docs {
                 arr_children.push(b.build(d));
             }
-            b.push_array(arr_children, docs.len())
+            b.push_array(&arr_children, docs.len(), (0..docs.len()).collect())
         };
         keys.push(key);
         children.push(child_id);
@@ -69,13 +76,15 @@ pub fn build_yaml_tree_arena_from_many(
 struct YamlArenaBuilder {
     arena: JsonTreeArena,
     array_cap: usize,
+    sampler: ArraySamplerKind,
 }
 
 impl YamlArenaBuilder {
-    fn new(array_cap: usize) -> Self {
+    fn new(array_cap: usize, sampler: ArraySamplerKind) -> Self {
         Self {
             arena: JsonTreeArena::default(),
             array_cap,
+            sampler,
         }
     }
 
@@ -100,12 +109,27 @@ impl YamlArenaBuilder {
         id
     }
 
-    fn push_array(&mut self, children: Vec<usize>, total_len: usize) -> usize {
+    fn push_array(
+        &mut self,
+        children: &[usize],
+        total_len: usize,
+        indices: Vec<usize>,
+    ) -> usize {
         let id = self.push_default();
-        let kept = children.len().min(self.array_cap);
-        let kept_children =
-            children.into_iter().take(kept).collect::<Vec<_>>();
-        self.finish_array(id, kept, total_len, kept_children);
+        let kept = indices.len().min(self.array_cap).min(children.len());
+        let mut kept_children = Vec::with_capacity(kept);
+        for &i in indices.iter().take(kept) {
+            if let Some(cid) = children.get(i) {
+                kept_children.push(*cid);
+            }
+        }
+        self.finish_array(
+            id,
+            kept,
+            total_len,
+            kept_children,
+            indices.into_iter().take(kept).collect(),
+        );
         id
     }
 
@@ -115,18 +139,33 @@ impl YamlArenaBuilder {
         kept: usize,
         total: usize,
         local_children: Vec<usize>,
+        local_indices: Vec<usize>,
     ) {
         let children_start = self.arena.children.len();
         self.arena.children.extend(local_children);
+
+        // contiguous prefix detection
+        let contiguous = local_indices.len() == kept
+            && local_indices.iter().enumerate().all(|(i, &idx)| idx == i);
+
+        let (arr_indices_start, pushed_len) =
+            if kept == 0 || contiguous || local_indices.is_empty() {
+                (0usize, 0usize)
+            } else {
+                let start = self.arena.arr_indices.len();
+                self.arena.arr_indices.extend(local_indices);
+                let pushed =
+                    self.arena.arr_indices.len().saturating_sub(start);
+                (start, pushed)
+            };
 
         let n = &mut self.arena.nodes[id];
         n.kind = NodeKind::Array;
         n.children_start = children_start;
         n.children_len = kept;
         n.array_len = Some(total);
-        // We always keep a contiguous prefix; avoid storing arr_indices
-        n.arr_indices_start = 0;
-        n.arr_indices_len = 0;
+        n.arr_indices_start = arr_indices_start;
+        n.arr_indices_len = pushed_len.min(kept);
     }
 
     fn finish_object(
@@ -149,16 +188,22 @@ impl YamlArenaBuilder {
         n.object_len = Some(count);
     }
 
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "YAML node conversion keeps all cases local for clarity"
+    )]
     fn build(&mut self, y: &Yaml) -> usize {
         match y {
             Yaml::Array(v) => {
                 let total = v.len();
-                let kept = total.min(self.array_cap);
-                let mut child_ids = Vec::with_capacity(kept);
-                for item in v.iter().take(kept) {
-                    child_ids.push(self.build(item));
+                let idxs = choose_indices(self.sampler, total, self.array_cap);
+                let mut child_ids = Vec::with_capacity(idxs.len());
+                for i in &idxs {
+                    if let Some(item) = v.get(*i) {
+                        child_ids.push(self.build(item));
+                    }
                 }
-                self.push_array(child_ids, total)
+                self.push_array(&child_ids, total, idxs)
             }
             Yaml::Hash(hm) => {
                 let mut keys: Vec<String> = Vec::with_capacity(hm.len());

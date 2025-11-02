@@ -8,7 +8,7 @@ use serde::de::DeserializeSeed;
 use crate::PriorityConfig;
 use crate::utils::tree_arena::JsonTreeArena as TreeArena;
 
-use super::Ingest;
+use crate::ingest::Ingest;
 
 #[cfg(test)]
 pub fn build_json_tree_arena(

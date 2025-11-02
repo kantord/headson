@@ -1,14 +1,12 @@
 use serde::de::{IgnoredAny, SeqAccess};
 
-use super::{JsonTreeBuilder, SampledArray};
+use super::JsonTreeBuilder;
+use super::SampledArray;
 
-// Tunable sampling constants for the default strategy.
+// Tunable sampling constants for the default strategy (must match shared policy).
 const RANDOM_ACCEPT_SEED: u64 = 0x9e37_79b9_7f4a_7c15;
-// ~50% acceptance to thin remaining elements in the random phase.
 const RANDOM_ACCEPT_THRESHOLD: u32 = 0x8000_0000;
-// Keep a small, fixed number of items from the head before greedy/random phases.
 const KEEP_FIRST_COUNT: usize = 3;
-// Take roughly half of the remaining capacity greedily after the first items.
 const GREEDY_PORTION_DIVISOR: usize = 2;
 
 struct PhaseState {

@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
-use super::samplers::ArraySamplerKind;
+use crate::ingest::sampling::ArraySamplerKind;
 
 #[derive(Default)]
 pub(crate) struct JsonTreeBuilder {
@@ -15,10 +15,7 @@ pub(crate) struct JsonTreeBuilder {
 }
 
 impl JsonTreeBuilder {
-    pub(crate) fn new(
-        array_cap: usize,
-        sampler: super::samplers::ArraySamplerKind,
-    ) -> Self {
+    pub(crate) fn new(array_cap: usize, sampler: ArraySamplerKind) -> Self {
         Self {
             arena: RefCell::new(JsonTreeArena::default()),
             array_cap,

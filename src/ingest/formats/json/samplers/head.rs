@@ -1,6 +1,7 @@
 use serde::de::{IgnoredAny, SeqAccess};
 
-use super::{JsonTreeBuilder, SampledArray};
+use super::JsonTreeBuilder;
+use super::SampledArray;
 
 fn parse_keep<'de, A>(
     seq: &mut A,

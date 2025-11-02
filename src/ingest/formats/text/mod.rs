@@ -5,7 +5,8 @@ use crate::PriorityConfig;
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
-use super::Ingest;
+use crate::ingest::Ingest;
+use crate::ingest::sampling::{ArraySamplerKind, choose_indices};
 
 fn normalize_newlines(s: &str) -> Cow<'_, str> {
     // Normalize CRLF and CR to LF in a single allocation when needed.
@@ -20,13 +21,15 @@ fn normalize_newlines(s: &str) -> Cow<'_, str> {
 struct TextArenaBuilder {
     arena: JsonTreeArena,
     array_cap: usize,
+    sampler: ArraySamplerKind,
 }
 
 impl TextArenaBuilder {
-    fn new(array_cap: usize) -> Self {
+    fn new(array_cap: usize, sampler: ArraySamplerKind) -> Self {
         Self {
             arena: JsonTreeArena::default(),
             array_cap,
+            sampler,
         }
     }
 
@@ -50,26 +53,38 @@ impl TextArenaBuilder {
 
     fn push_array_of_lines(
         &mut self,
-        lines: impl IntoIterator<Item = String>,
+        lines: &[String],
         total: usize,
     ) -> usize {
         let id = self.push_default();
-        let kept = total.min(self.array_cap);
+        let idxs = choose_indices(self.sampler, total, self.array_cap);
+        let kept = idxs.len().min(self.array_cap);
         let mut pushed = 0usize;
-        for (i, line) in lines.into_iter().enumerate() {
-            if i >= kept {
-                break;
+        for (i, &orig_index) in idxs.iter().take(kept).enumerate() {
+            if let Some(line) = lines.get(orig_index) {
+                let child = self.push_string(line.clone());
+                self.arena.children.push(child);
+                pushed = i + 1;
             }
-            let child = self.push_string(line);
-            self.arena.children.push(child);
-            pushed += 1;
         }
         let n = &mut self.arena.nodes[id];
         n.kind = NodeKind::Array;
-        // children for this array were appended after previous nodes; compute start = len(children) - pushed
         n.children_start = self.arena.children.len().saturating_sub(pushed);
         n.children_len = pushed;
         n.array_len = Some(total);
+        // Store arr_indices when not contiguous head prefix
+        let contiguous =
+            idxs.iter().take(kept).enumerate().all(|(i, &idx)| i == idx);
+        if pushed == 0 || contiguous {
+            n.arr_indices_start = 0;
+            n.arr_indices_len = 0;
+        } else {
+            let start = self.arena.arr_indices.len();
+            self.arena.arr_indices.extend(idxs.into_iter().take(kept));
+            let len = self.arena.arr_indices.len().saturating_sub(start);
+            n.arr_indices_start = start;
+            n.arr_indices_len = len.min(pushed);
+        }
         id
     }
 
@@ -112,8 +127,11 @@ pub fn build_text_tree_arena_from_bytes(
         .map(std::string::ToString::to_string)
         .collect();
     let total = lines_vec.len();
-    let mut b = TextArenaBuilder::new(config.array_max_items);
-    let root_id = b.push_array_of_lines(lines_vec, total);
+    let mut b = TextArenaBuilder::new(
+        config.array_max_items,
+        config.array_sampler.into(),
+    );
+    let root_id = b.push_array_of_lines(&lines_vec, total);
     let mut a = b.finish();
     a.root_id = root_id;
     Ok(a)
@@ -127,7 +145,10 @@ pub fn build_text_tree_arena_from_many(
     mut inputs: Vec<(String, Vec<u8>)>,
     config: &PriorityConfig,
 ) -> Result<JsonTreeArena> {
-    let mut b = TextArenaBuilder::new(config.array_max_items);
+    let mut b = TextArenaBuilder::new(
+        config.array_max_items,
+        config.array_sampler.into(),
+    );
     let mut keys: Vec<String> = Vec::with_capacity(inputs.len());
     let mut children_ids: Vec<usize> = Vec::with_capacity(inputs.len());
     for (key, bytes) in inputs.drain(..) {
@@ -138,7 +159,7 @@ pub fn build_text_tree_arena_from_many(
             .map(std::string::ToString::to_string)
             .collect();
         let total = lines_vec.len();
-        let child_id = b.push_array_of_lines(lines_vec, total);
+        let child_id = b.push_array_of_lines(&lines_vec, total);
         keys.push(key);
         children_ids.push(child_id);
     }

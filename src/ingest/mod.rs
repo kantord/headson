@@ -14,14 +14,22 @@ pub trait Ingest {
 }
 
 // Submodules for per-format adapters + builders (directories with mod.rs)
-pub mod json;
-pub mod text;
-pub mod yaml;
+// Group format-specific ingests under `formats/`.
+pub mod formats;
 
-// Re-export commonly used helpers for convenience (keep adapter types private)
-pub use json::{parse_json_many, parse_json_one};
-pub use text::{parse_text_many, parse_text_one};
-pub use yaml::{parse_yaml_many, parse_yaml_one};
+// Expose format modules under `formats`; callers should use
+// `crate::ingest::formats::{json,yaml,text}`.
+
+// Shared ingest-agnostic helpers (e.g., array sampling policies).
+pub mod sampling;
+
+// Re-export top-level convenience functions to preserve `crate::ingest::parse_*` paths.
+pub use formats::{
+    parse_json_many, parse_json_one, parse_text_many, parse_text_one,
+    parse_yaml_many, parse_yaml_one,
+};
+
+// (intentionally no duplicate re-exports here; see formats::* above)
 
 #[cfg(test)]
 mod tests {

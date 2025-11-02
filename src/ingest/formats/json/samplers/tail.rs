@@ -1,6 +1,7 @@
 use serde::de::{IgnoredAny, SeqAccess};
 
-use super::{JsonTreeBuilder, SampledArray};
+use super::JsonTreeBuilder;
+use super::SampledArray;
 
 pub(crate) fn sample_stream<'de, A>(
     seq: &mut A,
@@ -89,8 +90,10 @@ mod tests {
         let mut cfg = PriorityConfig::new(usize::MAX, 5);
         cfg.array_sampler = crate::ArraySamplerStrategy::Tail;
         let arena =
-            crate::ingest::json::build_json_tree_arena_from_bytes(input, &cfg)
-                .expect("arena");
+            crate::ingest::formats::json::build_json_tree_arena_from_bytes(
+                input, &cfg,
+            )
+            .expect("arena");
         let root = &arena.nodes[arena.root_id];
         assert_eq!(root.children_len, 5, "kept 5");
         let mut orig_indices = Vec::new();

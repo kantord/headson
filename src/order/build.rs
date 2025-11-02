@@ -476,7 +476,7 @@ mod tests {
 
     #[test]
     fn order_empty_array() {
-        let arena = crate::ingest::json::build_json_tree_arena(
+        let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[]",
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -510,7 +510,7 @@ mod tests {
 
     #[test]
     fn order_single_string_array() {
-        let arena = crate::ingest::json::build_json_tree_arena(
+        let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[\"ab\"]",
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
