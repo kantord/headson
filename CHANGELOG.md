@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4](https://github.com/kantord/headson/compare/v0.6.3...v0.6.4) - 2025-11-02
+
+### Added
+
+- unify character budget syntax with head/tail ([#134](https://github.com/kantord/headson/pull/134))
+- unify sampling logic across file formats ([#132](https://github.com/kantord/headson/pull/132))
+
+### Other
+
+- add package version badges ([#131](https://github.com/kantord/headson/pull/131))
+- add codecov badge ([#130](https://github.com/kantord/headson/pull/130))
+- improve folder structure for ingest logic ([#128](https://github.com/kantord/headson/pull/128))
+
 ## [0.6.3](https://github.com/kantord/headson/compare/v0.6.2...v0.6.3) - 2025-11-01
 
 ### Added
