@@ -172,6 +172,27 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+// Build budgets from CLI flags. If only line caps are provided, avoid imposing
+// the default byte cap; keep the 500-byte default only when neither lines nor
+// bytes are specified. If any byte-related flag is present, enforce bytes.
+fn make_budgets(
+    cli: &Cli,
+    eff_bytes: usize,
+    eff_lines: Option<usize>,
+) -> headson::Budgets {
+    let char_budget = if cli.bytes.is_some() || cli.global_bytes.is_some() {
+        Some(eff_bytes)
+    } else if cli.lines.is_some() || cli.global_lines.is_some() {
+        None
+    } else {
+        Some(eff_bytes)
+    };
+    headson::Budgets {
+        char_budget,
+        line_budget: eff_lines,
+    }
+}
+
 fn compute_effective_bytes(cli: &Cli, input_count: usize) -> usize {
     match (cli.global_bytes, cli.bytes) {
         (Some(g), Some(n)) => g.min(n.saturating_mul(input_count)),
@@ -207,6 +228,50 @@ fn compute_priority(
     get_priority_config(per_file_for_priority, cli)
 }
 
+// Fileset helpers extracted for clarity and reuse.
+fn any_yaml_ext(entries: &InputEntries) -> bool {
+    entries.iter().any(|(name, _)| {
+        let lower = name.to_ascii_lowercase();
+        lower.ends_with(".yaml") || lower.ends_with(".yml")
+    })
+}
+
+fn all_json_ext(entries: &InputEntries) -> bool {
+    entries
+        .iter()
+        .all(|(name, _)| name.to_ascii_lowercase().ends_with(".json"))
+}
+
+fn choose_input_format_fileset(
+    cli: &Cli,
+    entries: &InputEntries,
+) -> InputFormat {
+    if matches!(cli.format, OutputFormat::Auto) {
+        if any_yaml_ext(entries) {
+            InputFormat::Yaml
+        } else if all_json_ext(entries) {
+            InputFormat::Json
+        } else {
+            // Mixed or unknown extensions: treat as text to avoid JSON/YAML parse errors
+            InputFormat::Text
+        }
+    } else {
+        cli.input_format
+    }
+}
+
+fn effective_fileset_template(
+    cli: &Cli,
+    style: headson::Style,
+) -> headson::OutputTemplate {
+    match cli.format {
+        OutputFormat::Auto => headson::OutputTemplate::Auto,
+        OutputFormat::Json => map_json_template_for_style(style),
+        OutputFormat::Yaml => headson::OutputTemplate::Yaml,
+        OutputFormat::Text => headson::OutputTemplate::Text,
+    }
+}
+
 fn run_from_stdin(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
@@ -219,10 +284,7 @@ fn run_from_stdin(
     let mut cfg = render_cfg.clone();
     // Resolve effective output template for stdin:
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
-    let budgets = headson::Budgets {
-        char_budget: Some(eff),
-        line_budget: eff_lines,
-    };
+    let budgets = make_budgets(cli, eff, eff_lines);
     match cli.input_format {
         InputFormat::Json => {
             headson::headson_with_budgets(input_bytes, &cfg, &prio, budgets)
@@ -256,45 +318,12 @@ fn run_from_paths(
     let eff = compute_effective_bytes(cli, input_count);
     let eff_lines = compute_effective_lines(cli, input_count);
     let prio = compute_priority(cli, eff, input_count);
-    // In Auto template mode, choose ingestion strategy based on extensions for filesets:
-    // if any included input has a YAML extension, prefer YAML ingest (can parse JSON too).
-    fn any_yaml_ext(entries: &InputEntries) -> bool {
-        entries.iter().any(|(name, _)| {
-            let lower = name.to_ascii_lowercase();
-            lower.ends_with(".yaml") || lower.ends_with(".yml")
-        })
-    }
-    fn all_json_ext(entries: &InputEntries) -> bool {
-        entries.iter().all(|(name, _)| {
-            let lower = name.to_ascii_lowercase();
-            lower.ends_with(".json")
-        })
-    }
     if cli.inputs.len() > 1 {
-        let chosen_input = if matches!(cli.format, OutputFormat::Auto) {
-            if any_yaml_ext(&entries) {
-                InputFormat::Yaml
-            } else if all_json_ext(&entries) {
-                InputFormat::Json
-            } else {
-                // Mixed or unknown extensions: treat as text to avoid JSON/YAML parse errors
-                InputFormat::Text
-            }
-        } else {
-            cli.input_format
-        };
+        let chosen_input = choose_input_format_fileset(cli, &entries);
         let mut cfg = render_cfg.clone();
         // For filesets: if format=auto, enable per-file template selection.
-        cfg.template = match cli.format {
-            OutputFormat::Auto => headson::OutputTemplate::Auto,
-            OutputFormat::Json => map_json_template_for_style(cfg.style),
-            OutputFormat::Yaml => headson::OutputTemplate::Yaml,
-            OutputFormat::Text => headson::OutputTemplate::Text,
-        };
-        let budgets = headson::Budgets {
-            char_budget: Some(eff),
-            line_budget: eff_lines,
-        };
+        cfg.template = effective_fileset_template(cli, cfg.style);
+        let budgets = make_budgets(cli, eff, eff_lines);
         let out = match chosen_input {
             InputFormat::Json => headson::headson_many_with_budgets(
                 entries, &cfg, &prio, budgets,
@@ -330,10 +359,7 @@ fn run_from_paths(
         cfg.template = resolve_effective_template_for_single(
             cli.format, cfg.style, &lower,
         );
-        let budgets = headson::Budgets {
-            char_budget: Some(eff),
-            line_budget: eff_lines,
-        };
+        let budgets = make_budgets(cli, eff, eff_lines);
         let out = match chosen_input {
             InputFormat::Json => {
                 headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
