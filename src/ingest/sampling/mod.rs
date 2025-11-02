@@ -1,6 +1,11 @@
 use crate::ArraySamplerStrategy;
 
-/// Ingest-agnostic array sampler kinds.
+/// Ingest-agnostic array sampling strategies.
+///
+/// These functions return original element indices to keep. Callers are
+/// expected to materialize children in the returned order and, when the
+/// selection is non-contiguous, record `arr_indices` so renderers can denote
+/// internal gaps.
 #[derive(Copy, Clone, Debug, Default)]
 pub enum ArraySamplerKind {
     #[default]
@@ -19,13 +24,13 @@ impl From<ArraySamplerStrategy> for ArraySamplerKind {
     }
 }
 
-// Tunable sampling constants mirroring JSON default strategy.
+// Default policy parameters:
+// - first N: ensure early coverage of the head
+// - greedy: take a portion of the remaining capacity linearly
+// - random: index-hash acceptance to spread the rest (~50%)
 const RANDOM_ACCEPT_SEED: u64 = 0x9e37_79b9_7f4a_7c15;
-// ~50% acceptance to thin remaining elements in the random phase.
-const RANDOM_ACCEPT_THRESHOLD: u32 = 0x8000_0000;
-// Keep a small, fixed number of items from the head before greedy/random phases.
+const RANDOM_ACCEPT_THRESHOLD: u32 = 0x8000_0000; // ~50%
 const KEEP_FIRST_COUNT: usize = 3;
-// Take roughly half of the remaining capacity greedily after the first items.
 const GREEDY_PORTION_DIVISOR: usize = 2;
 
 fn mix64(mut x: u64) -> u64 {
@@ -41,7 +46,7 @@ fn accept_index(i: u64) -> bool {
     ((h >> 32) as u32) < RANDOM_ACCEPT_THRESHOLD
 }
 
-/// Choose indices using the default policy (keep-first, greedy, then random accept).
+/// Choose indices using the default policy (keep-first, greedy, random accept).
 #[allow(
     clippy::cognitive_complexity,
     reason = "Single function mirrors JSON streaming sampler phases"

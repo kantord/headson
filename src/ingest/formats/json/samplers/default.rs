@@ -3,9 +3,9 @@ use serde::de::{IgnoredAny, SeqAccess};
 use super::JsonTreeBuilder;
 use super::SampledArray;
 
-// Tunable sampling constants for the default strategy (must match shared policy).
+// Default strategy phases: keep-first, greedy, then index-hash acceptance (~50%).
 const RANDOM_ACCEPT_SEED: u64 = 0x9e37_79b9_7f4a_7c15;
-const RANDOM_ACCEPT_THRESHOLD: u32 = 0x8000_0000;
+const RANDOM_ACCEPT_THRESHOLD: u32 = 0x8000_0000; // ~50%
 const KEEP_FIRST_COUNT: usize = 3;
 const GREEDY_PORTION_DIVISOR: usize = 2;
 
