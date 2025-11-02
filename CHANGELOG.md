@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.5](https://github.com/kantord/headson/compare/v0.6.4...v0.6.5) - 2025-11-02
+
+### Added
+
+- add line based limits ([#137](https://github.com/kantord/headson/pull/137))
+
+### Other
+
+- update demo tape ([#139](https://github.com/kantord/headson/pull/139))
+- fix demo gif ([#138](https://github.com/kantord/headson/pull/138))
+- fix broken gif ([#135](https://github.com/kantord/headson/pull/135))
+
 ## [0.6.4](https://github.com/kantord/headson/compare/v0.6.3...v0.6.4) - 2025-11-02
 
 ### Added
