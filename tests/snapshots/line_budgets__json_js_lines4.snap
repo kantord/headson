@@ -1,0 +1,9 @@
+---
+source: tests/line_budgets.rs
+expression: out
+---
+{
+  "a": [ /* 3 more items */ ],
+  "b": { /* 2 more properties */ }
+}
+

@@ -25,6 +25,12 @@ struct Cli {
     #[arg(short = 'c', long = "bytes")]
     budget: Option<usize>,
     #[arg(
+        long = "lines",
+        value_name = "LINES",
+        help = "Per-file line budget (adds up across files if --global-lines not set)"
+    )]
+    lines: Option<usize>,
+    #[arg(
         short = 'f',
         long = "format",
         value_enum,
@@ -71,6 +77,12 @@ struct Cli {
         help = "Total output budget across all inputs. When combined with --bytes, the effective global limit is the smaller of the two."
     )]
     global_budget: Option<usize>,
+    #[arg(
+        long = "global-lines",
+        value_name = "LINES",
+        help = "Total line budget across all inputs"
+    )]
+    global_lines: Option<usize>,
     #[arg(
         long = "tail",
         default_value_t = false,
@@ -167,6 +179,15 @@ fn compute_effective_budget(cli: &Cli, input_count: usize) -> usize {
     }
 }
 
+fn compute_effective_lines(cli: &Cli, input_count: usize) -> Option<usize> {
+    match (cli.global_lines, cli.lines) {
+        (Some(g), Some(n)) => Some(g.min(n.saturating_mul(input_count))),
+        (Some(g), None) => Some(g),
+        (None, Some(n)) => Some(n.saturating_mul(input_count)),
+        (None, None) => None,
+    }
+}
+
 fn compute_priority(
     cli: &Cli,
     effective_budget: usize,
@@ -191,18 +212,31 @@ fn run_from_stdin(
     let input_bytes = read_stdin()?;
     let input_count = 1usize;
     let eff = compute_effective_budget(cli, input_count);
+    let eff_lines = compute_effective_lines(cli, input_count);
     let prio = compute_priority(cli, eff, input_count);
     let mut cfg = render_cfg.clone();
     // Resolve effective output template for stdin:
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
+    let budgets = headson::Budgets {
+        char_budget: Some(eff),
+        line_budget: eff_lines,
+    };
     match cli.input_format {
-        InputFormat::Json => headson::headson(input_bytes, &cfg, &prio, eff),
-        InputFormat::Yaml => {
-            headson::headson_yaml(input_bytes, &cfg, &prio, eff)
+        InputFormat::Json => {
+            headson::headson_with_budgets(input_bytes, &cfg, &prio, budgets)
         }
-        InputFormat::Text => {
-            headson::headson_text(input_bytes, &cfg, &prio, eff)
-        }
+        InputFormat::Yaml => headson::headson_yaml_with_budgets(
+            input_bytes,
+            &cfg,
+            &prio,
+            budgets,
+        ),
+        InputFormat::Text => headson::headson_text_with_budgets(
+            input_bytes,
+            &cfg,
+            &prio,
+            budgets,
+        ),
     }
 }
 
@@ -218,6 +252,7 @@ fn run_from_paths(
     let included = entries.len();
     let input_count = included.max(1);
     let eff = compute_effective_budget(cli, input_count);
+    let eff_lines = compute_effective_lines(cli, input_count);
     let prio = compute_priority(cli, eff, input_count);
     // In Auto template mode, choose ingestion strategy based on extensions for filesets:
     // if any included input has a YAML extension, prefer YAML ingest (can parse JSON too).
@@ -254,16 +289,20 @@ fn run_from_paths(
             OutputFormat::Yaml => headson::OutputTemplate::Yaml,
             OutputFormat::Text => headson::OutputTemplate::Text,
         };
+        let budgets = headson::Budgets {
+            char_budget: Some(eff),
+            line_budget: eff_lines,
+        };
         let out = match chosen_input {
-            InputFormat::Json => {
-                headson::headson_many(entries, &cfg, &prio, eff)?
-            }
-            InputFormat::Yaml => {
-                headson::headson_many_yaml(entries, &cfg, &prio, eff)?
-            }
-            InputFormat::Text => {
-                headson::headson_many_text(entries, &cfg, &prio, eff)?
-            }
+            InputFormat::Json => headson::headson_many_with_budgets(
+                entries, &cfg, &prio, budgets,
+            )?,
+            InputFormat::Yaml => headson::headson_many_yaml_with_budgets(
+                entries, &cfg, &prio, budgets,
+            )?,
+            InputFormat::Text => headson::headson_many_text_with_budgets(
+                entries, &cfg, &prio, budgets,
+            )?,
         };
         Ok((out, ignored))
     } else if included == 0 {
@@ -289,14 +328,20 @@ fn run_from_paths(
         cfg.template = resolve_effective_template_for_single(
             cli.format, cfg.style, &lower,
         );
+        let budgets = headson::Budgets {
+            char_budget: Some(eff),
+            line_budget: eff_lines,
+        };
         let out = match chosen_input {
-            InputFormat::Json => headson::headson(bytes, &cfg, &prio, eff)?,
-            InputFormat::Yaml => {
-                headson::headson_yaml(bytes, &cfg, &prio, eff)?
+            InputFormat::Json => {
+                headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
             }
-            InputFormat::Text => {
-                headson::headson_text(bytes, &cfg, &prio, eff)?
-            }
+            InputFormat::Yaml => headson::headson_yaml_with_budgets(
+                bytes, &cfg, &prio, budgets,
+            )?,
+            InputFormat::Text => headson::headson_text_with_budgets(
+                bytes, &cfg, &prio, budgets,
+            )?,
         };
         Ok((out, ignored))
     }
