@@ -25,8 +25,9 @@ fn strip_ansi(s: &str) -> String {
 #[test]
 fn colored_and_plain_outputs_should_match_after_stripping() {
     // Arrange a small array whose render sits near the byte budget edge.
-    // Coloring adds ANSI SGR sequences to strings, which currently count toward
-    // the budget and may cause fewer items to be included.
+    // Coloring adds ANSI SGR sequences to strings, which do not count toward
+    // the budget: measuring is done on uncolored output, so inclusion is
+    // identical after stripping colors.
     let input =
         b"[\"x\",\"x\",\"x\",\"x\",\"x\",\"x\",\"x\",\"x\",\"x\",\"x\",\"x\"]";
 
@@ -58,6 +59,5 @@ fn colored_and_plain_outputs_should_match_after_stripping() {
     let colored_stripped = strip_ansi(&colored);
 
     // Expect identical logical output after stripping ANSI.
-    // This currently fails because escape sequences are counted in the budget.
     assert_eq!(plain, colored_stripped);
 }

@@ -84,6 +84,25 @@ Notes:
   - Directories and binary files are ignored; a notice is printed to stderr for each. Stdin reads the stream as‑is.
   - Head vs Tail sampling: these options bias which part of arrays are kept before rendering. Display styles may still insert internal gap markers to honor very small budgets; strict JSON stays unannotated.
 
+## Budget Modes
+
+- Bytes (`-c/--bytes`, `-C/--global-bytes`)
+  - Measures UTF‑8 bytes in the output.
+  - Default per‑file budget is 500 bytes when neither `--lines` nor `--chars` is provided.
+  - Multiple inputs: total default budget is `<BYTES> * number_of_inputs`; `--global-bytes` caps the total.
+
+- Characters (`-u/--chars`)
+  - Measures Unicode code points (not grapheme clusters).
+
+- Lines (`-n/--lines`, `-N/--global-lines`)
+  - Caps the number of lines in the output.
+  - Incompatible with `--no-newline`.
+  - Multiple inputs: defaults to `<LINES> * number_of_inputs`; `--global-lines` caps the total.
+
+- Interactions and precedence
+  - All active budgets are enforced simultaneously. The render must satisfy all of: bytes (if set), chars (if set), and lines (if set). The strictest cap wins.
+  - When only lines are specified, no implicit byte cap applies. When neither lines nor chars are specified, a 500‑byte default applies.
+
 Quick one‑liners:
 
 - Peek a big JSON stream (keeps structure):

@@ -90,14 +90,14 @@ fn text_lines_cap_with_omission() {
 #[test]
 fn combined_char_and_line_caps() {
     let p = "tests/fixtures/explicit/string_escaping.json";
-    // Enforce both: small char cap and small line cap
+    // Enforce both: small byte cap and small line cap
     let out = run(&["-f", "json", "-t", "default", "-n", "2", "-c", "60", p]);
     let lines = count_lines_normalized(&out);
     assert!(lines <= 2, "line cap failed: {out:?}");
     let trimmed_len = out.trim_end_matches('\n').len();
     assert!(
         trimmed_len <= 60,
-        "char cap failed: len={trimmed_len} > 60, out={out:?}",
+        "byte cap failed: len={trimmed_len} > 60, out={out:?}",
     );
     assert_snapshot!("json_pseudo_lines2_chars60", out);
 }

@@ -27,7 +27,7 @@ struct Cli {
         short = 'u',
         long = "chars",
         value_name = "CHARS",
-        help = "Per-file Unicode character budget (adds up across files if no global char cap)"
+        help = "Per-file Unicode character budget (adds up across files if no global chars limit)"
     )]
     chars: Option<usize>,
     #[arg(
@@ -60,7 +60,8 @@ struct Cli {
     #[arg(
         long = "no-newline",
         default_value_t = false,
-        help = "Do not add newlines in the output. With --lines/--global-lines, line counts reflect actual breaks; without newlines, any non-empty output counts as a single line."
+        conflicts_with_all = ["lines", "global_lines"],
+        help = "Do not add newlines in the output. Incompatible with --lines/--global-lines."
     )]
     no_newline: bool,
     #[arg(
@@ -177,7 +178,7 @@ fn main() -> Result<()> {
 
 // Build budgets from CLI flags. If only line caps are provided, avoid imposing
 // the default byte cap; keep the 500-byte default only when neither lines nor
-// bytes are specified. If any byte-related flag is present, enforce bytes.
+// chars nor bytes are specified. If any byte-related flag is present, enforce bytes.
 fn make_budgets(
     cli: &Cli,
     eff_bytes: usize,
@@ -526,7 +527,7 @@ fn get_priority_config(
     per_file_budget: usize,
     cli: &Cli,
 ) -> headson::PriorityConfig {
-    // Detect line-only mode: lines flag present and no explicit bytes flags.
+    // Detect line-only mode: lines flag present and no explicit bytes/chars flags.
     let line_only = (cli.lines.is_some() || cli.global_lines.is_some())
         && cli.bytes.is_none()
         && cli.global_bytes.is_none();

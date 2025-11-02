@@ -14,7 +14,7 @@ struct Entry {
     priority_index: usize,
     depth: usize,
     // When present, we can read kind from the arena (parsed JSON) node.
-    // When None, this is a synthetic entry (currently only string grapheme).
+    // When None, this is a synthetic entry (used for string grapheme entries).
     arena_index: Option<usize>,
 }
 impl PartialEq for Entry {
