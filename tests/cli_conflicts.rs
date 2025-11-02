@@ -3,7 +3,7 @@ fn head_and_tail_flags_conflict() {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     // Pass both flags; clap should error with a conflict.
     let assert = cmd
-        .args(["--no-color", "--head", "--tail", "-c", "20", "-f", "json"]) // no inputs (stdin not used)
+        .args(["--no-color", "--head", "--tail", "-n", "20", "-f", "json"]) // no inputs (stdin not used)
         .assert();
     let ok = assert.get_output().status.success();
     let err = String::from_utf8_lossy(&assert.get_output().stderr);
@@ -11,6 +11,35 @@ fn head_and_tail_flags_conflict() {
     assert!(
         err.to_ascii_lowercase().contains("conflict")
             || err.contains("cannot be used with"),
+        "stderr should mention argument conflict, got: {err}"
+    );
+}
+
+#[test]
+fn compact_and_no_newline_conflict() {
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    // --compact conflicts with --no-newline via clap configuration.
+    // Provide a small bytes budget to avoid other defaults interfering.
+    let assert = cmd
+        .args([
+            "--no-color",
+            "--compact",
+            "--no-newline",
+            "-c",
+            "100",
+            "-f",
+            "json",
+        ])
+        .assert();
+    let ok = assert.get_output().status.success();
+    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(
+        !ok,
+        "cli should fail when both --compact and --no-newline are set",
+    );
+    let err_l = err.to_ascii_lowercase();
+    assert!(
+        err_l.contains("conflict") || err_l.contains("cannot be used with"),
         "stderr should mention argument conflict, got: {err}"
     );
 }
