@@ -5,6 +5,8 @@ use crate::PriorityConfig;
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
+use super::Ingest;
+
 fn normalize_newlines(s: &str) -> Cow<'_, str> {
     // Normalize CRLF and CR to LF in a single allocation when needed.
     if s.as_bytes().contains(&b'\r') {
@@ -145,6 +147,39 @@ pub fn build_text_tree_arena_from_many(
     a.root_id = root_id;
     a.is_fileset = true;
     Ok(a)
+}
+
+pub struct TextIngest;
+
+impl Ingest for TextIngest {
+    fn parse_one(
+        bytes: Vec<u8>,
+        cfg: &PriorityConfig,
+    ) -> Result<JsonTreeArena> {
+        build_text_tree_arena_from_bytes(bytes, cfg)
+    }
+
+    fn parse_many(
+        inputs: Vec<(String, Vec<u8>)>,
+        cfg: &PriorityConfig,
+    ) -> Result<JsonTreeArena> {
+        build_text_tree_arena_from_many(inputs, cfg)
+    }
+}
+
+/// Convenience functions for the Text ingest path.
+pub fn parse_text_one(
+    bytes: Vec<u8>,
+    cfg: &PriorityConfig,
+) -> Result<JsonTreeArena> {
+    TextIngest::parse_one(bytes, cfg)
+}
+
+pub fn parse_text_many(
+    inputs: Vec<(String, Vec<u8>)>,
+    cfg: &PriorityConfig,
+) -> Result<JsonTreeArena> {
+    TextIngest::parse_many(inputs, cfg)
 }
 
 #[cfg(test)]

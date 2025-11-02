@@ -606,7 +606,7 @@ mod tests {
 
     #[test]
     fn arena_render_empty_array() {
-        let arena = crate::json_ingest::build_json_tree_arena(
+        let arena = crate::ingest::json::build_json_tree_arena(
             "[]",
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -640,7 +640,7 @@ mod tests {
     fn newline_detection_crlf_array_child() {
         // Ensure we exercise the render_has_newline branch that checks
         // arbitrary newline sequences (e.g., "\r\n") via s.contains(nl).
-        let arena = crate::json_ingest::build_json_tree_arena(
+        let arena = crate::ingest::json::build_json_tree_arena(
             "[{\"a\":1,\"b\":2}]",
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -678,7 +678,7 @@ mod tests {
 
     #[test]
     fn arena_render_single_string_array() {
-        let arena = crate::json_ingest::build_json_tree_arena(
+        let arena = crate::ingest::json::build_json_tree_arena(
             "[\"ab\"]",
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -719,7 +719,7 @@ mod tests {
             array_sampler: crate::ArraySamplerStrategy::Default,
         };
         let arena =
-            crate::json_ingest::build_json_tree_arena("[1,2,3]", &cfg_prio)
+            crate::ingest::json::build_json_tree_arena("[1,2,3]", &cfg_prio)
                 .unwrap();
         let build = build_order(&arena, &cfg_prio).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
@@ -773,7 +773,7 @@ mod tests {
             array_sampler: crate::ArraySamplerStrategy::Default,
         };
         let arena =
-            crate::json_ingest::build_json_tree_arena("[1,2,3]", &cfg_prio)
+            crate::ingest::json::build_json_tree_arena("[1,2,3]", &cfg_prio)
                 .unwrap();
         let build = build_order(&arena, &cfg_prio).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
@@ -825,7 +825,7 @@ mod tests {
             array_sampler: crate::ArraySamplerStrategy::Default,
         };
         let arena =
-            crate::json_ingest::build_json_tree_arena("[1,2,3]", &cfg_prio)
+            crate::ingest::json::build_json_tree_arena("[1,2,3]", &cfg_prio)
                 .unwrap();
         let build = build_order(&arena, &cfg_prio).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
@@ -871,7 +871,7 @@ mod tests {
 
     #[test]
     fn arena_render_empty_array_yaml() {
-        let arena = crate::json_ingest::build_json_tree_arena(
+        let arena = crate::ingest::json::build_json_tree_arena(
             "[]",
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -904,7 +904,7 @@ mod tests {
 
     #[test]
     fn arena_render_single_string_array_yaml() {
-        let arena = crate::json_ingest::build_json_tree_arena(
+        let arena = crate::ingest::json::build_json_tree_arena(
             "[\"ab\"]",
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -937,7 +937,7 @@ mod tests {
 
     #[test]
     fn inline_open_array_in_object_yaml() {
-        let arena = crate::json_ingest::build_json_tree_arena(
+        let arena = crate::ingest::json::build_json_tree_arena(
             "{\"a\":[1,2,3]}",
             &crate::PriorityConfig::new(usize::MAX, 2),
         )
@@ -995,7 +995,7 @@ mod tests {
     fn yaml_key_and_scalar_quoting() {
         // Keys and values that exercise YAML quoting heuristics.
         let json = "{\n            \"true\": 1,\n            \"010\": \"010\",\n            \"-dash\": \"ok\",\n            \"normal\": \"simple\",\n            \"a:b\": \"a:b\",\n            \" spaced \": \" spaced \",\n            \"reserved\": \"yes\",\n            \"multiline\": \"line1\\nline2\"\n        }";
-        let arena = crate::json_ingest::build_json_tree_arena(
+        let arena = crate::ingest::json::build_json_tree_arena(
             json,
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -1064,7 +1064,7 @@ mod tests {
     fn string_parts_never_rendered_but_affect_truncation() {
         // Build a long string: the string node itself is SplittableLeaf; the
         // builder also creates LeafPart children used only for priority.
-        let arena = crate::json_ingest::build_json_tree_arena(
+        let arena = crate::ingest::json::build_json_tree_arena(
             "\"abcdefghij\"",
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -1098,7 +1098,7 @@ mod tests {
 
     #[test]
     fn yaml_array_of_objects_indentation() {
-        let arena = crate::json_ingest::build_json_tree_arena(
+        let arena = crate::ingest::json::build_json_tree_arena(
             "[{\"a\":1,\"b\":2},{\"x\":3}]",
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -1140,7 +1140,7 @@ mod tests {
     #[test]
     fn omitted_for_atomic_returns_none() {
         // Single atomic value as input (number), root is AtomicLeaf.
-        let arena = crate::json_ingest::build_json_tree_arena(
+        let arena = crate::ingest::json::build_json_tree_arena(
             "1",
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )
@@ -1177,7 +1177,7 @@ mod tests {
 
     #[test]
     fn inline_open_array_in_object_json() {
-        let arena = crate::json_ingest::build_json_tree_arena(
+        let arena = crate::ingest::json::build_json_tree_arena(
             "{\"a\":[1,2,3]}",
             &crate::PriorityConfig::new(usize::MAX, 2),
         )
@@ -1208,7 +1208,7 @@ mod tests {
     #[test]
     fn arena_render_object_partial_js() {
         // Object with three properties; render top_k small so only one child is kept.
-        let arena = crate::json_ingest::build_json_tree_arena(
+        let arena = crate::ingest::json::build_json_tree_arena(
             "{\"a\":1,\"b\":2,\"c\":3}",
             &crate::PriorityConfig::new(usize::MAX, usize::MAX),
         )

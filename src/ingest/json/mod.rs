@@ -1,24 +1,27 @@
 mod builder;
 mod samplers;
+
+use anyhow::Result;
+use builder::JsonTreeBuilder;
 use serde::de::DeserializeSeed;
 
 use crate::PriorityConfig;
-use crate::utils::tree_arena::JsonTreeArena;
-use anyhow::Result;
-use builder::JsonTreeBuilder;
+use crate::utils::tree_arena::JsonTreeArena as TreeArena;
+
+use super::Ingest;
 
 #[cfg(test)]
 pub fn build_json_tree_arena(
     input: &str,
     config: &PriorityConfig,
-) -> Result<JsonTreeArena> {
+) -> Result<TreeArena> {
     build_json_tree_arena_from_bytes(input.as_bytes().to_vec(), config)
 }
 
 pub fn build_json_tree_arena_from_bytes(
     mut bytes: Vec<u8>,
     config: &PriorityConfig,
-) -> Result<JsonTreeArena> {
+) -> Result<TreeArena> {
     let mut de = simd_json::Deserializer::from_slice(&mut bytes)?;
     let builder = JsonTreeBuilder::new(
         config.array_max_items,
@@ -36,7 +39,7 @@ pub fn build_json_tree_arena_from_bytes(
 pub fn build_json_tree_arena_from_many(
     mut inputs: Vec<(String, Vec<u8>)>,
     config: &PriorityConfig,
-) -> Result<JsonTreeArena> {
+) -> Result<TreeArena> {
     let builder = JsonTreeBuilder::new(
         config.array_max_items,
         config.array_sampler.into(),
@@ -55,6 +58,38 @@ pub fn build_json_tree_arena_from_many(
     arena.root_id = root_id;
     arena.is_fileset = true;
     Ok(arena)
+}
+
+/// JSON adapter for the ingest boundary. Delegates to the JSON builder to
+/// produce the neutral `TreeArena`.
+pub struct JsonIngest;
+
+impl Ingest for JsonIngest {
+    fn parse_one(bytes: Vec<u8>, cfg: &PriorityConfig) -> Result<TreeArena> {
+        build_json_tree_arena_from_bytes(bytes, cfg)
+    }
+
+    fn parse_many(
+        inputs: Vec<(String, Vec<u8>)>,
+        cfg: &PriorityConfig,
+    ) -> Result<TreeArena> {
+        build_json_tree_arena_from_many(inputs, cfg)
+    }
+}
+
+/// Convenience functions for the JSON ingest path.
+pub fn parse_json_one(
+    bytes: Vec<u8>,
+    cfg: &PriorityConfig,
+) -> Result<TreeArena> {
+    JsonIngest::parse_one(bytes, cfg)
+}
+
+pub fn parse_json_many(
+    inputs: Vec<(String, Vec<u8>)>,
+    cfg: &PriorityConfig,
+) -> Result<TreeArena> {
+    JsonIngest::parse_many(inputs, cfg)
 }
 
 #[cfg(test)]

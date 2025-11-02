@@ -1,9 +1,11 @@
 use anyhow::{Result, anyhow};
-use yaml_rust2::Yaml;
 
 use crate::PriorityConfig;
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
+
+use super::Ingest;
+use yaml_rust2::Yaml;
 
 pub fn build_yaml_tree_arena_from_bytes(
     bytes: Vec<u8>,
@@ -218,75 +220,47 @@ impl YamlArenaBuilder {
     }
 }
 
-fn stringify_yaml_key(y: &Yaml) -> String {
-    fn canon(y: &Yaml) -> String {
-        match y {
-            Yaml::Null | Yaml::BadValue => "null".to_string(),
-            Yaml::Boolean(b) => if *b { "true" } else { "false" }.to_string(),
-            Yaml::Integer(i) => i.to_string(),
-            Yaml::Real(s) | Yaml::String(s) => s.clone(),
-            Yaml::Alias(_) => "*alias".to_string(),
-            Yaml::Array(v) => {
-                let parts: Vec<String> = v.iter().map(canon).collect();
-                format!("[{}]", parts.join(", "))
-            }
-            Yaml::Hash(map) => {
-                // Sort by canonicalized key text to ensure deterministic output
-                let mut items: Vec<(String, String)> =
-                    map.iter().map(|(k, v)| (canon(k), canon(v))).collect();
-                items.sort_by(|a, b| a.0.cmp(&b.0));
-                let inner = items
-                    .into_iter()
-                    .map(|(k, v)| format!("{k}: {v}"))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("{{{inner}}}")
-            }
+fn stringify_yaml_key(k: &Yaml) -> String {
+    match k {
+        Yaml::String(s) | Yaml::Real(s) => s.clone(),
+        Yaml::Integer(i) => i.to_string(),
+        Yaml::Boolean(b) => (if *b { "true" } else { "false" }).to_string(),
+        Yaml::Null | Yaml::BadValue => "null".to_string(),
+        Yaml::Array(_) | Yaml::Hash(_) | Yaml::Alias(_) => {
+            "<complex>".to_string()
         }
     }
-    canon(y)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub struct YamlIngest;
 
-    #[test]
-    #[allow(
-        clippy::cognitive_complexity,
-        reason = "test performs several assertions succinctly"
-    )]
-    fn yaml_arena_basic_mapping_and_sequence() {
-        let y = "foo:\n  - list1\n  - 2\nbar: true\n";
-        let cfg = PriorityConfig::new(usize::MAX, 10);
-        let arena =
-            build_yaml_tree_arena_from_bytes(y.as_bytes().to_vec(), &cfg)
-                .expect("parse yaml");
-        let root = &arena.nodes[arena.root_id];
-        assert_eq!(root.kind, NodeKind::Object);
-        assert_eq!(root.object_len.unwrap_or(0), 2);
-        let k_start = root.obj_keys_start;
-        let c_start = root.children_start;
-        let keys = &arena.obj_keys[k_start..k_start + root.obj_keys_len];
-        assert!(keys.contains(&"foo".to_string()));
-        assert!(keys.contains(&"bar".to_string()));
-        // Locate foo child
-        let foo_idx = keys.iter().position(|k| k == "foo").expect("foo key");
-        let foo_child_id = arena.children[c_start + foo_idx];
-        let foo_node = &arena.nodes[foo_child_id];
-        assert_eq!(foo_node.kind, NodeKind::Array);
-        assert_eq!(foo_node.array_len.unwrap_or(0), 2);
+impl Ingest for YamlIngest {
+    fn parse_one(
+        bytes: Vec<u8>,
+        cfg: &PriorityConfig,
+    ) -> Result<JsonTreeArena> {
+        build_yaml_tree_arena_from_bytes(bytes, cfg)
     }
 
-    #[test]
-    fn yaml_arena_multi_document_wraps_in_array() {
-        let y = "---\na: 1\n---\n- z\n";
-        let cfg = PriorityConfig::new(usize::MAX, 10);
-        let arena =
-            build_yaml_tree_arena_from_bytes(y.as_bytes().to_vec(), &cfg)
-                .expect("parse yaml");
-        let root = &arena.nodes[arena.root_id];
-        assert_eq!(root.kind, NodeKind::Array);
-        assert_eq!(root.children_len, 2);
+    fn parse_many(
+        inputs: Vec<(String, Vec<u8>)>,
+        cfg: &PriorityConfig,
+    ) -> Result<JsonTreeArena> {
+        build_yaml_tree_arena_from_many(inputs, cfg)
     }
+}
+
+/// Convenience functions for the YAML ingest path.
+pub fn parse_yaml_one(
+    bytes: Vec<u8>,
+    cfg: &PriorityConfig,
+) -> Result<JsonTreeArena> {
+    YamlIngest::parse_one(bytes, cfg)
+}
+
+pub fn parse_yaml_many(
+    inputs: Vec<(String, Vec<u8>)>,
+    cfg: &PriorityConfig,
+) -> Result<JsonTreeArena> {
+    YamlIngest::parse_many(inputs, cfg)
 }

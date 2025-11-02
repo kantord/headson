@@ -1,7 +1,7 @@
 use serde::de::SeqAccess;
 
 use crate::ArraySamplerStrategy;
-use crate::json_ingest::builder::JsonTreeBuilder;
+use crate::ingest::json::builder::JsonTreeBuilder;
 
 #[derive(Debug)]
 pub(crate) struct SampledArray {

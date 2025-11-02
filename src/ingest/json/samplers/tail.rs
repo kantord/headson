@@ -89,7 +89,7 @@ mod tests {
         let mut cfg = PriorityConfig::new(usize::MAX, 5);
         cfg.array_sampler = crate::ArraySamplerStrategy::Tail;
         let arena =
-            crate::json_ingest::build_json_tree_arena_from_bytes(input, &cfg)
+            crate::ingest::json::build_json_tree_arena_from_bytes(input, &cfg)
                 .expect("arena");
         let root = &arena.nodes[arena.root_id];
         assert_eq!(root.children_len, 5, "kept 5");

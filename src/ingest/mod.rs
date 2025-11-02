@@ -13,7 +13,7 @@ pub trait Ingest {
     ) -> Result<TreeArena>;
 }
 
-// Submodules for per-format adapters
+// Submodules for per-format adapters + builders (directories with mod.rs)
 pub mod json;
 pub mod text;
 pub mod yaml;
