@@ -20,7 +20,7 @@ pub fn run_template_budget(
     extra: &[&str],
 ) -> String {
     let budget_s = budget.to_string();
-    let mut args: Vec<&str> = vec!["-n", &budget_s];
+    let mut args: Vec<&str> = vec!["-c", &budget_s];
     let lower = template.to_ascii_lowercase();
     match lower.as_str() {
         "json" => args.extend(["-f", "json", "-t", "strict"]),
@@ -42,7 +42,7 @@ pub fn run_template_budget_assert(
 ) -> Assert {
     let budget_s = budget.to_string();
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
-    let mut args: Vec<&str> = vec!["-n", &budget_s];
+    let mut args: Vec<&str> = vec!["-c", &budget_s];
     let lower = template.to_ascii_lowercase();
     match lower.as_str() {
         "json" => args.extend(["-f", "json", "-t", "strict"]),

@@ -7,7 +7,7 @@ fn run_case(path: &Path, template: &str, n: u32) -> String {
     let input = fs::read_to_string(path).expect("read fixture");
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let n_s = n.to_string();
-    let mut args = vec!["--no-color", "-n", &n_s];
+    let mut args = vec!["--no-color", "-c", &n_s];
     let lower = template.to_ascii_lowercase();
     match lower.as_str() {
         "json" => args.extend(["-f", "json", "-t", "strict"]),

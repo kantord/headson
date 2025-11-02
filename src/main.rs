@@ -22,9 +22,10 @@ type IgnoreNotices = Vec<String>;
     about = "Get a small but useful preview of JSON or YAML"
 )]
 struct Cli {
-    #[arg(short = 'n', long = "budget")]
-    budget: Option<usize>,
+    #[arg(short = 'c', long = "bytes")]
+    bytes: Option<usize>,
     #[arg(
+        short = 'n',
         long = "lines",
         value_name = "LINES",
         help = "Per-file line budget (adds up across files if --global-lines not set)"
@@ -71,13 +72,14 @@ struct Cli {
     )]
     string_cap: usize,
     #[arg(
-        short = 'N',
-        long = "global-budget",
+        short = 'C',
+        long = "global-bytes",
         value_name = "BYTES",
-        help = "Total output budget across all inputs. When combined with --budget, the effective global limit is the smaller of the two."
+        help = "Total byte budget across all inputs. When combined with --bytes, the effective global limit is the smaller of the two."
     )]
-    global_budget: Option<usize>,
+    global_bytes: Option<usize>,
     #[arg(
+        short = 'N',
         long = "global-lines",
         value_name = "LINES",
         help = "Total line budget across all inputs"
@@ -170,8 +172,8 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn compute_effective_budget(cli: &Cli, input_count: usize) -> usize {
-    match (cli.global_budget, cli.budget) {
+fn compute_effective_bytes(cli: &Cli, input_count: usize) -> usize {
+    match (cli.global_bytes, cli.bytes) {
         (Some(g), Some(n)) => g.min(n.saturating_mul(input_count)),
         (Some(g), None) => g,
         (None, Some(n)) => n.saturating_mul(input_count),
@@ -194,11 +196,11 @@ fn compute_priority(
     input_count: usize,
 ) -> headson::PriorityConfig {
     let per_file_for_priority =
-        if cli.global_budget.is_some() && cli.budget.is_some() {
+        if cli.global_bytes.is_some() && cli.bytes.is_some() {
             // When both limits are provided, base per-file heuristics on the per-file
             // budget but also respect the effective per-file slice of the final global.
             let eff_per_file = (effective_budget / input_count.max(1)).max(1);
-            cli.budget.unwrap().min(eff_per_file).max(1)
+            cli.bytes.unwrap().min(eff_per_file).max(1)
         } else {
             (effective_budget / input_count.max(1)).max(1)
         };
@@ -211,7 +213,7 @@ fn run_from_stdin(
 ) -> Result<String> {
     let input_bytes = read_stdin()?;
     let input_count = 1usize;
-    let eff = compute_effective_budget(cli, input_count);
+    let eff = compute_effective_bytes(cli, input_count);
     let eff_lines = compute_effective_lines(cli, input_count);
     let prio = compute_priority(cli, eff, input_count);
     let mut cfg = render_cfg.clone();
@@ -251,7 +253,7 @@ fn run_from_paths(
     let (entries, ignored) = ingest_paths(&cli.inputs)?;
     let included = entries.len();
     let input_count = included.max(1);
-    let eff = compute_effective_budget(cli, input_count);
+    let eff = compute_effective_bytes(cli, input_count);
     let eff_lines = compute_effective_lines(cli, input_count);
     let prio = compute_priority(cli, eff, input_count);
     // In Auto template mode, choose ingestion strategy based on extensions for filesets:

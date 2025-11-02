@@ -3,6 +3,30 @@ source: tests/e2e_head.rs
 expression: stdout
 ---
 {
-  "deep": [ … ]
-  …
+  "deep": [
+    {
+      "a": [ … ]
+    },
+    {
+      "a": [ … ]
+    }
+  ],
+  "matrix": [
+    [ … ],
+    [ … ],
+    [ … ]
+  ],
+  "objects": [
+    { … },
+    { … },
+    { … }
+  ],
+  "strings": [
+    "…",
+    …
+    "…",
+    …
+    "…"
+    …
+  ]
 }

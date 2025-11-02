@@ -164,9 +164,9 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
 }
 
 #[test]
-fn global_budget_limits_total_output_vs_per_file_budget() {
-    // Two inputs; with -n 40 the effective budget is per-file (40) * 2 => 80.
-    // With --global-budget 40, the total budget is capped at 40.
+fn global_bytes_limits_total_output_vs_per_file_bytes() {
+    // Two inputs; with -c 40 the effective budget is per-file (40) * 2 => 80.
+    // With --global-bytes 40, the total budget is capped at 40.
     let tmp = tempfile::tempdir().expect("tmp");
     let a = tmp.path().join("a.json");
     let b = tmp.path().join("b.json");
@@ -174,12 +174,12 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
     fs::write(&a, b"[1,2,3,4,5,6,7,8,9,10]").unwrap();
     fs::write(&b, b"[1,2,3,4,5,6,7,8,9,10]").unwrap();
 
-    // Per-file budget (-n) scenario
+    // Per-file budget (-c) scenario
     let mut cmd_pf = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert_pf = cmd_pf
         .args([
             "--no-color",
-            "-n",
+            "-c",
             "40",
             "-f",
             "json",
@@ -196,7 +196,7 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
     let assert_g = cmd_g
         .args([
             "--no-color",
-            "--global-budget",
+            "--global-bytes",
             "40",
             "-f",
             "json",
