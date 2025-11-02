@@ -13,7 +13,7 @@ fn auto_mode_picks_yaml_ingest_for_mixed_files() {
     let assert = cmd
         .args([
             "--no-color",
-            "-n",
+            "-c",
             "10000",
             "-f",
             "auto",

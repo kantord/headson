@@ -2,7 +2,7 @@
 fn color_and_no_color_flags_conflict() {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert = cmd
-        .args(["--color", "--no-color", "-n", "10", "-f", "json"]) // no input; parse-only
+        .args(["--color", "--no-color", "-c", "10", "-f", "json"]) // no input; parse-only
         .assert();
     let ok = assert.get_output().status.success();
     let err = String::from_utf8_lossy(&assert.get_output().stderr);
@@ -21,7 +21,7 @@ fn color_and_no_color_flags_parse_and_run() {
     for flag in ["--color", "--no-color"] {
         let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
         let assert = cmd
-            .args([flag, "-n", "10", "-f", "json"]) // simple json output
+            .args([flag, "-c", "10", "-f", "json"]) // simple json output
             .write_stdin(input.as_slice())
             .assert()
             .success();

@@ -13,7 +13,7 @@ fn single_file_auto_handles_yml_and_uppercase_extensions() {
         let assert = cmd
             .args([
                 "--no-color",
-                "-n",
+                "-c",
                 "10000",
                 "-f",
                 "auto",

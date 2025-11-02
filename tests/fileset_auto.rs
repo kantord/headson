@@ -12,7 +12,7 @@ fn auto_template_uses_per_file_format_in_fileset() {
     let assert = cmd
         .args([
             "--no-color",
-            "-n",
+            "-c",
             "10000",
             "-f",
             "auto",

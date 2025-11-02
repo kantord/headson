@@ -13,7 +13,7 @@ fn text_tail_places_marker_at_start() {
             "text",
             "-f",
             "text",
-            "-n",
+            "-c",
             "30",
         ]) // smallish budget
         .write_stdin(input)

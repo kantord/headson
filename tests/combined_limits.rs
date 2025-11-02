@@ -30,9 +30,9 @@ fn run_fileset_json_with_budgets_raw(
         "--no-color".into(),
         "-f".into(),
         "json".into(),
-        "-n".into(),
+        "-c".into(),
         per_file.to_string(),
-        "-N".into(),
+        "-C".into(),
         global.to_string(),
     ];
     for s in names {
@@ -47,22 +47,22 @@ fn run_fileset_json_with_budgets_raw(
 fn combined_limits_across_multiple_files_matches_minimum_global() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
-    // -n 300, -N 120 => effective global limit 120
-    let out_both = run_args(&["-f", "json", "-n", "300", "-N", "120", p1, p2]);
-    let out_min_only = run_args(&["-f", "json", "-N", "120", p1, p2]);
-    assert_eq!(out_both, out_min_only, "-n + -N should equal -N=min(n,N)");
+    // -c 300, -C 120 => effective global limit 120
+    let out_both = run_args(&["-f", "json", "-c", "300", "-C", "120", p1, p2]);
+    let out_min_only = run_args(&["-f", "json", "-C", "120", p1, p2]);
+    assert_eq!(out_both, out_min_only, "-c + -C should equal -C=min(c,C)");
     // Snapshot removed: assert equality only.
 }
 
 #[test]
 fn combined_limits_single_file_honors_per_file_minimum() {
     let p = "tests/fixtures/explicit/string_escaping.json";
-    // -n 80, -N 200 => effective global limit 80
+    // -c 80, -C 200 => effective global limit 80
     let out_both =
-        run_args(&["-f", "json", "-t", "default", "-n", "80", "-N", "200", p]);
+        run_args(&["-f", "json", "-t", "default", "-c", "80", "-C", "200", p]);
     let out_min_only =
-        run_args(&["-f", "json", "-t", "default", "-N", "80", p]);
-    assert_eq!(out_both, out_min_only, "-n + -N should equal -N=min(n,N)");
+        run_args(&["-f", "json", "-t", "default", "-C", "80", p]);
+    assert_eq!(out_both, out_min_only, "-c + -C should equal -C=min(c,C)");
     assert_snapshot!("combined_limits_single_file_pseudo_min80", out_both);
 }
 

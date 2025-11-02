@@ -13,7 +13,7 @@ fn auto_fileset_renders_yaml_sequence_of_mappings_properly() {
 
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert = cmd
-        .args(["--no-color", "-n", "10000", "-f", "auto", p_json, p_yaml])
+        .args(["--no-color", "-c", "10000", "-f", "auto", p_json, p_yaml])
         .assert()
         .success();
     let out = String::from_utf8_lossy(&assert.get_output().stdout);

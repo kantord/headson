@@ -14,7 +14,7 @@ fn text_detailed_shows_omitted_count() {
             "text",
             "-t",
             "detailed",
-            "-n",
+            "-c",
             "40",
         ])
         .write_stdin(input)

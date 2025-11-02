@@ -19,7 +19,7 @@ fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let limit_s = limit.to_string();
     let mut args =
-        vec!["--no-color", "-f", "json", "-t", "detailed", "-N", &limit_s];
+        vec!["--no-color", "-f", "json", "-t", "detailed", "-C", &limit_s];
     args.extend_from_slice(extra);
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert();
@@ -57,7 +57,7 @@ fn run_pseudo_with_limit(paths: &[&str], limit: usize) -> String {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let limit_s = limit.to_string();
     let args =
-        vec!["--no-color", "-f", "json", "-t", "default", "-N", &limit_s];
+        vec!["--no-color", "-f", "json", "-t", "default", "-C", &limit_s];
     let assert = cmd
         .args(args.into_iter().chain(paths.iter().copied()))
         .assert();
@@ -129,7 +129,7 @@ fn global_limit_can_omit_entire_files() {
         "tests/fixtures/explicit/string_escaping.json",
     ];
     // Impose a small global limit so not all files fit.
-    let (ok, out, err) = run_paths_json(&paths, &["-N", "120"]);
+    let (ok, out, err) = run_paths_json(&paths, &["-C", "120"]);
     assert!(ok, "should succeed: {err}");
     let kept = count_section_headers(&out);
     assert!(kept < paths.len(), "expected some files omitted: {out}");
@@ -138,11 +138,11 @@ fn global_limit_can_omit_entire_files() {
 #[test]
 fn budget_and_global_limit_can_be_used_together() {
     let path = "tests/fixtures/explicit/object_small.json";
-    // When both are set, the effective global limit is min(n, N).
-    // Here min(200, 100) = 100; using both should match using only -N 100.
+    // When both are set, the effective global limit is min(c, C).
+    // Here min(200, 100) = 100; using both should match using only -C 100.
     let mut cmd_both = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let out_both = cmd_both
-        .args(["--no-color", "-f", "json", "-n", "200", "-N", "100", path])
+        .args(["--no-color", "-f", "json", "-c", "200", "-C", "100", path])
         .assert()
         .success();
     let stdout_both =
@@ -150,7 +150,7 @@ fn budget_and_global_limit_can_be_used_together() {
 
     let mut cmd_global_only = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let out_global_only = cmd_global_only
-        .args(["--no-color", "-f", "json", "-N", "100", path])
+        .args(["--no-color", "-f", "json", "-C", "100", path])
         .assert()
         .success();
     let stdout_global_only =
@@ -159,7 +159,7 @@ fn budget_and_global_limit_can_be_used_together() {
 
     assert_eq!(
         stdout_both, stdout_global_only,
-        "combined limits should behave like -N=min(n,N)"
+        "combined limits should behave like -C=min(c,C)"
     );
 }
 

@@ -10,7 +10,7 @@ fn single_file_auto_unknown_ext_defaults_to_text() {
     let assert = cmd
         .args([
             "--no-color",
-            "-n",
+            "-c",
             "10000",
             "-f",
             "auto",

@@ -10,7 +10,7 @@ fn single_file_auto_uses_yaml_ingest_and_output() {
     let assert = cmd
         .args([
             "--no-color",
-            "-n",
+            "-c",
             "10000",
             "-f",
             "auto",

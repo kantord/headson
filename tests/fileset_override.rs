@@ -26,7 +26,7 @@ fn user_selected_json_overrides_yaml_detection() {
         let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
             .args([
                 "--no-color",
-                "-n",
+                "-c",
                 &budget,
                 "-f",
                 "json",
@@ -73,7 +73,7 @@ fn user_selected_yaml_overrides_json_detection() {
         let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
             .args([
                 "--no-color",
-                "-n",
+                "-c",
                 &budget,
                 "-f",
                 "yaml",

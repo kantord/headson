@@ -26,7 +26,7 @@ fn fileset_text_files_snapshot() {
 
     let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
         .current_dir(dir.path())
-        .args(["--no-color", "-n", "10000", "-f", "auto", "a.txt", "b.log"])
+        .args(["--no-color", "-c", "10000", "-f", "auto", "a.txt", "b.log"])
         .assert()
         .success();
     let mut out =

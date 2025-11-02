@@ -8,7 +8,7 @@ fn run_cli_yaml_with_budget(input: &[u8], budget: usize) -> String {
     let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
         .args([
             "--no-color",
-            "-n",
+            "-c",
             &budget_s,
             "--string-cap",
             "1000000",

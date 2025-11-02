@@ -9,7 +9,7 @@ fn run_cli_yaml(input: &[u8]) -> (bool, String, String) {
     let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
         .args([
             "--no-color",
-            "-n",
+            "-c",
             "1000000",
             "--string-cap",
             "1000000",

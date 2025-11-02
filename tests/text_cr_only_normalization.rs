@@ -3,7 +3,7 @@ fn text_normalizes_bare_cr_to_lf() {
     // Provide only '\r' newlines; expect LF normalization.
     let input = b"a\rb\rc\r".to_vec();
     let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
-        .args(["--no-color", "-i", "text", "-f", "text", "-n", "1000"])
+        .args(["--no-color", "-i", "text", "-f", "text", "-c", "1000"])
         .write_stdin(input)
         .assert()
         .success();

@@ -56,8 +56,8 @@ If you’re comfortable with tools like `head` and `tail`, use `headson` when yo
 
 Common flags:
 
-- `-n, --budget <BYTES>`: per‑file output budget. For multiple inputs, default total budget is `<BYTES> * number_of_inputs`.
-- `-N, --global-budget <BYTES>`: total output budget across all inputs. With `--budget`, the effective total is the smaller of the two.
+- `-c, --bytes <BYTES>`: per‑file output budget. For multiple inputs, default total budget is `<BYTES> * number_of_inputs`.
+- `-C, --global-bytes <BYTES>`: total output budget across all inputs. With `--bytes`, the effective total is the smaller of the two.
 - `-f, --format <auto|json|yaml|text>`: output format (default: `auto`).
   - Auto: stdin → JSON family; filesets → per‑file based on extension (`.json` → JSON family, `.yaml`/`.yml` → YAML, unknown → Text).
 - `-t, --template <strict|default|detailed>`: output style (default: `default`).
@@ -78,7 +78,7 @@ Notes:
   - With newlines enabled, file sections are rendered with human‑readable headers. In compact/single‑line modes, headers are omitted.
 - In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
   - Unknown extensions are treated as Text (raw lines) — safe for logs and `.txt` files.
-  - `--global-budget` may truncate or omit entire files to respect the total budget.
+  - `--global-bytes` may truncate or omit entire files to respect the total budget.
   - The tool finds the largest preview that fits the budget; even if extremely tight, you still get a minimal, valid preview.
   - Directories and binary files are ignored; a notice is printed to stderr for each. Stdin reads the stream as‑is.
   - Head vs Tail sampling: these options bias which part of arrays are kept before rendering. Display styles may still insert internal gap markers to honor very small budgets; strict JSON stays unannotated.
@@ -87,33 +87,33 @@ Quick one‑liners:
 
 - Peek a big JSON stream (keeps structure):
 
-      zstdcat huge.json.zst | headson -n 800 -f json -t default
+      zstdcat huge.json.zst | headson -c 800 -f json -t default
 
 - Many files with a fixed overall size:
 
-      headson -N 1200 -f json -t strict logs/*.json
+      headson -C 1200 -f json -t strict logs/*.json
 
 - Glance at a file, JavaScript‑style comments for omissions:
 
-      headson -n 400 -f json -t detailed data.json
+      headson -c 400 -f json -t detailed data.json
 
 - YAML with detailed comments:
 
-      headson -n 400 -f yaml -t detailed config.yaml
+      headson -c 400 -f yaml -t detailed config.yaml
 
 ### Text mode
 
 - Single file (auto):
 
-      headson -n 200 notes.txt
+      headson -c 200 notes.txt
 
 - Force Text ingest/output (useful when mixing with other extensions):
 
-      headson -n 200 -i text -f text notes.txt
+      headson -c 200 -i text -f text notes.txt
 
 - Many text files (fileset):
 
-      headson -n 800 -i text -f text logs/*.txt
+      headson -c 800 -i text -f text logs/*.txt
 
 - Styles on Text:
   - default: omission as a standalone `…` line.
@@ -123,6 +123,8 @@ Quick one‑liners:
 Show help:
 
     headson --help
+
+Note: flags align with head/tail conventions (`-c/--bytes`, `-C/--global-bytes`).
 
 ## Examples: head vs headson
 
@@ -142,7 +144,7 @@ jq -c . users.json | head -c 80
 Structured preview with headson (JSON family, default style → Pseudo):
 
 ```bash
-headson -n 120 -f json -t default users.json
+headson -c 120 -f json -t default users.json
 # {
 #   users: [
 #     { id: 1, name: "Ana", roles: [ "admin", … ] },
@@ -155,7 +157,7 @@ headson -n 120 -f json -t default users.json
 Machine‑readable preview (JSON family, strict style → strict JSON):
 
 ```bash
-headson -n 120 -f json -t strict users.json
+headson -c 120 -f json -t strict users.json
 # {"users":[{"id":1,"name":"Ana","roles":["admin"]}],"meta":{"count":2}}
 ```
 

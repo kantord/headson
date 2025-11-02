@@ -3,7 +3,7 @@ fn head_and_tail_flags_conflict() {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     // Pass both flags; clap should error with a conflict.
     let assert = cmd
-        .args(["--no-color", "--head", "--tail", "-n", "20", "-f", "json"]) // no inputs (stdin not used)
+        .args(["--no-color", "--head", "--tail", "-c", "20", "-f", "json"]) // no inputs (stdin not used)
         .assert();
     let ok = assert.get_output().status.success();
     let err = String::from_utf8_lossy(&assert.get_output().stderr);

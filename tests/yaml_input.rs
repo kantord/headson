@@ -36,7 +36,7 @@ fn file_yaml_basic_end_to_end() {
     let assert = cmd
         .args([
             "--no-color",
-            "-n",
+            "-c",
             "10000",
             "-f",
             "yaml",

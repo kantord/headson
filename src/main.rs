@@ -22,7 +22,7 @@ type IgnoreNotices = Vec<String>;
     about = "Get a small but useful preview of JSON or YAML"
 )]
 struct Cli {
-    #[arg(short = 'n', long = "budget")]
+    #[arg(short = 'c', long = "bytes")]
     budget: Option<usize>,
     #[arg(
         short = 'f',
@@ -65,10 +65,10 @@ struct Cli {
     )]
     string_cap: usize,
     #[arg(
-        short = 'N',
-        long = "global-budget",
+        short = 'C',
+        long = "global-bytes",
         value_name = "BYTES",
-        help = "Total output budget across all inputs. When combined with --budget, the effective global limit is the smaller of the two."
+        help = "Total output budget across all inputs. When combined with --bytes, the effective global limit is the smaller of the two."
     )]
     global_budget: Option<usize>,
     #[arg(
