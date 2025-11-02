@@ -3,7 +3,6 @@
     reason = "Dependency graph pulls distinct versions (e.g., yaml-rust2)."
 )]
 use std::fs::File;
-use std::io::IsTerminal as _;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
@@ -54,7 +53,7 @@ struct Cli {
     #[arg(
         long = "no-newline",
         default_value_t = false,
-        help = "Do not add newlines in the output"
+        help = "Do not add newlines in the output. With --lines/--global-lines, line counts reflect actual breaks; without newlines, any non-empty output counts as a single line."
     )]
     no_newline: bool,
     #[arg(
@@ -155,9 +154,6 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let render_cfg = get_render_config_from(&cli);
-    // Resolve color auto-detection now (stdout is the surface for user output).
-    let _color_enabled =
-        render_cfg.color_mode.effective(io::stdout().is_terminal());
     let (output, ignore_notices) = if cli.inputs.is_empty() {
         (run_from_stdin(&cli, &render_cfg)?, Vec::new())
     } else {
@@ -180,7 +176,7 @@ fn make_budgets(
     eff_bytes: usize,
     eff_lines: Option<usize>,
 ) -> headson::Budgets {
-    let char_budget = if cli.bytes.is_some() || cli.global_bytes.is_some() {
+    let byte_budget = if cli.bytes.is_some() || cli.global_bytes.is_some() {
         Some(eff_bytes)
     } else if cli.lines.is_some() || cli.global_lines.is_some() {
         None
@@ -188,7 +184,7 @@ fn make_budgets(
         Some(eff_bytes)
     };
     headson::Budgets {
-        char_budget,
+        byte_budget,
         line_budget: eff_lines,
     }
 }
@@ -286,7 +282,7 @@ fn run_from_stdin(
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
     let budgets = make_budgets(cli, eff, eff_lines);
     // Enable free string prefix when in line-only mode
-    if budgets.char_budget.is_none() && budgets.line_budget.is_some() {
+    if budgets.byte_budget.is_none() && budgets.line_budget.is_some() {
         cfg.string_free_prefix_graphemes = Some(40);
     }
     match cli.input_format {
@@ -328,7 +324,7 @@ fn run_from_paths(
         // For filesets: if format=auto, enable per-file template selection.
         cfg.template = effective_fileset_template(cli, cfg.style);
         let budgets = make_budgets(cli, eff, eff_lines);
-        if budgets.char_budget.is_none() && budgets.line_budget.is_some() {
+        if budgets.byte_budget.is_none() && budgets.line_budget.is_some() {
             cfg.string_free_prefix_graphemes = Some(40);
         }
         let out = match chosen_input {
@@ -367,7 +363,7 @@ fn run_from_paths(
             cli.format, cfg.style, &lower,
         );
         let budgets = make_budgets(cli, eff, eff_lines);
-        if budgets.char_budget.is_none() && budgets.line_budget.is_some() {
+        if budgets.byte_budget.is_none() && budgets.line_budget.is_some() {
             cfg.string_free_prefix_graphemes = Some(40);
         }
         let out = match chosen_input {

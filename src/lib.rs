@@ -37,7 +37,7 @@ pub use serialization::types::{
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Budgets {
-    pub char_budget: Option<usize>,
+    pub byte_budget: Option<usize>,
     pub line_budget: Option<usize>,
 }
 
@@ -53,7 +53,7 @@ pub fn headson(
         &order_build,
         config,
         Budgets {
-            char_budget: Some(budget),
+            byte_budget: Some(budget),
             line_budget: None,
         },
     );
@@ -72,7 +72,7 @@ pub fn headson_many(
         &order_build,
         config,
         Budgets {
-            char_budget: Some(budget),
+            byte_budget: Some(budget),
             line_budget: None,
         },
     );
@@ -92,7 +92,7 @@ pub fn headson_yaml(
         &order_build,
         config,
         Budgets {
-            char_budget: Some(budget),
+            byte_budget: Some(budget),
             line_budget: None,
         },
     );
@@ -112,7 +112,7 @@ pub fn headson_many_yaml(
         &order_build,
         config,
         Budgets {
-            char_budget: Some(budget),
+            byte_budget: Some(budget),
             line_budget: None,
         },
     );
@@ -132,7 +132,7 @@ pub fn headson_text(
         &order_build,
         config,
         Budgets {
-            char_budget: Some(budget),
+            byte_budget: Some(budget),
             line_budget: None,
         },
     );
@@ -152,7 +152,7 @@ pub fn headson_many_text(
         &order_build,
         config,
         Budgets {
-            char_budget: Some(budget),
+            byte_budget: Some(budget),
             line_budget: None,
         },
     );
@@ -173,9 +173,9 @@ fn find_largest_render_under_budgets(
     }
     // Each included node contributes at least some output; cap hi by budget.
     let lo = 1usize;
-    // For the upper bound, when char budget is present, we can safely cap by it;
+    // For the upper bound, when a byte budget is present, we can safely cap by it;
     // otherwise, cap by total.
-    let hi = match budgets.char_budget {
+    let hi = match budgets.byte_budget {
         Some(c) => total.min(c.max(1)),
         None => total,
     };
@@ -185,7 +185,7 @@ fn find_largest_render_under_budgets(
     // Each render attempt bumps this non-zero identifier to create a fresh inclusion set.
     let mut render_set_id: u32 = 1;
     // Measure length without color so ANSI escapes do not count toward the
-    // character budget. Then render once more with the requested color setting.
+    // byte budget. Then render once more with the requested color setting.
     let mut best_k: Option<usize> = None;
     let mut measure_cfg = config.clone();
     measure_cfg.color_enabled = false;
@@ -202,7 +202,7 @@ fn find_largest_render_under_budgets(
         // Measure output using a unified stats helper and enforce
         // all provided caps (chars and/or lines).
         let stats = crate::utils::measure::count_output_stats(&s);
-        let fits_chars = budgets.char_budget.is_none_or(|c| stats.bytes <= c);
+        let fits_chars = budgets.byte_budget.is_none_or(|c| stats.bytes <= c);
         let fits_lines = budgets.line_budget.is_none_or(|l| stats.lines <= l);
         if fits_chars && fits_lines {
             best_k = Some(mid);

@@ -19,7 +19,7 @@ def _has_headson_with_summarize() -> bool:
         except Exception:
             return False
         try:
-            _ = ext.summarize("{}", format="json", style="strict", character_budget=1)
+            _ = ext.summarize("{}", format="json", style="strict", byte_budget=1)
         except TypeError:
             return False
         except Exception:
@@ -108,7 +108,7 @@ def pytest_sessionstart(session):  # noqa: D401
         ext = importlib.import_module("headson.headson")
         print(f"[conftest] headson.headson from: {getattr(ext, '__file__', '?')}")
         try:
-            _ = ext.summarize("{}", format="json", style="strict", character_budget=1)
+            _ = ext.summarize("{}", format="json", style="strict", byte_budget=1)
         except TypeError as e:
             msg = (
                 f"headson extension lacks new kwargs (format/style): {e}\n"

@@ -4,11 +4,11 @@ Minimal Python API for the `headson` preview renderer.
 
 API
 
-- `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", character_budget: int | None = None, skew: str = "balanced") -> str`
+- `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", byte_budget: int | None = None, skew: str = "balanced") -> str`
   - `format`: output format — `"auto" | "json" | "yaml" | "text"`.
   - `style`: output style — `"strict" | "default" | "detailed"`.
   - `input_format`: ingestion format — `"json" | "yaml" | "text"`.
-  - `character_budget`: maximum output size in characters (defaults to 500 if not set).
+  - `byte_budget`: maximum output size in bytes (defaults to 500 if not set).
   - `skew`: one of `"balanced" | "head" | "tail"`.
     - `balanced` (default), `head` keeps first N, `tail` keeps last N. Display styles place omission markers accordingly; strict JSON remains unannotated.
   - Notes:
@@ -20,26 +20,26 @@ Examples:
 import headson
 
 # Human-friendly JSON (Pseudo) with a small budget
-print(headson.summarize('{"a": 1, "b": [1,2,3]}', format="json", style="default", character_budget=80))
+print(headson.summarize('{"a": 1, "b": [1,2,3]}', format="json", style="default", byte_budget=80))
 
 # Strict JSON stays valid JSON
-print(headson.summarize('{"a": 1, "b": {"c": 2}}', format="json", style="strict", character_budget=10_000))
+print(headson.summarize('{"a": 1, "b": {"c": 2}}', format="json", style="strict", byte_budget=10_000))
 
 # Annotated JSON (JS) with tail skew: prefer the end of arrays when truncating
 arr = ','.join(str(i) for i in range(100))
-print(headson.summarize('{"arr": [' + arr + ']}', format="json", style="detailed", character_budget=60, skew="tail"))
+print(headson.summarize('{"arr": [' + arr + ']}', format="json", style="detailed", byte_budget=60, skew="tail"))
 
 # YAML styles: strict (no comments), default (… comments), detailed (counts)
 doc = 'root:\n  items: [1,2,3,4,5,6,7,8,9,10]\n'
-print(headson.summarize(doc, format="yaml", style="strict", input_format="yaml", character_budget=60))
-print(headson.summarize(doc, format="yaml", style="default", input_format="yaml", character_budget=60))
-print(headson.summarize(doc, format="yaml", style="detailed", input_format="yaml", character_budget=60))
+print(headson.summarize(doc, format="yaml", style="strict", input_format="yaml", byte_budget=60))
+print(headson.summarize(doc, format="yaml", style="default", input_format="yaml", byte_budget=60))
+print(headson.summarize(doc, format="yaml", style="detailed", input_format="yaml", byte_budget=60))
 
 # Note: tail mode affects only display styles; strict JSON stays strict.
 
 # Text: render raw lines with omission markers depending on style
 text = "one\ntwo\nthree\n"
-print(headson.summarize(text, format="text", style="default", input_format="text", character_budget=10))
+print(headson.summarize(text, format="text", style="default", input_format="text", byte_budget=10))
 ```
 
 Install for development:

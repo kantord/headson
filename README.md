@@ -6,7 +6,7 @@
   <br/>
 </p>
 
-`heal`/`tail` for JSON, YAML - but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict character budget. (Just like `head`/`tail`, `headson` can also work with unstructured text files.)
+`heal`/`tail` for JSON, YAML - but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict byte budget. (Just like `head`/`tail`, `headson` can also work with unstructured text files.)
 
 Available as:
 - CLI (see [Usage](#usage))
@@ -176,11 +176,11 @@ A thin Python extension module is available on PyPI as `headson`.
 
 - Install: `pip install headson` (ABI3 wheels for Python 3.10+ on Linux/macOS/Windows).
 - API:
-  - `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", character_budget: int | None = None, skew: str = "balanced") -> str`
+  - `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", byte_budget: int | None = None, skew: str = "balanced") -> str`
     - `format`: `"auto" | "json" | "yaml"` (auto maps to JSON family for single inputs)
     - `style`: `"strict" | "default" | "detailed"`
     - `input_format`: `"json" | "yaml"` (ingestion)
-    - `character_budget`: maximum output size in characters (default: 500)
+    - `byte_budget`: maximum output size in bytes (default: 500)
     - `skew`: `"balanced" | "head" | "tail"` (affects display styles; strict JSON remains unannotated)
 
 Examples:
@@ -190,7 +190,7 @@ import json
 import headson
 
 data = {"foo": [1, 2, 3], "bar": {"x": "y"}}
-preview = headson.summarize(json.dumps(data), format="json", style="strict", character_budget=200)
+preview = headson.summarize(json.dumps(data), format="json", style="strict", byte_budget=200)
 print(preview)
 
 # Prefer the tail of arrays (annotations show with style="default"/"detailed")
@@ -199,14 +199,14 @@ print(
         json.dumps(list(range(100))),
         format="json",
         style="detailed",
-        character_budget=80,
+        byte_budget=80,
         skew="tail",
     )
 )
 
 # YAML support
 doc = "root:\n  items: [1,2,3,4,5,6,7,8,9,10]\n"
-print(headson.summarize(doc, format="yaml", style="default", input_format="yaml", character_budget=60))
+print(headson.summarize(doc, format="yaml", style="default", input_format="yaml", byte_budget=60))
 ```
 
 # Algorithm
@@ -216,7 +216,7 @@ print(headson.summarize(doc, format="yaml", style="default", input_format="yaml"
 ## Footnotes
  - <sup><b>[1]</b></sup> <b>Optimized tree representation</b>: An arena‑style tree stored in flat, contiguous buffers. Each node records its kind and value plus index ranges into shared child and key arrays. Arrays are ingested in a single pass and may be deterministically pre‑sampled: the first element is always kept; additional elements are selected via a fixed per‑index inclusion test; for kept elements, original indices are stored and full lengths are counted. This enables accurate omission info and internal gap markers later, while minimizing pointer chasing.
  - <sup><b>[2]</b></sup> <b>Priority order</b>: Nodes are scored so previews surface representative structure and values first. Arrays can favor head/mid/tail coverage (default) or strictly the head; tail preference flips head/tail when configured. Object properties are ordered by key, and strings expand by grapheme with early characters prioritized over very deep expansions.
- - <sup><b>[3]</b></sup> <b>Choose top N nodes (binary search)</b>: Iteratively picks N so that the rendered preview fits within the character budget, looping between “choose N” and a render attempt to converge quickly.
+ - <sup><b>[3]</b></sup> <b>Choose top N nodes (binary search)</b>: Iteratively picks N so that the rendered preview fits within the byte budget, looping between “choose N” and a render attempt to converge quickly.
  - <sup><b>[4]</b></sup> <b>Render attempt</b>: Serializes the currently included nodes using the selected template. Omission summaries and per-file section headers appear in display templates (pseudo/js); json remains strict. For arrays, display templates may insert internal gap markers between non‑contiguous kept items using original indices.
  - <sup><b>[5]</b></sup> <b>Diagram source</b>: The Algorithm diagram is generated from `docs/diagrams/algorithm.mmd`. Regenerate the SVG with `cargo make diagrams` before releasing.
 

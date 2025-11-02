@@ -24,7 +24,7 @@ def test_yaml_default_uses_ellipsis_comment():
         format="yaml",
         style="default",
         input_format="yaml",
-        character_budget=60,
+        byte_budget=60,
     )
     assert "# …" in out, f"expected ellipsis comment in default style: {out!r}"
 
@@ -36,7 +36,7 @@ def test_yaml_strict_has_no_comments():
         format="yaml",
         style="strict",
         input_format="yaml",
-        character_budget=60,
+        byte_budget=60,
     )
     assert "#" not in out, f"did not expect comments in strict YAML: {out!r}"
 
@@ -48,7 +48,7 @@ def test_yaml_detailed_shows_counts():
         format="yaml",
         style="detailed",
         input_format="yaml",
-        character_budget=60,
+        byte_budget=60,
     )
     assert (
         "more items" in out or "more properties" in out
