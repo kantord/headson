@@ -23,7 +23,7 @@ fn count_lines_normalized(s: &str) -> usize {
 #[test]
 fn json_strict_lines_cap() {
     let p = "tests/fixtures/explicit/object_small.json";
-    let out = run(&["-f", "json", "-t", "strict", "--lines", "2", p]);
+    let out = run(&["-f", "json", "-t", "strict", "-n", "2", p]);
     assert!(
         count_lines_normalized(&out) <= 2,
         "lines cap not enforced: {out:?}"
@@ -34,7 +34,7 @@ fn json_strict_lines_cap() {
 #[test]
 fn json_pseudo_lines_cap() {
     let p = "tests/fixtures/explicit/object_small.json";
-    let out = run(&["-f", "json", "-t", "default", "--lines", "3", p]);
+    let out = run(&["-f", "json", "-t", "default", "-n", "3", p]);
     assert!(
         count_lines_normalized(&out) <= 3,
         "lines cap not enforced: {out:?}"
@@ -45,7 +45,7 @@ fn json_pseudo_lines_cap() {
 #[test]
 fn json_js_lines_cap() {
     let p = "tests/fixtures/explicit/object_small.json";
-    let out = run(&["-f", "json", "-t", "detailed", "--lines", "4", p]);
+    let out = run(&["-f", "json", "-t", "detailed", "-n", "4", p]);
     assert!(
         count_lines_normalized(&out) <= 4,
         "lines cap not enforced: {out:?}"
@@ -62,7 +62,7 @@ fn yaml_lines_cap_multiline_values() {
         "root:\n  items: [1,2,3,4,5,6]\n  desc: \"line1\\nline2\\nline3\"\n";
     fs::write(&p, doc).unwrap();
     let path_str = p.to_string_lossy();
-    let out = run(&["-i", "yaml", "-f", "yaml", "--lines", "4", &path_str]);
+    let out = run(&["-i", "yaml", "-f", "yaml", "-n", "4", &path_str]);
     assert!(
         count_lines_normalized(&out) <= 4,
         "lines cap not enforced: {out:?}"
@@ -79,7 +79,7 @@ fn text_lines_cap_with_omission() {
     fs::write(&p, content).unwrap();
     let path_str = p.to_string_lossy();
     // default style shows omission line; ensure total lines <= 3
-    let out = run(&["-i", "text", "-f", "text", "--lines", "3", &path_str]);
+    let out = run(&["-i", "text", "-f", "text", "-n", "3", &path_str]);
     assert!(
         count_lines_normalized(&out) <= 3,
         "lines cap not enforced: {out:?}"
@@ -91,8 +91,7 @@ fn text_lines_cap_with_omission() {
 fn combined_char_and_line_caps() {
     let p = "tests/fixtures/explicit/string_escaping.json";
     // Enforce both: small char cap and small line cap
-    let out =
-        run(&["-f", "json", "-t", "default", "--lines", "2", "-n", "60", p]);
+    let out = run(&["-f", "json", "-t", "default", "-n", "2", "-c", "60", p]);
     let lines = count_lines_normalized(&out);
     assert!(lines <= 2, "line cap failed: {out:?}");
     let trimmed_len = out.trim_end_matches('\n').len();
@@ -128,7 +127,7 @@ fn fileset_global_lines() {
 #[test]
 fn lines_only_no_char_cap() {
     let p = "tests/fixtures/explicit/object_small.json";
-    // No -n / -N provided; lines only should still work
-    let out = run(&["-f", "json", "-t", "strict", "--lines", "1", p]);
+    // No -c / -C provided; lines only should still work
+    let out = run(&["-f", "json", "-t", "strict", "-n", "1", p]);
     assert!(count_lines_normalized(&out) <= 1);
 }

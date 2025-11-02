@@ -25,6 +25,7 @@ struct Cli {
     #[arg(short = 'c', long = "bytes")]
     budget: Option<usize>,
     #[arg(
+        short = 'n',
         long = "lines",
         value_name = "LINES",
         help = "Per-file line budget (adds up across files if --global-lines not set)"
