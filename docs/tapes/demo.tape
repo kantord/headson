@@ -15,9 +15,9 @@ Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson" Sleep 40
 Sleep 6s
 
 # Tight and larger budgets
-Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson -n100" Sleep 400ms Enter
+Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson -c 100" Sleep 400ms Enter
 Sleep 6s
-Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson -n700" Sleep 400ms Enter
+Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson -c 700" Sleep 400ms Enter
 Sleep 6s
 
 # Styles: detailed (JS with comments) and strict JSON
