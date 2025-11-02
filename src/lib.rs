@@ -145,7 +145,10 @@ fn find_largest_render_under_budget(
             &measure_cfg,
         );
         render_set_id = render_set_id.wrapping_add(1).max(1);
-        if s.len() <= char_budget {
+        // Measure output using a unified stats helper. For now we only
+        // enforce the byte/character budget to preserve behavior.
+        let stats = crate::utils::measure::count_output_stats(&s);
+        if stats.bytes <= char_budget {
             best_k = Some(mid);
             true
         } else {
