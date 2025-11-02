@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Mapping w…
-  tags: anchor er…
-  tree: "+STR\n +D…"
-  yaml: "--- &anc…"
+  name: Mapping with anchor on document start line
+  tags: anchor error header mapping
+  tree: "+STR\n +DOC ---\n"
+  yaml: "--- &anchor a: b\n"

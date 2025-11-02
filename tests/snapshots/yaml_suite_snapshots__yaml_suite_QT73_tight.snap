@@ -3,9 +3,9 @@ source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
 - dump: ""
-  from: "@perlpu…"
+  from: "@perlpunk"
   json: ""
-  name: Commen…
-  tags: commen…
-  tree: "+STR\n-…"
-  yaml: "# comm…"
+  name: Comment and document-end marker
+  tags: comment footer
+  tree: "+STR\n-STR\n"
+  yaml: "# comment\n...\n"

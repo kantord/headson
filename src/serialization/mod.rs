@@ -710,6 +710,7 @@ mod tests {
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
+                string_free_prefix_graphemes: None,
             },
         );
         // Sanity: output should contain CRLF newlines and render the object child across lines.
@@ -747,6 +748,7 @@ mod tests {
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("arena_render_single", out);
@@ -952,6 +954,7 @@ mod tests {
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out);
@@ -985,6 +988,7 @@ mod tests {
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1016,6 +1020,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1222,6 +1227,7 @@ mod tests {
             color_mode: crate::ColorMode::Off,
             color_enabled: false,
             style: crate::serialization::types::Style::Strict,
+            string_free_prefix_graphemes: None,
         };
         let scope = RenderScope {
             order: &build,
@@ -1259,6 +1265,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("inline_open_array_in_object_json", out);
@@ -1293,6 +1300,7 @@ mod tests {
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
+                string_free_prefix_graphemes: None,
             },
         );
         // Should be a valid JS object with one property and an omitted summary.

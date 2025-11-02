@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Node anch…
-  tags: anchor e…
-  tree: "+STR\n +D…"
-  yaml: "- item1\n…"
+  name: Node anchor in sequence
+  tags: anchor error sequence
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :item1\n"
+  yaml: "- item1\n&node\n- item2\n"

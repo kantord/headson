@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "---\n…"
-  from: http…
-  json: "[\n  …"
-  name: Anch…
-  tags: anch…
-  tree: +STR…
-  yaml: ---…
+- dump: "---\n- &😁 unicode anchor\n"
+  from: "https://github.com/yaml/pyyaml/issues/94"
+  json: "[\n  \"unicode anchor\"\n]\n"
+  name: Anchor with unicode character
+  tags: anchor
+  tree: "+STR\n +DOC ---\n  +SEQ\n   =VAL &😁 :unicode anchor\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "---\n- &😁 unicode anchor\n"

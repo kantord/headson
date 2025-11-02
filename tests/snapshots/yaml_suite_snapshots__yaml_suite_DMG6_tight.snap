@@ -3,8 +3,8 @@ source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
 - fail: true
-  from: "@perlpun…"
-  name: Wrong in…
-  tags: error ma…
-  tree: "+STR\n +D…"
-  yaml: "key:\n  …"
+  from: "@perlpunk"
+  name: Wrong indendation in Map
+  tags: error mapping indent
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   +MAP\n    =VAL :ok\n    =VAL :1\n   -MAP\n"
+  yaml: "key:\n  ok: 1\n wrong: 2\n"

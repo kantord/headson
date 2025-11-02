@@ -5,7 +5,7 @@ expression: tight
 - dump: ""
   from: "@perlpunk"
   json: ""
-  name: Document-end…
+  name: Document-end marker
   tags: footer
   tree: "+STR\n-STR\n"
   yaml: "...\n"

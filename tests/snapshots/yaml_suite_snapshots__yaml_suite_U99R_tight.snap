@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Invalid co…
+  name: Invalid comma in tag
   tags: error tag
-  tree: "+STR\n +DO…"
-  yaml: "- !!str, …"
+  tree: "+STR\n +DOC\n  +SEQ\n"
+  yaml: "- !!str, xxx\n"

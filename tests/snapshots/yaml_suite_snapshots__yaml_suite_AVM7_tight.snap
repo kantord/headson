@@ -2,7 +2,7 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- from: "https://github.com/ing…"
+- from: "https://github.com/ingydotnet/yaml-pegex-pm/blob/master/test/misc.tml"
   json: ""
   name: Empty Stream
   tags: edge

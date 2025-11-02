@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- from: NimYAML…
-  json: "\"foo: b…"
-  name: Colon i…
-  tags: mappin…
-  tree: "+STR\n …"
-  yaml: "\"foo: …"
+- from: NimYAML tests
+  json: "\"foo: bar\\\": baz\"\n"
+  name: Colon in Double Quoted String
+  tags: mapping scalar 1.3-err
+  tree: "+STR\n +DOC\n  =VAL \"foo: bar\": baz\n -DOC\n-STR\n"
+  yaml: "\"foo: bar\\\": baz\"\n"

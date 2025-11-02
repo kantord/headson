@@ -3,8 +3,8 @@ source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
 - fail: true
-  from: "@ingydot…"
-  name: Plain da…
-  tags: flow seq…
-  tree: "+STR\n +D…"
-  yaml: "---\n- […"
+  from: "@ingydotnet"
+  name: Plain dashes in flow sequence
+  tags: flow sequence
+  tree: "+STR\n +DOC ---\n  +SEQ\n   +SEQ []\n"
+  yaml: "---\n- [-, -]\n"

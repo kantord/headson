@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "x:\n-…"
-  from: "@ing…"
-  json: "{\n  …"
-  name: Lega…
-  tags: ind…
-  tree: +ST…
-  yaml: "x:\n…"
+- dump: "x:\n- x x\n"
+  from: "@ingydotnet"
+  json: "{\n  \"x\": [\n    \"x x\"\n  ]\n}\n"
+  name: Legal tab after indentation
+  tags: indent whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :x\n   +SEQ\n    =VAL :x x\n   -SEQ\n  -MAP\n -DOC\n-STR\n"
+  yaml: "x:\n - x\n  ——»x\n"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "---\n…"
-  from: "@per…"
-  json: "{\n  …"
-  name: Docu…
-  tags: head…
-  tree: +STR…
-  yaml: ---…
+- dump: "---\na: b\n---\n...\n"
+  from: "@perlpunk"
+  json: "{\n  \"a\": \"b\"\n}\nnull\n"
+  name: Document start on last line
+  tags: header
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :a\n   =VAL :b\n  -MAP\n -DOC\n +DOC ---\n  =VAL :\n -DOC\n-STR\n"
+  yaml: "---\na: b\n---\n"

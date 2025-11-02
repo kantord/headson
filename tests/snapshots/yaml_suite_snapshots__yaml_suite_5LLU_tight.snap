@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Block sca…
-  tags: error fol…
-  tree: "+STR\n +DO…"
-  yaml: block sca…
+  name: Block scalar with wrong indented line after spaces only
+  tags: error folded whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :block scalar\n"
+  yaml: "block scalar: >\n␣\n␣␣\n␣␣␣\n invalid\n"

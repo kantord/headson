@@ -68,6 +68,7 @@ fn json_strict_crlf_lines_cap_via_lib() {
         color_mode: headson::ColorMode::Off,
         color_enabled: false,
         style: Style::Strict,
+        string_free_prefix_graphemes: None,
     };
     let prio = PriorityConfig::new(usize::MAX, usize::MAX);
     let out = headson::headson_with_budgets(
@@ -172,7 +173,7 @@ fn compact_mode_long_single_line_guard_with_lines_cap() {
         "--compact",
         "--lines",
         "1",
-        "-n",
+        "-c",
         "100000",
         p.to_str().unwrap(),
     ]);
@@ -254,7 +255,7 @@ fn combined_char_and_line_caps() {
     let p = "tests/fixtures/explicit/string_escaping.json";
     // Enforce both: small char cap and small line cap
     let out =
-        run(&["-f", "json", "-t", "default", "--lines", "2", "-n", "60", p]);
+        run(&["-f", "json", "-t", "default", "--lines", "2", "-c", "60", p]);
     let lines = count_lines_normalized(&out);
     assert!(lines <= 2, "line cap failed: {out:?}");
     let trimmed_len = out.trim_end_matches('\n').len();

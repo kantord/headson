@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Comment t…
-  tags: comment e…
-  tree: "+STR\n +D…"
-  yaml: "key: val…"
+  name: Comment that looks like a mapping key
+  tags: comment error mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   =VAL :value\n"
+  yaml: "key: value\nthis is #not a: key\n"

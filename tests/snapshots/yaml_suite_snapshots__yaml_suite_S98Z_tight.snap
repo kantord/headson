@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Block sca…
-  tags: error fol…
-  tree: "+STR\n +DO…"
-  yaml: empty blo…
+  name: Block scalar with more spaces than first content line
+  tags: error folded comment scalar whitespace
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :empty block scalar\n"
+  yaml: "empty block scalar: >\n␣\n␣␣\n␣␣␣\n # comment\n"

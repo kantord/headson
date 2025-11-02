@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Multilin…
-  tags: error ma…
-  tree: "+STR\n +D…"
-  yaml: "a\\nb: 1\n…"
+  name: Multiline implicit keys
+  tags: error mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\\\\nb\n   =VAL :1\n"
+  yaml: "a\\nb: 1\nc\n d: 1\n"

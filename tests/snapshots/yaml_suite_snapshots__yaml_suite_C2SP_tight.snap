@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Flow Mapp…
-  tags: error fl…
-  tree: "+STR\n +D…"
-  yaml: "[23\n]: 4…"
+  name: Flow Mapping Key on two lines
+  tags: error flow mapping
+  tree: "+STR\n +DOC\n  +SEQ []\n   =VAL :23\n"
+  yaml: "[23\n]: 42\n"

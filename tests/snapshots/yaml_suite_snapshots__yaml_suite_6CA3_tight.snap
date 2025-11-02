@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- emit: --- …
-  from: "@ing…"
+- emit: "--- []\n"
+  from: "@ingydotnet"
   json: "[]\n"
-  name: Tab …
-  tags: inde…
-  tree: +STR…
-  yaml: ———…
+  name: Tab indented top flow
+  tags: indent whitespace
+  tree: "+STR\n +DOC\n  +SEQ []\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "————»[\n————»]\n"

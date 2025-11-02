@@ -14,7 +14,7 @@ fn text_strict_truncates_without_marker() {
             "text",
             "-t",
             "strict",
-            "-n",
+            "-c",
             "20",
         ]) // small budget
         .write_stdin(input)

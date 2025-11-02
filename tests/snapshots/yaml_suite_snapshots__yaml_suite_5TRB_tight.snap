@@ -3,8 +3,8 @@ source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
 - fail: true
-  from: "@perlpun…"
-  name: Invalid …
-  tags: header …
-  tree: "+STR\n +…"
-  yaml: "---\n\"\n-…"
+  from: "@perlpunk"
+  name: Invalid document-start marker in doublequoted tring
+  tags: header double error
+  tree: "+STR\n +DOC ---\n"
+  yaml: "---\n\"\n---\n\"\n"

@@ -5,7 +5,7 @@ expression: tight
 - dump: "{}\n"
   from: IRC
   json: "{}\n"
-  name: Tab a…
-  tags: flow …
-  tree: "+STR\n…"
-  yaml: ———»…
+  name: Tab at beginning of line followed by a flow mapping
+  tags: flow whitespace
+  tree: "+STR\n +DOC\n  +MAP {}\n  -MAP\n -DOC\n-STR\n"
+  yaml: "———»{}\n"

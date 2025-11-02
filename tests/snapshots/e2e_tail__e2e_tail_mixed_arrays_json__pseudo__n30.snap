@@ -3,31 +3,6 @@ source: tests/e2e_tail.rs
 expression: stdout
 ---
 {
-  "deep": [
-    …,
-    {
-      "a": [
-        {
-          "b": [ … ]
-        }
-      ]
-    }
-  ],
-  "matrix": [
-    …,
-    [
-      …,
-      9
-    ]
-  ],
-  "objects": [
-    …,
-    {
-      "k": "v3"
-    }
-  ],
-  "strings": [
-    …,
-    "seven"
-  ]
+  "deep": [ … ]
+  …
 }

@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Wrong ind…
-  tags: error seq…
-  tree: "+STR\n +D…"
-  yaml: "- key: v…"
+  name: Wrong indented sequence item
+  tags: error sequence indent
+  tree: "+STR\n +DOC\n  +SEQ\n   +MAP\n    =VAL :key\n    =VAL :value\n   -MAP\n"
+  yaml: "- key: value\n - item1\n"

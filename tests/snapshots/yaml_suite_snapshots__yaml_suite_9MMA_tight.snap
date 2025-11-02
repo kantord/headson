@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@ingydotnet"
-  name: Directive b…
-  tags: error direc…
+  name: Directive by itself with no document
+  tags: error directive
   tree: "+STR\n"
   yaml: "%YAML 1.2\n"

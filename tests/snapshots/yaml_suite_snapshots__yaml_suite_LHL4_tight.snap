@@ -3,8 +3,8 @@ source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
 - fail: true
-  from: "@perlpun…"
-  name: Invalid …
-  tags: error ta…
-  tree: "+STR\n +D…"
-  yaml: "---\n!in…"
+  from: "@perlpunk"
+  name: Invalid tag
+  tags: error tag
+  tree: "+STR\n +DOC ---\n"
+  yaml: "---\n!invalid{}tag scalar\n"

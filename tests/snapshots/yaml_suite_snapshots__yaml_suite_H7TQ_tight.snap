@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@ingydotnet"
-  name: Extra words …
+  name: "Extra words on %YAML directive"
   tags: directive
   tree: "+STR\n"
-  yaml: "%YAML 1.2 fo…"
+  yaml: "%YAML 1.2 foo\n---\n"

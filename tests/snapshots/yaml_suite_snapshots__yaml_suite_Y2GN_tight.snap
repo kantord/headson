@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "---\n…"
-  from: "@per…"
-  json: "{\n  …"
-  name: Anch…
-  tags: anch…
-  tree: +STR…
-  yaml: ---…
+- dump: "---\nkey: &an:chor value\n"
+  from: "@perlpunk"
+  json: "{\n  \"key\": \"value\"\n}\n"
+  name: Anchor with colon in the middle
+  tags: anchor
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :key\n   =VAL &an:chor :value\n  -MAP\n -DOC\n-STR\n"
+  yaml: "---\nkey: &an:chor value\n"

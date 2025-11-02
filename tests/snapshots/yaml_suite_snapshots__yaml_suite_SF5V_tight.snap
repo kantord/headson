@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Duplicate Y…
-  tags: directive …
+  name: Duplicate YAML directive
+  tags: directive error
   tree: "+STR\n"
-  yaml: "%YAML 1.2\n…"
+  yaml: "%YAML 1.2\n%YAML 1.2\n---\n"

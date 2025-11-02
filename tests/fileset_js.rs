@@ -3,13 +3,13 @@ fn run_js(paths: &[&str], budget: usize) -> String {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let mut args = vec![
         "--no-color",
-        "-n",
+        "-c",
         &budget_s,
         "-f",
         "json",
         "-t",
         "detailed",
-    ]; // newline mode
+    ]; // byte-budget mode
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert().success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
@@ -49,7 +49,7 @@ fn js_fileset_compact_shows_inline_omitted_summary() {
     let assert = cmd
         .args([
             "--no-color",
-            "-n",
+            "-c",
             &budget_s,
             "-f",
             "json",

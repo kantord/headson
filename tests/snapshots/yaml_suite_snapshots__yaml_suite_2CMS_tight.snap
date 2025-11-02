@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Invalid m…
-  tags: error ma…
-  tree: "+STR\n +D…"
-  yaml: "this\n is…"
+  name: Invalid mapping in plain multiline
+  tags: error mapping
+  tree: "+STR\n +DOC\n"
+  yaml: "this\n is\n  invalid: x\n"

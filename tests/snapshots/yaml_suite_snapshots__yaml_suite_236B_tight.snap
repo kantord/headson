@@ -3,8 +3,8 @@ source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
 - fail: true
-  from: "@perlpun…"
-  name: Invalid …
-  tags: error ma…
-  tree: "+STR\n +D…"
-  yaml: "foo:\n  …"
+  from: "@perlpunk"
+  name: Invalid value after mapping
+  tags: error mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :foo\n   =VAL :bar\n"
+  yaml: "foo:\n  bar\ninvalid\n"

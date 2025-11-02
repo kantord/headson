@@ -2,32 +2,4 @@
 source: tests/e2e_tail.rs
 expression: stdout
 ---
-{
-  "deep": [
-    /* 1 more items */,
-    {
-      "a": [
-        {
-          "b": [ /* 1 more items */ ]
-        }
-      ]
-    }
-  ],
-  "matrix": [
-    /* 2 more items */,
-    [
-      /* 2 more items */,
-      9
-    ]
-  ],
-  "objects": [
-    /* 2 more items */,
-    {
-      "k": "v3"
-    }
-  ],
-  "strings": [
-    /* 6 more items */,
-    "seve…"
-  ]
-}
+{ /* 4 more properties */ }

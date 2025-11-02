@@ -3,8 +3,8 @@ source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
 - fail: true
-  from: "@perlpun…"
-  name: Invalid …
-  tags: error ma…
-  tree: "+STR\n +D…"
-  yaml: "key:\n -…"
+  from: "@perlpunk"
+  name: Invalid scalar at the end of sequence
+  tags: error mapping sequence
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key\n   +SEQ\n    =VAL :bar\n    =VAL :baz\n"
+  yaml: "key:\n - bar\n - baz\n invalid\n"

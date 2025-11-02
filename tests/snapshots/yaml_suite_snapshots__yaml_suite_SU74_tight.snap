@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Anchor an…
-  tags: error anc…
-  tree: "+STR\n +D…"
-  yaml: "key1: &a…"
+  name: Anchor and alias as mapping key
+  tags: error anchor alias mapping
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :key1\n   =VAL &alias :value1\n"
+  yaml: "key1: &alias value1\n&b *alias : value2\n"

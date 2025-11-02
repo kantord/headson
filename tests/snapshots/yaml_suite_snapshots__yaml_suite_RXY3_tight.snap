@@ -4,7 +4,7 @@ expression: tight
 ---
 - fail: true
   from: "@perlpunk"
-  name: Invalid …
-  tags: footer s…
-  tree: "+STR\n +D…"
-  yaml: "---\n'\n..…"
+  name: Invalid document-end marker in single quoted string
+  tags: footer single error
+  tree: "+STR\n +DOC ---\n"
+  yaml: "---\n'\n...\n'\n"

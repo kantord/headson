@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "&seq…"
-  from: "@per…"
-  json: "[\n  …"
-  name: Sing…
-  tags: anch…
-  tree: +STR…
-  yaml: "&se…"
+- dump: "&sequence\n- a\n"
+  from: "@perlpunk"
+  json: "[\n  \"a\"\n]\n"
+  name: Single block sequence with anchor
+  tags: anchor sequence
+  tree: "+STR\n +DOC\n  +SEQ &sequence\n   =VAL :a\n  -SEQ\n -DOC\n-STR\n"
+  yaml: "&sequence\n- a\n"
