@@ -31,23 +31,23 @@ Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=80&offset=0' > page1.jso
 Sleep 1s
 Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=80&offset=80' > page2.json" Sleep 400ms Enter
 Sleep 1s
-Type "headson --global-budget 400 --format json --template default -- page1.json page2.json" Sleep 400ms Enter
+Type "headson --global-bytes 400 --format json --template default -- page1.json page2.json" Sleep 400ms Enter
 Sleep 6s
 
 # YAML sample with detailed comments
 Type "printf 'root:\n  items: [1,2,3,4,5,6,7,8,9,10]\n' > tmp.yaml" Sleep 200ms Enter
 Sleep 500ms
-Type "headson -n 60 --format yaml --template detailed --input-format yaml tmp.yaml" Sleep 400ms Enter
+Type "headson -c 60 --format yaml --template detailed --input-format yaml tmp.yaml" Sleep 400ms Enter
 Sleep 6s
 
 # Compact strict JSON (machine-friendly)
-Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson -n 120 --format json --template strict --compact" Sleep 400ms Enter
+Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson -c 120 --format json --template strict --compact" Sleep 400ms Enter
 Sleep 6s
 
 # Head vs Tail sampling on the results array (at the end)
-Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson --head -n 120 --format json --template default" Sleep 400ms Enter
+Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson --head -c 120 --format json --template default" Sleep 400ms Enter
 Sleep 6s
-Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson --tail -n 120 --format json --template detailed" Sleep 400ms Enter
+Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | headson --tail -c 120 --format json --template detailed" Sleep 400ms Enter
 Sleep 6s
 
 Type "# Download two public-domain books (text/plain)" Sleep 200ms Enter
@@ -56,10 +56,10 @@ Type "curl -L -sS https://www.gutenberg.org/cache/epub/77164/pg77164.txt -o book
 Sleep 2s
 Type "curl -L -sS https://www.gutenberg.org/cache/epub/2701/pg2701.txt -o book2.txt" Sleep 400ms Enter
 Sleep 2s
-Type "headson -n 200 book*.txt" Sleep 400ms Enter
+Type "headson -c 200 book*.txt" Sleep 400ms Enter
 Sleep 6s
 Type "# Single-file text with styles (default vs detailed)" Sleep 200ms Enter
-Type "headson -n 120 -t default book1.txt" Sleep 400ms Enter
+Type "headson -c 120 -t default book1.txt" Sleep 400ms Enter
 Sleep 4s
-Type "headson -n 120 -t detailed book1.txt" Sleep 400ms Enter
+Type "headson -c 120 -t detailed book1.txt" Sleep 400ms Enter
 Sleep 4s
