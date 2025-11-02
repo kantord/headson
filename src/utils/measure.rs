@@ -1,21 +1,15 @@
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) struct OutputStats {
     pub bytes: usize,
+    pub chars: usize,
     pub lines: usize,
 }
 
-/// Count bytes and logical lines in a string, normalizing CRLF/CR/LF.
-///
-/// Rules:
-/// - An empty string has 0 lines.
-/// - Otherwise, lines = number of line break sequences + 1.
-/// - A CRLF pair counts as a single line break.
-pub(crate) fn count_output_stats(s: &str) -> OutputStats {
-    let bytes = s.len();
-    if bytes == 0 {
-        return OutputStats { bytes, lines: 0 };
+#[inline]
+fn count_lines_from_bytes(b: &[u8]) -> usize {
+    if b.is_empty() {
+        return 0;
     }
-    let b = s.as_bytes();
     let mut i = 0usize;
     let mut breaks = 0usize;
     while i < b.len() {
@@ -35,8 +29,22 @@ pub(crate) fn count_output_stats(s: &str) -> OutputStats {
             _ => i += 1,
         }
     }
+    breaks + 1
+}
+
+/// Count bytes and logical lines in a string, normalizing CRLF/CR/LF.
+///
+/// Rules:
+/// - An empty string has 0 lines.
+/// - Otherwise, lines = number of line break sequences + 1.
+/// - A CRLF pair counts as a single line break.
+pub(crate) fn count_output_stats(s: &str, want_chars: bool) -> OutputStats {
+    let bytes = s.len();
+    let chars = if want_chars { s.chars().count() } else { 0 };
+    let lines = count_lines_from_bytes(s.as_bytes());
     OutputStats {
         bytes,
-        lines: breaks + 1,
+        chars,
+        lines,
     }
 }

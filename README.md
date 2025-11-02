@@ -56,7 +56,8 @@ If you’re comfortable with tools like `head` and `tail`, use `headson` when yo
 
 Common flags:
 
-- `-c, --bytes <BYTES>`: per‑file output budget. For multiple inputs, default total budget is `<BYTES> * number_of_inputs`.
+- `-c, --bytes <BYTES>`: per‑file output budget (bytes). For multiple inputs, default total budget is `<BYTES> * number_of_inputs`.
+- `-u, --chars <CHARS>`: per‑file output budget (Unicode code points). Behaves like `--bytes` but counts characters instead of bytes.
 - `-C, --global-bytes <BYTES>`: total output budget across all inputs. With `--bytes`, the effective total is the smaller of the two.
 - `-f, --format <auto|json|yaml|text>`: output format (default: `auto`).
   - Auto: stdin → JSON family; filesets → per‑file based on extension (`.json` → JSON family, `.yaml`/`.yml` → YAML, unknown → Text).

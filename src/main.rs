@@ -24,6 +24,13 @@ struct Cli {
     #[arg(short = 'c', long = "bytes")]
     bytes: Option<usize>,
     #[arg(
+        short = 'u',
+        long = "chars",
+        value_name = "CHARS",
+        help = "Per-file Unicode character budget (adds up across files if no global char cap)"
+    )]
+    chars: Option<usize>,
+    #[arg(
         short = 'n',
         long = "lines",
         value_name = "LINES",
@@ -175,16 +182,23 @@ fn make_budgets(
     cli: &Cli,
     eff_bytes: usize,
     eff_lines: Option<usize>,
+    eff_chars: Option<usize>,
 ) -> headson::Budgets {
-    let byte_budget = if cli.bytes.is_some() || cli.global_bytes.is_some() {
+    let any_bytes = cli.bytes.is_some() || cli.global_bytes.is_some();
+    let any_lines = cli.lines.is_some() || cli.global_lines.is_some();
+    let any_chars = cli.chars.is_some();
+
+    // Apply default 500-byte only when no explicit budgets provided.
+    let byte_budget = if any_bytes {
         Some(eff_bytes)
-    } else if cli.lines.is_some() || cli.global_lines.is_some() {
+    } else if any_lines || any_chars {
         None
     } else {
         Some(eff_bytes)
     };
     headson::Budgets {
         byte_budget,
+        char_budget: if any_chars { eff_chars } else { None },
         line_budget: eff_lines,
     }
 }
@@ -198,6 +212,10 @@ fn compute_effective_bytes(cli: &Cli, input_count: usize) -> usize {
     }
 }
 
+fn compute_effective_chars(cli: &Cli, input_count: usize) -> Option<usize> {
+    cli.chars.map(|n| n.saturating_mul(input_count))
+}
+
 fn compute_effective_lines(cli: &Cli, input_count: usize) -> Option<usize> {
     match (cli.global_lines, cli.lines) {
         (Some(g), Some(n)) => Some(g.min(n.saturating_mul(input_count))),
@@ -209,18 +227,19 @@ fn compute_effective_lines(cli: &Cli, input_count: usize) -> Option<usize> {
 
 fn compute_priority(
     cli: &Cli,
-    effective_budget: usize,
+    effective_bytes: usize,
+    effective_chars: Option<usize>,
     input_count: usize,
 ) -> headson::PriorityConfig {
-    let per_file_for_priority =
-        if cli.global_bytes.is_some() && cli.bytes.is_some() {
-            // When both limits are provided, base per-file heuristics on the per-file
-            // budget but also respect the effective per-file slice of the final global.
-            let eff_per_file = (effective_budget / input_count.max(1)).max(1);
-            cli.bytes.unwrap().min(eff_per_file).max(1)
-        } else {
-            (effective_budget / input_count.max(1)).max(1)
-        };
+    // Choose a unit for heuristics: prefer bytes if present; else chars if present; else default bytes.
+    let chosen_global = if cli.bytes.is_some() || cli.global_bytes.is_some() {
+        effective_bytes
+    } else if let Some(c) = effective_chars {
+        c
+    } else {
+        effective_bytes
+    };
+    let per_file_for_priority = (chosen_global / input_count.max(1)).max(1);
     get_priority_config(per_file_for_priority, cli)
 }
 
@@ -274,14 +293,18 @@ fn run_from_stdin(
     let input_bytes = read_stdin()?;
     let input_count = 1usize;
     let eff = compute_effective_bytes(cli, input_count);
+    let eff_chars = compute_effective_chars(cli, input_count);
     let eff_lines = compute_effective_lines(cli, input_count);
-    let prio = compute_priority(cli, eff, input_count);
+    let prio = compute_priority(cli, eff, eff_chars, input_count);
     let mut cfg = render_cfg.clone();
     // Resolve effective output template for stdin:
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
-    let budgets = make_budgets(cli, eff, eff_lines);
+    let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
     // Enable free string prefix when in line-only mode
-    if budgets.byte_budget.is_none() && budgets.line_budget.is_some() {
+    if budgets.byte_budget.is_none()
+        && budgets.char_budget.is_none()
+        && budgets.line_budget.is_some()
+    {
         cfg.string_free_prefix_graphemes = Some(40);
     }
     match cli.input_format {
@@ -315,15 +338,19 @@ fn run_from_paths(
     let included = entries.len();
     let input_count = included.max(1);
     let eff = compute_effective_bytes(cli, input_count);
+    let eff_chars = compute_effective_chars(cli, input_count);
     let eff_lines = compute_effective_lines(cli, input_count);
-    let prio = compute_priority(cli, eff, input_count);
+    let prio = compute_priority(cli, eff, eff_chars, input_count);
     if cli.inputs.len() > 1 {
         let chosen_input = choose_input_format_fileset(cli, &entries);
         let mut cfg = render_cfg.clone();
         // For filesets: if format=auto, enable per-file template selection.
         cfg.template = effective_fileset_template(cli, cfg.style);
-        let budgets = make_budgets(cli, eff, eff_lines);
-        if budgets.byte_budget.is_none() && budgets.line_budget.is_some() {
+        let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
+        if budgets.byte_budget.is_none()
+            && budgets.char_budget.is_none()
+            && budgets.line_budget.is_some()
+        {
             cfg.string_free_prefix_graphemes = Some(40);
         }
         let out = match chosen_input {
@@ -361,8 +388,11 @@ fn run_from_paths(
         cfg.template = resolve_effective_template_for_single(
             cli.format, cfg.style, &lower,
         );
-        let budgets = make_budgets(cli, eff, eff_lines);
-        if budgets.byte_budget.is_none() && budgets.line_budget.is_some() {
+        let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
+        if budgets.byte_budget.is_none()
+            && budgets.char_budget.is_none()
+            && budgets.line_budget.is_some()
+        {
             cfg.string_free_prefix_graphemes = Some(40);
         }
         let out = match chosen_input {

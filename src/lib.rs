@@ -38,6 +38,7 @@ pub use serialization::types::{
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Budgets {
     pub byte_budget: Option<usize>,
+    pub char_budget: Option<usize>,
     pub line_budget: Option<usize>,
 }
 
@@ -54,6 +55,7 @@ pub fn headson(
         config,
         Budgets {
             byte_budget: Some(budget),
+            char_budget: None,
             line_budget: None,
         },
     );
@@ -73,6 +75,7 @@ pub fn headson_many(
         config,
         Budgets {
             byte_budget: Some(budget),
+            char_budget: None,
             line_budget: None,
         },
     );
@@ -93,6 +96,7 @@ pub fn headson_yaml(
         config,
         Budgets {
             byte_budget: Some(budget),
+            char_budget: None,
             line_budget: None,
         },
     );
@@ -113,6 +117,7 @@ pub fn headson_many_yaml(
         config,
         Budgets {
             byte_budget: Some(budget),
+            char_budget: None,
             line_budget: None,
         },
     );
@@ -133,6 +138,7 @@ pub fn headson_text(
         config,
         Budgets {
             byte_budget: Some(budget),
+            char_budget: None,
             line_budget: None,
         },
     );
@@ -153,6 +159,7 @@ pub fn headson_many_text(
         config,
         Budgets {
             byte_budget: Some(budget),
+            char_budget: None,
             line_budget: None,
         },
     );
@@ -201,10 +208,14 @@ fn find_largest_render_under_budgets(
         render_set_id = render_set_id.wrapping_add(1).max(1);
         // Measure output using a unified stats helper and enforce
         // all provided caps (chars and/or lines).
-        let stats = crate::utils::measure::count_output_stats(&s);
-        let fits_chars = budgets.byte_budget.is_none_or(|c| stats.bytes <= c);
+        let stats = crate::utils::measure::count_output_stats(
+            &s,
+            budgets.char_budget.is_some(),
+        );
+        let fits_bytes = budgets.byte_budget.is_none_or(|c| stats.bytes <= c);
+        let fits_chars = budgets.char_budget.is_none_or(|c| stats.chars <= c);
         let fits_lines = budgets.line_budget.is_none_or(|l| stats.lines <= l);
-        if fits_chars && fits_lines {
+        if fits_bytes && fits_chars && fits_lines {
             best_k = Some(mid);
             true
         } else {
