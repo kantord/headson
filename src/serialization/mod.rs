@@ -159,11 +159,15 @@ impl<'a> RenderScope<'a> {
     )]
     fn serialize_string(&mut self, id: usize) -> String {
         let kept = self.count_kept_children(id);
-        let eff_kept = match self.config.string_free_prefix_graphemes {
-            Some(n) => kept.max(n),
-            None => kept,
-        };
-        let omitted = self.omitted_for(id, eff_kept).unwrap_or(0);
+        // Number of graphemes to render from the string prefix, honoring any
+        // free-prefix allowance enabled in lines-only mode.
+        let render_prefix_graphemes =
+            match self.config.string_free_prefix_graphemes {
+                Some(n) => kept.max(n),
+                None => kept,
+            };
+        let omitted =
+            self.omitted_for(id, render_prefix_graphemes).unwrap_or(0);
         let full: &str = match &self.order.nodes[id] {
             RankedNode::SplittableLeaf { value, .. } => value.as_str(),
             _ => unreachable!(
@@ -177,14 +181,19 @@ impl<'a> RenderScope<'a> {
             if omitted == 0 {
                 full.to_string()
             } else {
-                let prefix =
-                    crate::utils::text::take_n_graphemes(full, eff_kept);
+                let prefix = crate::utils::text::take_n_graphemes(
+                    full,
+                    render_prefix_graphemes,
+                );
                 format!("{prefix}…")
             }
         } else if omitted == 0 {
             crate::utils::json::json_string(full)
         } else {
-            let prefix = crate::utils::text::take_n_graphemes(full, eff_kept);
+            let prefix = crate::utils::text::take_n_graphemes(
+                full,
+                render_prefix_graphemes,
+            );
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
         }
@@ -200,11 +209,15 @@ impl<'a> RenderScope<'a> {
         template: crate::serialization::types::OutputTemplate,
     ) -> String {
         let kept = self.count_kept_children(id);
-        let eff_kept = match self.config.string_free_prefix_graphemes {
-            Some(n) => kept.max(n),
-            None => kept,
-        };
-        let omitted = self.omitted_for(id, eff_kept).unwrap_or(0);
+        // Number of graphemes to render from the string prefix, honoring any
+        // free-prefix allowance enabled in lines-only mode.
+        let render_prefix_graphemes =
+            match self.config.string_free_prefix_graphemes {
+                Some(n) => kept.max(n),
+                None => kept,
+            };
+        let omitted =
+            self.omitted_for(id, render_prefix_graphemes).unwrap_or(0);
         let full: &str = match &self.order.nodes[id] {
             RankedNode::SplittableLeaf { value, .. } => value.as_str(),
             _ => unreachable!(
@@ -218,14 +231,19 @@ impl<'a> RenderScope<'a> {
             if omitted == 0 {
                 full.to_string()
             } else {
-                let prefix =
-                    crate::utils::text::take_n_graphemes(full, eff_kept);
+                let prefix = crate::utils::text::take_n_graphemes(
+                    full,
+                    render_prefix_graphemes,
+                );
                 format!("{prefix}…")
             }
         } else if omitted == 0 {
             crate::utils::json::json_string(full)
         } else {
-            let prefix = crate::utils::text::take_n_graphemes(full, eff_kept);
+            let prefix = crate::utils::text::take_n_graphemes(
+                full,
+                render_prefix_graphemes,
+            );
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
         }
