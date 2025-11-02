@@ -7,28 +7,9 @@ pub struct PriorityConfig {
     pub array_bias: ArrayBias,
     // Array pre-sampling strategy.
     pub array_sampler: ArraySamplerStrategy,
-    // Set to true when the caller selected a "lines-only" budget (an active
-    // line cap with no byte cap). This is a hint about the global rendering
-    // objective under that mode.
-    //
-    // Design intent:
-    // - Under a strict line cap, we want to favor structural breadth (arrays,
-    //   objects, keys) over deep string expansions, since expanding strings
-    //   tends to consume several lines quickly for relatively little new
-    //   structure.
-    // - Scoring can use this signal to downweight LeafPart (string-grapheme)
-    //   expansions relative to structural nodes.
-    //
-    // Current state:
-    // - This flag is populated by the CLI (see get_priority_config in main.rs)
-    //   but is not yet consumed by the scoring logic. The primary behavioral
-    //   tweak for lines-only mode currently lives in serialization via
-    //   RenderConfig::string_free_prefix_graphemes, which allows a small free
-    //   string prefix for readability without affecting the top-K selection.
-    //
-    // If you begin using this flag in scoring, update this comment (and the
-    // README) to reflect the concrete weighting rules applied under
-    // lines-only mode.
+    // True when a lines-only budget is active (line cap with no byte cap).
+    // Indicates that rendering may favor structural breadth over deep string
+    // expansion under line-capped previews.
     pub line_budget_only: bool,
 }
 

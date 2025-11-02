@@ -224,7 +224,6 @@ fn compute_priority(
     get_priority_config(per_file_for_priority, cli)
 }
 
-// Fileset helpers extracted for clarity and reuse.
 fn any_yaml_ext(entries: &InputEntries) -> bool {
     entries.iter().any(|(name, _)| {
         let lower = name.to_ascii_lowercase();
