@@ -12,6 +12,8 @@ Available as:
 - CLI (see [Usage](#usage))
 - Python library (see [Python Bindings](#python-bindings))
 
+![Codecov](https://img.shields.io/codecov/c/github/kantord/headson?style=flat-square)
+
 ## Install
 
 Using Cargo:
