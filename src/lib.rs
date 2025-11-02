@@ -35,6 +35,12 @@ pub use serialization::types::{
     ColorMode, OutputTemplate, RenderConfig, Style,
 };
 
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+pub struct Budgets {
+    pub char_budget: Option<usize>,
+    pub line_budget: Option<usize>,
+}
+
 pub fn headson(
     input: Vec<u8>,
     config: &RenderConfig,
@@ -43,7 +49,14 @@ pub fn headson(
 ) -> Result<String> {
     let arena = crate::ingest::parse_json_one(input, priority_cfg)?;
     let order_build = order::build_order(&arena, priority_cfg)?;
-    let out = find_largest_render_under_budget(&order_build, config, budget);
+    let out = find_largest_render_under_budgets(
+        &order_build,
+        config,
+        Budgets {
+            char_budget: Some(budget),
+            line_budget: None,
+        },
+    );
     Ok(out)
 }
 
@@ -55,7 +68,14 @@ pub fn headson_many(
 ) -> Result<String> {
     let arena = crate::ingest::parse_json_many(inputs, priority_cfg)?;
     let order_build = order::build_order(&arena, priority_cfg)?;
-    let out = find_largest_render_under_budget(&order_build, config, budget);
+    let out = find_largest_render_under_budgets(
+        &order_build,
+        config,
+        Budgets {
+            char_budget: Some(budget),
+            line_budget: None,
+        },
+    );
     Ok(out)
 }
 
@@ -68,7 +88,14 @@ pub fn headson_yaml(
 ) -> Result<String> {
     let arena = crate::ingest::parse_yaml_one(input, priority_cfg)?;
     let order_build = order::build_order(&arena, priority_cfg)?;
-    let out = find_largest_render_under_budget(&order_build, config, budget);
+    let out = find_largest_render_under_budgets(
+        &order_build,
+        config,
+        Budgets {
+            char_budget: Some(budget),
+            line_budget: None,
+        },
+    );
     Ok(out)
 }
 
@@ -81,7 +108,14 @@ pub fn headson_many_yaml(
 ) -> Result<String> {
     let arena = crate::ingest::parse_yaml_many(inputs, priority_cfg)?;
     let order_build = order::build_order(&arena, priority_cfg)?;
-    let out = find_largest_render_under_budget(&order_build, config, budget);
+    let out = find_largest_render_under_budgets(
+        &order_build,
+        config,
+        Budgets {
+            char_budget: Some(budget),
+            line_budget: None,
+        },
+    );
     Ok(out)
 }
 
@@ -94,7 +128,14 @@ pub fn headson_text(
 ) -> Result<String> {
     let arena = crate::ingest::parse_text_one(input, priority_cfg)?;
     let order_build = order::build_order(&arena, priority_cfg)?;
-    let out = find_largest_render_under_budget(&order_build, config, budget);
+    let out = find_largest_render_under_budgets(
+        &order_build,
+        config,
+        Budgets {
+            char_budget: Some(budget),
+            line_budget: None,
+        },
+    );
     Ok(out)
 }
 
@@ -107,24 +148,37 @@ pub fn headson_many_text(
 ) -> Result<String> {
     let arena = crate::ingest::parse_text_many(inputs, priority_cfg)?;
     let order_build = order::build_order(&arena, priority_cfg)?;
-    let out = find_largest_render_under_budget(&order_build, config, budget);
+    let out = find_largest_render_under_budgets(
+        &order_build,
+        config,
+        Budgets {
+            char_budget: Some(budget),
+            line_budget: None,
+        },
+    );
     Ok(out)
 }
 
-fn find_largest_render_under_budget(
+/// New generalized budgeting: enforce optional char and/or line caps.
+fn find_largest_render_under_budgets(
     order_build: &PriorityOrder,
     config: &RenderConfig,
-    char_budget: usize,
+    budgets: Budgets,
 ) -> String {
     // Binary search the largest k in [1, total] whose render
-    // fits within `char_budget`.
+    // fits within all requested budgets.
     let total = order_build.total_nodes;
     if total == 0 {
         return String::new();
     }
     // Each included node contributes at least some output; cap hi by budget.
     let lo = 1usize;
-    let hi = total.min(char_budget.max(1));
+    // For the upper bound, when char budget is present, we can safely cap by it;
+    // otherwise, cap by total.
+    let hi = match budgets.char_budget {
+        Some(c) => total.min(c.max(1)),
+        None => total,
+    };
     // Reuse render-inclusion flags across render attempts to avoid clearing the vector.
     // A node participates in the current render attempt when inclusion_flags[id] == render_set_id.
     let mut inclusion_flags: Vec<u32> = vec![0; total];
@@ -145,10 +199,12 @@ fn find_largest_render_under_budget(
             &measure_cfg,
         );
         render_set_id = render_set_id.wrapping_add(1).max(1);
-        // Measure output using a unified stats helper. For now we only
-        // enforce the byte/character budget to preserve behavior.
+        // Measure output using a unified stats helper and enforce
+        // all provided caps (chars and/or lines).
         let stats = crate::utils::measure::count_output_stats(&s);
-        if stats.bytes <= char_budget {
+        let fits_chars = budgets.char_budget.is_none_or(|c| stats.bytes <= c);
+        let fits_lines = budgets.line_budget.is_none_or(|l| stats.lines <= l);
+        if fits_chars && fits_lines {
             best_k = Some(mid);
             true
         } else {
@@ -176,4 +232,95 @@ fn find_largest_render_under_budget(
             config,
         )
     }
+}
+
+// Optional new public API that accepts both budgets explicitly.
+pub fn headson_with_budgets(
+    input: Vec<u8>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+) -> Result<String> {
+    let arena = crate::ingest::parse_json_one(input, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets(
+        &order_build,
+        config,
+        budgets,
+    ))
+}
+
+pub fn headson_many_with_budgets(
+    inputs: Vec<(String, Vec<u8>)>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+) -> Result<String> {
+    let arena = crate::ingest::parse_json_many(inputs, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets(
+        &order_build,
+        config,
+        budgets,
+    ))
+}
+
+pub fn headson_yaml_with_budgets(
+    input: Vec<u8>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+) -> Result<String> {
+    let arena = crate::ingest::parse_yaml_one(input, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets(
+        &order_build,
+        config,
+        budgets,
+    ))
+}
+
+pub fn headson_many_yaml_with_budgets(
+    inputs: Vec<(String, Vec<u8>)>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+) -> Result<String> {
+    let arena = crate::ingest::parse_yaml_many(inputs, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets(
+        &order_build,
+        config,
+        budgets,
+    ))
+}
+
+pub fn headson_text_with_budgets(
+    input: Vec<u8>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+) -> Result<String> {
+    let arena = crate::ingest::parse_text_one(input, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets(
+        &order_build,
+        config,
+        budgets,
+    ))
+}
+
+pub fn headson_many_text_with_budgets(
+    inputs: Vec<(String, Vec<u8>)>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+) -> Result<String> {
+    let arena = crate::ingest::parse_text_many(inputs, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets(
+        &order_build,
+        config,
+        budgets,
+    ))
 }

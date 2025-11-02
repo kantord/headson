@@ -1,0 +1,8 @@
+---
+source: tests/line_budgets.rs
+expression: out
+---
+root:
+  desc: l…
+  items: []
+
