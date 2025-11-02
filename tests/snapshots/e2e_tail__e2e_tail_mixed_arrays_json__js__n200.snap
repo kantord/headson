@@ -4,10 +4,74 @@ expression: stdout
 ---
 {
   "deep": [
-    /* 1 more items */,
-    { /* 1 more properties */ }
+    {
+      "a": [
+        {
+          "b": [
+            {
+              "c": [
+                "x",
+                "y",
+                "z"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "a": [
+        {
+          "b": [
+            {
+              "c": [
+                "p",
+                "q",
+                "r",
+                "s",
+                "t"
+              ]
+            }
+          ]
+        }
+      ]
+    }
   ],
-  "matrix": [ /* 3 more items */ ],
-  "objects": [ /* 3 more items */ ],
-  "strings": [ /* 7 more items */ ]
+  "matrix": [
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      4,
+      5,
+      6
+    ],
+    [
+      7,
+      8,
+      9
+    ]
+  ],
+  "objects": [
+    {
+      "k": "v1"
+    },
+    {
+      "k": "v2"
+    },
+    {
+      "k": "v3"
+    }
+  ],
+  "strings": [
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven"
+  ]
 }
