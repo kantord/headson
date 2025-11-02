@@ -32,6 +32,9 @@ pub struct RenderConfig {
     pub color_enabled: bool,
     // Output styling mode (controls omission annotations), orthogonal to template.
     pub style: Style,
+    // When Some(n), and only a line budget is active, allow rendering up to
+    // `n` graphemes of a string prefix regardless of top-K string-part inclusion.
+    pub string_free_prefix_graphemes: Option<usize>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

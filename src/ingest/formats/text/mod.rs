@@ -220,6 +220,7 @@ mod tests {
             color_mode: crate::serialization::types::ColorMode::Off,
             color_enabled: false,
             style: Style::Default,
+            string_free_prefix_graphemes: None,
         };
         let prio = PriorityConfig::new(100, 100);
         (cfg, prio)

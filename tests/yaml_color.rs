@@ -38,6 +38,7 @@ fn yaml_coloring_applies_and_strips_to_plain() {
         color_mode: ColorMode::On,
         color_enabled: false,
         style: headson::Style::Default,
+        string_free_prefix_graphemes: None,
     };
     let cfg_color = RenderConfig {
         color_enabled: true,

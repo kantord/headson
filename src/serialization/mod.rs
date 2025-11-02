@@ -159,7 +159,11 @@ impl<'a> RenderScope<'a> {
     )]
     fn serialize_string(&mut self, id: usize) -> String {
         let kept = self.count_kept_children(id);
-        let omitted = self.omitted_for(id, kept).unwrap_or(0);
+        let eff_kept = match self.config.string_free_prefix_graphemes {
+            Some(n) => kept.max(n),
+            None => kept,
+        };
+        let omitted = self.omitted_for(id, eff_kept).unwrap_or(0);
         let full: &str = match &self.order.nodes[id] {
             RankedNode::SplittableLeaf { value, .. } => value.as_str(),
             _ => unreachable!(
@@ -173,13 +177,14 @@ impl<'a> RenderScope<'a> {
             if omitted == 0 {
                 full.to_string()
             } else {
-                let prefix = crate::utils::text::take_n_graphemes(full, kept);
+                let prefix =
+                    crate::utils::text::take_n_graphemes(full, eff_kept);
                 format!("{prefix}…")
             }
         } else if omitted == 0 {
             crate::utils::json::json_string(full)
         } else {
-            let prefix = crate::utils::text::take_n_graphemes(full, kept);
+            let prefix = crate::utils::text::take_n_graphemes(full, eff_kept);
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
         }
@@ -195,7 +200,11 @@ impl<'a> RenderScope<'a> {
         template: crate::serialization::types::OutputTemplate,
     ) -> String {
         let kept = self.count_kept_children(id);
-        let omitted = self.omitted_for(id, kept).unwrap_or(0);
+        let eff_kept = match self.config.string_free_prefix_graphemes {
+            Some(n) => kept.max(n),
+            None => kept,
+        };
+        let omitted = self.omitted_for(id, eff_kept).unwrap_or(0);
         let full: &str = match &self.order.nodes[id] {
             RankedNode::SplittableLeaf { value, .. } => value.as_str(),
             _ => unreachable!(
@@ -209,13 +218,14 @@ impl<'a> RenderScope<'a> {
             if omitted == 0 {
                 full.to_string()
             } else {
-                let prefix = crate::utils::text::take_n_graphemes(full, kept);
+                let prefix =
+                    crate::utils::text::take_n_graphemes(full, eff_kept);
                 format!("{prefix}…")
             }
         } else if omitted == 0 {
             crate::utils::json::json_string(full)
         } else {
-            let prefix = crate::utils::text::take_n_graphemes(full, kept);
+            let prefix = crate::utils::text::take_n_graphemes(full, eff_kept);
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
         }
@@ -631,6 +641,7 @@ mod tests {
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -666,6 +677,7 @@ mod tests {
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
+                string_free_prefix_graphemes: None,
             },
         );
         // Sanity: output should contain CRLF newlines and render the object child across lines.
@@ -703,6 +715,7 @@ mod tests {
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("arena_render_single", out);
@@ -717,6 +730,7 @@ mod tests {
             prefer_tail_arrays: false,
             array_bias: crate::ArrayBias::HeadMidTail,
             array_sampler: crate::ArraySamplerStrategy::Default,
+            line_budget_only: false,
         };
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[1,2,3]", &cfg_prio,
@@ -740,6 +754,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("array_omitted_pseudo_head", out_head);
@@ -759,6 +774,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("array_omitted_pseudo_tail", out_tail);
@@ -772,6 +788,7 @@ mod tests {
             prefer_tail_arrays: false,
             array_bias: crate::ArrayBias::HeadMidTail,
             array_sampler: crate::ArraySamplerStrategy::Default,
+            line_budget_only: false,
         };
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[1,2,3]", &cfg_prio,
@@ -794,6 +811,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("array_omitted_js_head", out_head);
@@ -812,6 +830,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("array_omitted_js_tail", out_tail);
@@ -825,6 +844,7 @@ mod tests {
             prefer_tail_arrays: false,
             array_bias: crate::ArrayBias::HeadMidTail,
             array_sampler: crate::ArraySamplerStrategy::Default,
+            line_budget_only: false,
         };
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[1,2,3]", &cfg_prio,
@@ -847,6 +867,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out_head);
@@ -866,6 +887,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out_tail);
@@ -899,6 +921,7 @@ mod tests {
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out);
@@ -932,6 +955,7 @@ mod tests {
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out);
@@ -963,6 +987,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1023,6 +1048,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1093,6 +1119,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
+                string_free_prefix_graphemes: None,
             },
         );
         // Expect the first 5 characters plus an ellipsis, as a valid JSON string literal.
@@ -1126,6 +1153,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1166,6 +1194,7 @@ mod tests {
             color_mode: crate::ColorMode::Off,
             color_enabled: false,
             style: crate::serialization::types::Style::Strict,
+            string_free_prefix_graphemes: None,
         };
         let scope = RenderScope {
             order: &build,
@@ -1203,6 +1232,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("inline_open_array_in_object_json", out);
@@ -1237,6 +1267,7 @@ mod tests {
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
+                string_free_prefix_graphemes: None,
             },
         );
         // Should be a valid JS object with one property and an omitted summary.
