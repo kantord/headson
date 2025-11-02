@@ -281,6 +281,10 @@ fn run_from_stdin(
     // Resolve effective output template for stdin and compute budgets
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
     let budgets = make_budgets(cli, eff, eff_lines);
+    // Enable free string prefix when in line-only mode
+    if budgets.char_budget.is_none() && budgets.line_budget.is_some() {
+        cfg.string_free_prefix_graphemes = Some(40);
+    }
     match cli.input_format {
         InputFormat::Json => {
             headson::headson_with_budgets(input_bytes, &cfg, &prio, budgets)
@@ -319,16 +323,25 @@ fn run_from_paths(
         let mut cfg = render_cfg.clone();
         // For filesets: if format=auto, enable per-file template selection.
         cfg.template = effective_fileset_template(cli, cfg.style);
-        let budgets = make_budgets(cli, eff, eff_lines);
+        let budgets_cfg = make_budgets(cli, eff, eff_lines);
         let out = match chosen_input {
             InputFormat::Json => headson::headson_many_with_budgets(
-                entries, &cfg, &prio, budgets,
+                entries,
+                &cfg,
+                &prio,
+                budgets_cfg,
             )?,
             InputFormat::Yaml => headson::headson_many_yaml_with_budgets(
-                entries, &cfg, &prio, budgets,
+                entries,
+                &cfg,
+                &prio,
+                budgets_cfg,
             )?,
             InputFormat::Text => headson::headson_many_text_with_budgets(
-                entries, &cfg, &prio, budgets,
+                entries,
+                &cfg,
+                &prio,
+                budgets_cfg,
             )?,
         };
         Ok((out, ignored))
@@ -356,6 +369,9 @@ fn run_from_paths(
             cli.format, cfg.style, &lower,
         );
         let budgets = make_budgets(cli, eff, eff_lines);
+        if budgets.char_budget.is_none() && budgets.line_budget.is_some() {
+            cfg.string_free_prefix_graphemes = Some(40);
+        }
         let out = match chosen_input {
             InputFormat::Json => {
                 headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
@@ -479,6 +495,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         color_mode,
         color_enabled,
         style: map_style(cli.style),
+        string_free_prefix_graphemes: None, // set later per-run based on budgets
     }
 }
 
@@ -486,6 +503,10 @@ fn get_priority_config(
     per_file_budget: usize,
     cli: &Cli,
 ) -> headson::PriorityConfig {
+    // Detect line-only mode: lines flag present and no explicit bytes flags.
+    let line_only = (cli.lines.is_some() || cli.global_lines.is_some())
+        && cli.bytes.is_none()
+        && cli.global_bytes.is_none();
     headson::PriorityConfig {
         max_string_graphemes: cli.string_cap,
         array_max_items: (per_file_budget / 2).max(1),
@@ -498,6 +519,7 @@ fn get_priority_config(
         } else {
             headson::ArraySamplerStrategy::Default
         },
+        line_budget_only: line_only,
     }
 }
 

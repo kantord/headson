@@ -588,7 +588,50 @@ pub fn render_top_k(
         inclusion_flags,
         render_id,
     );
+    // In line-only scenarios, optionally include a free prefix of string
+    // graphemes by marking the first N LeafPart children of any included
+    // SplittableLeaf string as included, so strings can show a prefix without
+    // competing for top-K slots.
+    if let Some(free) = config.string_free_prefix_graphemes {
+        include_string_prefix_leafparts(
+            order_build,
+            inclusion_flags,
+            render_id,
+            free,
+        );
+    }
     render_from_render_set(order_build, inclusion_flags, render_id, config)
+}
+
+fn include_string_prefix_leafparts(
+    order: &PriorityOrder,
+    inclusion: &mut [u32],
+    render_id: u32,
+    free: usize,
+) {
+    if free == 0 {
+        return;
+    }
+    for (id, node) in order.nodes.iter().enumerate() {
+        if inclusion.get(id).copied().unwrap_or(0) != render_id {
+            continue;
+        }
+        if let RankedNode::SplittableLeaf { .. } = node {
+            if let Some(children) = order.children.get(id) {
+                let mut kept = 0usize;
+                for &cid in children.iter() {
+                    if kept >= free {
+                        break;
+                    }
+                    let idx = cid.0;
+                    if inclusion.get(idx).copied().unwrap_or(0) != render_id {
+                        inclusion[idx] = render_id;
+                    }
+                    kept += 1;
+                }
+            }
+        }
+    }
 }
 
 //
@@ -631,6 +674,7 @@ mod tests {
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -717,6 +761,7 @@ mod tests {
             prefer_tail_arrays: false,
             array_bias: crate::ArrayBias::HeadMidTail,
             array_sampler: crate::ArraySamplerStrategy::Default,
+            line_budget_only: false,
         };
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[1,2,3]", &cfg_prio,
@@ -740,6 +785,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("array_omitted_pseudo_head", out_head);
@@ -759,6 +805,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("array_omitted_pseudo_tail", out_tail);
@@ -772,6 +819,7 @@ mod tests {
             prefer_tail_arrays: false,
             array_bias: crate::ArrayBias::HeadMidTail,
             array_sampler: crate::ArraySamplerStrategy::Default,
+            line_budget_only: false,
         };
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[1,2,3]", &cfg_prio,
@@ -794,6 +842,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("array_omitted_js_head", out_head);
@@ -812,6 +861,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_snapshot!("array_omitted_js_tail", out_tail);
@@ -825,6 +875,7 @@ mod tests {
             prefer_tail_arrays: false,
             array_bias: crate::ArrayBias::HeadMidTail,
             array_sampler: crate::ArraySamplerStrategy::Default,
+            line_budget_only: false,
         };
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[1,2,3]", &cfg_prio,
@@ -847,6 +898,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out_head);
@@ -866,6 +918,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out_tail);
@@ -1023,6 +1076,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1093,6 +1147,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
+                string_free_prefix_graphemes: None,
             },
         );
         // Expect the first 5 characters plus an ellipsis, as a valid JSON string literal.
@@ -1126,6 +1181,7 @@ mod tests {
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
+                string_free_prefix_graphemes: None,
             },
         );
         assert_yaml_valid(&out);

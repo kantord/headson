@@ -298,6 +298,11 @@ impl<'a> Scope<'a> {
         let count = UnicodeSegmentation::graphemes(full, true)
             .take(self.config.max_string_graphemes)
             .count();
+        // In line-only budget mode, allow a free prefix of graphemes (no
+        // incremental cost beyond a minimal base) so strings can surface up to
+        // a small cap without crowding the line budget. After the cap, fall
+        // back to normal string scoring.
+        const FREE_STRING_GRAPHEMES: usize = 40;
         for i in 0..count {
             let child_priority_index = *self.next_pq_id;
             *self.next_pq_id += 1;
@@ -307,10 +312,18 @@ impl<'a> Scope<'a> {
             } else {
                 0
             };
-            let score = entry.score
-                + STRING_CHILD_BASE_INCREMENT
-                + (i as u128) * STRING_CHILD_LINEAR_WEIGHT
-                + extra;
+            let score =
+                if self.config.line_budget_only && i < FREE_STRING_GRAPHEMES {
+                    // Free early graphemes: only a minimal base increment so they
+                    // follow the parent but do not outrank structural siblings by
+                    // large margins.
+                    entry.score + STRING_CHILD_BASE_INCREMENT
+                } else {
+                    entry.score
+                        + STRING_CHILD_BASE_INCREMENT
+                        + (i as u128) * STRING_CHILD_LINEAR_WEIGHT
+                        + extra
+                };
             self.push_child_common(
                 entry,
                 child_priority_index,

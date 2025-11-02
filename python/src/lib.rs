@@ -59,6 +59,7 @@ fn render_config_with_sampler(
         color_mode: ColorMode::Auto,
         color_enabled: false,
         style: s,
+        string_free_prefix_graphemes: None,
     })
 }
 
@@ -85,6 +86,8 @@ fn priority_config(
         prefer_tail_arrays,
         array_bias: headson_core::ArrayBias::HeadMidTail,
         array_sampler: sampler,
+        // Python API exposes only a character budget; treat as non line-only.
+        line_budget_only: false,
     }
 }
 
