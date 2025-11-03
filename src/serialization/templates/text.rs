@@ -13,6 +13,15 @@ fn leading_ws_prefix(s: &str) -> &str {
     &s[..end]
 }
 
+fn last_nonempty_line_indent(s: &str) -> Option<&str> {
+    for line in s.rsplit('\n') {
+        if !line.trim().is_empty() {
+            return Some(leading_ws_prefix(line));
+        }
+    }
+    None
+}
+
 #[inline]
 fn push_optional_indent(
     out: &mut Out<'_>,
@@ -121,9 +130,21 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
         match kind {
             super::super::NodeKind::Array | super::super::NodeKind::Object => {
                 out.push_str(item);
+                if let Some(ind) = last_nonempty_line_indent(item) {
+                    if !ind.is_empty() {
+                        last_nonempty_indent.clear();
+                        last_nonempty_indent.push_str(ind);
+                    }
+                }
             }
             _ if is_multiline => {
                 out.push_str(item);
+                if let Some(ind) = last_nonempty_line_indent(item) {
+                    if !ind.is_empty() {
+                        last_nonempty_indent.clear();
+                        last_nonempty_indent.push_str(ind);
+                    }
+                }
             }
             _ => {
                 // Leaf line: print exactly as in source (keeps original indent).
