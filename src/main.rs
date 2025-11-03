@@ -18,10 +18,15 @@ type IgnoreNotices = Vec<String>;
 #[command(
     name = "headson",
     version,
-    about = "Get a small but useful preview of JSON or YAML"
+    about = "Get a small but useful preview of JSON, YAML, or Text within a strict size budget (bytes or chars)"
 )]
 struct Cli {
-    #[arg(short = 'c', long = "bytes", conflicts_with_all = ["chars", "global_chars"])]
+    #[arg(
+        short = 'c',
+        long = "bytes",
+        help = "Per-file byte budget (mutually exclusive with chars budgets)",
+        conflicts_with_all = ["chars", "global_chars"],
+    )]
     bytes: Option<usize>,
     #[arg(
         short = 'u',
@@ -84,14 +89,14 @@ struct Cli {
     #[arg(
         long = "string-cap",
         default_value_t = 500,
-        help = "Maximum string length to display"
+        help = "Maximum graphemes to consider per string"
     )]
     string_cap: usize,
     #[arg(
         short = 'C',
         long = "global-bytes",
         value_name = "BYTES",
-        help = "Total byte budget across all inputs. When combined with --bytes, the effective global limit is the smaller of the two.",
+        help = "Total byte budget across all inputs (conflicts with --chars/--global-chars). With --bytes, the effective total is the smaller of the two.",
         conflicts_with_all = ["chars", "global_chars"],
     )]
     global_bytes: Option<usize>,
