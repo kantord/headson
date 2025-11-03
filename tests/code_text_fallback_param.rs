@@ -2,7 +2,7 @@ use insta::assert_snapshot;
 use std::path::Path;
 use test_each_file::test_each_path;
 
-fn run_cli_auto_text(path: &Path) -> String {
+fn run_cli_auto_text_with_style(path: &Path, style: &str) -> String {
     let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
         .args([
             "--no-color",
@@ -10,6 +10,8 @@ fn run_cli_auto_text(path: &Path) -> String {
             "120", // modest budget to trigger omission markers where applicable
             "-f",
             "auto", // for non-json/yaml, this maps to text template
+            "-t",
+            style, // strict | default | detailed
             path.to_str().unwrap(),
         ])
         .assert()
@@ -73,6 +75,11 @@ fn code_text_fallback_case(path: &Path) {
         return;
     }
     let name = stem_with_ext(path);
-    let out = run_cli_auto_text(path);
-    assert_snapshot!(format!("code_text_fallback_{}", name), out);
+    for style in ["strict", "default", "detailed"] {
+        let out = run_cli_auto_text_with_style(path, style);
+        assert_snapshot!(
+            format!("code_text_fallback_{}_{}", name, style),
+            out
+        );
+    }
 }

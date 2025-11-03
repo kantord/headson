@@ -1,0 +1,11 @@
+---
+source: tests/code_text_fallback_param.rs
+assertion_line: 80
+expression: out
+---
+public class Sample {
+    static void greet(String name) {
+    }
+
+        for (int i = 0; i < 3; i++) {
+        }
