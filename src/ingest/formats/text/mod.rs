@@ -211,16 +211,17 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
         min_pos.unwrap_or(2)
     };
 
+    // Safe nested builder using indices (no raw pointers).
     #[derive(Default)]
-    struct Node {
+    struct TNode {
         text: String,
-        children: Vec<Node>,
+        children: Vec<usize>,
     }
 
-    // Build nested arrays: each line becomes a Node with text and children.
-    let mut root_nodes: Vec<Node> = Vec::new();
-    // The stack contains pairs of (depth, pointer to children Vec of current node level).
-    let mut stack: Vec<(usize, *mut Vec<Node>)> = Vec::new();
+    let mut tnodes: Vec<TNode> = Vec::new();
+    let mut roots: Vec<usize> = Vec::new();
+    // Stack of node indices representing the current path; length equals current depth.
+    let mut stack: Vec<usize> = Vec::new();
 
     for &l in &raw_lines {
         // Compute structural depth from leading whitespace, but preserve
@@ -234,64 +235,57 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
             let depth = spaces / unit;
             (depth, l.to_string())
         };
-        if let Some(&(cur_d, _)) = stack.last() {
-            if d > cur_d + 1 {
-                d = cur_d + 1;
-            }
-        } else if d > 0 {
+        // Clamp over-indentation to at most +1 level from current, or to top if stack empty.
+        let cur_depth = stack.len();
+        if cur_depth == 0 && d > 0 {
             d = 0;
+        } else if d > cur_depth + 1 {
+            d = cur_depth + 1;
         }
-        while let Some(&(cur_d, _)) = stack.last() {
-            // Maintain a pointer for the current target depth `d` so that
-            // lines with depth equal to `cur_d` are pushed as children there.
-            // Only pop when the stack's depth is strictly greater than `d`.
-            if cur_d > d {
-                stack.pop();
-            } else {
-                break;
-            }
+        // Pop to the desired parent depth.
+        while stack.len() > d {
+            stack.pop();
         }
-        if let Some(&(_, ptr)) = stack.last() {
-            unsafe {
-                (&mut *ptr).push(Node {
-                    text,
-                    children: Vec::new(),
-                });
-            }
-            // update stack to point at the children of the just-pushed node
-            if let Some(&(_, parent_ptr)) = stack.last() {
-                let vec = unsafe { &mut *parent_ptr };
-                let len = vec.len();
-                if len > 0 {
-                    // SAFETY: index len-1 is in-bounds, pointer used immediately
-                    let child_ptr: *mut Vec<Node> = &mut vec[len - 1].children;
-                    stack.push((d + 1, child_ptr));
-                }
-            }
+        // Create node
+        let id = tnodes.len();
+        tnodes.push(TNode {
+            text,
+            children: Vec::new(),
+        });
+        if d == 0 {
+            roots.push(id);
         } else {
-            root_nodes.push(Node {
-                text,
-                children: Vec::new(),
-            });
-            let len = root_nodes.len();
-            if len > 0 {
-                // SAFETY: index len-1 is in-bounds, pointer used immediately
-                let child_ptr: *mut Vec<Node> =
-                    &mut root_nodes[len - 1].children;
-                stack.push((1, child_ptr));
+            let parent_id_opt = stack
+                .get(d.saturating_sub(1))
+                .copied()
+                .or_else(|| stack.last().copied());
+            if let Some(parent_id) = parent_id_opt {
+                tnodes[parent_id].children.push(id);
+            } else {
+                // Fallback: treat as a new root to avoid panics (should be rare due to clamping)
+                roots.push(id);
             }
         }
+        // Push this node as the new current for depth d
+        stack.push(id);
     }
 
-    fn push_node(n: &Node, b: &mut TextArenaBuilder, atomic: bool) -> usize {
+    // Transcribe TNode tree into the JSON arena.
+    fn push_tnode(
+        id: usize,
+        tnodes: &Vec<TNode>,
+        b: &mut TextArenaBuilder,
+        atomic: bool,
+    ) -> usize {
+        let n = &tnodes[id];
         let mut kids: Vec<usize> = Vec::new();
         if atomic {
             kids.push(b.push_string_atomic(n.text.clone()));
         } else {
             kids.push(b.push_string(n.text.clone()));
         }
-        for ch in &n.children {
-            kids.push(push_node(ch, b, atomic));
+        for &ch in &n.children {
+            kids.push(push_tnode(ch, tnodes, b, atomic));
         }
         b.push_array_with_children(kids)
     }
@@ -300,10 +294,10 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
         config.array_max_items,
         config.array_sampler.into(),
     );
-    let total = root_nodes.len();
+    let total = roots.len();
     let mut all_children: Vec<usize> = Vec::with_capacity(total);
-    for n in &root_nodes {
-        all_children.push(push_node(n, &mut b, atomic_strings));
+    for &rid in &roots {
+        all_children.push(push_tnode(rid, &tnodes, &mut b, atomic_strings));
     }
     let root_id = b.push_root_array_sampled(&all_children, total);
     let mut a = b.finish();
