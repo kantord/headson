@@ -156,7 +156,6 @@ enum InputFormat {
     Json,
     Yaml,
     Text,
-    Indent,
 }
 
 fn main() -> Result<()> {
@@ -268,9 +267,9 @@ fn choose_input_format_fileset(
         } else if all_json_ext(entries) {
             InputFormat::Json
         } else {
-            // Mixed or unknown extensions: treat as indent-structured text
-            // to provide a nested preview based on indentation.
-            InputFormat::Indent
+            // Mixed or unknown extensions: return Text here; caller will use
+            // indent ingest for rendering.
+            InputFormat::Text
         }
     } else {
         cli.input_format
@@ -302,6 +301,7 @@ fn run_from_stdin(
     let mut cfg = render_cfg.clone();
     // Resolve effective output template for stdin:
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
+    // If using indent ingest, prefer Text template and detected indent unit.
     let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
     // Enable free string prefix when in line-only mode
     if budgets.byte_budget.is_none()
@@ -315,12 +315,6 @@ fn run_from_stdin(
             headson::headson_with_budgets(input_bytes, &cfg, &prio, budgets)
         }
         InputFormat::Yaml => headson::headson_yaml_with_budgets(
-            input_bytes,
-            &cfg,
-            &prio,
-            budgets,
-        ),
-        InputFormat::Indent => headson::headson_indent_with_budgets(
             input_bytes,
             &cfg,
             &prio,
@@ -355,9 +349,17 @@ fn run_from_paths(
         let mut cfg = render_cfg.clone();
         // For filesets: if format=auto, enable per-file template selection.
         cfg.template = effective_fileset_template(cli, cfg.style);
-        // Indent ingest renders as raw text reconstructed from structure.
-        if matches!(chosen_input, InputFormat::Indent) {
+        // Auto-unknown: indent-structured text render.
+        let auto_unknown = matches!(cli.format, OutputFormat::Auto)
+            && !any_yaml_ext(&entries)
+            && !all_json_ext(&entries);
+        if auto_unknown {
             cfg.template = headson::OutputTemplate::Text;
+            // Choose a modal indent unit across files for now.
+            if let Some(unit) = detect_modal_indent_unit_for_entries(&entries)
+            {
+                cfg.indent_unit = unit;
+            }
         }
         let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
         if budgets.byte_budget.is_none()
@@ -366,19 +368,22 @@ fn run_from_paths(
         {
             cfg.string_free_prefix_graphemes = Some(40);
         }
-        let out = match chosen_input {
-            InputFormat::Json => headson::headson_many_with_budgets(
+        let out = if auto_unknown {
+            headson::headson_many_indent_with_budgets(
                 entries, &cfg, &prio, budgets,
-            )?,
-            InputFormat::Yaml => headson::headson_many_yaml_with_budgets(
-                entries, &cfg, &prio, budgets,
-            )?,
-            InputFormat::Indent => headson::headson_many_indent_with_budgets(
-                entries, &cfg, &prio, budgets,
-            )?,
-            InputFormat::Text => headson::headson_many_text_with_budgets(
-                entries, &cfg, &prio, budgets,
-            )?,
+            )?
+        } else {
+            match chosen_input {
+                InputFormat::Json => headson::headson_many_with_budgets(
+                    entries, &cfg, &prio, budgets,
+                )?,
+                InputFormat::Yaml => headson::headson_many_yaml_with_budgets(
+                    entries, &cfg, &prio, budgets,
+                )?,
+                InputFormat::Text => headson::headson_many_text_with_budgets(
+                    entries, &cfg, &prio, budgets,
+                )?,
+            }
         };
         Ok((out, ignored))
     } else if included == 0 {
@@ -395,8 +400,8 @@ fn run_from_paths(
                 } else if lower.ends_with(".json") {
                     InputFormat::Json
                 } else {
-                    // Unknown extension: prefer indent-based ingest for structure.
-                    InputFormat::Indent
+                    // Unknown extension: treat as text here; we'll use indent ingest below.
+                    InputFormat::Text
                 }
             }
             _ => cli.input_format,
@@ -405,8 +410,14 @@ fn run_from_paths(
         cfg.template = resolve_effective_template_for_single(
             cli.format, cfg.style, &lower,
         );
-        if matches!(chosen_input, InputFormat::Indent) {
+        let auto_unknown = matches!(cli.format, OutputFormat::Auto)
+            && !is_yaml_ext
+            && !lower.ends_with(".json");
+        if auto_unknown {
             cfg.template = headson::OutputTemplate::Text;
+            if let Some(unit) = detect_indent_unit_from_bytes(&bytes) {
+                cfg.indent_unit = unit;
+            }
         }
         let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
         if budgets.byte_budget.is_none()
@@ -415,19 +426,20 @@ fn run_from_paths(
         {
             cfg.string_free_prefix_graphemes = Some(40);
         }
-        let out = match chosen_input {
-            InputFormat::Json => {
-                headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
+        let out = if auto_unknown {
+            headson::headson_indent_with_budgets(bytes, &cfg, &prio, budgets)?
+        } else {
+            match chosen_input {
+                InputFormat::Json => {
+                    headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
+                }
+                InputFormat::Yaml => headson::headson_yaml_with_budgets(
+                    bytes, &cfg, &prio, budgets,
+                )?,
+                InputFormat::Text => headson::headson_text_with_budgets(
+                    bytes, &cfg, &prio, budgets,
+                )?,
             }
-            InputFormat::Yaml => headson::headson_yaml_with_budgets(
-                bytes, &cfg, &prio, budgets,
-            )?,
-            InputFormat::Indent => headson::headson_indent_with_budgets(
-                bytes, &cfg, &prio, budgets,
-            )?,
-            InputFormat::Text => headson::headson_text_with_budgets(
-                bytes, &cfg, &prio, budgets,
-            )?,
         };
         Ok((out, ignored))
     }
@@ -619,5 +631,86 @@ fn resolve_effective_template_for_single(
                 headson::OutputTemplate::Text
             }
         }
+    }
+}
+// Lightweight indent detection for configuring text rendering in indent-ingest.
+fn detect_indent_unit_from_bytes(bytes: &[u8]) -> Option<String> {
+    let s = String::from_utf8_lossy(bytes);
+    let lines: Vec<&str> = s.split_terminator('\n').collect();
+    if lines.is_empty() {
+        return None;
+    }
+    // Tabs win if any line starts with a tab.
+    if lines.iter().any(|l| l.starts_with('\t')) {
+        return Some("\t".to_string());
+    }
+    // Estimate unit width among {2,4,8} via modal divisibility of positive deltas.
+    let mut last = None::<usize>;
+    let mut deltas: Vec<usize> = Vec::new();
+    for line in &lines {
+        let trimmed = line.trim_start_matches(|c: char| c == ' ' || c == '\t');
+        let mut count = 0usize;
+        for ch in line.chars() {
+            match ch {
+                ' ' => count += 1,
+                '\t' => count += 4,
+                _ => break,
+            }
+        }
+        if trimmed.is_empty() {
+            continue;
+        }
+        if let Some(p) = last {
+            if count > p {
+                deltas.push(count - p);
+            }
+        }
+        last = Some(count);
+    }
+    if deltas.is_empty() {
+        return Some("  ".to_string());
+    }
+    let mut scores = [(2usize, 0usize), (4, 0), (8, 0)];
+    for d in &deltas {
+        for (w, c) in scores.iter_mut() {
+            if d % *w == 0 {
+                *c += 1;
+            }
+        }
+    }
+    scores.sort_by_key(|&(_, c)| std::cmp::Reverse(c));
+    let width = if scores[0].1 > 0 { scores[0].0 } else { 2 };
+    Some(" ".repeat(width))
+}
+
+fn detect_modal_indent_unit_for_entries(
+    entries: &InputEntries,
+) -> Option<String> {
+    let mut tabs = 0usize;
+    let mut space2 = 0usize;
+    let mut space4 = 0usize;
+    let mut space8 = 0usize;
+    for (_, bytes) in entries.iter() {
+        if let Some(unit) = detect_indent_unit_from_bytes(bytes) {
+            match unit.as_str() {
+                "\t" => tabs += 1,
+                s if s.len() == 2 => space2 += 1,
+                s if s.len() == 4 => space4 += 1,
+                s if s.len() == 8 => space8 += 1,
+                _ => {}
+            }
+        }
+    }
+    let mut ranked = vec![
+        (tabs, "\t".to_string()),
+        (space4, "    ".to_string()),
+        (space2, "  ".to_string()),
+        (space8, "        ".to_string()),
+    ];
+    ranked.sort_by_key(|(c, _)| std::cmp::Reverse(*c));
+    if ranked[0].0 == 0 {
+        None
+    } else {
+        Some(ranked[0].1.clone())
     }
 }
