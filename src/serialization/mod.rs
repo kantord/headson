@@ -348,14 +348,20 @@ impl<'a> RenderScope<'a> {
                 let child_kind = self.order.nodes[child_id.0].display_kind();
                 let rendered =
                     self.render_node_to_string(child_id.0, depth + 1, false);
-                // In text template, drop children that render to pure omission lines to avoid
-                // consecutive gap markers; the parent gap will cover it.
+                // Text template: keep omission-only children so their own
+                // renderer can place markers at the correct indentation.
+                // Coalesce: if the previously kept child is also a pure
+                // omission, skip this one to avoid consecutive markers.
                 if matches!(
                     self.config.template,
                     crate::serialization::types::OutputTemplate::Text
                 ) && self.rendered_is_pure_text_omission(&rendered)
                 {
-                    continue;
+                    if let Some((_pi, (_pk, prev_s))) = children_pairs.last() {
+                        if self.rendered_is_pure_text_omission(prev_s) {
+                            continue;
+                        }
+                    }
                 }
                 kept += 1;
                 let orig_index = self
@@ -405,7 +411,11 @@ impl<'a> RenderScope<'a> {
                     crate::serialization::types::OutputTemplate::Text
                 ) && self.rendered_is_pure_text_omission(&rendered)
                 {
-                    continue;
+                    if let Some((_pi, (_pk, prev_s))) = children_pairs.last() {
+                        if self.rendered_is_pure_text_omission(prev_s) {
+                            continue;
+                        }
+                    }
                 }
                 kept += 1;
                 let orig_index = self

@@ -16,11 +16,14 @@ fn leading_ws_prefix(s: &str) -> &str {
 #[inline]
 fn push_optional_indent(
     out: &mut Out<'_>,
-    _depth: usize,
+    depth: usize,
     indent_prefix: Option<&str>,
 ) {
     if let Some(p) = indent_prefix.filter(|p| !p.is_empty()) {
         out.push_str(p);
+    } else if depth > 0 {
+        // Fall back to structural indentation only for omission markers.
+        out.push_indent(depth);
     }
 }
 
