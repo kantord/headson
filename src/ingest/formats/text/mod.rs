@@ -48,6 +48,15 @@ impl TextArenaBuilder {
         let n = &mut self.arena.nodes[id];
         n.kind = NodeKind::String;
         n.string_value = Some(s);
+        // Capture leading whitespace prefix for text alignment later.
+        if let Some(v) = &n.string_value {
+            let prefix_len =
+                v.chars().take_while(|c| *c == ' ' || *c == '\t').count();
+            if prefix_len > 0 {
+                n.text_indent_prefix =
+                    Some(v.chars().take(prefix_len).collect());
+            }
+        }
         id
     }
 
@@ -57,6 +66,14 @@ impl TextArenaBuilder {
         // Model atomic strings as atomic token leaves; display kind later maps to String.
         n.kind = NodeKind::Number;
         n.atomic_token = Some(s);
+        if let Some(v) = &n.atomic_token {
+            let prefix_len =
+                v.chars().take_while(|c| *c == ' ' || *c == '\t').count();
+            if prefix_len > 0 {
+                n.text_indent_prefix =
+                    Some(v.chars().take(prefix_len).collect());
+            }
+        }
         id
     }
 

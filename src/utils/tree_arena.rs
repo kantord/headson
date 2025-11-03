@@ -20,6 +20,9 @@ pub struct JsonTreeNode {
     // For atomic leaves (null/bool/number), the exact token text.
     pub atomic_token: Option<String>,
     pub string_value: Option<String>,
+    // For text ingest: leading whitespace prefix of the original line (spaces/tabs only).
+    // Used by text renderers to align omission markers without recomputing.
+    pub text_indent_prefix: Option<String>,
     pub children_start: usize,
     pub children_len: usize,
     pub obj_keys_start: usize,
@@ -38,6 +41,7 @@ impl Default for JsonTreeNode {
             kind: NodeKind::Null,
             atomic_token: None,
             string_value: None,
+            text_indent_prefix: None,
             children_start: 0,
             children_len: 0,
             obj_keys_start: 0,
