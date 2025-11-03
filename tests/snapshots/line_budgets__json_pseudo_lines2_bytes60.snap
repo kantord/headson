@@ -1,6 +1,6 @@
 ---
 source: tests/line_budgets.rs
+assertion_line: 102
 expression: out
 ---
 "quote \" and backslash \\ and newline \n and tab \t and…"
-

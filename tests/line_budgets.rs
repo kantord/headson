@@ -99,7 +99,7 @@ fn combined_char_and_line_caps() {
         trimmed_len <= 60,
         "byte cap failed: len={trimmed_len} > 60, out={out:?}",
     );
-    assert_snapshot!("json_pseudo_lines2_chars60", out);
+    assert_snapshot!("json_pseudo_lines2_bytes60", out);
 }
 
 #[test]
