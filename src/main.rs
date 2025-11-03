@@ -156,6 +156,7 @@ enum InputFormat {
     Json,
     Yaml,
     Text,
+    Indent,
 }
 
 fn main() -> Result<()> {
@@ -267,8 +268,9 @@ fn choose_input_format_fileset(
         } else if all_json_ext(entries) {
             InputFormat::Json
         } else {
-            // Mixed or unknown extensions: treat as text to avoid JSON/YAML parse errors
-            InputFormat::Text
+            // Mixed or unknown extensions: treat as indent-structured text
+            // to provide a nested preview based on indentation.
+            InputFormat::Indent
         }
     } else {
         cli.input_format
@@ -318,6 +320,12 @@ fn run_from_stdin(
             &prio,
             budgets,
         ),
+        InputFormat::Indent => headson::headson_indent_with_budgets(
+            input_bytes,
+            &cfg,
+            &prio,
+            budgets,
+        ),
         InputFormat::Text => headson::headson_text_with_budgets(
             input_bytes,
             &cfg,
@@ -347,6 +355,10 @@ fn run_from_paths(
         let mut cfg = render_cfg.clone();
         // For filesets: if format=auto, enable per-file template selection.
         cfg.template = effective_fileset_template(cli, cfg.style);
+        // Indent ingest always produces a structured tree; prefer JSON-family templates.
+        if matches!(chosen_input, InputFormat::Indent) {
+            cfg.template = map_json_template_for_style(cfg.style);
+        }
         let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
         if budgets.byte_budget.is_none()
             && budgets.char_budget.is_none()
@@ -359,6 +371,9 @@ fn run_from_paths(
                 entries, &cfg, &prio, budgets,
             )?,
             InputFormat::Yaml => headson::headson_many_yaml_with_budgets(
+                entries, &cfg, &prio, budgets,
+            )?,
+            InputFormat::Indent => headson::headson_many_indent_with_budgets(
                 entries, &cfg, &prio, budgets,
             )?,
             InputFormat::Text => headson::headson_many_text_with_budgets(
@@ -380,7 +395,8 @@ fn run_from_paths(
                 } else if lower.ends_with(".json") {
                     InputFormat::Json
                 } else {
-                    InputFormat::Text
+                    // Unknown extension: prefer indent-based ingest for structure.
+                    InputFormat::Indent
                 }
             }
             _ => cli.input_format,
@@ -389,6 +405,9 @@ fn run_from_paths(
         cfg.template = resolve_effective_template_for_single(
             cli.format, cfg.style, &lower,
         );
+        if matches!(chosen_input, InputFormat::Indent) {
+            cfg.template = map_json_template_for_style(cfg.style);
+        }
         let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
         if budgets.byte_budget.is_none()
             && budgets.char_budget.is_none()
@@ -401,6 +420,9 @@ fn run_from_paths(
                 headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
             }
             InputFormat::Yaml => headson::headson_yaml_with_budgets(
+                bytes, &cfg, &prio, budgets,
+            )?,
+            InputFormat::Indent => headson::headson_indent_with_budgets(
                 bytes, &cfg, &prio, budgets,
             )?,
             InputFormat::Text => headson::headson_text_with_budgets(

@@ -1,7 +1,7 @@
 use std::fs;
 
 #[test]
-fn single_file_auto_unknown_ext_defaults_to_text() {
+fn single_file_auto_unknown_ext_defaults_to_indent() {
     let dir = tempfile::tempdir().expect("tmpdir");
     let p = dir.path().join("data.txt");
     fs::write(&p, b"alpha\nbeta\ngamma\n").unwrap();
@@ -19,7 +19,7 @@ fn single_file_auto_unknown_ext_defaults_to_text() {
         .assert()
         .success();
     let out = String::from_utf8_lossy(&assert.get_output().stdout);
-    // headson prints the rendered output and adds a trailing println newline.
-    // Text template emitted a newline per line; println adds one more.
-    assert_eq!(out, "alpha\nbeta\ngamma\n\n");
+    // Default is indent-structured JSON-family output; should include quoted lines
+    assert!(out.contains("\"alpha\""));
+    assert!(out.contains("line"));
 }

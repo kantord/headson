@@ -335,3 +335,33 @@ pub fn headson_many_text_with_budgets(
         budgets,
     ))
 }
+
+pub fn headson_indent_with_budgets(
+    input: Vec<u8>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+) -> Result<String> {
+    let arena = crate::ingest::parse_indent_one(input, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets(
+        &order_build,
+        config,
+        budgets,
+    ))
+}
+
+pub fn headson_many_indent_with_budgets(
+    inputs: Vec<(String, Vec<u8>)>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+) -> Result<String> {
+    let arena = crate::ingest::parse_indent_many(inputs, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets(
+        &order_build,
+        config,
+        budgets,
+    ))
+}

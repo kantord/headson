@@ -23,8 +23,8 @@ pub mod sampling;
 
 // Convenience re-exports so callers can use `crate::ingest::parse_*`.
 pub use formats::{
-    parse_json_many, parse_json_one, parse_text_many, parse_text_one,
-    parse_yaml_many, parse_yaml_one,
+    parse_indent_many, parse_indent_one, parse_json_many, parse_json_one,
+    parse_text_many, parse_text_one, parse_yaml_many, parse_yaml_one,
 };
 
 // (intentionally no duplicate re-exports here; see formats::* above)
