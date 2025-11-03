@@ -1,6 +1,7 @@
 ---
 source: tests/line_budgets.rs
+assertion_line: 87
 expression: out
 ---
-L1
+…
 …

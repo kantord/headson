@@ -1,0 +1,20 @@
+---
+source: tests/cpp_text_fallback.rs
+assertion_line: 26
+expression: out
+---
+#include <iostream>
+
+void greet…
+
+int main() {
+greet("world");
+
+for (int i…
+  std::cout…
+  }
+…
+return 0;
+}
+
+…

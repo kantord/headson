@@ -1,14 +1,20 @@
 use super::{ArrayCtx, ObjectCtx};
 use crate::serialization::output::Out;
 
-fn push_text_omission_line(out: &mut Out<'_>, omitted: usize) {
+fn push_text_omission_line(out: &mut Out<'_>, depth: usize, omitted: usize) {
     match out.style() {
         crate::serialization::types::Style::Strict => {}
         crate::serialization::types::Style::Default => {
+            if depth > 0 {
+                out.push_indent(depth);
+            }
             out.push_omission();
             out.push_newline();
         }
         crate::serialization::types::Style::Detailed => {
+            if depth > 0 {
+                out.push_indent(depth);
+            }
             out.push_omission();
             out.push_str(" ");
             out.push_str(&format!("{omitted} more lines "));
@@ -18,18 +24,32 @@ fn push_text_omission_line(out: &mut Out<'_>, omitted: usize) {
     }
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Indent + omission flow is clearer inline"
+)]
 pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
-    // For text, arrays are treated as raw lines of text. We do not emit
-    // brackets or indentation; we only write lines and optional omission markers.
+    // For text, arrays are treated as raw lines of text.
+    // Indentation depth for lines equals (ctx.depth - 1), so top-level
+    // line-arrays render without indentation, and nested arrays increase it.
+    let indent_depth = ctx.depth.saturating_sub(1);
     if ctx.omitted_at_start && ctx.omitted > 0 {
-        push_text_omission_line(out, ctx.omitted);
+        push_text_omission_line(out, indent_depth, ctx.omitted);
     }
     for (_, (_, item)) in ctx.children.iter() {
-        out.push_str(item);
-        out.push_newline();
+        // Remove a single trailing newline to avoid introducing blank lines
+        // when we re-add newlines after indenting.
+        let trimmed = item.strip_suffix('\n').unwrap_or(item);
+        for line in trimmed.split('\n') {
+            if indent_depth > 0 {
+                out.push_indent(indent_depth);
+            }
+            out.push_str(line);
+            out.push_newline();
+        }
     }
     if !ctx.omitted_at_start && ctx.omitted > 0 {
-        push_text_omission_line(out, ctx.omitted);
+        push_text_omission_line(out, indent_depth, ctx.omitted);
     }
 }
 

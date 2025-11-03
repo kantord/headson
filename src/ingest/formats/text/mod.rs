@@ -51,6 +51,57 @@ impl TextArenaBuilder {
         id
     }
 
+    fn push_array_with_children(&mut self, children: Vec<usize>) -> usize {
+        let id = self.push_default();
+        let children_start = self.arena.children.len();
+        let children_len = children.len();
+        self.arena.children.extend(children);
+        let n = &mut self.arena.nodes[id];
+        n.kind = NodeKind::Array;
+        n.children_start = children_start;
+        n.children_len = children_len;
+        n.array_len = Some(children_len);
+        // No sampling at this level; contiguous
+        n.arr_indices_start = 0;
+        n.arr_indices_len = 0;
+        id
+    }
+
+    fn push_root_array_sampled(
+        &mut self,
+        all_children: &[usize],
+        total: usize,
+    ) -> usize {
+        let id = self.push_default();
+        let idxs = choose_indices(self.sampler, total, self.array_cap);
+        let kept = idxs.len().min(self.array_cap);
+        let children_start = self.arena.children.len();
+        for &orig_index in idxs.iter().take(kept) {
+            if let Some(&cid) = all_children.get(orig_index) {
+                self.arena.children.push(cid);
+            }
+        }
+        let n = &mut self.arena.nodes[id];
+        n.kind = NodeKind::Array;
+        n.children_start = children_start;
+        n.children_len = kept;
+        n.array_len = Some(total);
+        // Store arr_indices when not contiguous head prefix
+        let contiguous =
+            idxs.iter().take(kept).enumerate().all(|(i, &idx)| i == idx);
+        if kept == 0 || contiguous {
+            n.arr_indices_start = 0;
+            n.arr_indices_len = 0;
+        } else {
+            let start = self.arena.arr_indices.len();
+            self.arena.arr_indices.extend(idxs.into_iter().take(kept));
+            let len = self.arena.arr_indices.len().saturating_sub(start);
+            n.arr_indices_start = start;
+            n.arr_indices_len = len.min(kept);
+        }
+        id
+    }
+
     fn push_array_of_lines(
         &mut self,
         lines: &[String],
@@ -115,6 +166,10 @@ impl TextArenaBuilder {
     clippy::unnecessary_wraps,
     reason = "Signature matches other ingest helpers and trait expectations"
 )]
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Indent detection + nesting assembly reads clearer inline"
+)]
 pub fn build_text_tree_arena_from_bytes(
     bytes: Vec<u8>,
     config: &PriorityConfig,
@@ -122,16 +177,113 @@ pub fn build_text_tree_arena_from_bytes(
     let lossy = String::from_utf8_lossy(&bytes);
     let norm = normalize_newlines(&lossy);
     // split_terminator keeps no trailing empty item for trailing newline
-    let lines_vec: Vec<String> = norm
-        .split_terminator('\n')
-        .map(std::string::ToString::to_string)
-        .collect();
-    let total = lines_vec.len();
+    let raw_lines: Vec<&str> = norm.split_terminator('\n').collect();
+
+    // Detect indent unit: prefer tabs if present, otherwise minimal positive
+    // number of leading spaces among indented lines; default to 2 spaces.
+    let uses_tab = raw_lines.iter().any(|l| l.starts_with('\t'));
+    let space_unit = if uses_tab {
+        0usize
+    } else {
+        let mut min_pos: Option<usize> = None;
+        for l in &raw_lines {
+            let count = l.chars().take_while(|c| *c == ' ').count();
+            if count > 0 {
+                min_pos = Some(min_pos.map_or(count, |m| m.min(count)));
+            }
+        }
+        min_pos.unwrap_or(2)
+    };
+
+    #[derive(Default)]
+    struct Node {
+        text: String,
+        children: Vec<Node>,
+    }
+
+    // Build nested arrays: each line becomes a Node with text and children.
+    let mut root_nodes: Vec<Node> = Vec::new();
+    // The stack contains pairs of (depth, pointer to children Vec of current node level).
+    let mut stack: Vec<(usize, *mut Vec<Node>)> = Vec::new();
+
+    for &l in &raw_lines {
+        let (mut d, text) = if uses_tab {
+            let tabs = l.chars().take_while(|c| *c == '\t').count();
+            let stripped = l.chars().skip(tabs).collect::<String>();
+            (tabs, stripped)
+        } else {
+            let spaces = l.chars().take_while(|c| *c == ' ').count();
+            let unit = space_unit.max(1);
+            let depth = spaces / unit;
+            let to_strip = depth * unit;
+            let stripped = l.chars().skip(to_strip).collect::<String>();
+            (depth, stripped)
+        };
+        if let Some(&(cur_d, _)) = stack.last() {
+            if d > cur_d + 1 {
+                d = cur_d + 1;
+            }
+        } else if d > 0 {
+            d = 0;
+        }
+        while let Some(&(cur_d, _)) = stack.last() {
+            if cur_d >= d {
+                stack.pop();
+            } else {
+                break;
+            }
+        }
+        if let Some(&(_, ptr)) = stack.last() {
+            unsafe {
+                (&mut *ptr).push(Node {
+                    text,
+                    children: Vec::new(),
+                });
+            }
+            // update stack to point at the children of the just-pushed node
+            if let Some(&(_, parent_ptr)) = stack.last() {
+                let vec = unsafe { &mut *parent_ptr };
+                let len = vec.len();
+                if len > 0 {
+                    // SAFETY: index len-1 is in-bounds, pointer used immediately
+                    let child_ptr: *mut Vec<Node> = &mut vec[len - 1].children;
+                    stack.push((d + 1, child_ptr));
+                }
+            }
+        } else {
+            root_nodes.push(Node {
+                text,
+                children: Vec::new(),
+            });
+            let len = root_nodes.len();
+            if len > 0 {
+                // SAFETY: index len-1 is in-bounds, pointer used immediately
+                let child_ptr: *mut Vec<Node> =
+                    &mut root_nodes[len - 1].children;
+                stack.push((1, child_ptr));
+            }
+        }
+    }
+
+    fn push_node(n: &Node, b: &mut TextArenaBuilder) -> usize {
+        let mut kids: Vec<usize> = Vec::new();
+        kids.push(b.push_string(n.text.clone()));
+        for ch in &n.children {
+            kids.push(push_node(ch, b));
+        }
+        b.push_array_with_children(kids)
+    }
+
     let mut b = TextArenaBuilder::new(
         config.array_max_items,
         config.array_sampler.into(),
     );
-    let root_id = b.push_array_of_lines(&lines_vec, total);
+    let total = root_nodes.len();
+    let mut all_children: Vec<usize> = Vec::with_capacity(total);
+    for n in &root_nodes {
+        all_children.push(push_node(n, &mut b));
+    }
+    let root_id = b.push_root_array_sampled(&all_children, total);
     let mut a = b.finish();
     a.root_id = root_id;
     Ok(a)
