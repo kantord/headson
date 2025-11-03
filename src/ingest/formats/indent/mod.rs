@@ -125,25 +125,14 @@ impl Builder {
         id
     }
 
-    fn push_line_entry(&mut self, text: String) -> (usize, usize) {
-        // children array first (so object can reference it)
-        let children_arr = self.push_array_empty();
-        let line_str = self.push_string(text);
-        let obj_id = self.push_default();
-        let keys_start = self.arena.obj_keys.len();
-        self.arena.obj_keys.push("line".to_string());
-        self.arena.obj_keys.push("children".to_string());
-        let children_start = self.arena.children.len();
-        self.arena.children.push(line_str);
-        self.arena.children.push(children_arr);
-        let n = &mut self.arena.nodes[obj_id];
-        n.kind = NodeKind::Object;
-        n.obj_keys_start = keys_start;
-        n.obj_keys_len = 2;
-        n.children_start = children_start;
-        n.children_len = 2;
-        n.object_len = Some(2);
-        (obj_id, children_arr)
+    fn push_line_and_child_array(&mut self, parent_arr: usize, text: String) -> usize {
+        // Append a string for this line under parent array, then append an
+        // empty array to hold its children. Return the child-array id.
+        let line_id = self.push_string(text);
+        self.append_child(parent_arr, line_id);
+        let child_arr = self.push_array_empty();
+        self.append_child(parent_arr, child_arr);
+        child_arr
     }
 }
 
@@ -157,7 +146,7 @@ fn build_indent_tree_arena_from_bytes(
     // Detect indent style/unit on the whole file
     let style = detect_indent_unit(&all_lines);
     let mut b = Builder::new();
-    // Root is an array of entries
+    // Root is an array of strings and (optional) child arrays after each string
     let root_arr = b.push_array_empty();
     let mut stack: Vec<usize> = vec![root_arr]; // stack holds array node ids
     let mut last_children: Option<usize> = None;
@@ -209,13 +198,12 @@ fn build_indent_tree_arena_from_bytes(
             }
         }
         current_level = target_level;
-        // Create node for this line under current array; strip leading indent so we
-        // can reconstruct indentation from nesting during serialization.
-        let content = line.trim_start_matches(|c| c == ' ' || c == '\t');
-        let (obj_id, children_arr) = b.push_line_entry(content.to_string());
+        // Append this line and its child array under the current array.
         let parent_arr = *stack.last().expect("root stack not empty");
-        b.append_child(parent_arr, obj_id);
-        last_children = Some(children_arr);
+        // Strip leading indent; indentation will be reconstructed from depth.
+        let content = line.trim_start_matches(|c| c == ' ' || c == '\t');
+        let child_arr = b.push_line_and_child_array(parent_arr, content.to_string());
+        last_children = Some(child_arr);
     }
     let mut arena = b.arena;
     arena.root_id = root_arr;

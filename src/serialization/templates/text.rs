@@ -21,14 +21,35 @@ fn push_text_omission_line(out: &mut Out<'_>, omitted: usize, depth: usize) {
 }
 
 pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
-    // For text, arrays are treated as raw lines of text. We do not emit
-    // brackets or indentation; we only write lines and optional omission markers.
+    // Text template: if an array contains nested arrays, treat it as an
+    // indent-structured block. Otherwise, treat it as raw lines.
+    let has_nested_arrays = ctx
+        .children
+        .iter()
+        .any(|(_, (kind, _))| matches!(kind, crate::order::NodeKind::Array));
+
     if ctx.omitted_at_start && ctx.omitted > 0 {
         push_text_omission_line(out, ctx.omitted, ctx.depth);
     }
-    for (_, (_, item)) in ctx.children.iter() {
-        out.push_str(item);
-        out.push_newline();
+    if has_nested_arrays {
+        for (_, (kind, item)) in ctx.children.iter() {
+            match kind {
+                crate::order::NodeKind::Array => {
+                    // Nested block is already rendered with depth+1.
+                    out.push_str(item);
+                }
+                _ => {
+                    out.push_indent(ctx.depth);
+                    out.push_str(item);
+                    out.push_newline();
+                }
+            }
+        }
+    } else {
+        for (_, (_, item)) in ctx.children.iter() {
+            out.push_str(item);
+            out.push_newline();
+        }
     }
     if !ctx.omitted_at_start && ctx.omitted > 0 {
         push_text_omission_line(out, ctx.omitted, ctx.depth);
@@ -36,14 +57,20 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
 }
 
 pub(super) fn render_object(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
-    // Special-case indent-ingest nodes: objects of shape { line: <str>, children: <array> }.
+    // Special-case legacy indent-ingest nodes: objects of shape { line: <str>, children: <array> }.
     // Render as raw text with indentation derived from depth.
     let mut line_val: Option<&str> = None;
     let mut children_block: Option<&str> = None;
     for (_, (k, v)) in ctx.children.iter() {
-        if k == "line" {
+        // Keys are provided as quoted JSON strings; strip quotes for matching.
+        let key = if k.len() >= 2 && k.starts_with('"') && k.ends_with('"') {
+            &k[1..k.len() - 1]
+        } else {
+            k.as_str()
+        };
+        if key == "line" {
             line_val = Some(v.as_str());
-        } else if k == "children" {
+        } else if key == "children" {
             children_block = Some(v.as_str());
         }
     }

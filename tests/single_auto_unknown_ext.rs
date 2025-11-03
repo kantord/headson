@@ -19,7 +19,7 @@ fn single_file_auto_unknown_ext_defaults_to_indent() {
         .assert()
         .success();
     let out = String::from_utf8_lossy(&assert.get_output().stdout);
-    // Default is indent-structured JSON-family output; should include quoted lines
-    assert!(out.contains("\"alpha\""));
-    assert!(out.contains("line"));
+    // Default is indent-structured text output; should contain raw lines
+    assert!(out.contains("alpha\n"));
+    assert!(!out.contains("\"alpha\""));
 }
