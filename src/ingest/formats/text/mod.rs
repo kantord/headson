@@ -223,17 +223,16 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
     let mut stack: Vec<(usize, *mut Vec<Node>)> = Vec::new();
 
     for &l in &raw_lines {
+        // Compute structural depth from leading whitespace, but preserve
+        // the original line text (including its exact indentation).
         let (mut d, text) = if uses_tab {
             let tabs = l.chars().take_while(|c| *c == '\t').count();
-            let stripped = l.chars().skip(tabs).collect::<String>();
-            (tabs, stripped)
+            (tabs, l.to_string())
         } else {
             let spaces = l.chars().take_while(|c| *c == ' ').count();
             let unit = space_unit.max(1);
             let depth = spaces / unit;
-            let to_strip = depth * unit;
-            let stripped = l.chars().skip(to_strip).collect::<String>();
-            (depth, stripped)
+            (depth, l.to_string())
         };
         if let Some(&(cur_d, _)) = stack.last() {
             if d > cur_d + 1 {

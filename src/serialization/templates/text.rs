@@ -16,13 +16,11 @@ fn leading_ws_prefix(s: &str) -> &str {
 #[inline]
 fn push_optional_indent(
     out: &mut Out<'_>,
-    depth: usize,
+    _depth: usize,
     indent_prefix: Option<&str>,
 ) {
     if let Some(p) = indent_prefix.filter(|p| !p.is_empty()) {
         out.push_str(p);
-    } else if depth > 0 {
-        out.push_indent(depth);
     }
 }
 
@@ -99,21 +97,18 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
             if gap > 0 {
                 // Emit a gap omission marker aligned with the last non-empty
                 // line's textual indent when available; otherwise structural.
-                let prefix_opt = if last_nonempty_indent.is_empty() {
-                    None
-                } else {
+                let prefix_opt = if !last_nonempty_indent.is_empty() {
                     Some(last_nonempty_indent.as_str())
-                };
-                // If we are inside a block (after the header line), prefer
-                // indenting omission markers one level deeper structurally.
-                let use_depth = if prefix_opt.is_some() {
-                    indent_depth
-                } else if saw_header_line {
-                    indent_depth.saturating_add(1)
                 } else {
-                    indent_depth
+                    // Try to align with the upcoming line's indent as a best-effort.
+                    let next_pref = leading_ws_prefix(item);
+                    if next_pref.is_empty() {
+                        None
+                    } else {
+                        Some(next_pref)
+                    }
                 };
-                push_text_omission_line(out, use_depth, gap, prefix_opt);
+                push_text_omission_line(out, indent_depth, gap, prefix_opt);
             }
         }
 
@@ -128,10 +123,7 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
                 out.push_str(item);
             }
             _ => {
-                // Leaf line: indent according to this array's depth.
-                if indent_depth > 0 {
-                    out.push_indent(indent_depth);
-                }
+                // Leaf line: print exactly as in source (keeps original indent).
                 out.push_str(item);
                 out.push_newline();
                 // Update last non-empty indent based on this line.
@@ -162,14 +154,8 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
         } else {
             Some(last_nonempty_indent.as_str())
         };
-        let use_depth = if prefix_opt.is_some() {
-            indent_depth
-        } else if saw_header_line {
-            indent_depth.saturating_add(1)
-        } else {
-            indent_depth
-        };
-        push_text_omission_line(out, use_depth, ctx.omitted, prefix_opt);
+        // Only apply textual indentation; do not fall back to structural.
+        push_text_omission_line(out, indent_depth, ctx.omitted, prefix_opt);
     }
 }
 
