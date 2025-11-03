@@ -6,13 +6,14 @@ expression: out
 #!/usr/bin/env bash
 
 greet() {
-local name="$1"
+  …
 …
-done
-echo "$total"
+compute() {
+  …
 }
 
 main() {
+  greet "world"
 …
 
 main "$@"

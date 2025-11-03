@@ -4,11 +4,10 @@ assertion_line: 77
 expression: out
 ---
 function greet(name: string) {
-console.log(`Hello, ${name}`);
+  console.log(`Hello, ${name}`);
 …
-
 function main(): void {
-greet("world");
+  greet("world");
 …
 
 …

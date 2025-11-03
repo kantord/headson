@@ -6,11 +6,11 @@ expression: out
 #include <iostream>
 
 void greet(const std::string& name) {
-…
+  …
+}
 
 int main() {
-greet("world");
-
+  greet("world");
 …
 }
 

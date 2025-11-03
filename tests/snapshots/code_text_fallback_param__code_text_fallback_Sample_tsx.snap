@@ -6,8 +6,11 @@ expression: out
 import React from 'react';
 
 …
+function Item({ i }: { i: number }) {
+  return <li>i: {i}</li>;
+}
 
-export default function Sample({ name }: Props) {
 …
+}
 
 …

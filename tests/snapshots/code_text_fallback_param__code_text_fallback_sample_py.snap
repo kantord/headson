@@ -4,14 +4,11 @@ assertion_line: 77
 expression: out
 ---
 def greet(name: str):
-print(f"Hello, {name}")
+  print(f"Hello, {name}")
 
 …
-return total
 
-
-def main():
 …
 if __name__ == "__main__":
-main()
+  main()
 …

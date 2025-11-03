@@ -243,7 +243,10 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
             d = 0;
         }
         while let Some(&(cur_d, _)) = stack.last() {
-            if cur_d >= d {
+            // Maintain a pointer for the current target depth `d` so that
+            // lines with depth equal to `cur_d` are pushed as children there.
+            // Only pop when the stack's depth is strictly greater than `d`.
+            if cur_d > d {
                 stack.pop();
             } else {
                 break;
