@@ -321,6 +321,28 @@ pub fn headson_text_with_budgets(
     ))
 }
 
+/// Text ingest where each line is treated as an atomic string (non-truncatable).
+/// Useful for source-like files to avoid mid-line ellipses; omissions happen at line level.
+pub fn headson_text_with_budgets_code(
+    input: Vec<u8>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+) -> Result<String> {
+    let arena =
+        crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
+            input,
+            priority_cfg,
+            true,
+        )?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets(
+        &order_build,
+        config,
+        budgets,
+    ))
+}
+
 pub fn headson_many_text_with_budgets(
     inputs: Vec<(String, Vec<u8>)>,
     config: &RenderConfig,

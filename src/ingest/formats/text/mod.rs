@@ -51,6 +51,15 @@ impl TextArenaBuilder {
         id
     }
 
+    fn push_string_atomic(&mut self, s: String) -> usize {
+        let id = self.push_default();
+        let n = &mut self.arena.nodes[id];
+        // Model atomic strings as atomic token leaves; display kind later maps to String.
+        n.kind = NodeKind::Number;
+        n.atomic_token = Some(s);
+        id
+    }
+
     fn push_array_with_children(&mut self, children: Vec<usize>) -> usize {
         let id = self.push_default();
         let children_start = self.arena.children.len();
@@ -106,6 +115,7 @@ impl TextArenaBuilder {
         &mut self,
         lines: &[String],
         total: usize,
+        atomic: bool,
     ) -> usize {
         let id = self.push_default();
         let idxs = choose_indices(self.sampler, total, self.array_cap);
@@ -113,7 +123,11 @@ impl TextArenaBuilder {
         let mut pushed = 0usize;
         for (i, &orig_index) in idxs.iter().take(kept).enumerate() {
             if let Some(line) = lines.get(orig_index) {
-                let child = self.push_string(line.clone());
+                let child = if atomic {
+                    self.push_string_atomic(line.clone())
+                } else {
+                    self.push_string(line.clone())
+                };
                 self.arena.children.push(child);
                 pushed = i + 1;
             }
@@ -168,11 +182,13 @@ impl TextArenaBuilder {
 )]
 #[allow(
     clippy::cognitive_complexity,
-    reason = "Indent detection + nesting assembly reads clearer inline"
+    clippy::too_many_lines,
+    reason = "Builder + indent/nesting logic is clearest co-located"
 )]
-pub fn build_text_tree_arena_from_bytes(
+pub fn build_text_tree_arena_from_bytes_with_mode(
     bytes: Vec<u8>,
     config: &PriorityConfig,
+    atomic_strings: bool,
 ) -> Result<JsonTreeArena> {
     let lossy = String::from_utf8_lossy(&bytes);
     let norm = normalize_newlines(&lossy);
@@ -265,11 +281,15 @@ pub fn build_text_tree_arena_from_bytes(
         }
     }
 
-    fn push_node(n: &Node, b: &mut TextArenaBuilder) -> usize {
+    fn push_node(n: &Node, b: &mut TextArenaBuilder, atomic: bool) -> usize {
         let mut kids: Vec<usize> = Vec::new();
-        kids.push(b.push_string(n.text.clone()));
+        if atomic {
+            kids.push(b.push_string_atomic(n.text.clone()));
+        } else {
+            kids.push(b.push_string(n.text.clone()));
+        }
         for ch in &n.children {
-            kids.push(push_node(ch, b));
+            kids.push(push_node(ch, b, atomic));
         }
         b.push_array_with_children(kids)
     }
@@ -281,12 +301,19 @@ pub fn build_text_tree_arena_from_bytes(
     let total = root_nodes.len();
     let mut all_children: Vec<usize> = Vec::with_capacity(total);
     for n in &root_nodes {
-        all_children.push(push_node(n, &mut b));
+        all_children.push(push_node(n, &mut b, atomic_strings));
     }
     let root_id = b.push_root_array_sampled(&all_children, total);
     let mut a = b.finish();
     a.root_id = root_id;
     Ok(a)
+}
+
+pub fn build_text_tree_arena_from_bytes(
+    bytes: Vec<u8>,
+    config: &PriorityConfig,
+) -> Result<JsonTreeArena> {
+    build_text_tree_arena_from_bytes_with_mode(bytes, config, false)
 }
 
 #[allow(
@@ -303,6 +330,27 @@ pub fn build_text_tree_arena_from_many(
     );
     let mut keys: Vec<String> = Vec::with_capacity(inputs.len());
     let mut children_ids: Vec<usize> = Vec::with_capacity(inputs.len());
+    fn is_code_ext(name: &str) -> bool {
+        let lower = name.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase());
+        matches!(
+            lower.as_deref(),
+            Some("c")
+                | Some("h")
+                | Some("cpp")
+                | Some("cc")
+                | Some("cxx")
+                | Some("hpp")
+                | Some("py")
+                | Some("java")
+                | Some("js")
+                | Some("ts")
+                | Some("tsx")
+                | Some("go")
+                | Some("sh")
+                | Some("bash")
+        )
+    }
+
     for (key, bytes) in inputs.drain(..) {
         let lossy = String::from_utf8_lossy(&bytes);
         let norm = normalize_newlines(&lossy);
@@ -311,7 +359,8 @@ pub fn build_text_tree_arena_from_many(
             .map(std::string::ToString::to_string)
             .collect();
         let total = lines_vec.len();
-        let child_id = b.push_array_of_lines(&lines_vec, total);
+        let atomic = is_code_ext(&key);
+        let child_id = b.push_array_of_lines(&lines_vec, total, atomic);
         keys.push(key);
         children_ids.push(child_id);
     }
