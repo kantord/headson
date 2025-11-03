@@ -56,9 +56,10 @@ If you’re comfortable with tools like `head` and `tail`, use `headson` when yo
 
 Common flags:
 
-- `-c, --bytes <BYTES>`: per‑file output budget (bytes). For multiple inputs, default total budget is `<BYTES> * number_of_inputs`.
-- `-u, --chars <CHARS>`: per‑file output budget (Unicode code points). Behaves like `--bytes` but counts characters instead of bytes.
-- `-C, --global-bytes <BYTES>`: total output budget across all inputs. With `--bytes`, the effective total is the smaller of the two.
+- `-c, --bytes <BYTES>`: per‑file output budget (bytes). For multiple inputs, default total budget is `<BYTES> * number_of_inputs`. Mutually exclusive with `--chars`/`--global-chars`.
+- `-u, --chars <CHARS>`: per‑file output budget (Unicode code points). Behaves like `--bytes` but counts characters instead of bytes. Mutually exclusive with `--bytes`/`--global-bytes`.
+- `-C, --global-bytes <BYTES>`: total output budget across all inputs. With `--bytes`, the effective total is the smaller of the two. Conflicts with `--chars`/`--global-chars`.
+- `-U, --global-chars <CHARS>`: total character budget across all inputs. With `--chars`, the effective total is the smaller of the two. Conflicts with `--bytes`/`--global-bytes`.
 - `-f, --format <auto|json|yaml|text>`: output format (default: `auto`).
   - Auto: stdin → JSON family; filesets → per‑file based on extension (`.json` → JSON family, `.yaml`/`.yml` → YAML, unknown → Text).
 - `-t, --template <strict|default|detailed>`: output style (default: `default`).
@@ -91,7 +92,7 @@ Notes:
   - Default per‑file budget is 500 bytes when neither `--lines` nor `--chars` is provided.
   - Multiple inputs: total default budget is `<BYTES> * number_of_inputs`; `--global-bytes` caps the total.
 
-- Characters (`-u/--chars`)
+- Characters (`-u/--chars`, `-U/--global-chars`)
   - Measures Unicode code points (not grapheme clusters).
 
 - Lines (`-n/--lines`, `-N/--global-lines`)
@@ -100,8 +101,9 @@ Notes:
   - Multiple inputs: defaults to `<LINES> * number_of_inputs`; `--global-lines` caps the total.
 
 - Interactions and precedence
-  - All active budgets are enforced simultaneously. The render must satisfy all of: bytes (if set), chars (if set), and lines (if set). The strictest cap wins.
-  - When only lines are specified, no implicit byte cap applies. When neither lines nor chars are specified, a 500‑byte default applies.
+  - Bytes and Chars are alternative size modes and are mutually exclusive. If `--chars`/`--global-chars` is used, byte budgets must not be set.
+  - The active size mode (bytes or chars) is enforced together with line limits when provided.
+  - When only lines are specified, no implicit size cap applies. When neither lines nor chars are specified, a 500‑byte default applies.
 
 Quick one‑liners:
 

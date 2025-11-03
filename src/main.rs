@@ -21,15 +21,24 @@ type IgnoreNotices = Vec<String>;
     about = "Get a small but useful preview of JSON or YAML"
 )]
 struct Cli {
-    #[arg(short = 'c', long = "bytes")]
+    #[arg(short = 'c', long = "bytes", conflicts_with_all = ["chars", "global_chars"])]
     bytes: Option<usize>,
     #[arg(
         short = 'u',
         long = "chars",
         value_name = "CHARS",
-        help = "Per-file Unicode character budget (adds up across files if no global chars limit)"
+        help = "Per-file Unicode character budget (mutually exclusive with bytes budgets)",
+        conflicts_with_all = ["bytes", "global_bytes"],
     )]
     chars: Option<usize>,
+    #[arg(
+        short = 'U',
+        long = "global-chars",
+        value_name = "CHARS",
+        help = "Total character budget across all inputs (mutually exclusive with bytes budgets)",
+        conflicts_with_all = ["bytes", "global_bytes"],
+    )]
+    global_chars: Option<usize>,
     #[arg(
         short = 'n',
         long = "lines",
@@ -82,7 +91,8 @@ struct Cli {
         short = 'C',
         long = "global-bytes",
         value_name = "BYTES",
-        help = "Total byte budget across all inputs. When combined with --bytes, the effective global limit is the smaller of the two."
+        help = "Total byte budget across all inputs. When combined with --bytes, the effective global limit is the smaller of the two.",
+        conflicts_with_all = ["chars", "global_chars"],
     )]
     global_bytes: Option<usize>,
     #[arg(
@@ -187,7 +197,7 @@ fn make_budgets(
 ) -> headson::Budgets {
     let any_bytes = cli.bytes.is_some() || cli.global_bytes.is_some();
     let any_lines = cli.lines.is_some() || cli.global_lines.is_some();
-    let any_chars = cli.chars.is_some();
+    let any_chars = cli.chars.is_some() || cli.global_chars.is_some();
 
     // Apply default 500-byte only when no explicit budgets provided.
     let byte_budget = if any_bytes {
@@ -214,7 +224,12 @@ fn compute_effective_bytes(cli: &Cli, input_count: usize) -> usize {
 }
 
 fn compute_effective_chars(cli: &Cli, input_count: usize) -> Option<usize> {
-    cli.chars.map(|n| n.saturating_mul(input_count))
+    match (cli.global_chars, cli.chars) {
+        (Some(g), Some(n)) => Some(g.min(n.saturating_mul(input_count))),
+        (Some(g), None) => Some(g),
+        (None, Some(n)) => Some(n.saturating_mul(input_count)),
+        (None, None) => None,
+    }
 }
 
 fn compute_effective_lines(cli: &Cli, input_count: usize) -> Option<usize> {
@@ -530,7 +545,9 @@ fn get_priority_config(
     // Detect line-only mode: lines flag present and no explicit bytes/chars flags.
     let line_only = (cli.lines.is_some() || cli.global_lines.is_some())
         && cli.bytes.is_none()
-        && cli.global_bytes.is_none();
+        && cli.global_bytes.is_none()
+        && cli.chars.is_none()
+        && cli.global_chars.is_none();
     headson::PriorityConfig {
         max_string_graphemes: cli.string_cap,
         array_max_items: (per_file_budget / 2).max(1),

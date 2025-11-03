@@ -83,3 +83,43 @@ fn global_lines_and_no_newline_conflict() {
         "stderr should mention argument conflict, got: {err}"
     );
 }
+
+#[test]
+fn chars_and_bytes_conflict() {
+    // --chars conflicts with --bytes
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let assert = cmd
+        .args(["--no-color", "-u", "100", "-c", "100", "-f", "json"])
+        .assert();
+    assert!(!assert.get_output().status.success());
+}
+
+#[test]
+fn chars_and_global_bytes_conflict() {
+    // --chars conflicts with --global-bytes
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let assert = cmd
+        .args(["--no-color", "-u", "100", "-C", "100", "-f", "json"])
+        .assert();
+    assert!(!assert.get_output().status.success());
+}
+
+#[test]
+fn global_chars_and_bytes_conflict() {
+    // --global-chars conflicts with --bytes
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let assert = cmd
+        .args(["--no-color", "-U", "100", "-c", "100", "-f", "json"])
+        .assert();
+    assert!(!assert.get_output().status.success());
+}
+
+#[test]
+fn global_chars_and_global_bytes_conflict() {
+    // --global-chars conflicts with --global-bytes
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let assert = cmd
+        .args(["--no-color", "-U", "100", "-C", "100", "-f", "json"])
+        .assert();
+    assert!(!assert.get_output().status.success());
+}
