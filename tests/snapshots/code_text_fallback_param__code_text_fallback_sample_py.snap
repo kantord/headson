@@ -1,0 +1,19 @@
+---
+source: tests/code_text_fallback_param.rs
+assertion_line: 73
+expression: out
+---
+def greet(name: str):
+print(f"Hello, {name}")
+
+…
+re…
+
+
+def main():
+gr…
+…
+
+if __name__ == "__main__":
+main()
+…

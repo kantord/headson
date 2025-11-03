@@ -1,0 +1,18 @@
+---
+source: tests/code_text_fallback_param.rs
+assertion_line: 65
+expression: out
+---
+function greet(name) {
+console.log(`Hello, ${name}`);
+…
+…
+…
+
+function main() {
+greet("world");
+…
+main();
+
+…
+
