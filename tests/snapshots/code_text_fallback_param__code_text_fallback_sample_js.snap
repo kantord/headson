@@ -6,7 +6,7 @@ expression: out
 function greet(name) {
 console.log(`Hello, ${name}`);
 }
-…
+
 …
 }
 

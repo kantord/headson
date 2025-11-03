@@ -25,6 +25,43 @@ pub(crate) struct RenderScope<'a> {
 }
 
 impl<'a> RenderScope<'a> {
+    fn is_text_omission_line(
+        style: crate::serialization::types::Style,
+        raw: &str,
+    ) -> bool {
+        let s = raw.trim();
+        if s.is_empty() {
+            return true;
+        }
+        match style {
+            // Default: a single omission marker
+            crate::serialization::types::Style::Default => s == "…",
+            // Detailed: either single marker or "… N more lines …"
+            crate::serialization::types::Style::Detailed => {
+                if s == "…" {
+                    return true;
+                }
+                s.starts_with('…') && s.ends_with('…')
+            }
+            // Strict: arrays do not emit omission lines in text mode; treat empty-only as omission
+            crate::serialization::types::Style::Strict => s.is_empty(),
+        }
+    }
+
+    fn rendered_is_pure_text_omission(&self, rendered: &str) -> bool {
+        // Consider it pure omission if all non-empty lines match omission pattern for current style.
+        let mut any = false;
+        for line in rendered.split('\n') {
+            if line.trim().is_empty() {
+                continue;
+            }
+            any = true;
+            if !Self::is_text_omission_line(self.config.style, line) {
+                return false;
+            }
+        }
+        any
+    }
     fn push_array_child_line(
         &self,
         out: &mut Vec<ArrayChildPair>,
@@ -292,6 +329,10 @@ impl<'a> RenderScope<'a> {
         }
     }
 
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Text omission filtering adds a branch; clearer inline"
+    )]
     fn gather_array_children(
         &mut self,
         id: usize,
@@ -304,10 +345,19 @@ impl<'a> RenderScope<'a> {
                 if self.inclusion_flags[child_id.0] != self.render_set_id {
                     continue;
                 }
-                kept += 1;
                 let child_kind = self.order.nodes[child_id.0].display_kind();
                 let rendered =
                     self.render_node_to_string(child_id.0, depth + 1, false);
+                // In text template, drop children that render to pure omission lines to avoid
+                // consecutive gap markers; the parent gap will cover it.
+                if matches!(
+                    self.config.template,
+                    crate::serialization::types::OutputTemplate::Text
+                ) && self.rendered_is_pure_text_omission(&rendered)
+                {
+                    continue;
+                }
+                kept += 1;
                 let orig_index = self
                     .order
                     .index_in_parent_array
@@ -326,6 +376,10 @@ impl<'a> RenderScope<'a> {
         (children_pairs, kept)
     }
 
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Text omission filtering adds a branch; clearer inline"
+    )]
     fn gather_array_children_with_template(
         &mut self,
         id: usize,
@@ -339,7 +393,6 @@ impl<'a> RenderScope<'a> {
                 if self.inclusion_flags[child_id.0] != self.render_set_id {
                     continue;
                 }
-                kept += 1;
                 let child_kind = self.order.nodes[child_id.0].display_kind();
                 let rendered = self.render_node_to_string_with_template(
                     child_id.0,
@@ -347,6 +400,14 @@ impl<'a> RenderScope<'a> {
                     false,
                     template,
                 );
+                if matches!(
+                    template,
+                    crate::serialization::types::OutputTemplate::Text
+                ) && self.rendered_is_pure_text_omission(&rendered)
+                {
+                    continue;
+                }
+                kept += 1;
                 let orig_index = self
                     .order
                     .index_in_parent_array
