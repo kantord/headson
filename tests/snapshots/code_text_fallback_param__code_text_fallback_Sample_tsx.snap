@@ -1,15 +1,16 @@
 ---
 source: tests/code_text_fallback_param.rs
-assertion_line: 77
 expression: out
 ---
 import React from 'react';
 
 …
+…
 function Item({ i }: { i: number }) {
   return <li>i: {i}</li>;
 }
 
+…
 …
 }
 
