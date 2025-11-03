@@ -4,11 +4,12 @@ Minimal Python API for the `headson` preview renderer.
 
 API
 
-- `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", byte_budget: int | None = None, skew: str = "balanced") -> str`
+- `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", byte_budget: int | None = None, char_budget: int | None = None, skew: str = "balanced") -> str`
   - `format`: output format — `"auto" | "json" | "yaml" | "text"`.
   - `style`: output style — `"strict" | "default" | "detailed"`.
   - `input_format`: ingestion format — `"json" | "yaml" | "text"`.
   - `byte_budget`: maximum output size in bytes (defaults to 500 if not set).
+  - `char_budget`: maximum output size in Unicode code points (mutually exclusive with `byte_budget`).
   - `skew`: one of `"balanced" | "head" | "tail"`.
     - `balanced` (default), `head` keeps first N, `tail` keeps last N. Display styles place omission markers accordingly; strict JSON remains unannotated.
   - Notes:
@@ -19,7 +20,7 @@ Examples:
 ```python
 import headson
 
-# Human-friendly JSON (Pseudo) with a small budget
+# Human-friendly JSON (Pseudo) with a small byte budget
 print(headson.summarize('{"a": 1, "b": [1,2,3]}', format="json", style="default", byte_budget=80))
 
 # Strict JSON stays valid JSON
@@ -40,6 +41,9 @@ print(headson.summarize(doc, format="yaml", style="detailed", input_format="yaml
 # Text: render raw lines with omission markers depending on style
 text = "one\ntwo\nthree\n"
 print(headson.summarize(text, format="text", style="default", input_format="text", byte_budget=10))
+
+# Characters budget example (Unicode code points):
+print(headson.summarize('{"s": "é" * 100}', format="json", style="strict", char_budget=60))
 ```
 
 Install for development:
