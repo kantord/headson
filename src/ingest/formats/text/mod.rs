@@ -326,26 +326,6 @@ pub fn build_text_tree_arena_from_many(
     );
     let mut keys: Vec<String> = Vec::with_capacity(inputs.len());
     let mut children_ids: Vec<usize> = Vec::with_capacity(inputs.len());
-    fn is_code_ext(name: &str) -> bool {
-        let lower = name.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase());
-        matches!(
-            lower.as_deref(),
-            Some("c")
-                | Some("h")
-                | Some("cpp")
-                | Some("cc")
-                | Some("cxx")
-                | Some("hpp")
-                | Some("py")
-                | Some("java")
-                | Some("js")
-                | Some("ts")
-                | Some("tsx")
-                | Some("go")
-                | Some("sh")
-                | Some("bash")
-        )
-    }
 
     for (key, bytes) in inputs.drain(..) {
         let lossy = String::from_utf8_lossy(&bytes);
@@ -355,7 +335,7 @@ pub fn build_text_tree_arena_from_many(
             .map(std::string::ToString::to_string)
             .collect();
         let total = lines_vec.len();
-        let atomic = is_code_ext(&key);
+        let atomic = crate::utils::extensions::is_code_like_name(&key);
         let child_id = b.push_array_of_lines(&lines_vec, total, atomic);
         keys.push(key);
         children_ids.push(child_id);

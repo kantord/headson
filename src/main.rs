@@ -405,20 +405,7 @@ fn run_from_paths(
             )?,
             InputFormat::Text => {
                 // For common code-like extensions, render text with atomic lines
-                let is_code = lower.ends_with(".c")
-                    || lower.ends_with(".h")
-                    || lower.ends_with(".cpp")
-                    || lower.ends_with(".cc")
-                    || lower.ends_with(".cxx")
-                    || lower.ends_with(".hpp")
-                    || lower.ends_with(".py")
-                    || lower.ends_with(".java")
-                    || lower.ends_with(".js")
-                    || lower.ends_with(".ts")
-                    || lower.ends_with(".tsx")
-                    || lower.ends_with(".go")
-                    || lower.ends_with(".sh")
-                    || lower.ends_with(".bash");
+                let is_code = headson::extensions::is_code_like_name(&lower);
                 if is_code {
                     headson::headson_text_with_budgets_code(
                         bytes, &cfg, &prio, budgets,

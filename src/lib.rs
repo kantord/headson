@@ -29,6 +29,7 @@ pub use order::types::{ArrayBias, ArraySamplerStrategy};
 pub use order::{
     NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
 };
+pub use utils::extensions;
 
 pub use serialization::color::resolve_color_enabled;
 pub use serialization::types::{
