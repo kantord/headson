@@ -64,7 +64,7 @@ Common flags:
 - `-t, --template <strict|default|detailed>`: output style (default: `default`).
   - JSON family: `strict` → strict JSON; `default` → Pseudo; `detailed` → JS with inline comments.
   - YAML: always YAML; style only affects comments (`strict` none, `default` “# …”, `detailed` “# N more …”).
-- `-i, --input-format <json|yaml|text|indent>`: ingestion format (default: `json`). For filesets in `auto` format, ingestion is chosen by extensions. Use `indent` to parse generic text/code as a nested tree based on indentation levels (indentation hygiene recommended).
+- `-i, --input-format <json|yaml|text|indent>`: ingestion format (default: `json`). For filesets in `auto` format, ingestion is chosen by extensions. Use `indent` to build a nested tree purely from indentation levels (no code parsing).
 - `-m, --compact`: no indentation, no spaces, no newlines
 - `--no-newline`: single line output
 - `--no-space`: no space after `:` in objects
@@ -78,7 +78,7 @@ Notes:
 - Multiple inputs:
   - With newlines enabled, file sections are rendered with human‑readable headers. In compact/single‑line modes, headers are omitted.
 - In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
-  - Unknown extensions are treated as Indent-structured text by default: files are parsed into a nested tree by indentation, then rendered with the JSON-family templates. Use `-i text` to force raw lines.
+  - Unknown extensions are treated as Indent-structured text by default: files are mapped into a nested tree based only on indentation (no delimiter/string/comment parsing), then rendered with the JSON-family templates. Use `-i text` to force raw lines.
   - `--global-bytes` may truncate or omit entire files to respect the total budget.
   - The tool finds the largest preview that fits the budget; even if extremely tight, you still get a minimal, valid preview.
   - Directories and binary files are ignored; a notice is printed to stderr for each. Stdin reads the stream as‑is.
@@ -131,11 +131,11 @@ Quick one‑liners:
 
       headson -c 200 -i text -f text notes.txt
 
-- Indent-to-tree (treat indentation as structure):
+- Indent-to-tree (indentation → structure, no code parsing):
 
       headson -c 200 -i indent -f json src/main.rs
 
-  This builds a nested array/object tree where each line becomes an object `{ line, children }`, and indentation increases create child nesting. Indentation changes inside open delimiters `()[]{}` are treated as alignment and do not create structure.
+  This builds a nested array/object tree where each line becomes an object `{ line, children }`, and indentation increases create child nesting. There is no language-aware parsing; all lines are treated equally.
 
 - Many text files (fileset):
 

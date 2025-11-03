@@ -79,60 +79,7 @@ fn detect_indent_unit(lines: &[&str]) -> IndentStyle {
     }
 }
 
-#[derive(Default)]
-struct DelimState {
-    in_string: Option<char>,
-    escape: bool,
-    in_block_comment: bool,
-    depth: i32,
-}
-
-fn update_delim_state(line: &str, state: &mut DelimState) {
-    let mut chars = line.chars().peekable();
-    while let Some(ch) = chars.next() {
-        if state.in_block_comment {
-            if ch == '*' && matches!(chars.peek(), Some('/')) {
-                state.in_block_comment = false;
-                let _ = chars.next();
-            }
-            continue;
-        }
-        if let Some(q) = state.in_string {
-            if state.escape {
-                state.escape = false;
-                continue;
-            }
-            if ch == '\\' {
-                state.escape = true;
-            } else if ch == q {
-                state.in_string = None;
-            }
-            continue;
-        }
-        // Not in string/comment
-        match ch {
-            '"' | '\'' | '`' => {
-                state.in_string = Some(ch);
-            }
-            '/' => {
-                if matches!(chars.peek(), Some('/')) {
-                    // line comment, ignore rest
-                    break;
-                } else if matches!(chars.peek(), Some('*')) {
-                    state.in_block_comment = true;
-                    let _ = chars.next();
-                }
-            }
-            '#' => {
-                // treat as line comment for hash-commented languages
-                break;
-            }
-            '(' | '[' | '{' => state.depth += 1,
-            ')' | ']' | '}' => state.depth = (state.depth - 1).max(0),
-            _ => {}
-        }
-    }
-}
+// No code parsing: we do not track delimiters/strings/comments.
 
 struct Builder {
     arena: JsonTreeArena,
@@ -214,18 +161,9 @@ fn build_indent_tree_arena_from_bytes(
     let root_arr = b.push_array_empty();
     let mut stack: Vec<usize> = vec![root_arr]; // stack holds array node ids
     let mut last_children: Option<usize> = None;
-    let mut state = DelimState::default();
     let mut current_level = 0usize; // relative to root
     for line in all_lines.into_iter() {
-        let trimmed = line.trim();
-        // Skip blank lines and pure comment lines (heuristic: start with // or #)
-        if trimmed.is_empty()
-            || trimmed.starts_with("//")
-            || trimmed.starts_with('#')
-        {
-            update_delim_state(line, &mut state);
-            continue;
-        }
+        // Treat all lines equally; no comment/string/delimiter parsing.
         // Count leading indent "columns"
         let mut cols = 0usize;
         match style {
@@ -253,12 +191,8 @@ fn build_indent_tree_arena_from_bytes(
                 cols /= unit.max(1);
             }
         }
-        // Apply structural nesting only when not inside delimiters from previous lines
-        let target_level = if state.depth == 0 {
-            cols
-        } else {
-            current_level
-        };
+        // Structural nesting strictly follows indentation.
+        let target_level = cols;
         // Adjust stack depth
         if target_level > current_level {
             // push last_children arrays as needed
@@ -276,12 +210,10 @@ fn build_indent_tree_arena_from_bytes(
         }
         current_level = target_level;
         // Create node for this line under current array
-        let (obj_id, children_arr) = b.push_line_entry(trimmed.to_string());
+        let (obj_id, children_arr) = b.push_line_entry(line.to_string());
         let parent_arr = *stack.last().expect("root stack not empty");
         b.append_child(parent_arr, obj_id);
         last_children = Some(children_arr);
-        // Update delimiter state after processing line content
-        update_delim_state(line, &mut state);
     }
     let mut arena = b.arena;
     arena.root_id = root_arr;
