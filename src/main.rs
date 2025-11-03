@@ -355,9 +355,9 @@ fn run_from_paths(
         let mut cfg = render_cfg.clone();
         // For filesets: if format=auto, enable per-file template selection.
         cfg.template = effective_fileset_template(cli, cfg.style);
-        // Indent ingest always produces a structured tree; prefer JSON-family templates.
+        // Indent ingest renders as raw text reconstructed from structure.
         if matches!(chosen_input, InputFormat::Indent) {
-            cfg.template = map_json_template_for_style(cfg.style);
+            cfg.template = headson::OutputTemplate::Text;
         }
         let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
         if budgets.byte_budget.is_none()
@@ -406,7 +406,7 @@ fn run_from_paths(
             cli.format, cfg.style, &lower,
         );
         if matches!(chosen_input, InputFormat::Indent) {
-            cfg.template = map_json_template_for_style(cfg.style);
+            cfg.template = headson::OutputTemplate::Text;
         }
         let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
         if budgets.byte_budget.is_none()

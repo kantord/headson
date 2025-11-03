@@ -78,7 +78,7 @@ Notes:
 - Multiple inputs:
   - With newlines enabled, file sections are rendered with human‑readable headers. In compact/single‑line modes, headers are omitted.
 - In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
-  - Unknown extensions are treated as Indent-structured text by default: files are mapped into a nested tree based only on indentation (no delimiter/string/comment parsing), then rendered with the JSON-family templates. Use `-i text` to force raw lines.
+  - Unknown extensions are treated as Indent-structured text by default: files are mapped into a nested tree based only on indentation (no code parsing) and rendered as raw text with indentation reconstructed from nesting. Use `-i text` to force raw lines (original indentation preserved).
   - `--global-bytes` may truncate or omit entire files to respect the total budget.
   - The tool finds the largest preview that fits the budget; even if extremely tight, you still get a minimal, valid preview.
   - Directories and binary files are ignored; a notice is printed to stderr for each. Stdin reads the stream as‑is.
@@ -131,11 +131,11 @@ Quick one‑liners:
 
       headson -c 200 -i text -f text notes.txt
 
-- Indent-to-tree (indentation → structure, no code parsing):
+- Indent-to-text (indentation → structure → text):
 
-      headson -c 200 -i indent -f json src/main.rs
+      headson -c 200 -i indent src/main.rs
 
-  This builds a nested array/object tree where each line becomes an object `{ line, children }`, and indentation increases create child nesting. There is no language-aware parsing; all lines are treated equally.
+  Builds a nested tree where each line becomes `{ line, children }`, then renders raw text with indentation equal to the nesting depth. No language-aware parsing; all lines are treated equally.
 
 - Many text files (fileset):
 

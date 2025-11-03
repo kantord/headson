@@ -34,10 +34,51 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
 }
 
 pub(super) fn render_object(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
-    // Text template defines custom rendering only for arrays (raw lines).
-    // Objects should not normally appear under the text template because
-    // fileset roots are handled by the dedicated fileset renderer before
-    // template dispatch. If an object does reach here (defensive case),
-    // delegate to the generic pseudo object renderer for a consistent shape.
+    // Special-case indent-ingest nodes: objects of shape { line: <str>, children: <array> }.
+    // Render as raw text with indentation derived from depth.
+    let mut line_val: Option<&str> = None;
+    let mut children_block: Option<&str> = None;
+    for (_, (k, v)) in ctx.children.iter() {
+        if k == "line" {
+            line_val = Some(v.as_str());
+        } else if k == "children" {
+            children_block = Some(v.as_str());
+        }
+    }
+    if let Some(line) = line_val {
+        // Render current line
+        out.push_indent(ctx.depth);
+        out.push_str(line);
+        out.push_newline();
+        // Render children lines, each prefixed with one extra indent level
+        if let Some(block) = children_block {
+            if !block.is_empty() {
+                let mut start = 0usize;
+                let bytes = block.as_bytes();
+                for (i, &b) in bytes.iter().enumerate() {
+                    if b == b'\n' {
+                        let slice = &block[start..i];
+                        if !slice.is_empty() {
+                            out.push_indent(ctx.depth + 1);
+                            out.push_str(slice);
+                        }
+                        out.push_newline();
+                        start = i + 1;
+                    }
+                }
+                // Handle trailing fragment without newline (unlikely, but safe)
+                if start < bytes.len() {
+                    let slice = &block[start..];
+                    if !slice.is_empty() {
+                        out.push_indent(ctx.depth + 1);
+                        out.push_str(slice);
+                        out.push_newline();
+                    }
+                }
+            }
+        }
+        return;
+    }
+    // Fallback: delegate to pseudo renderer if not an indent node.
     super::pseudo::render_object(ctx, out);
 }

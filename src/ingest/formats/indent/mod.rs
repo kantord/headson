@@ -209,8 +209,10 @@ fn build_indent_tree_arena_from_bytes(
             }
         }
         current_level = target_level;
-        // Create node for this line under current array
-        let (obj_id, children_arr) = b.push_line_entry(line.to_string());
+        // Create node for this line under current array; strip leading indent so we
+        // can reconstruct indentation from nesting during serialization.
+        let content = line.trim_start_matches(|c| c == ' ' || c == '\t');
+        let (obj_id, children_arr) = b.push_line_entry(content.to_string());
         let parent_arr = *stack.last().expect("root stack not empty");
         b.append_child(parent_arr, obj_id);
         last_children = Some(children_arr);
