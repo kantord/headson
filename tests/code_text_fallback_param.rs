@@ -27,6 +27,36 @@ fn run_cli_auto_text_with_style(path: &Path, style: &str) -> String {
     out
 }
 
+fn run_cli_text_ingest_json_format_with_style(
+    path: &Path,
+    style: &str,
+) -> String {
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+        .args([
+            "--no-color",
+            "-c",
+            "120",
+            // Force text ingest but render with JSON template
+            "-i",
+            "text",
+            "-f",
+            "json",
+            "-t",
+            style,
+            path.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let mut out =
+        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    while out.ends_with('\n') {
+        out.pop();
+    }
+    out.push('\n');
+    out
+}
+
 fn stem_str(path: &Path) -> String {
     path.file_stem()
         .and_then(|s| s.to_str())
@@ -80,6 +110,12 @@ fn code_text_fallback_case(path: &Path) {
         assert_snapshot!(
             format!("code_text_fallback_{}_{}", name, style),
             out
+        );
+        // Also snapshot the underlying structure via JSON serialization using text ingest
+        let out_json = run_cli_text_ingest_json_format_with_style(path, style);
+        assert_snapshot!(
+            format!("code_text_fallback_{}_{}_json", name, style),
+            out_json
         );
     }
 }

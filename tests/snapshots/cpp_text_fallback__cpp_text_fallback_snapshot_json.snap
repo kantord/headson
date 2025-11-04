@@ -1,0 +1,21 @@
+---
+source: tests/cpp_text_fallback.rs
+expression: out
+---
+[
+  [
+    #include <iostream>
+  ],
+  [ … ],
+  …
+  [ … ],
+  [
+    
+  ],
+  [ … ],
+  …
+  [
+    
+  ]
+  …
+]

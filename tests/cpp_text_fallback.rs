@@ -26,3 +26,30 @@ fn cpp_text_fallback_snapshot() {
 
     insta::assert_snapshot!(out);
 }
+
+#[test]
+fn cpp_text_fallback_snapshot_json() {
+    let fixture = std::path::Path::new("tests/fixtures/code/sample.cpp");
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+        .args([
+            "--no-color",
+            "-c",
+            "120",
+            // Force text ingest, but render with JSON template for structure visibility
+            "-i",
+            "text",
+            "-f",
+            "json",
+            fixture.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let mut out =
+        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    while out.ends_with('\n') {
+        out.pop();
+    }
+    out.push('\n');
+    insta::assert_snapshot!(out);
+}
