@@ -177,15 +177,8 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
     // Per-file budget (-c) scenario
     let mut cmd_pf = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert_pf = cmd_pf
-        .args([
-            "--no-color",
-            "-c",
-            "40",
-            "-f",
-            "json",
-            a.to_str().unwrap(),
-            b.to_str().unwrap(),
-        ])
+        .args(["--no-color", "-c", "40", "-f", "json", "a.json", "b.json"])
+        .current_dir(tmp.path())
         .assert()
         .success();
     let out_pf =
@@ -200,9 +193,10 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
             "40",
             "-f",
             "json",
-            a.to_str().unwrap(),
-            b.to_str().unwrap(),
+            "a.json",
+            "b.json",
         ])
+        .current_dir(tmp.path())
         .assert()
         .success();
     let out_g =
