@@ -23,8 +23,11 @@ jobs:
           args: --deny warnings
 
   build-test:
-    name: Build and test (deny warnings)
-    runs-on: ubuntu-latest
+    name: Build and test (deny warnings) - ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -48,6 +51,10 @@ jobs:
 
       - name: Run tests
         run: cargo test --all-targets --all-features
+
+      - name: Run tests (release) on macOS
+        if: matrix.os == 'macos-latest'
+        run: cargo test --all-targets --all-features --release
 
   clippy:
     name: Pre-commit (Clippy + fmt)
