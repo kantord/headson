@@ -1,6 +1,6 @@
 [package]
 name = "headson"
-version = "0.6.6"
+version = "0.6.7"
 edition = "2024"
 description = "Budget‑constrained JSON preview renderer"
 readme = "README.md"

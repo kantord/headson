@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.7](https://github.com/kantord/headson/compare/v0.6.6...v0.6.7) - 2025-11-04
+
+### Other
+
+- fix typo (heal -> head) ([#146](https://github.com/kantord/headson/pull/146))
+
 ## [0.6.6](https://github.com/kantord/headson/compare/v0.6.5...v0.6.6) - 2025-11-02
 
 ### Added
