@@ -255,7 +255,6 @@ fn find_largest_render_under_budgets(
             chars: stats.chars,
             lines: stats.lines,
         };
-        let input_format = "json"; // format-agnostic fallback for debug metadata
         let array_sampler = crate::ArraySamplerStrategy::Default;
         let dbg = crate::debug::build_render_debug_json(
             crate::debug::RenderDebugArgs {
@@ -264,7 +263,6 @@ fn find_largest_render_under_budgets(
                 render_id: render_set_id,
                 cfg: config,
                 budgets,
-                input_format,
                 style: config.style,
                 array_sampler,
                 top_k: k,

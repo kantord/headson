@@ -14,7 +14,6 @@ expression: norm
     "omitted_children": 0,
     "total_nodes": 0
   },
-  "input_format": "json",
   "output_stats": {
     "bytes": 37,
     "chars": 0,
