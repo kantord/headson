@@ -134,6 +134,13 @@ struct Cli {
         help = "Input ingestion format: json|yaml|text."
     )]
     input_format: InputFormat,
+    #[arg(
+        long = "debug",
+        alias = "debug-trace",
+        default_value_t = false,
+        help = "Dump pruned internal tree (JSON) to stderr for the final render attempt"
+    )]
+    debug: bool,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -287,6 +294,10 @@ fn effective_fileset_template(
     }
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Keeps ingest + final render + debug plumbing co-located"
+)]
 fn run_from_stdin(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
@@ -310,26 +321,74 @@ fn run_from_stdin(
     }
     match cli.input_format {
         InputFormat::Json => {
-            headson::headson_with_budgets(input_bytes, &cfg, &prio, budgets)
+            if cli.debug {
+                let (out, dbg) = headson::headson_with_budgets_debug_json(
+                    input_bytes,
+                    &cfg,
+                    &prio,
+                    budgets,
+                    "json",
+                )?;
+                eprintln!("{dbg}");
+                Ok(out)
+            } else {
+                headson::headson_with_budgets(
+                    input_bytes,
+                    &cfg,
+                    &prio,
+                    budgets,
+                )
+            }
         }
-        InputFormat::Yaml => headson::headson_yaml_with_budgets(
-            input_bytes,
-            &cfg,
-            &prio,
-            budgets,
-        ),
-        InputFormat::Text => headson::headson_text_with_budgets(
-            input_bytes,
-            &cfg,
-            &prio,
-            budgets,
-        ),
+        InputFormat::Yaml => {
+            if cli.debug {
+                let (out, dbg) =
+                    headson::headson_yaml_with_budgets_debug_json(
+                        input_bytes,
+                        &cfg,
+                        &prio,
+                        budgets,
+                        "yaml",
+                    )?;
+                eprintln!("{dbg}");
+                Ok(out)
+            } else {
+                headson::headson_yaml_with_budgets(
+                    input_bytes,
+                    &cfg,
+                    &prio,
+                    budgets,
+                )
+            }
+        }
+        InputFormat::Text => {
+            if cli.debug {
+                let (out, dbg) =
+                    headson::headson_text_with_budgets_debug_json(
+                        input_bytes,
+                        &cfg,
+                        &prio,
+                        budgets,
+                        "text",
+                    )?;
+                eprintln!("{dbg}");
+                Ok(out)
+            } else {
+                headson::headson_text_with_budgets(
+                    input_bytes,
+                    &cfg,
+                    &prio,
+                    budgets,
+                )
+            }
+        }
     }
 }
 
 #[allow(
     clippy::cognitive_complexity,
-    reason = "Keeps ingest selection and rendering logic co-located for clarity."
+    clippy::too_many_lines,
+    reason = "Keeps fileset ingest/selection/render + debug in one place"
 )]
 fn run_from_paths(
     cli: &Cli,
@@ -355,15 +414,48 @@ fn run_from_paths(
             cfg.string_free_prefix_graphemes = Some(40);
         }
         let out = match chosen_input {
-            InputFormat::Json => headson::headson_many_with_budgets(
-                entries, &cfg, &prio, budgets,
-            )?,
-            InputFormat::Yaml => headson::headson_many_yaml_with_budgets(
-                entries, &cfg, &prio, budgets,
-            )?,
-            InputFormat::Text => headson::headson_many_text_with_budgets(
-                entries, &cfg, &prio, budgets,
-            )?,
+            InputFormat::Json => {
+                if cli.debug {
+                    let (out, dbg) =
+                        headson::headson_many_with_budgets_debug_json(
+                            entries, &cfg, &prio, budgets, "json",
+                        )?;
+                    eprintln!("{dbg}");
+                    out
+                } else {
+                    headson::headson_many_with_budgets(
+                        entries, &cfg, &prio, budgets,
+                    )?
+                }
+            }
+            InputFormat::Yaml => {
+                if cli.debug {
+                    let (out, dbg) =
+                        headson::headson_many_yaml_with_budgets_debug_json(
+                            entries, &cfg, &prio, budgets, "yaml",
+                        )?;
+                    eprintln!("{dbg}");
+                    out
+                } else {
+                    headson::headson_many_yaml_with_budgets(
+                        entries, &cfg, &prio, budgets,
+                    )?
+                }
+            }
+            InputFormat::Text => {
+                if cli.debug {
+                    let (out, dbg) =
+                        headson::headson_many_text_with_budgets_debug_json(
+                            entries, &cfg, &prio, budgets, "text",
+                        )?;
+                    eprintln!("{dbg}");
+                    out
+                } else {
+                    headson::headson_many_text_with_budgets(
+                        entries, &cfg, &prio, budgets,
+                    )?
+                }
+            }
         };
         Ok((out, ignored))
     } else if included == 0 {
@@ -398,14 +490,44 @@ fn run_from_paths(
         }
         let out = match chosen_input {
             InputFormat::Json => {
-                headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
+                if cli.debug {
+                    let (out, dbg) = headson::headson_with_budgets_debug_json(
+                        bytes, &cfg, &prio, budgets, "json",
+                    )?;
+                    eprintln!("{dbg}");
+                    out
+                } else {
+                    headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
+                }
             }
-            InputFormat::Yaml => headson::headson_yaml_with_budgets(
-                bytes, &cfg, &prio, budgets,
-            )?,
-            InputFormat::Text => headson::headson_text_with_budgets(
-                bytes, &cfg, &prio, budgets,
-            )?,
+            InputFormat::Yaml => {
+                if cli.debug {
+                    let (out, dbg) =
+                        headson::headson_yaml_with_budgets_debug_json(
+                            bytes, &cfg, &prio, budgets, "yaml",
+                        )?;
+                    eprintln!("{dbg}");
+                    out
+                } else {
+                    headson::headson_yaml_with_budgets(
+                        bytes, &cfg, &prio, budgets,
+                    )?
+                }
+            }
+            InputFormat::Text => {
+                if cli.debug {
+                    let (out, dbg) =
+                        headson::headson_text_with_budgets_debug_json(
+                            bytes, &cfg, &prio, budgets, "text",
+                        )?;
+                    eprintln!("{dbg}");
+                    out
+                } else {
+                    headson::headson_text_with_budgets(
+                        bytes, &cfg, &prio, budgets,
+                    )?
+                }
+            }
         };
         Ok((out, ignored))
     }

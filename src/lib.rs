@@ -20,6 +20,7 @@
 
 use anyhow::Result;
 
+mod debug;
 mod format;
 mod ingest;
 mod order;
@@ -224,25 +225,43 @@ fn find_largest_render_under_budgets(
     });
 
     if let Some(k) = best_k {
-        // Final render with original color settings
-        crate::serialization::render_top_k(
+        render_final(
             order_build,
+            config,
             k,
             &mut inclusion_flags,
             render_set_id,
-            config,
         )
     } else {
-        // Fallback: always render a single node (k=1) to produce the
-        // shortest possible preview, even if it exceeds the byte budget.
-        crate::serialization::render_top_k(
+        render_final(
             order_build,
+            config,
             1,
             &mut inclusion_flags,
             render_set_id,
-            config,
         )
     }
+}
+
+fn render_final(
+    order_build: &PriorityOrder,
+    config: &RenderConfig,
+    k: usize,
+    inclusion_flags: &mut Vec<u32>,
+    render_set_id: u32,
+) -> String {
+    crate::serialization::prepare_render_set_top_k_and_ancestors(
+        order_build,
+        k,
+        inclusion_flags,
+        render_set_id,
+    );
+    crate::serialization::render_from_render_set(
+        order_build,
+        inclusion_flags,
+        render_set_id,
+        config,
+    )
 }
 
 // Optional new public API that accepts both budgets explicitly.
@@ -334,4 +353,179 @@ pub fn headson_many_text_with_budgets(
         config,
         budgets,
     ))
+}
+
+// Debug-enabled public APIs (CLI uses these when --debug is set). These emit a
+// JSON trace to stderr that reflects the exact inclusion set used for stdout.
+pub fn headson_with_budgets_debug_json(
+    input: Vec<u8>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+    input_format: &str,
+) -> Result<(String, String)> {
+    let arena = crate::ingest::parse_json_one(input, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets_debug(
+        &order_build,
+        config,
+        budgets,
+        input_format,
+    ))
+}
+
+pub fn headson_many_with_budgets_debug_json(
+    inputs: Vec<(String, Vec<u8>)>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+    input_format: &str,
+) -> Result<(String, String)> {
+    let arena = crate::ingest::parse_json_many(inputs, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets_debug(
+        &order_build,
+        config,
+        budgets,
+        input_format,
+    ))
+}
+
+pub fn headson_yaml_with_budgets_debug_json(
+    input: Vec<u8>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+    input_format: &str,
+) -> Result<(String, String)> {
+    let arena = crate::ingest::parse_yaml_one(input, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets_debug(
+        &order_build,
+        config,
+        budgets,
+        input_format,
+    ))
+}
+
+pub fn headson_many_yaml_with_budgets_debug_json(
+    inputs: Vec<(String, Vec<u8>)>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+    input_format: &str,
+) -> Result<(String, String)> {
+    let arena = crate::ingest::parse_yaml_many(inputs, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets_debug(
+        &order_build,
+        config,
+        budgets,
+        input_format,
+    ))
+}
+
+pub fn headson_text_with_budgets_debug_json(
+    input: Vec<u8>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+    input_format: &str,
+) -> Result<(String, String)> {
+    let arena = crate::ingest::parse_text_one(input, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets_debug(
+        &order_build,
+        config,
+        budgets,
+        input_format,
+    ))
+}
+
+pub fn headson_many_text_with_budgets_debug_json(
+    inputs: Vec<(String, Vec<u8>)>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+    input_format: &str,
+) -> Result<(String, String)> {
+    let arena = crate::ingest::parse_text_many(inputs, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets_debug(
+        &order_build,
+        config,
+        budgets,
+        input_format,
+    ))
+}
+
+fn find_largest_render_under_budgets_debug(
+    order_build: &PriorityOrder,
+    config: &RenderConfig,
+    budgets: Budgets,
+    input_format: &str,
+) -> (String, String) {
+    // Binary search is the same as in find_largest_render_under_budgets, but we
+    // capture the final inclusion set and dump it before rendering.
+    let total = order_build.total_nodes;
+    if total == 0 {
+        return (String::new(), "{}".to_string());
+    }
+    let lo = 1usize;
+    let hi = match budgets.byte_budget {
+        Some(c) => total.min(c.max(1)),
+        None => total,
+    };
+    let mut inclusion_flags: Vec<u32> = vec![0; total];
+    let mut render_set_id: u32 = 1;
+    let mut best_k: Option<usize> = None;
+    let mut measure_cfg = config.clone();
+    measure_cfg.color_enabled = false;
+
+    let _ = crate::utils::search::binary_search_max(lo, hi, |mid| {
+        let s = crate::serialization::render_top_k(
+            order_build,
+            mid,
+            &mut inclusion_flags,
+            render_set_id,
+            &measure_cfg,
+        );
+        render_set_id = render_set_id.wrapping_add(1).max(1);
+        let stats = crate::utils::measure::count_output_stats(
+            &s,
+            budgets.char_budget.is_some(),
+        );
+        let fits_bytes = budgets.byte_budget.is_none_or(|c| stats.bytes <= c);
+        let fits_chars = budgets.char_budget.is_none_or(|c| stats.chars <= c);
+        let fits_lines = budgets.line_budget.is_none_or(|l| stats.lines <= l);
+        if fits_bytes && fits_chars && fits_lines {
+            best_k = Some(mid);
+            true
+        } else {
+            false
+        }
+    });
+    let k = best_k.unwrap_or(1);
+    // Prepare set and build debug JSON first, then render from the same set.
+    crate::serialization::prepare_render_set_top_k_and_ancestors(
+        order_build,
+        k,
+        &mut inclusion_flags,
+        render_set_id,
+    );
+    let dbg = crate::debug::build_render_debug_json(
+        order_build,
+        &inclusion_flags,
+        render_set_id,
+        config,
+        budgets,
+        input_format,
+    );
+    let out = crate::serialization::render_from_render_set(
+        order_build,
+        &inclusion_flags,
+        render_set_id,
+        config,
+    );
+    (out, dbg)
 }
