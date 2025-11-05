@@ -221,6 +221,7 @@ mod tests {
             color_enabled: false,
             style: Style::Default,
             string_free_prefix_graphemes: None,
+            debug: false,
         };
         let prio = PriorityConfig::new(100, 100);
         (cfg, prio)

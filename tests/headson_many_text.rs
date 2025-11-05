@@ -11,6 +11,7 @@ fn headson_many_text_smoke() {
         color_enabled: false,
         style: headson::Style::Default,
         string_free_prefix_graphemes: None,
+        debug: false,
     };
     let prio = headson::PriorityConfig::new(100, 100);
     let inputs = vec![

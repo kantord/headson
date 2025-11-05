@@ -30,18 +30,7 @@ pub fn set_debug_context(
     });
 }
 
-pub fn take_last_debug_json() -> Option<String> {
-    DBG_CTX.with(|c| c.borrow_mut().last_json.take())
-}
-
-fn maybe_store_debug_json(s: String) {
-    DBG_CTX.with(|c| {
-        let mut ctx = c.borrow_mut();
-        if ctx.enabled {
-            ctx.last_json = Some(s);
-        }
-    });
-}
+// Debug JSON is printed from the core when enabled; storing/retrieving is not required.
 
 pub(crate) fn debug_context() -> (
     bool,
@@ -447,7 +436,5 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
         output_stats,
         constrained_by,
     };
-    let s = serde_json::to_string_pretty(&dump).unwrap();
-    maybe_store_debug_json(s.clone());
-    s
+    serde_json::to_string_pretty(&dump).unwrap()
 }

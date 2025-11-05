@@ -347,11 +347,7 @@ fn run_from_stdin(
             budgets,
         )?,
     };
-    if cli.debug {
-        if let Some(dbg) = headson::take_last_debug_json() {
-            eprintln!("{dbg}");
-        }
-    }
+    // Debug JSON is emitted directly by the core when enabled.
     Ok(out)
 }
 
@@ -403,11 +399,7 @@ fn run_from_paths(
                 entries, &cfg, &prio, budgets,
             )?,
         };
-        if cli.debug {
-            if let Some(dbg) = headson::take_last_debug_json() {
-                eprintln!("{dbg}");
-            }
-        }
+        // Debug JSON is emitted directly by the core when enabled.
         Ok((out, ignored))
     } else if included == 0 {
         Ok((String::new(), ignored))
@@ -459,11 +451,7 @@ fn run_from_paths(
                 bytes, &cfg, &prio, budgets,
             )?,
         };
-        if cli.debug {
-            if let Some(dbg) = headson::take_last_debug_json() {
-                eprintln!("{dbg}");
-            }
-        }
+        // Debug JSON is emitted directly by the core when enabled.
         Ok((out, ignored))
     }
 }
@@ -577,6 +565,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         color_enabled,
         style: map_style(cli.style),
         string_free_prefix_graphemes: None,
+        debug: cli.debug,
     }
 }
 

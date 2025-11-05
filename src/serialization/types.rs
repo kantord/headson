@@ -35,6 +35,9 @@ pub struct RenderConfig {
     // When Some(n), and only a line budget is active, allow rendering up to
     // `n` graphemes of a string prefix regardless of top-K string-part inclusion.
     pub string_free_prefix_graphemes: Option<usize>,
+    // When true, the core render path emits a debug JSON of the final
+    // inclusion set to stderr before rendering. CLI sets this flag.
+    pub debug: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

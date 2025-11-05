@@ -120,6 +120,7 @@ fn array_tail_json_contains_last_k_values() {
         color_enabled: false,
         style: headson::Style::Strict,
         string_free_prefix_graphemes: None,
+        debug: false,
     };
     let mut prio = headson::PriorityConfig::new(usize::MAX, 15);
     prio.prefer_tail_arrays = true;
