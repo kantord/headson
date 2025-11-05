@@ -1,6 +1,58 @@
 use serde::Serialize;
 
 use crate::order::{ObjectType, PriorityOrder, ROOT_PQ_ID, RankedNode};
+use std::cell::RefCell;
+
+thread_local! {
+    static DBG_CTX: RefCell<DebugContext> = RefCell::new(DebugContext::default());
+}
+
+#[derive(Clone, Default)]
+struct DebugContext {
+    enabled: bool,
+    input_format: Option<&'static str>,
+    array_sampler: Option<crate::ArraySamplerStrategy>,
+    last_json: Option<String>,
+}
+
+pub fn set_debug_context(
+    enabled: bool,
+    input_format: Option<&'static str>,
+    array_sampler: Option<crate::ArraySamplerStrategy>,
+) {
+    DBG_CTX.with(|c| {
+        let mut ctx = c.borrow_mut();
+        ctx.enabled = enabled;
+        ctx.input_format = input_format;
+        ctx.array_sampler = array_sampler;
+        // Clear previous dump to avoid stale reads across runs
+        ctx.last_json = None;
+    });
+}
+
+pub fn take_last_debug_json() -> Option<String> {
+    DBG_CTX.with(|c| c.borrow_mut().last_json.take())
+}
+
+fn maybe_store_debug_json(s: String) {
+    DBG_CTX.with(|c| {
+        let mut ctx = c.borrow_mut();
+        if ctx.enabled {
+            ctx.last_json = Some(s);
+        }
+    });
+}
+
+pub(crate) fn debug_context() -> (
+    bool,
+    Option<&'static str>,
+    Option<crate::ArraySamplerStrategy>,
+) {
+    DBG_CTX.with(|c| {
+        let ctx = c.borrow();
+        (ctx.enabled, ctx.input_format, ctx.array_sampler)
+    })
+}
 
 #[derive(Serialize)]
 struct CountsDbg {
@@ -395,5 +447,7 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
         output_stats,
         constrained_by,
     };
-    serde_json::to_string_pretty(&dump).unwrap()
+    let s = serde_json::to_string_pretty(&dump).unwrap();
+    maybe_store_debug_json(s.clone());
+    s
 }

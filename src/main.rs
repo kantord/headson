@@ -14,103 +14,6 @@ type InputEntry = (String, Vec<u8>);
 type InputEntries = Vec<InputEntry>;
 type IgnoreNotices = Vec<String>;
 
-// Small helpers to unify debug/no-debug execution paths without duplicating logic.
-type OneFn = fn(
-    Vec<u8>,
-    &headson::RenderConfig,
-    &headson::PriorityConfig,
-    headson::Budgets,
-) -> anyhow::Result<String>;
-type OneDbgFn = fn(
-    Vec<u8>,
-    &headson::RenderConfig,
-    &headson::PriorityConfig,
-    headson::Budgets,
-    &str,
-) -> anyhow::Result<(String, String)>;
-type ManyInputs = Vec<(String, Vec<u8>)>;
-type ManyFn = fn(
-    ManyInputs,
-    &headson::RenderConfig,
-    &headson::PriorityConfig,
-    headson::Budgets,
-) -> anyhow::Result<String>;
-type ManyDbgFn = fn(
-    ManyInputs,
-    &headson::RenderConfig,
-    &headson::PriorityConfig,
-    headson::Budgets,
-    &str,
-) -> anyhow::Result<(String, String)>;
-
-fn run_with_debug_one(
-    bytes: Vec<u8>,
-    cfg: &headson::RenderConfig,
-    prio: &headson::PriorityConfig,
-    budgets: headson::Budgets,
-    debug: bool,
-    fmt: InputFormat,
-) -> anyhow::Result<String> {
-    let (run, run_dbg, fmt_str): (OneFn, OneDbgFn, &str) = match fmt {
-        InputFormat::Json => (
-            headson::headson_with_budgets,
-            headson::headson_with_budgets_debug_json,
-            "json",
-        ),
-        InputFormat::Yaml => (
-            headson::headson_yaml_with_budgets,
-            headson::headson_yaml_with_budgets_debug_json,
-            "yaml",
-        ),
-        InputFormat::Text => (
-            headson::headson_text_with_budgets,
-            headson::headson_text_with_budgets_debug_json,
-            "text",
-        ),
-    };
-    if debug {
-        let (out, dbg) = run_dbg(bytes, cfg, prio, budgets, fmt_str)?;
-        eprintln!("{dbg}");
-        Ok(out)
-    } else {
-        run(bytes, cfg, prio, budgets)
-    }
-}
-
-fn run_with_debug_many(
-    inputs: ManyInputs,
-    cfg: &headson::RenderConfig,
-    prio: &headson::PriorityConfig,
-    budgets: headson::Budgets,
-    debug: bool,
-    fmt: InputFormat,
-) -> anyhow::Result<String> {
-    let (run, run_dbg, fmt_str): (ManyFn, ManyDbgFn, &str) = match fmt {
-        InputFormat::Json => (
-            headson::headson_many_with_budgets,
-            headson::headson_many_with_budgets_debug_json,
-            "json",
-        ),
-        InputFormat::Yaml => (
-            headson::headson_many_yaml_with_budgets,
-            headson::headson_many_yaml_with_budgets_debug_json,
-            "yaml",
-        ),
-        InputFormat::Text => (
-            headson::headson_many_text_with_budgets,
-            headson::headson_many_text_with_budgets_debug_json,
-            "text",
-        ),
-    };
-    if debug {
-        let (out, dbg) = run_dbg(inputs, cfg, prio, budgets, fmt_str)?;
-        eprintln!("{dbg}");
-        Ok(out)
-    } else {
-        run(inputs, cfg, prio, budgets)
-    }
-}
-
 #[derive(Parser, Debug)]
 #[command(
     name = "headson",
@@ -415,14 +318,41 @@ fn run_from_stdin(
     {
         cfg.string_free_prefix_graphemes = Some(40);
     }
-    run_with_debug_one(
-        input_bytes,
-        &cfg,
-        &prio,
-        budgets,
+    // Provide debug context to the library so it can emit a single debug dump
+    // from the core search path without format-specific branching here.
+    headson::set_debug_context(
         cli.debug,
-        cli.input_format,
-    )
+        Some(match cli.input_format {
+            InputFormat::Json => "json",
+            InputFormat::Yaml => "yaml",
+            InputFormat::Text => "text",
+        }),
+        Some(prio.array_sampler),
+    );
+
+    let out = match cli.input_format {
+        InputFormat::Json => {
+            headson::headson_with_budgets(input_bytes, &cfg, &prio, budgets)?
+        }
+        InputFormat::Yaml => headson::headson_yaml_with_budgets(
+            input_bytes,
+            &cfg,
+            &prio,
+            budgets,
+        )?,
+        InputFormat::Text => headson::headson_text_with_budgets(
+            input_bytes,
+            &cfg,
+            &prio,
+            budgets,
+        )?,
+    };
+    if cli.debug {
+        if let Some(dbg) = headson::take_last_debug_json() {
+            eprintln!("{dbg}");
+        }
+    }
+    Ok(out)
 }
 
 #[allow(
@@ -453,14 +383,31 @@ fn run_from_paths(
         {
             cfg.string_free_prefix_graphemes = Some(40);
         }
-        let out = run_with_debug_many(
-            entries,
-            &cfg,
-            &prio,
-            budgets,
+        headson::set_debug_context(
             cli.debug,
-            chosen_input,
-        )?;
+            Some(match chosen_input {
+                InputFormat::Json => "json",
+                InputFormat::Yaml => "yaml",
+                InputFormat::Text => "text",
+            }),
+            Some(prio.array_sampler),
+        );
+        let out = match chosen_input {
+            InputFormat::Json => headson::headson_many_with_budgets(
+                entries, &cfg, &prio, budgets,
+            )?,
+            InputFormat::Yaml => headson::headson_many_yaml_with_budgets(
+                entries, &cfg, &prio, budgets,
+            )?,
+            InputFormat::Text => headson::headson_many_text_with_budgets(
+                entries, &cfg, &prio, budgets,
+            )?,
+        };
+        if cli.debug {
+            if let Some(dbg) = headson::take_last_debug_json() {
+                eprintln!("{dbg}");
+            }
+        }
         Ok((out, ignored))
     } else if included == 0 {
         Ok((String::new(), ignored))
@@ -492,14 +439,31 @@ fn run_from_paths(
         {
             cfg.string_free_prefix_graphemes = Some(40);
         }
-        let out = run_with_debug_one(
-            bytes,
-            &cfg,
-            &prio,
-            budgets,
+        headson::set_debug_context(
             cli.debug,
-            chosen_input,
-        )?;
+            Some(match chosen_input {
+                InputFormat::Json => "json",
+                InputFormat::Yaml => "yaml",
+                InputFormat::Text => "text",
+            }),
+            Some(prio.array_sampler),
+        );
+        let out = match chosen_input {
+            InputFormat::Json => {
+                headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
+            }
+            InputFormat::Yaml => headson::headson_yaml_with_budgets(
+                bytes, &cfg, &prio, budgets,
+            )?,
+            InputFormat::Text => headson::headson_text_with_budgets(
+                bytes, &cfg, &prio, budgets,
+            )?,
+        };
+        if cli.debug {
+            if let Some(dbg) = headson::take_last_debug_json() {
+                eprintln!("{dbg}");
+            }
+        }
         Ok((out, ignored))
     }
 }
