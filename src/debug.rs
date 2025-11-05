@@ -1,8 +1,6 @@
 use serde::Serialize;
 
 use crate::order::{ObjectType, PriorityOrder, ROOT_PQ_ID, RankedNode};
-// No global debug context; the core render uses the inclusion set and provided
-// args to emit a one-shot debug JSON when requested.
 
 #[derive(Serialize)]
 struct CountsDbg {

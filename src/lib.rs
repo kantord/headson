@@ -31,7 +31,6 @@ pub use order::{
     NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
 };
 
-// no debug context exported; debug handled via RenderConfig::debug
 pub use serialization::color::resolve_color_enabled;
 pub use serialization::types::{
     ColorMode, OutputTemplate, RenderConfig, Style,

@@ -318,10 +318,6 @@ fn run_from_stdin(
     {
         cfg.string_free_prefix_graphemes = Some(40);
     }
-    // Provide debug context to the library so it can emit a single debug dump
-    // from the core search path without format-specific branching here.
-    // debug is handled inside the core via RenderConfig::debug
-
     let out = match cli.input_format {
         InputFormat::Json => {
             headson::headson_with_budgets(input_bytes, &cfg, &prio, budgets)?
@@ -339,7 +335,6 @@ fn run_from_stdin(
             budgets,
         )?,
     };
-    // Debug JSON is emitted directly by the core when enabled.
     Ok(out)
 }
 
@@ -371,7 +366,6 @@ fn run_from_paths(
         {
             cfg.string_free_prefix_graphemes = Some(40);
         }
-        // debug is handled inside the core via RenderConfig::debug
         let out = match chosen_input {
             InputFormat::Json => headson::headson_many_with_budgets(
                 entries, &cfg, &prio, budgets,
@@ -383,7 +377,6 @@ fn run_from_paths(
                 entries, &cfg, &prio, budgets,
             )?,
         };
-        // Debug JSON is emitted directly by the core when enabled.
         Ok((out, ignored))
     } else if included == 0 {
         Ok((String::new(), ignored))
@@ -415,7 +408,6 @@ fn run_from_paths(
         {
             cfg.string_free_prefix_graphemes = Some(40);
         }
-        // debug is handled inside the core via RenderConfig::debug
         let out = match chosen_input {
             InputFormat::Json => {
                 headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
@@ -427,7 +419,6 @@ fn run_from_paths(
                 bytes, &cfg, &prio, budgets,
             )?,
         };
-        // Debug JSON is emitted directly by the core when enabled.
         Ok((out, ignored))
     }
 }
