@@ -20,6 +20,7 @@
 
 use anyhow::Result;
 
+mod debug;
 mod format;
 mod ingest;
 mod order;
@@ -224,27 +225,72 @@ fn find_largest_render_under_budgets(
         }
     });
 
-    if let Some(k) = best_k {
-        // Final render with original color settings
-        crate::serialization::render_top_k(
+    let k = best_k.unwrap_or(1);
+
+    // Prepare final inclusion set once and optionally build debug JSON.
+    crate::serialization::prepare_render_set_top_k_and_ancestors(
+        order_build,
+        k,
+        &mut inclusion_flags,
+        render_set_id,
+    );
+
+    // If debug is enabled, emit a one-shot debug JSON built from this set.
+    if config.debug {
+        let mut no_color_cfg = config.clone();
+        no_color_cfg.color_enabled = false;
+        let measured = crate::serialization::render_from_render_set(
             order_build,
-            k,
-            &mut inclusion_flags,
+            &inclusion_flags,
             render_set_id,
-            config,
-        )
-    } else {
-        // Fallback: always render a single node (k=1) to produce the
-        // shortest possible preview, even if it exceeds the byte budget.
-        crate::serialization::render_top_k(
-            order_build,
-            1,
-            &mut inclusion_flags,
-            render_set_id,
-            config,
-        )
+            &no_color_cfg,
+        );
+        let stats = crate::utils::measure::count_output_stats(
+            &measured,
+            budgets.char_budget.is_some(),
+        );
+        let constrained_by = constrained_dimensions(budgets, &stats);
+        let out_stats = crate::debug::OutputStatsDbg {
+            bytes: stats.bytes,
+            chars: stats.chars,
+            lines: stats.lines,
+        };
+        let input_format = "json"; // format-agnostic fallback for debug metadata
+        let array_sampler = crate::ArraySamplerStrategy::Default;
+        let dbg = crate::debug::build_render_debug_json(
+            crate::debug::RenderDebugArgs {
+                order: order_build,
+                inclusion_flags: &inclusion_flags,
+                render_id: render_set_id,
+                cfg: config,
+                budgets,
+                input_format,
+                style: config.style,
+                array_sampler,
+                top_k: k,
+                output_stats: out_stats,
+                constrained_by,
+            },
+        );
+        #[allow(
+            clippy::print_stderr,
+            reason = "Debug mode emits JSON to stderr to aid troubleshooting"
+        )]
+        {
+            eprintln!("{dbg}");
+        }
     }
+
+    // Final render with requested color settings
+    crate::serialization::render_from_render_set(
+        order_build,
+        &inclusion_flags,
+        render_set_id,
+        config,
+    )
 }
+
+// (removed) render_final helper was inlined to centralize optional debug dump
 
 // Optional new public API that accepts both budgets explicitly.
 pub fn headson_with_budgets(
@@ -357,4 +403,22 @@ pub fn headson_many_text_with_budgets(
         config,
         budgets,
     ))
+}
+
+// Debug-enabled public APIs (CLI uses these when --debug is set). These emit a
+// JSON trace to stderr that reflects the exact inclusion set used for stdout.
+
+fn constrained_dimensions(
+    budgets: Budgets,
+    stats: &crate::utils::measure::OutputStats,
+) -> Vec<&'static str> {
+    let checks = [
+        (budgets.byte_budget.map(|b| stats.bytes >= b), "bytes"),
+        (budgets.char_budget.map(|c| stats.chars >= c), "chars"),
+        (budgets.line_budget.map(|l| stats.lines >= l), "lines"),
+    ];
+    checks
+        .iter()
+        .filter_map(|(cond, name)| cond.unwrap_or(false).then_some(*name))
+        .collect()
 }

@@ -134,6 +134,12 @@ struct Cli {
         help = "Input ingestion format: json|yaml|text."
     )]
     input_format: InputFormat,
+    #[arg(
+        long = "debug",
+        default_value_t = false,
+        help = "Dump pruned internal tree (JSON) to stderr for the final render attempt"
+    )]
+    debug: bool,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -287,6 +293,10 @@ fn effective_fileset_template(
     }
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Keeps ingest + final render + debug plumbing co-located"
+)]
 fn run_from_stdin(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
@@ -308,28 +318,30 @@ fn run_from_stdin(
     {
         cfg.string_free_prefix_graphemes = Some(40);
     }
-    match cli.input_format {
+    let out = match cli.input_format {
         InputFormat::Json => {
-            headson::headson_with_budgets(input_bytes, &cfg, &prio, budgets)
+            headson::headson_with_budgets(input_bytes, &cfg, &prio, budgets)?
         }
         InputFormat::Yaml => headson::headson_yaml_with_budgets(
             input_bytes,
             &cfg,
             &prio,
             budgets,
-        ),
+        )?,
         InputFormat::Text => headson::headson_text_with_budgets(
             input_bytes,
             &cfg,
             &prio,
             budgets,
-        ),
-    }
+        )?,
+    };
+    Ok(out)
 }
 
 #[allow(
     clippy::cognitive_complexity,
-    reason = "Keeps ingest selection and rendering logic co-located for clarity."
+    clippy::too_many_lines,
+    reason = "Keeps fileset ingest/selection/render + debug in one place"
 )]
 fn run_from_paths(
     cli: &Cli,
@@ -530,6 +542,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         color_enabled,
         style: map_style(cli.style),
         string_free_prefix_graphemes: None,
+        debug: cli.debug,
     }
 }
 

@@ -1,0 +1,66 @@
+---
+source: tests/debug_snapshots.rs
+assertion_line: 47
+expression: norm
+---
+{
+  "budgets_effective": {
+    "bytes": 200,
+    "chars": null,
+    "lines": null
+  },
+  "counts": {
+    "included": 0,
+    "omitted_children": 0,
+    "total_nodes": 0
+  },
+  "input_format": "json",
+  "output_stats": {
+    "bytes": 37,
+    "chars": 0,
+    "lines": 6
+  },
+  "renderer": {
+    "array_sampler": "default",
+    "prefer_tail_arrays": false,
+    "style": "strict",
+    "template": "json"
+  },
+  "root": {
+    "children": [
+      {
+        "atomic_token": "1",
+        "id": 0,
+        "key_in_object": "a",
+        "kind": "number",
+        "metrics": {}
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "2",
+            "id": 0,
+            "key_in_object": "c",
+            "kind": "number",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "key_in_object": "b",
+        "kind": "object",
+        "metrics": {
+          "object_len": 1
+        }
+      }
+    ],
+    "id": 0,
+    "kind": "object",
+    "metrics": {
+      "object_len": 2
+    }
+  },
+  "selection": {
+    "top_k": 4
+  },
+  "template": "json"
+}

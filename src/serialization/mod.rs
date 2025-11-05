@@ -731,6 +731,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -767,6 +768,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         // Sanity: output should contain CRLF newlines and render the object child across lines.
@@ -805,6 +807,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_snapshot!("arena_render_single", out);
@@ -844,6 +847,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_snapshot!("array_omitted_pseudo_head", out_head);
@@ -864,6 +868,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_snapshot!("array_omitted_pseudo_tail", out_tail);
@@ -901,6 +906,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_snapshot!("array_omitted_js_head", out_head);
@@ -920,6 +926,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_snapshot!("array_omitted_js_tail", out_tail);
@@ -957,6 +964,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_yaml_valid(&out_head);
@@ -977,6 +985,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_yaml_valid(&out_tail);
@@ -1011,6 +1020,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1045,6 +1055,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1077,6 +1088,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1138,6 +1150,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1209,6 +1222,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         // Expect the first 5 characters plus an ellipsis, as a valid JSON string literal.
@@ -1243,6 +1257,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1284,6 +1299,7 @@ mod tests {
             color_enabled: false,
             style: crate::serialization::types::Style::Strict,
             string_free_prefix_graphemes: None,
+            debug: false,
         };
         let scope = RenderScope {
             order: &build,
@@ -1322,6 +1338,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         assert_snapshot!("inline_open_array_in_object_json", out);
@@ -1357,6 +1374,7 @@ mod tests {
                 color_enabled: false,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
+                debug: false,
             },
         );
         // Should be a valid JS object with one property and an omitted summary.

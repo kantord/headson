@@ -1,0 +1,77 @@
+---
+source: tests/debug_snapshots.rs
+assertion_line: 78
+expression: norm
+---
+{
+  "budgets_effective": {
+    "bytes": 20000,
+    "chars": null,
+    "lines": null
+  },
+  "counts": {
+    "included": 0,
+    "omitted_children": 0,
+    "total_nodes": 0
+  },
+  "input_format": "json",
+  "output_stats": {
+    "bytes": 49,
+    "chars": 0,
+    "lines": 8
+  },
+  "renderer": {
+    "array_sampler": "default",
+    "prefer_tail_arrays": false,
+    "style": "default",
+    "template": "auto"
+  },
+  "root": {
+    "children": [
+      {
+        "children": [
+          {
+            "atomic_token": "1",
+            "id": 0,
+            "key_in_object": "a",
+            "kind": "number",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "key_in_object": "a.json",
+        "kind": "object",
+        "metrics": {
+          "object_len": 1
+        }
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "2",
+            "id": 0,
+            "key_in_object": "k",
+            "kind": "number",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "key_in_object": "b.yaml",
+        "kind": "object",
+        "metrics": {
+          "object_len": 1
+        }
+      }
+    ],
+    "fileset_root": true,
+    "id": 0,
+    "kind": "object",
+    "metrics": {
+      "object_len": 2
+    }
+  },
+  "selection": {
+    "top_k": 5
+  },
+  "template": "auto"
+}

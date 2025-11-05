@@ -60,6 +60,7 @@ fn render_config_with_sampler(
         color_enabled: false,
         style: s,
         string_free_prefix_graphemes: None,
+        debug: false,
     })
 }
 
