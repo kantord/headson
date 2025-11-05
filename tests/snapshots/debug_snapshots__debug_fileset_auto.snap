@@ -1,0 +1,62 @@
+---
+source: tests/debug_snapshots.rs
+assertion_line: 78
+expression: norm
+---
+{
+  "budgets": {
+    "bytes": 20000,
+    "chars": null,
+    "lines": null
+  },
+  "counts": {
+    "included": 0,
+    "total_nodes": 0
+  },
+  "input_format": "yaml",
+  "root": {
+    "children": [
+      {
+        "children": [
+          {
+            "atomic_token": "1",
+            "id": 0,
+            "key_in_object": "a",
+            "kind": "number",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "key_in_object": "a.json",
+        "kind": "object",
+        "metrics": {
+          "object_len": 1
+        }
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "2",
+            "id": 0,
+            "key_in_object": "k",
+            "kind": "number",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "key_in_object": "b.yaml",
+        "kind": "object",
+        "metrics": {
+          "object_len": 1
+        }
+      }
+    ],
+    "fileset_root": true,
+    "id": 0,
+    "kind": "object",
+    "metrics": {
+      "object_len": 2
+    }
+  },
+  "template": "auto"
+}
