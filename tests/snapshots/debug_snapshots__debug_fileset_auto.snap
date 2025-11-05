@@ -4,11 +4,6 @@ assertion_line: 78
 expression: norm
 ---
 {
-  "budgets": {
-    "bytes": 20000,
-    "chars": null,
-    "lines": null
-  },
   "budgets_effective": {
     "bytes": 20000,
     "chars": null,

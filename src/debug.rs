@@ -23,7 +23,6 @@ pub(crate) struct DumpDbg<'a> {
     counts: CountsDbg,
     template: &'a str,
     input_format: &'a str,
-    budgets: BudgetsDbg,
     budgets_effective: BudgetsDbg,
     selection: SelectionDbg,
     renderer: RendererDbg<'a>,
@@ -340,6 +339,10 @@ fn build_node(
     }
 }
 
+#[allow(
+    clippy::unwrap_used,
+    reason = "Debug mode should panic on serialization errors to surface bugs"
+)]
 pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
     let RenderDebugArgs {
         order,
@@ -373,11 +376,6 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
         },
         template: template_str_for_root(order, cfg),
         input_format,
-        budgets: BudgetsDbg {
-            bytes: budgets.byte_budget,
-            chars: budgets.char_budget,
-            lines: budgets.line_budget,
-        },
         budgets_effective: BudgetsDbg {
             bytes: budgets.byte_budget,
             chars: budgets.char_budget,
@@ -397,5 +395,5 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
         output_stats,
         constrained_by,
     };
-    serde_json::to_string_pretty(&dump).unwrap_or_else(|_| "{}".to_string())
+    serde_json::to_string_pretty(&dump).unwrap()
 }
