@@ -9,11 +9,28 @@ expression: norm
     "chars": null,
     "lines": null
   },
+  "budgets_effective": {
+    "bytes": 200,
+    "chars": null,
+    "lines": null
+  },
   "counts": {
     "included": 0,
+    "omitted_children": 0,
     "total_nodes": 0
   },
   "input_format": "json",
+  "output_stats": {
+    "bytes": 37,
+    "chars": 0,
+    "lines": 6
+  },
+  "renderer": {
+    "array_sampler": "default",
+    "prefer_tail_arrays": false,
+    "style": "strict",
+    "template": "json"
+  },
   "root": {
     "children": [
       {
@@ -46,6 +63,9 @@ expression: norm
     "metrics": {
       "object_len": 2
     }
+  },
+  "selection": {
+    "top_k": 4
   },
   "template": "json"
 }

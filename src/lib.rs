@@ -371,6 +371,7 @@ pub fn headson_with_budgets_debug_json(
         config,
         budgets,
         input_format,
+        priority_cfg.array_sampler,
     ))
 }
 
@@ -388,6 +389,7 @@ pub fn headson_many_with_budgets_debug_json(
         config,
         budgets,
         input_format,
+        priority_cfg.array_sampler,
     ))
 }
 
@@ -405,6 +407,7 @@ pub fn headson_yaml_with_budgets_debug_json(
         config,
         budgets,
         input_format,
+        priority_cfg.array_sampler,
     ))
 }
 
@@ -422,6 +425,7 @@ pub fn headson_many_yaml_with_budgets_debug_json(
         config,
         budgets,
         input_format,
+        priority_cfg.array_sampler,
     ))
 }
 
@@ -439,6 +443,7 @@ pub fn headson_text_with_budgets_debug_json(
         config,
         budgets,
         input_format,
+        priority_cfg.array_sampler,
     ))
 }
 
@@ -456,6 +461,7 @@ pub fn headson_many_text_with_budgets_debug_json(
         config,
         budgets,
         input_format,
+        priority_cfg.array_sampler,
     ))
 }
 
@@ -464,6 +470,7 @@ fn find_largest_render_under_budgets_debug(
     config: &RenderConfig,
     budgets: Budgets,
     input_format: &str,
+    array_sampler: crate::ArraySamplerStrategy,
 ) -> (String, String) {
     // Binary search is the same as in find_largest_render_under_budgets, but we
     // capture the final inclusion set and dump it before rendering.
@@ -471,6 +478,48 @@ fn find_largest_render_under_budgets_debug(
     if total == 0 {
         return (String::new(), "{}".to_string());
     }
+
+    let (k, inclusion_flags, render_set_id, out_stats, constrained_by) =
+        search_prepare_and_measure(order_build, config, budgets);
+
+    // Build debug JSON from the prepared render set
+    let dbg =
+        crate::debug::build_render_debug_json(crate::debug::RenderDebugArgs {
+            order: order_build,
+            inclusion_flags: &inclusion_flags,
+            render_id: render_set_id,
+            cfg: config,
+            budgets,
+            input_format,
+            style: config.style,
+            array_sampler,
+            top_k: k,
+            output_stats: out_stats,
+            constrained_by,
+        });
+
+    // Render final output with full config (may include color)
+    let out = crate::serialization::render_from_render_set(
+        order_build,
+        &inclusion_flags,
+        render_set_id,
+        config,
+    );
+    (out, dbg)
+}
+
+fn search_prepare_and_measure(
+    order_build: &PriorityOrder,
+    config: &RenderConfig,
+    budgets: Budgets,
+) -> (
+    usize,
+    Vec<u32>,
+    u32,
+    crate::debug::OutputStatsDbg,
+    Vec<&'static str>,
+) {
+    let total = order_build.total_nodes;
     let lo = 1usize;
     let hi = match budgets.byte_budget {
         Some(c) => total.min(c.max(1)),
@@ -479,8 +528,8 @@ fn find_largest_render_under_budgets_debug(
     let mut inclusion_flags: Vec<u32> = vec![0; total];
     let mut render_set_id: u32 = 1;
     let mut best_k: Option<usize> = None;
-    let mut measure_cfg = config.clone();
-    measure_cfg.color_enabled = false;
+    let mut no_color_cfg = config.clone();
+    no_color_cfg.color_enabled = false;
 
     let _ = crate::utils::search::binary_search_max(lo, hi, |mid| {
         let s = crate::serialization::render_top_k(
@@ -488,7 +537,7 @@ fn find_largest_render_under_budgets_debug(
             mid,
             &mut inclusion_flags,
             render_set_id,
-            &measure_cfg,
+            &no_color_cfg,
         );
         render_set_id = render_set_id.wrapping_add(1).max(1);
         let stats = crate::utils::measure::count_output_stats(
@@ -505,27 +554,47 @@ fn find_largest_render_under_budgets_debug(
             false
         }
     });
+
     let k = best_k.unwrap_or(1);
-    // Prepare set and build debug JSON first, then render from the same set.
     crate::serialization::prepare_render_set_top_k_and_ancestors(
         order_build,
         k,
         &mut inclusion_flags,
         render_set_id,
     );
-    let dbg = crate::debug::build_render_debug_json(
+
+    // Measure output with no color to match budget checks
+    let measured = crate::serialization::render_from_render_set(
         order_build,
         &inclusion_flags,
         render_set_id,
-        config,
-        budgets,
-        input_format,
+        &no_color_cfg,
     );
-    let out = crate::serialization::render_from_render_set(
-        order_build,
-        &inclusion_flags,
-        render_set_id,
-        config,
+    let stats = crate::utils::measure::count_output_stats(
+        &measured,
+        budgets.char_budget.is_some(),
     );
-    (out, dbg)
+
+    let constrained_by = constrained_dimensions(budgets, &stats);
+    let out_stats = crate::debug::OutputStatsDbg {
+        bytes: stats.bytes,
+        chars: stats.chars,
+        lines: stats.lines,
+    };
+    (k, inclusion_flags, render_set_id, out_stats, constrained_by)
+}
+
+fn constrained_dimensions(
+    budgets: Budgets,
+    stats: &crate::utils::measure::OutputStats,
+) -> Vec<&'static str> {
+    let checks = [
+        (budgets.byte_budget.map(|b| stats.bytes >= b), "bytes"),
+        (budgets.char_budget.map(|c| stats.chars >= c), "chars"),
+        (budgets.line_budget.map(|l| stats.lines >= l), "lines"),
+    ];
+    checks
+        .iter()
+        .filter_map(|(cond, name)| cond.unwrap_or(false).then_some(*name))
+        .collect()
 }
