@@ -1,0 +1,33 @@
+---
+source: tests/code_text_fallback_param.rs
+assertion_line: 164
+expression: err_dbg
+---
+{
+  "counts": {
+    "included": 0,
+    "omitted_children": 6,
+    "total_nodes": 0
+  },
+  "output_stats": {
+    "bytes": 119,
+    "lines": 10
+  },
+  "renderer": {
+    "style": "strict",
+    "template": "text"
+  },
+  "root": {
+    "children_len": 7,
+    "fileset_root": null,
+    "gaps_len": 2,
+    "kind": "array",
+    "metrics": {
+      "array_len": 13
+    }
+  },
+  "selection": {
+    "top_k": 21
+  },
+  "template": "text"
+}
