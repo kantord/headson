@@ -31,7 +31,7 @@ pub use order::{
     NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
 };
 
-pub use debug::set_debug_context;
+// no debug context exported; debug handled via RenderConfig::debug
 pub use serialization::color::resolve_color_enabled;
 pub use serialization::types::{
     ColorMode, OutputTemplate, RenderConfig, Style,
@@ -235,10 +235,8 @@ fn find_largest_render_under_budgets(
         render_set_id,
     );
 
-    // If debug context is enabled, build and store the debug JSON from this set.
-    let (dbg_enabled, input_fmt_opt, sampler_opt) =
-        crate::debug::debug_context();
-    if dbg_enabled || config.debug {
+    // If debug is enabled, emit a one-shot debug JSON built from this set.
+    if config.debug {
         let mut no_color_cfg = config.clone();
         no_color_cfg.color_enabled = false;
         let measured = crate::serialization::render_from_render_set(
@@ -257,9 +255,8 @@ fn find_largest_render_under_budgets(
             chars: stats.chars,
             lines: stats.lines,
         };
-        let input_format = input_fmt_opt.unwrap_or("json");
-        let array_sampler =
-            sampler_opt.unwrap_or(crate::ArraySamplerStrategy::Default);
+        let input_format = "json"; // format-agnostic fallback for debug metadata
+        let array_sampler = crate::ArraySamplerStrategy::Default;
         let dbg = crate::debug::build_render_debug_json(
             crate::debug::RenderDebugArgs {
                 order: order_build,

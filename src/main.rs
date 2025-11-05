@@ -320,15 +320,7 @@ fn run_from_stdin(
     }
     // Provide debug context to the library so it can emit a single debug dump
     // from the core search path without format-specific branching here.
-    headson::set_debug_context(
-        cli.debug,
-        Some(match cli.input_format {
-            InputFormat::Json => "json",
-            InputFormat::Yaml => "yaml",
-            InputFormat::Text => "text",
-        }),
-        Some(prio.array_sampler),
-    );
+    // debug is handled inside the core via RenderConfig::debug
 
     let out = match cli.input_format {
         InputFormat::Json => {
@@ -379,15 +371,7 @@ fn run_from_paths(
         {
             cfg.string_free_prefix_graphemes = Some(40);
         }
-        headson::set_debug_context(
-            cli.debug,
-            Some(match chosen_input {
-                InputFormat::Json => "json",
-                InputFormat::Yaml => "yaml",
-                InputFormat::Text => "text",
-            }),
-            Some(prio.array_sampler),
-        );
+        // debug is handled inside the core via RenderConfig::debug
         let out = match chosen_input {
             InputFormat::Json => headson::headson_many_with_budgets(
                 entries, &cfg, &prio, budgets,
@@ -431,15 +415,7 @@ fn run_from_paths(
         {
             cfg.string_free_prefix_graphemes = Some(40);
         }
-        headson::set_debug_context(
-            cli.debug,
-            Some(match chosen_input {
-                InputFormat::Json => "json",
-                InputFormat::Yaml => "yaml",
-                InputFormat::Text => "text",
-            }),
-            Some(prio.array_sampler),
-        );
+        // debug is handled inside the core via RenderConfig::debug
         let out = match chosen_input {
             InputFormat::Json => {
                 headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?

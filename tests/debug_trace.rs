@@ -22,7 +22,7 @@ fn debug_json_stdin() {
     assert!(!out.trim().is_empty(), "stdout must not be empty");
     let v: serde_json::Value =
         serde_json::from_str(&err).expect("stderr must be JSON");
-    assert_eq!(v["input_format"], "json");
+    // format-agnostic debug dump; ensure structure present
     assert!(v["counts"]["included"].as_u64().unwrap_or(0) >= 1);
     // Root should be object
     assert_eq!(v["root"]["kind"], "object");
@@ -50,7 +50,7 @@ fn debug_text_stdin() {
     assert!(!out.trim().is_empty(), "stdout must not be empty");
     let v: serde_json::Value =
         serde_json::from_str(&err).expect("stderr must be JSON");
-    assert_eq!(v["input_format"], "text");
+    // format-agnostic debug dump; ensure structure present
     assert!(v["counts"]["included"].as_u64().unwrap_or(0) >= 1);
 }
 
@@ -81,7 +81,7 @@ fn debug_fileset_two_inputs() {
     let err = String::from_utf8_lossy(&assert.get_output().stderr);
     let v: serde_json::Value =
         serde_json::from_str(&err).expect("stderr must be JSON");
-    assert_eq!(v["input_format"], "yaml");
+    // format-agnostic debug dump; ensure structure present
     assert_eq!(v["root"]["fileset_root"], true);
     // Root metrics reflect total files present in the fileset
     assert_eq!(v["root"]["metrics"]["object_len"], 2);

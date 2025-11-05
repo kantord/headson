@@ -1,47 +1,8 @@
 use serde::Serialize;
 
 use crate::order::{ObjectType, PriorityOrder, ROOT_PQ_ID, RankedNode};
-use std::cell::RefCell;
-
-thread_local! {
-    static DBG_CTX: RefCell<DebugContext> = RefCell::new(DebugContext::default());
-}
-
-#[derive(Clone, Default)]
-struct DebugContext {
-    enabled: bool,
-    input_format: Option<&'static str>,
-    array_sampler: Option<crate::ArraySamplerStrategy>,
-    last_json: Option<String>,
-}
-
-pub fn set_debug_context(
-    enabled: bool,
-    input_format: Option<&'static str>,
-    array_sampler: Option<crate::ArraySamplerStrategy>,
-) {
-    DBG_CTX.with(|c| {
-        let mut ctx = c.borrow_mut();
-        ctx.enabled = enabled;
-        ctx.input_format = input_format;
-        ctx.array_sampler = array_sampler;
-        // Clear previous dump to avoid stale reads across runs
-        ctx.last_json = None;
-    });
-}
-
-// Debug JSON is printed from the core when enabled; storing/retrieving is not required.
-
-pub(crate) fn debug_context() -> (
-    bool,
-    Option<&'static str>,
-    Option<crate::ArraySamplerStrategy>,
-) {
-    DBG_CTX.with(|c| {
-        let ctx = c.borrow();
-        (ctx.enabled, ctx.input_format, ctx.array_sampler)
-    })
-}
+// No global debug context; the core render uses the inclusion set and provided
+// args to emit a one-shot debug JSON when requested.
 
 #[derive(Serialize)]
 struct CountsDbg {
