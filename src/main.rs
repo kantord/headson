@@ -419,6 +419,7 @@ fn run_from_paths(
                 // For common code-like extensions, render text with atomic lines
                 let is_code = headson::extensions::is_code_like_name(&lower);
                 if is_code {
+                    cfg.show_line_numbers = true;
                     headson::headson_text_with_budgets_code(
                         bytes, &cfg, &prio, budgets,
                     )?
@@ -543,6 +544,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         style: map_style(cli.style),
         string_free_prefix_graphemes: None,
         debug: cli.debug,
+        show_line_numbers: false,
     }
 }
 

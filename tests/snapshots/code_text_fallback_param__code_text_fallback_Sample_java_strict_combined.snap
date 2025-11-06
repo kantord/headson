@@ -3,11 +3,11 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-public class Sample {
-    static void greet(String name) {
-    }
-
-        for (int i = 0; i < 3; i++) {
+1: public class Sample {
+2:     static void greet(String name) {
+4:     }
+20: 
+29: 
 
 DEBUG (normalized):
 {
@@ -22,9 +22,9 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 105,
+    "bytes": 84,
     "chars": 0,
-    "lines": 7
+    "lines": 6
   },
   "renderer": {
     "array_sampler": "default",
@@ -48,76 +48,9 @@ DEBUG (normalized):
               {
                 "atomic_token": "    static void greet(String name) {",
                 "id": 0,
-                "index_in_parent_array": 0,
-                "kind": "string",
-                "metrics": {}
-              },
-              {
-                "id": 0,
                 "index_in_parent_array": 1,
-                "kind": "array",
-                "metrics": {
-                  "array_len": 1
-                }
-              }
-            ],
-            "id": 0,
-            "index_in_parent_array": 1,
-            "kind": "array",
-            "metrics": {
-              "array_len": 2
-            }
-          },
-          {
-            "children": [
-              {
-                "atomic_token": "    }",
-                "id": 0,
-                "index_in_parent_array": 0,
                 "kind": "string",
                 "metrics": {}
-              }
-            ],
-            "id": 0,
-            "index_in_parent_array": 2,
-            "kind": "array",
-            "metrics": {
-              "array_len": 1
-            }
-          }
-        ],
-        "id": 0,
-        "index_in_parent_array": 0,
-        "kind": "array",
-        "metrics": {
-          "array_len": 3
-        }
-      },
-      {
-        "children": [
-          {
-            "atomic_token": "",
-            "id": 0,
-            "index_in_parent_array": 0,
-            "kind": "string",
-            "metrics": {}
-          },
-          {
-            "children": [
-              {
-                "atomic_token": "        for (int i = 0; i < 3; i++) {",
-                "id": 0,
-                "index_in_parent_array": 0,
-                "kind": "string",
-                "metrics": {}
-              },
-              {
-                "id": 0,
-                "index_in_parent_array": 1,
-                "kind": "array",
-                "metrics": {
-                  "array_len": 1
-                }
               },
               {
                 "id": 0,
@@ -132,6 +65,56 @@ DEBUG (normalized):
             "index_in_parent_array": 1,
             "kind": "array",
             "metrics": {
+              "array_len": 2
+            },
+            "omitted_before": 1
+          },
+          {
+            "children": [
+              {
+                "atomic_token": "    }",
+                "id": 0,
+                "index_in_parent_array": 3,
+                "kind": "string",
+                "metrics": {}
+              }
+            ],
+            "id": 0,
+            "index_in_parent_array": 3,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            },
+            "omitted_before": 3
+          }
+        ],
+        "gaps": [
+          {
+            "before_child_index": 2,
+            "omitted_count": 1
+          }
+        ],
+        "id": 0,
+        "index_in_parent_array": 0,
+        "kind": "array",
+        "metrics": {
+          "array_len": 3
+        }
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 19,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 20,
+            "kind": "array",
+            "metrics": {
               "array_len": 3
             }
           }
@@ -141,14 +124,15 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 2
-        }
+        },
+        "omitted_before": 19
       },
       {
         "children": [
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 28,
             "kind": "string",
             "metrics": {}
           }
@@ -158,7 +142,8 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 28
       }
     ],
     "gaps": [
@@ -178,7 +163,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 16
+    "top_k": 13
   },
   "template": "text"
 }

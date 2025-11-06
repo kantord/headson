@@ -504,6 +504,7 @@ impl<'a> RenderScope<'a> {
                     &self.config.indent_unit,
                     self.config.color_enabled,
                     self.config.style,
+                    self.config.show_line_numbers,
                 );
                 self.write_array(id, depth, inline, &mut ow);
                 s
@@ -516,6 +517,7 @@ impl<'a> RenderScope<'a> {
                     &self.config.indent_unit,
                     self.config.color_enabled,
                     self.config.style,
+                    self.config.show_line_numbers,
                 );
                 self.write_object(id, depth, inline, &mut ow);
                 s
@@ -596,6 +598,7 @@ impl<'a> RenderScope<'a> {
                     &self.config.indent_unit,
                     self.config.color_enabled,
                     self.config.style,
+                    self.config.show_line_numbers,
                 );
                 self.write_array_with_template(
                     id, depth, inline, &mut ow, template,
@@ -610,6 +613,7 @@ impl<'a> RenderScope<'a> {
                     &self.config.indent_unit,
                     self.config.color_enabled,
                     self.config.style,
+                    self.config.show_line_numbers,
                 );
                 self.write_object_with_template(
                     id, depth, inline, &mut ow, template,
@@ -668,6 +672,7 @@ pub fn render_from_render_set(
         &config.indent_unit,
         config.color_enabled,
         config.style,
+        config.show_line_numbers,
     );
     scope.write_node(root_id, 0, false, &mut out);
     s
@@ -732,6 +737,7 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -769,6 +775,7 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         // Sanity: output should contain CRLF newlines and render the object child across lines.
@@ -808,6 +815,7 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_snapshot!("arena_render_single", out);
@@ -848,6 +856,7 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_snapshot!("array_omitted_pseudo_head", out_head);
@@ -869,6 +878,7 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_snapshot!("array_omitted_pseudo_tail", out_tail);
@@ -907,6 +917,7 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_snapshot!("array_omitted_js_head", out_head);
@@ -927,6 +938,7 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_snapshot!("array_omitted_js_tail", out_tail);
@@ -965,6 +977,7 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out_head);
@@ -986,6 +999,7 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out_tail);
@@ -1021,6 +1035,7 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1056,6 +1071,7 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1089,6 +1105,7 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1105,6 +1122,7 @@ mod tests {
             "  ",
             false,
             crate::serialization::types::Style::Default,
+            false,
         );
         super::templates::render_array(
             crate::OutputTemplate::Yaml,
@@ -1151,6 +1169,7 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1223,6 +1242,7 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         // Expect the first 5 characters plus an ellipsis, as a valid JSON string literal.
@@ -1258,6 +1278,7 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1300,6 +1321,7 @@ mod tests {
             style: crate::serialization::types::Style::Strict,
             string_free_prefix_graphemes: None,
             debug: false,
+            show_line_numbers: false,
         };
         let scope = RenderScope {
             order: &build,
@@ -1339,6 +1361,7 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         assert_snapshot!("inline_open_array_in_object_json", out);
@@ -1375,6 +1398,7 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                show_line_numbers: false,
             },
         );
         // Should be a valid JS object with one property and an omitted summary.
@@ -1419,6 +1443,7 @@ mod tests {
             "  ",
             false,
             crate::serialization::types::Style::Default,
+            false,
         );
         super::templates::render_array(
             crate::OutputTemplate::Pseudo,
@@ -1442,6 +1467,7 @@ mod tests {
             "  ",
             false,
             crate::serialization::types::Style::Default,
+            false,
         );
         super::templates::render_array(
             crate::OutputTemplate::Js,

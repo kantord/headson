@@ -60,7 +60,11 @@ impl TextArenaBuilder {
         id
     }
 
-    fn push_array_with_children(&mut self, children: Vec<usize>) -> usize {
+    fn push_array_with_children(
+        &mut self,
+        children: Vec<usize>,
+        child_orig_indices: Option<Vec<usize>>,
+    ) -> usize {
         let id = self.push_default();
         let children_start = self.arena.children.len();
         let children_len = children.len();
@@ -70,9 +74,16 @@ impl TextArenaBuilder {
         n.children_start = children_start;
         n.children_len = children_len;
         n.array_len = Some(children_len);
-        // No sampling at this level; contiguous
-        n.arr_indices_start = 0;
-        n.arr_indices_len = 0;
+        if let Some(orig) = child_orig_indices {
+            let start = self.arena.arr_indices.len();
+            self.arena.arr_indices.extend(orig);
+            let len = self.arena.arr_indices.len().saturating_sub(start);
+            n.arr_indices_start = start;
+            n.arr_indices_len = len.min(children_len);
+        } else {
+            n.arr_indices_start = 0;
+            n.arr_indices_len = 0;
+        }
         id
     }
 
@@ -95,19 +106,12 @@ impl TextArenaBuilder {
         n.children_start = children_start;
         n.children_len = kept;
         n.array_len = Some(total);
-        // Store arr_indices when not contiguous head prefix
-        let contiguous =
-            idxs.iter().take(kept).enumerate().all(|(i, &idx)| i == idx);
-        if kept == 0 || contiguous {
-            n.arr_indices_start = 0;
-            n.arr_indices_len = 0;
-        } else {
-            let start = self.arena.arr_indices.len();
-            self.arena.arr_indices.extend(idxs.into_iter().take(kept));
-            let len = self.arena.arr_indices.len().saturating_sub(start);
-            n.arr_indices_start = start;
-            n.arr_indices_len = len.min(kept);
-        }
+        // Always store original indices for child arrays to enable global line numbering
+        let start = self.arena.arr_indices.len();
+        self.arena.arr_indices.extend(idxs.into_iter().take(kept));
+        let len = self.arena.arr_indices.len().saturating_sub(start);
+        n.arr_indices_start = start;
+        n.arr_indices_len = len.min(kept);
         id
     }
 
@@ -137,19 +141,12 @@ impl TextArenaBuilder {
         n.children_start = self.arena.children.len().saturating_sub(pushed);
         n.children_len = pushed;
         n.array_len = Some(total);
-        // Store arr_indices when not contiguous head prefix
-        let contiguous =
-            idxs.iter().take(kept).enumerate().all(|(i, &idx)| i == idx);
-        if pushed == 0 || contiguous {
-            n.arr_indices_start = 0;
-            n.arr_indices_len = 0;
-        } else {
-            let start = self.arena.arr_indices.len();
-            self.arena.arr_indices.extend(idxs.into_iter().take(kept));
-            let len = self.arena.arr_indices.len().saturating_sub(start);
-            n.arr_indices_start = start;
-            n.arr_indices_len = len.min(pushed);
-        }
+        // Always store original indices for children so per-file numbering works
+        let start = self.arena.arr_indices.len();
+        self.arena.arr_indices.extend(idxs.into_iter().take(kept));
+        let len = self.arena.arr_indices.len().saturating_sub(start);
+        n.arr_indices_start = start;
+        n.arr_indices_len = len.min(pushed);
         id
     }
 
@@ -171,6 +168,7 @@ impl TextArenaBuilder {
         n.obj_keys_start = obj_keys_start;
         n.obj_keys_len = count;
         n.object_len = Some(count);
+        // No global line numbering across files here.
         id
     }
 }
@@ -279,15 +277,20 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
     ) -> usize {
         let n = &tnodes[id];
         let mut kids: Vec<usize> = Vec::new();
+        let mut origs: Vec<usize> = Vec::new();
         if atomic {
             kids.push(b.push_string_atomic(n.text.clone()));
         } else {
             kids.push(b.push_string(n.text.clone()));
         }
+        origs.push(id);
         for &ch in &n.children {
-            kids.push(push_tnode(ch, tnodes, b, atomic));
+            let child_arr = push_tnode(ch, tnodes, b, atomic);
+            kids.push(child_arr);
+            // For a nested array, use its header line's global index (child TNode id)
+            origs.push(ch);
         }
-        b.push_array_with_children(kids)
+        b.push_array_with_children(kids, Some(origs))
     }
 
     let mut b = TextArenaBuilder::new(
@@ -399,6 +402,7 @@ mod tests {
             style: Style::Default,
             string_free_prefix_graphemes: None,
             debug: false,
+            show_line_numbers: false,
         };
         let prio = PriorityConfig::new(100, 100);
         (cfg, prio)

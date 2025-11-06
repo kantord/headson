@@ -8,6 +8,7 @@ pub struct Out<'a> {
     indent_unit: String,
     color_enabled: bool,
     style: crate::serialization::types::Style,
+    show_line_numbers: bool,
 }
 
 impl<'a> Out<'a> {
@@ -17,6 +18,7 @@ impl<'a> Out<'a> {
         indent_unit: &str,
         color_enabled: bool,
         style: crate::serialization::types::Style,
+        show_line_numbers: bool,
     ) -> Self {
         Self {
             buf,
@@ -24,6 +26,7 @@ impl<'a> Out<'a> {
             indent_unit: indent_unit.to_string(),
             color_enabled,
             style,
+            show_line_numbers,
         }
     }
 
@@ -89,5 +92,9 @@ impl<'a> Out<'a> {
 
     pub fn style(&self) -> crate::serialization::types::Style {
         self.style
+    }
+
+    pub fn line_numbers_enabled(&self) -> bool {
+        self.show_line_numbers
     }
 }
