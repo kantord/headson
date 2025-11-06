@@ -44,7 +44,7 @@ DEBUG (normalized):
             "atomic_token": "package main",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -61,7 +61,7 @@ DEBUG (normalized):
             "atomic_token": "func compute(n int) int {",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           },
           {
@@ -104,7 +104,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],

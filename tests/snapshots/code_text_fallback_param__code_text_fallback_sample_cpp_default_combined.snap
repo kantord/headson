@@ -47,7 +47,7 @@ DEBUG (normalized):
             "atomic_token": "#include <iostream>",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -64,7 +64,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -89,7 +89,7 @@ DEBUG (normalized):
             "atomic_token": "}",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -106,7 +106,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -123,7 +123,7 @@ DEBUG (normalized):
             "atomic_token": "int main() {",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           },
           {
@@ -132,7 +132,7 @@ DEBUG (normalized):
                 "atomic_token": "    greet(\"world\");",
                 "id": 0,
                 "index_in_parent_array": 0,
-                "kind": "number",
+                "kind": "string",
                 "metrics": {}
               }
             ],
@@ -173,7 +173,7 @@ DEBUG (normalized):
             "atomic_token": "}",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -190,7 +190,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],

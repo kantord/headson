@@ -40,7 +40,7 @@ DEBUG (normalized):
             "atomic_token": "def greet(name: str):",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           },
           {

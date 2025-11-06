@@ -47,7 +47,7 @@ DEBUG (normalized):
             "atomic_token": "import React from 'react';",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -64,7 +64,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -97,7 +97,7 @@ DEBUG (normalized):
             "atomic_token": "function Item({ i }: { i: number }) {",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           },
           {
@@ -106,7 +106,7 @@ DEBUG (normalized):
                 "atomic_token": "  return <li>i: {i}</li>;",
                 "id": 0,
                 "index_in_parent_array": 0,
-                "kind": "number",
+                "kind": "string",
                 "metrics": {}
               }
             ],
@@ -131,7 +131,7 @@ DEBUG (normalized):
             "atomic_token": "}",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -148,7 +148,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -165,7 +165,7 @@ DEBUG (normalized):
             "atomic_token": "}",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -182,7 +182,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],

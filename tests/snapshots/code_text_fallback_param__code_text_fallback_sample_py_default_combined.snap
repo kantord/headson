@@ -44,7 +44,7 @@ DEBUG (normalized):
             "atomic_token": "def greet(name: str):",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           },
           {
@@ -53,7 +53,7 @@ DEBUG (normalized):
                 "atomic_token": "    print(f\"Hello, {name}\")",
                 "id": 0,
                 "index_in_parent_array": 0,
-                "kind": "number",
+                "kind": "string",
                 "metrics": {}
               }
             ],
@@ -94,7 +94,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -111,7 +111,7 @@ DEBUG (normalized):
             "atomic_token": "if __name__ == \"__main__\":",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           },
           {
@@ -120,7 +120,7 @@ DEBUG (normalized):
                 "atomic_token": "    main()",
                 "id": 0,
                 "index_in_parent_array": 0,
-                "kind": "number",
+                "kind": "string",
                 "metrics": {}
               }
             ],

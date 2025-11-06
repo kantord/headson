@@ -47,7 +47,7 @@ DEBUG (normalized):
             "atomic_token": "#!/usr/bin/env bash",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -64,7 +64,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -81,7 +81,7 @@ DEBUG (normalized):
             "atomic_token": "greet() {",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           },
           {
@@ -90,7 +90,7 @@ DEBUG (normalized):
                 "atomic_token": "  local name=\"$1\"",
                 "id": 0,
                 "index_in_parent_array": 0,
-                "kind": "number",
+                "kind": "string",
                 "metrics": {}
               }
             ],
@@ -123,7 +123,7 @@ DEBUG (normalized):
             "atomic_token": "compute() {",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           },
           {
@@ -166,7 +166,7 @@ DEBUG (normalized):
             "atomic_token": "}",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -183,7 +183,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -200,7 +200,7 @@ DEBUG (normalized):
             "atomic_token": "main() {",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           },
           {
@@ -209,7 +209,7 @@ DEBUG (normalized):
                 "atomic_token": "  greet \"world\"",
                 "id": 0,
                 "index_in_parent_array": 0,
-                "kind": "number",
+                "kind": "string",
                 "metrics": {}
               }
             ],
@@ -234,7 +234,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           },
           {
@@ -267,7 +267,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -284,7 +284,7 @@ DEBUG (normalized):
             "atomic_token": "main \"$@\"",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -301,7 +301,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],

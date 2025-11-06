@@ -45,7 +45,7 @@ DEBUG (normalized):
             "atomic_token": "public class Sample {",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           },
           {
@@ -54,7 +54,7 @@ DEBUG (normalized):
                 "atomic_token": "    static void greet(String name) {",
                 "id": 0,
                 "index_in_parent_array": 0,
-                "kind": "number",
+                "kind": "string",
                 "metrics": {}
               },
               {
@@ -79,7 +79,7 @@ DEBUG (normalized):
                 "atomic_token": "    }",
                 "id": 0,
                 "index_in_parent_array": 0,
-                "kind": "number",
+                "kind": "string",
                 "metrics": {}
               }
             ],
@@ -104,7 +104,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           },
           {
@@ -129,7 +129,7 @@ DEBUG (normalized):
             "atomic_token": "",
             "id": 0,
             "index_in_parent_array": 0,
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],

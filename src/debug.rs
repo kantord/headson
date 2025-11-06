@@ -149,18 +149,29 @@ fn style_str(s: crate::serialization::types::Style) -> &'static str {
     }
 }
 
-fn kind_str(node: &RankedNode, atomic_token: Option<&str>) -> String {
+fn kind_str(
+    node: &RankedNode,
+    atomic_token: Option<&str>,
+    treat_atomic_as_string: bool,
+) -> String {
     match node {
         RankedNode::Array { .. } => "array".into(),
         RankedNode::Object { .. } => "object".into(),
         RankedNode::SplittableLeaf { .. } => "string".into(),
         RankedNode::LeafPart { .. } => "string-part".into(),
-        RankedNode::AtomicLeaf { .. } => match atomic_token {
-            Some("null") => "null".into(),
-            Some("true") | Some("false") => "bool".into(),
-            Some(_) => "number".into(),
-            None => "atomic".into(),
-        },
+        RankedNode::AtomicLeaf { .. } => {
+            if treat_atomic_as_string {
+                // Under text template, atomic tokens represent whole lines; treat as string.
+                "string".into()
+            } else {
+                match atomic_token {
+                    Some("null") => "null".into(),
+                    Some("true") | Some("false") => "bool".into(),
+                    Some(_) => "number".into(),
+                    None => "atomic".into(),
+                }
+            }
+        }
     }
 }
 
@@ -196,6 +207,7 @@ fn build_node(
     render_id: u32,
     include_count: &mut usize,
     omitted_children_sum: &mut usize,
+    treat_atomic_as_string: bool,
 ) -> NodeDbg {
     let rn = &order.nodes[id];
     let key_in_object =
@@ -269,6 +281,7 @@ fn build_node(
                         render_id,
                         include_count,
                         omitted_children_sum,
+                        treat_atomic_as_string,
                     ));
                 }
             }
@@ -323,7 +336,7 @@ fn build_node(
 
     NodeDbg {
         id,
-        kind: kind_str(rn, atomic_token_ref),
+        kind: kind_str(rn, atomic_token_ref, treat_atomic_as_string),
         key_in_object,
         index_in_parent_array,
         string_preview: string_preview_opt,
@@ -363,6 +376,12 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
         render_id,
         &mut included,
         &mut omitted_children_sum,
+        // Treat atomic leaves as strings when rendering via Text template at root
+        // (single-file text inputs). Filesets report "auto" and retain defaults.
+        matches!(
+            cfg.template,
+            crate::serialization::types::OutputTemplate::Text
+        ),
     );
     let dump = DumpDbg {
         root,
