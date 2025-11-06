@@ -3,9 +3,9 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: def greet(name: str):
-2:     print(f"Hello, {name}")
-3: 
+ 1: def greet(name: str):
+ 2:     print(f"Hello, {name}")
+ 3: 
 13: 
 23: if __name__ == "__main__":
 24:     main()
@@ -23,7 +23,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 111,
+    "bytes": 114,
     "chars": 0,
     "lines": 7
   },

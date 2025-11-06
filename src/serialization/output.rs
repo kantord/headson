@@ -9,6 +9,7 @@ pub struct Out<'a> {
     color_enabled: bool,
     style: crate::serialization::types::Style,
     show_line_numbers: bool,
+    line_number_width: Option<usize>,
 }
 
 impl<'a> Out<'a> {
@@ -19,6 +20,7 @@ impl<'a> Out<'a> {
         color_enabled: bool,
         style: crate::serialization::types::Style,
         show_line_numbers: bool,
+        line_number_width: Option<usize>,
     ) -> Self {
         Self {
             buf,
@@ -27,6 +29,7 @@ impl<'a> Out<'a> {
             color_enabled,
             style,
             show_line_numbers,
+            line_number_width,
         }
     }
 
@@ -96,5 +99,9 @@ impl<'a> Out<'a> {
 
     pub fn line_numbers_enabled(&self) -> bool {
         self.show_line_numbers
+    }
+
+    pub fn line_number_width(&self) -> Option<usize> {
+        self.line_number_width
     }
 }

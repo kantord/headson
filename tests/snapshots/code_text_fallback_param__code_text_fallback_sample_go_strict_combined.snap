@@ -3,8 +3,8 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: package main
-9: func compute(n int) int {
+ 1: package main
+ 9: func compute(n int) int {
 11:     for i := 0; i < n; i++ {
 18:     return total
 31: 
@@ -22,7 +22,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 104,
+    "bytes": 106,
     "chars": 0,
     "lines": 6
   },

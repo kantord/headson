@@ -3,11 +3,11 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: def greet(name: str):
-… 3 more lines …
+ 1: def greet(name: str):
+ … 3 more lines …
 13: 
-… 4 more lines …
-… 7 more lines …
+ … 4 more lines …
+ … 7 more lines …
 
 DEBUG (normalized):
 {
@@ -22,7 +22,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 93,
+    "bytes": 97,
     "chars": 0,
     "lines": 6
   },

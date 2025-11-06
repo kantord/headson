@@ -3,13 +3,13 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: import React from 'react';
-2: 
-… 2 more lines …
-7: }
-… 4 more lines …
+ 1: import React from 'react';
+ 2: 
+ … 2 more lines …
+ 7: }
+ … 4 more lines …
 36: 
-… 6 more lines …
+ … 6 more lines …
 
 DEBUG (normalized):
 {
@@ -24,7 +24,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 107,
+    "bytes": 113,
     "chars": 0,
     "lines": 8
   },

@@ -3,16 +3,16 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: import React from 'react';
-2: 
-…
-5: function Item({ i }: { i: number }) {
-7: }
-8: 
-…
+ 1: import React from 'react';
+ 2: 
+ …
+ 5: function Item({ i }: { i: number }) {
+ 7: }
+ 8: 
+ …
 35: }
 36: 
-…
+ …
 
 DEBUG (normalized):
 {
@@ -27,7 +27,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 107,
+    "bytes": 115,
     "chars": 0,
     "lines": 11
   },

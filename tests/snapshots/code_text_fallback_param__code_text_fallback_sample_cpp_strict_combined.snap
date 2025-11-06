@@ -3,12 +3,12 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: #include <iostream>
-2: 
-5: }
-6: 
-7: int main() {
-8:     greet("world");
+ 1: #include <iostream>
+ 2: 
+ 5: }
+ 6: 
+ 7: int main() {
+ 8:     greet("world");
 19: }
 20: 
 
@@ -25,7 +25,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 86,
+    "bytes": 92,
     "chars": 0,
     "lines": 9
   },

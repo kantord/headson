@@ -3,13 +3,13 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: function greet(name: string) {
-2:   console.log(`Hello, ${name}`);
-…
+ 1: function greet(name: string) {
+ 2:   console.log(`Hello, ${name}`);
+ …
 17: function main(): void {
-…
+ …
 29: 
-…
+ …
 
 DEBUG (normalized):
 {
@@ -18,13 +18,16 @@ DEBUG (normalized):
     "chars": null,
     "lines": null
   },
+  "constrained_by": [
+    "bytes"
+  ],
   "counts": {
     "included": 0,
     "omitted_children": 10,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 115,
+    "bytes": 120,
     "chars": 0,
     "lines": 8
   },

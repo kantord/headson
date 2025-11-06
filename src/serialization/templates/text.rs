@@ -186,7 +186,11 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
                 // Leaf line: print exactly as in source (keeps original indent).
                 if out.line_numbers_enabled() {
                     let n = orig_index.saturating_add(1);
-                    out.push_str(&format!("{n}: "));
+                    if let Some(w) = out.line_number_width() {
+                        out.push_str(&format!("{:>width$}: ", n, width = w));
+                    } else {
+                        out.push_str(&format!("{n}: "));
+                    }
                 }
                 out.push_str(item);
                 out.push_newline();

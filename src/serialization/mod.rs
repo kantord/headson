@@ -22,6 +22,8 @@ pub(crate) struct RenderScope<'a> {
     render_set_id: u32,
     // Rendering configuration (template, whitespace, etc.).
     config: &'a crate::RenderConfig,
+    // Optional global width for line number alignment when enabled.
+    line_number_width: Option<usize>,
 }
 
 impl<'a> RenderScope<'a> {
@@ -505,6 +507,7 @@ impl<'a> RenderScope<'a> {
                     self.config.color_enabled,
                     self.config.style,
                     self.config.show_line_numbers,
+                    self.line_number_width,
                 );
                 self.write_array(id, depth, inline, &mut ow);
                 s
@@ -518,6 +521,7 @@ impl<'a> RenderScope<'a> {
                     self.config.color_enabled,
                     self.config.style,
                     self.config.show_line_numbers,
+                    self.line_number_width,
                 );
                 self.write_object(id, depth, inline, &mut ow);
                 s
@@ -599,6 +603,7 @@ impl<'a> RenderScope<'a> {
                     self.config.color_enabled,
                     self.config.style,
                     self.config.show_line_numbers,
+                    self.line_number_width,
                 );
                 self.write_array_with_template(
                     id, depth, inline, &mut ow, template,
@@ -614,6 +619,7 @@ impl<'a> RenderScope<'a> {
                     self.config.color_enabled,
                     self.config.style,
                     self.config.show_line_numbers,
+                    self.line_number_width,
                 );
                 self.write_object_with_template(
                     id, depth, inline, &mut ow, template,
@@ -659,11 +665,76 @@ pub fn render_from_render_set(
     config: &crate::RenderConfig,
 ) -> String {
     let root_id = ROOT_PQ_ID;
+    // Compute optional global line-number width when numbering is enabled for text.
+    fn digits(mut n: usize) -> usize {
+        if n == 0 {
+            return 1;
+        }
+        let mut d = 0;
+        while n > 0 {
+            d += 1;
+            n /= 10;
+        }
+        d
+    }
+    fn compute_max_index(
+        order: &PriorityOrder,
+        flags: &[u32],
+        rid: u32,
+        id: usize,
+    ) -> usize {
+        let mut max_idx = 0usize;
+        if let Some(kids) = order.children.get(id) {
+            for &cid in kids.iter() {
+                let c = cid.0;
+                if flags[c] != rid {
+                    continue;
+                }
+                // Only consider leaf nodes (printed lines) for width calc.
+                match order.nodes[c] {
+                    RankedNode::AtomicLeaf { .. }
+                    | RankedNode::SplittableLeaf { .. } => {
+                        if let Some(idx) =
+                            order.index_in_parent_array.get(c).and_then(|o| *o)
+                        {
+                            if idx > max_idx {
+                                max_idx = idx;
+                            }
+                        }
+                    }
+                    RankedNode::Array { .. } | RankedNode::Object { .. } => {
+                        let m = compute_max_index(order, flags, rid, c);
+                        if m > max_idx {
+                            max_idx = m;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        max_idx
+    }
+    let line_number_width = if config.show_line_numbers
+        && matches!(
+            config.template,
+            crate::serialization::types::OutputTemplate::Text
+        ) {
+        let max_index = compute_max_index(
+            order_build,
+            inclusion_flags,
+            render_id,
+            root_id,
+        );
+        Some(digits(max_index.saturating_add(1)))
+    } else {
+        None
+    };
     let mut scope = RenderScope {
         order: order_build,
         inclusion_flags,
         render_set_id: render_id,
         config,
+        line_number_width,
     };
     let mut s = String::new();
     let mut out = Out::new(
@@ -673,6 +744,7 @@ pub fn render_from_render_set(
         config.color_enabled,
         config.style,
         config.show_line_numbers,
+        line_number_width,
     );
     scope.write_node(root_id, 0, false, &mut out);
     s
@@ -1123,6 +1195,7 @@ mod tests {
             false,
             crate::serialization::types::Style::Default,
             false,
+            None,
         );
         super::templates::render_array(
             crate::OutputTemplate::Yaml,
@@ -1328,6 +1401,7 @@ mod tests {
             inclusion_flags: &marks,
             render_set_id: render_id,
             config: &cfg,
+            line_number_width: None,
         };
         // Atomic leaves never report omitted counts.
         let none = scope.omitted_for(crate::order::ROOT_PQ_ID, 0);
@@ -1444,6 +1518,7 @@ mod tests {
             false,
             crate::serialization::types::Style::Default,
             false,
+            None,
         );
         super::templates::render_array(
             crate::OutputTemplate::Pseudo,
@@ -1468,6 +1543,7 @@ mod tests {
             false,
             crate::serialization::types::Style::Default,
             false,
+            None,
         );
         super::templates::render_array(
             crate::OutputTemplate::Js,

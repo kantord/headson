@@ -3,14 +3,14 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: #!/usr/bin/env bash
-2: 
-… 4 more lines …
+ 1: #!/usr/bin/env bash
+ 2: 
+ … 4 more lines …
 19: }
 20: 
-… 5 more lines …
+ … 5 more lines …
 33: 
-… 9 more lines …
+ … 9 more lines …
 
 DEBUG (normalized):
 {
@@ -25,7 +25,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 106,
+    "bytes": 111,
     "chars": 0,
     "lines": 9
   },

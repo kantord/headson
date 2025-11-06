@@ -3,10 +3,9 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: #!/usr/bin/env bash
-2: 
-3: greet() {
-8: compute() {
+ 1: #!/usr/bin/env bash
+ 2: 
+ 3: greet() {
 19: }
 20: 
 21: main() {
@@ -23,13 +22,13 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 7,
+    "omitted_children": 4,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 118,
+    "bytes": 106,
     "chars": 0,
-    "lines": 11
+    "lines": 10
   },
   "renderer": {
     "array_sampler": "default",
@@ -109,48 +108,12 @@ DEBUG (normalized):
         "omitted_before": 2
       },
       {
-        "children": [
-          {
-            "atomic_token": "compute() {",
-            "id": 0,
-            "index_in_parent_array": 7,
-            "kind": "string",
-            "metrics": {}
-          },
-          {
-            "id": 0,
-            "index_in_parent_array": 9,
-            "kind": "array",
-            "metrics": {
-              "array_len": 1
-            }
-          },
-          {
-            "id": 0,
-            "index_in_parent_array": 17,
-            "kind": "array",
-            "metrics": {
-              "array_len": 1
-            }
-          }
-        ],
-        "gaps": [
-          {
-            "before_child_index": 1,
-            "omitted_count": 1
-          },
-          {
-            "before_child_index": 2,
-            "omitted_count": 7
-          }
-        ],
         "id": 0,
         "index_in_parent_array": 5,
         "kind": "array",
         "metrics": {
           "array_len": 6
-        },
-        "omitted_before": 7
+        }
       },
       {
         "children": [
@@ -294,7 +257,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 27
+    "top_k": 24
   },
   "template": "text"
 }

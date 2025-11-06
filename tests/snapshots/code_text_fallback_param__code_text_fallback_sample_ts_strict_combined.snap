@@ -3,8 +3,8 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: function greet(name: string) {
-2:   console.log(`Hello, ${name}`);
+ 1: function greet(name: string) {
+ 2:   console.log(`Hello, ${name}`);
 17: function main(): void {
 29: 
 
@@ -21,7 +21,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 103,
+    "bytes": 105,
     "chars": 0,
     "lines": 5
   },

@@ -3,9 +3,9 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: public class Sample {
-2:     static void greet(String name) {
-4:     }
+ 1: public class Sample {
+ 2:     static void greet(String name) {
+ 4:     }
 20: 
 29: 
 
@@ -22,7 +22,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 84,
+    "bytes": 87,
     "chars": 0,
     "lines": 6
   },
