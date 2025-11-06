@@ -3,16 +3,13 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-function greet(name) {
-  console.log(`Hello, ${name}`);
-}
-  …
-
-function main() {
-  greet("world");
-  …
-
-  …
+1: function greet(name) {
+2:   console.log(`Hello, ${name}`);
+…
+17: function main() {
+…
+29: 
+…
 
 DEBUG (normalized):
 {
@@ -23,13 +20,13 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 6,
+    "omitted_children": 10,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 114,
+    "bytes": 101,
     "chars": 0,
-    "lines": 11
+    "lines": 8
   },
   "renderer": {
     "array_sampler": "default",
@@ -53,7 +50,7 @@ DEBUG (normalized):
               {
                 "atomic_token": "  console.log(`Hello, ${name}`);",
                 "id": 0,
-                "index_in_parent_array": 0,
+                "index_in_parent_array": 1,
                 "kind": "string",
                 "metrics": {}
               }
@@ -63,7 +60,8 @@ DEBUG (normalized):
             "kind": "array",
             "metrics": {
               "array_len": 1
-            }
+            },
+            "omitted_before": 1
           }
         ],
         "id": 0,
@@ -76,58 +74,15 @@ DEBUG (normalized):
       {
         "children": [
           {
-            "atomic_token": "}",
-            "id": 0,
-            "index_in_parent_array": 0,
-            "kind": "string",
-            "metrics": {}
-          }
-        ],
-        "id": 0,
-        "index_in_parent_array": 1,
-        "kind": "array",
-        "metrics": {
-          "array_len": 1
-        }
-      },
-      {
-        "children": [
-          {
-            "atomic_token": "",
-            "id": 0,
-            "index_in_parent_array": 0,
-            "kind": "string",
-            "metrics": {}
-          }
-        ],
-        "id": 0,
-        "index_in_parent_array": 5,
-        "kind": "array",
-        "metrics": {
-          "array_len": 1
-        }
-      },
-      {
-        "children": [
-          {
             "atomic_token": "function main() {",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 16,
             "kind": "string",
             "metrics": {}
           },
           {
-            "children": [
-              {
-                "atomic_token": "  greet(\"world\");",
-                "id": 0,
-                "index_in_parent_array": 0,
-                "kind": "string",
-                "metrics": {}
-              }
-            ],
             "id": 0,
-            "index_in_parent_array": 1,
+            "index_in_parent_array": 17,
             "kind": "array",
             "metrics": {
               "array_len": 1
@@ -139,55 +94,15 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 2
-        }
+        },
+        "omitted_before": 16
       },
       {
         "children": [
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
-            "kind": "string",
-            "metrics": {}
-          },
-          {
-            "id": 0,
-            "index_in_parent_array": 1,
-            "kind": "array",
-            "metrics": {
-              "array_len": 2
-            }
-          },
-          {
-            "id": 0,
-            "index_in_parent_array": 2,
-            "kind": "array",
-            "metrics": {
-              "array_len": 1
-            }
-          }
-        ],
-        "id": 0,
-        "index_in_parent_array": 7,
-        "kind": "array",
-        "metrics": {
-          "array_len": 3
-        }
-      },
-      {
-        "id": 0,
-        "index_in_parent_array": 11,
-        "kind": "array",
-        "metrics": {
-          "array_len": 1
-        }
-      },
-      {
-        "children": [
-          {
-            "atomic_token": "",
-            "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 28,
             "kind": "string",
             "metrics": {}
           }
@@ -197,17 +112,18 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 28
       }
     ],
     "gaps": [
       {
-        "before_child_index": 2,
-        "omitted_count": 3
+        "before_child_index": 1,
+        "omitted_count": 5
       },
       {
-        "before_child_index": 5,
-        "omitted_count": 3
+        "before_child_index": 2,
+        "omitted_count": 5
       }
     ],
     "id": 0,
@@ -217,7 +133,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 20
+    "top_k": 10
   },
   "template": "text"
 }

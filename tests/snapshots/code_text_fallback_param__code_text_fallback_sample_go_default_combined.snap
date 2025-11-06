@@ -3,16 +3,13 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-package main
+1: package main
 …
-func compute(n int) int {
-    …
-    for i := 0; i < n; i++ {
-    …
-    …
+9: func compute(n int) int {
   …
   …
-
+  …
+31: 
   …
 
 DEBUG (normalized):
@@ -24,13 +21,13 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 15,
+    "omitted_children": 14,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 115,
+    "bytes": 78,
     "chars": 0,
-    "lines": 12
+    "lines": 9
   },
   "renderer": {
     "array_sampler": "default",
@@ -62,44 +59,13 @@ DEBUG (normalized):
           {
             "atomic_token": "func compute(n int) int {",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 8,
             "kind": "string",
             "metrics": {}
           },
           {
-            "children": [
-              {
-                "atomic_token": "    for i := 0; i < n; i++ {",
-                "id": 0,
-                "index_in_parent_array": 0,
-                "kind": "string",
-                "metrics": {}
-              },
-              {
-                "id": 0,
-                "index_in_parent_array": 1,
-                "kind": "array",
-                "metrics": {
-                  "array_len": 2
-                }
-              },
-              {
-                "id": 0,
-                "index_in_parent_array": 3,
-                "kind": "array",
-                "metrics": {
-                  "array_len": 1
-                }
-              }
-            ],
-            "gaps": [
-              {
-                "before_child_index": 2,
-                "omitted_count": 1
-              }
-            ],
             "id": 0,
-            "index_in_parent_array": 2,
+            "index_in_parent_array": 10,
             "kind": "array",
             "metrics": {
               "array_len": 4
@@ -107,7 +73,7 @@ DEBUG (normalized):
           },
           {
             "id": 0,
-            "index_in_parent_array": 4,
+            "index_in_parent_array": 17,
             "kind": "array",
             "metrics": {
               "array_len": 1
@@ -121,7 +87,7 @@ DEBUG (normalized):
           },
           {
             "before_child_index": 2,
-            "omitted_count": 1
+            "omitted_count": 6
           }
         ],
         "id": 0,
@@ -129,14 +95,15 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 5
-        }
+        },
+        "omitted_before": 8
       },
       {
         "children": [
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 30,
             "kind": "string",
             "metrics": {}
           }
@@ -146,7 +113,8 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 30
       }
     ],
     "gaps": [
@@ -166,7 +134,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 12
+    "top_k": 9
   },
   "template": "text"
 }

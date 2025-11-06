@@ -3,12 +3,12 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-import React from 'react';
-
+1: import React from 'react';
+2: 
 … 2 more lines …
-}
+7: }
 … 4 more lines …
-
+36: 
 … 6 more lines …
 
 DEBUG (normalized):
@@ -24,7 +24,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 94,
+    "bytes": 107,
     "chars": 0,
     "lines": 8
   },
@@ -58,7 +58,7 @@ DEBUG (normalized):
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 1,
             "kind": "string",
             "metrics": {}
           }
@@ -68,7 +68,8 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 1
       },
       {
         "id": 0,
@@ -83,7 +84,7 @@ DEBUG (normalized):
           {
             "atomic_token": "}",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 6,
             "kind": "string",
             "metrics": {}
           }
@@ -93,7 +94,8 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 6
       },
       {
         "id": 0,
@@ -116,7 +118,7 @@ DEBUG (normalized):
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 35,
             "kind": "string",
             "metrics": {}
           }
@@ -126,7 +128,8 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 35
       }
     ],
     "gaps": [

@@ -3,11 +3,10 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-def greet(name: str):
+1: def greet(name: str):
 … 3 more lines …
-
+13: 
 … 4 more lines …
-if __name__ == "__main__":
 … 7 more lines …
 
 DEBUG (normalized):
@@ -23,9 +22,9 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 113,
+    "bytes": 93,
     "chars": 0,
-    "lines": 7
+    "lines": 6
   },
   "renderer": {
     "array_sampler": "default",
@@ -65,7 +64,7 @@ DEBUG (normalized):
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 12,
             "kind": "string",
             "metrics": {}
           }
@@ -75,26 +74,10 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 12
       },
       {
-        "children": [
-          {
-            "atomic_token": "if __name__ == \"__main__\":",
-            "id": 0,
-            "index_in_parent_array": 0,
-            "kind": "string",
-            "metrics": {}
-          },
-          {
-            "id": 0,
-            "index_in_parent_array": 1,
-            "kind": "array",
-            "metrics": {
-              "array_len": 1
-            }
-          }
-        ],
         "id": 0,
         "index_in_parent_array": 9,
         "kind": "array",
@@ -120,7 +103,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 9
+    "top_k": 7
   },
   "template": "text"
 }

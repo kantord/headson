@@ -3,7 +3,7 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-package main
+1: package main
 … 6 more lines …
 … 13 more lines …
 
@@ -20,7 +20,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 56,
+    "bytes": 59,
     "chars": 0,
     "lines": 4
   },

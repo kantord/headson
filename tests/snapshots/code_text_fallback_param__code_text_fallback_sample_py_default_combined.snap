@@ -3,15 +3,14 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-def greet(name: str):
-    print(f"Hello, {name}")
-
-    …
-
-    …
-if __name__ == "__main__":
-    main()
-    …
+1: def greet(name: str):
+2:     print(f"Hello, {name}")
+…
+13: 
+…
+23: if __name__ == "__main__":
+24:     main()
+…
 
 DEBUG (normalized):
 {
@@ -26,9 +25,9 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 114,
+    "bytes": 119,
     "chars": 0,
-    "lines": 10
+    "lines": 9
   },
   "renderer": {
     "array_sampler": "default",
@@ -52,7 +51,7 @@ DEBUG (normalized):
               {
                 "atomic_token": "    print(f\"Hello, {name}\")",
                 "id": 0,
-                "index_in_parent_array": 0,
+                "index_in_parent_array": 1,
                 "kind": "string",
                 "metrics": {}
               }
@@ -62,7 +61,8 @@ DEBUG (normalized):
             "kind": "array",
             "metrics": {
               "array_len": 1
-            }
+            },
+            "omitted_before": 1
           }
         ],
         "id": 0,
@@ -73,15 +73,6 @@ DEBUG (normalized):
         }
       },
       {
-        "children": [
-          {
-            "atomic_token": "",
-            "id": 0,
-            "index_in_parent_array": 0,
-            "kind": "string",
-            "metrics": {}
-          }
-        ],
         "id": 0,
         "index_in_parent_array": 1,
         "kind": "array",
@@ -102,7 +93,7 @@ DEBUG (normalized):
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 12,
             "kind": "string",
             "metrics": {}
           }
@@ -112,7 +103,8 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 12
       },
       {
         "id": 0,
@@ -135,7 +127,7 @@ DEBUG (normalized):
           {
             "atomic_token": "if __name__ == \"__main__\":",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 22,
             "kind": "string",
             "metrics": {}
           },
@@ -144,17 +136,18 @@ DEBUG (normalized):
               {
                 "atomic_token": "    main()",
                 "id": 0,
-                "index_in_parent_array": 0,
+                "index_in_parent_array": 23,
                 "kind": "string",
                 "metrics": {}
               }
             ],
             "id": 0,
-            "index_in_parent_array": 1,
+            "index_in_parent_array": 23,
             "kind": "array",
             "metrics": {
               "array_len": 1
-            }
+            },
+            "omitted_before": 23
           }
         ],
         "id": 0,
@@ -162,7 +155,8 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 2
-        }
+        },
+        "omitted_before": 22
       }
     ],
     "gaps": [
@@ -182,7 +176,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 16
+    "top_k": 15
   },
   "template": "text"
 }

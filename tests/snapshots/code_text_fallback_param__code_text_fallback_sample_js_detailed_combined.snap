@@ -3,7 +3,7 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-function greet(name) {
+1: function greet(name) {
 … 5 more lines …
 … 11 more lines …
 
@@ -20,7 +20,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 66,
+    "bytes": 69,
     "chars": 0,
     "lines": 4
   },

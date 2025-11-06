@@ -3,16 +3,15 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-#include <iostream>
-
-}
-
-int main() {
-    greet("world");
-    … 1 more lines …
-}
-
-    … 1 more lines …
+1: #include <iostream>
+2: 
+… 1 more lines …
+5: }
+6: 
+7: int main() {
+… 2 more lines …
+20: 
+… 3 more lines …
 
 DEBUG (normalized):
 {
@@ -21,15 +20,18 @@ DEBUG (normalized):
     "chars": null,
     "lines": null
   },
+  "constrained_by": [
+    "bytes"
+  ],
   "counts": {
     "included": 0,
-    "omitted_children": 0,
+    "omitted_children": 3,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 110,
+    "bytes": 120,
     "chars": 0,
-    "lines": 11
+    "lines": 10
   },
   "renderer": {
     "array_sampler": "default",
@@ -61,7 +63,7 @@ DEBUG (normalized):
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 1,
             "kind": "string",
             "metrics": {}
           }
@@ -71,22 +73,15 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
-      },
-      {
-        "id": 0,
-        "index_in_parent_array": 2,
-        "kind": "array",
-        "metrics": {
-          "array_len": 2
-        }
+        },
+        "omitted_before": 1
       },
       {
         "children": [
           {
             "atomic_token": "}",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 4,
             "kind": "string",
             "metrics": {}
           }
@@ -96,14 +91,15 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 4
       },
       {
         "children": [
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 5,
             "kind": "string",
             "metrics": {}
           }
@@ -113,29 +109,21 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 5
       },
       {
         "children": [
           {
             "atomic_token": "int main() {",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 6,
             "kind": "string",
             "metrics": {}
           },
           {
-            "children": [
-              {
-                "atomic_token": "    greet(\"world\");",
-                "id": 0,
-                "index_in_parent_array": 0,
-                "kind": "string",
-                "metrics": {}
-              }
-            ],
             "id": 0,
-            "index_in_parent_array": 1,
+            "index_in_parent_array": 7,
             "kind": "array",
             "metrics": {
               "array_len": 1
@@ -147,34 +135,10 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 2
-        }
+        },
+        "omitted_before": 6
       },
       {
-        "id": 0,
-        "index_in_parent_array": 6,
-        "kind": "array",
-        "metrics": {
-          "array_len": 3
-        }
-      },
-      {
-        "id": 0,
-        "index_in_parent_array": 7,
-        "kind": "array",
-        "metrics": {
-          "array_len": 2
-        }
-      },
-      {
-        "children": [
-          {
-            "atomic_token": "}",
-            "id": 0,
-            "index_in_parent_array": 0,
-            "kind": "string",
-            "metrics": {}
-          }
-        ],
         "id": 0,
         "index_in_parent_array": 8,
         "kind": "array",
@@ -187,7 +151,7 @@ DEBUG (normalized):
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 19,
             "kind": "string",
             "metrics": {}
           }
@@ -197,7 +161,18 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 19
+      }
+    ],
+    "gaps": [
+      {
+        "before_child_index": 2,
+        "omitted_count": 1
+      },
+      {
+        "before_child_index": 5,
+        "omitted_count": 2
       }
     ],
     "id": 0,
@@ -207,7 +182,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 20
+    "top_k": 15
   },
   "template": "text"
 }

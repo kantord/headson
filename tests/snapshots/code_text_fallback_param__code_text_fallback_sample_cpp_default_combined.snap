@@ -3,15 +3,16 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-#include <iostream>
-
-void greet(const std::string& name) {
-}
-
-int main() {
-    greet("world");
-
-}
+1: #include <iostream>
+2: 
+5: }
+6: 
+7: int main() {
+8:     greet("world");
+…
+19: }
+20: 
+…
 
 DEBUG (normalized):
 {
@@ -26,7 +27,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 99,
+    "bytes": 94,
     "chars": 0,
     "lines": 11
   },
@@ -60,7 +61,7 @@ DEBUG (normalized):
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 1,
             "kind": "string",
             "metrics": {}
           }
@@ -70,26 +71,10 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 1
       },
       {
-        "children": [
-          {
-            "atomic_token": "void greet(const std::string& name) {",
-            "id": 0,
-            "index_in_parent_array": 0,
-            "kind": "string",
-            "metrics": {}
-          },
-          {
-            "id": 0,
-            "index_in_parent_array": 1,
-            "kind": "array",
-            "metrics": {
-              "array_len": 1
-            }
-          }
-        ],
         "id": 0,
         "index_in_parent_array": 2,
         "kind": "array",
@@ -102,7 +87,7 @@ DEBUG (normalized):
           {
             "atomic_token": "}",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 4,
             "kind": "string",
             "metrics": {}
           }
@@ -112,14 +97,15 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 4
       },
       {
         "children": [
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 5,
             "kind": "string",
             "metrics": {}
           }
@@ -129,14 +115,15 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 5
       },
       {
         "children": [
           {
             "atomic_token": "int main() {",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 6,
             "kind": "string",
             "metrics": {}
           },
@@ -145,17 +132,18 @@ DEBUG (normalized):
               {
                 "atomic_token": "    greet(\"world\");",
                 "id": 0,
-                "index_in_parent_array": 0,
+                "index_in_parent_array": 7,
                 "kind": "string",
                 "metrics": {}
               }
             ],
             "id": 0,
-            "index_in_parent_array": 1,
+            "index_in_parent_array": 7,
             "kind": "array",
             "metrics": {
               "array_len": 1
-            }
+            },
+            "omitted_before": 7
           }
         ],
         "id": 0,
@@ -163,34 +151,10 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 2
-        }
+        },
+        "omitted_before": 6
       },
       {
-        "children": [
-          {
-            "atomic_token": "",
-            "id": 0,
-            "index_in_parent_array": 0,
-            "kind": "string",
-            "metrics": {}
-          },
-          {
-            "id": 0,
-            "index_in_parent_array": 1,
-            "kind": "array",
-            "metrics": {
-              "array_len": 4
-            }
-          },
-          {
-            "id": 0,
-            "index_in_parent_array": 2,
-            "kind": "array",
-            "metrics": {
-              "array_len": 1
-            }
-          }
-        ],
         "id": 0,
         "index_in_parent_array": 6,
         "kind": "array",
@@ -199,23 +163,6 @@ DEBUG (normalized):
         }
       },
       {
-        "children": [
-          {
-            "atomic_token": "",
-            "id": 0,
-            "index_in_parent_array": 0,
-            "kind": "string",
-            "metrics": {}
-          },
-          {
-            "id": 0,
-            "index_in_parent_array": 1,
-            "kind": "array",
-            "metrics": {
-              "array_len": 1
-            }
-          }
-        ],
         "id": 0,
         "index_in_parent_array": 7,
         "kind": "array",
@@ -228,7 +175,7 @@ DEBUG (normalized):
           {
             "atomic_token": "}",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 18,
             "kind": "string",
             "metrics": {}
           }
@@ -238,14 +185,15 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 18
       },
       {
         "children": [
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 19,
             "kind": "string",
             "metrics": {}
           }
@@ -255,7 +203,8 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 19
       }
     ],
     "id": 0,
@@ -265,7 +214,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 27
+    "top_k": 20
   },
   "template": "text"
 }

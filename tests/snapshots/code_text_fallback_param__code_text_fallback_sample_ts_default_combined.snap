@@ -3,13 +3,13 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-function greet(name: string) {
-  console.log(`Hello, ${name}`);
-  …
-function main(): void {
-  …
-
-  …
+1: function greet(name: string) {
+2:   console.log(`Hello, ${name}`);
+…
+17: function main(): void {
+…
+29: 
+…
 
 DEBUG (normalized):
 {
@@ -24,7 +24,7 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 107,
+    "bytes": 115,
     "chars": 0,
     "lines": 8
   },
@@ -50,7 +50,7 @@ DEBUG (normalized):
               {
                 "atomic_token": "  console.log(`Hello, ${name}`);",
                 "id": 0,
-                "index_in_parent_array": 0,
+                "index_in_parent_array": 1,
                 "kind": "string",
                 "metrics": {}
               }
@@ -60,7 +60,8 @@ DEBUG (normalized):
             "kind": "array",
             "metrics": {
               "array_len": 1
-            }
+            },
+            "omitted_before": 1
           }
         ],
         "id": 0,
@@ -75,13 +76,13 @@ DEBUG (normalized):
           {
             "atomic_token": "function main(): void {",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 16,
             "kind": "string",
             "metrics": {}
           },
           {
             "id": 0,
-            "index_in_parent_array": 1,
+            "index_in_parent_array": 17,
             "kind": "array",
             "metrics": {
               "array_len": 1
@@ -93,14 +94,15 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 2
-        }
+        },
+        "omitted_before": 16
       },
       {
         "children": [
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 0,
+            "index_in_parent_array": 28,
             "kind": "string",
             "metrics": {}
           }
@@ -110,7 +112,8 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 28
       }
     ],
     "gaps": [

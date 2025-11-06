@@ -2,12 +2,13 @@
 source: tests/cpp_text_fallback.rs
 expression: out
 ---
-#include <iostream>
-
-void greet(const std::string& name) {
-}
-
-int main() {
-    greet("world");
-
-}
+1: #include <iostream>
+2: 
+5: }
+6: 
+7: int main() {
+8:     greet("world");
+…
+19: }
+20: 
+…

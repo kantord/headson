@@ -3,13 +3,10 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-public class Sample {
+1: public class Sample {
   … 1 more lines …
   … 2 more lines …
-
-  … 2 more lines …
-
-  … 4 more lines …
+  … 5 more lines …
 
 DEBUG (normalized):
 {
@@ -24,9 +21,9 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 116,
+    "bytes": 94,
     "chars": 0,
-    "lines": 8
+    "lines": 5
   },
   "renderer": {
     "array_sampler": "default",
@@ -55,11 +52,17 @@ DEBUG (normalized):
           },
           {
             "id": 0,
-            "index_in_parent_array": 2,
+            "index_in_parent_array": 3,
             "kind": "array",
             "metrics": {
               "array_len": 1
             }
+          }
+        ],
+        "gaps": [
+          {
+            "before_child_index": 2,
+            "omitted_count": 1
           }
         ],
         "id": 0,
@@ -70,23 +73,6 @@ DEBUG (normalized):
         }
       },
       {
-        "children": [
-          {
-            "atomic_token": "",
-            "id": 0,
-            "index_in_parent_array": 0,
-            "kind": "string",
-            "metrics": {}
-          },
-          {
-            "id": 0,
-            "index_in_parent_array": 1,
-            "kind": "array",
-            "metrics": {
-              "array_len": 3
-            }
-          }
-        ],
         "id": 0,
         "index_in_parent_array": 3,
         "kind": "array",
@@ -95,15 +81,6 @@ DEBUG (normalized):
         }
       },
       {
-        "children": [
-          {
-            "atomic_token": "",
-            "id": 0,
-            "index_in_parent_array": 0,
-            "kind": "string",
-            "metrics": {}
-          }
-        ],
         "id": 0,
         "index_in_parent_array": 6,
         "kind": "array",
@@ -129,7 +106,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 10
+    "top_k": 7
   },
   "template": "text"
 }
