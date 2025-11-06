@@ -1,0 +1,46 @@
+---
+source: tests/code_text_fallback_param.rs
+assertion_line: 155
+expression: snap
+---
+STDOUT:
+package main
+…
+func compute(n int) int {
+  …
+  …
+  …
+  …
+
+  …
+
+DEBUG (normalized):
+{
+  "counts": {
+    "included": 0,
+    "omitted_children": 14,
+    "total_nodes": 0
+  },
+  "output_stats": {
+    "bytes": 74,
+    "lines": 10
+  },
+  "renderer": {
+    "style": "default",
+    "template": "text"
+  },
+  "root": {
+    "children_len": 3,
+    "fileset_root": null,
+    "gaps_len": 2,
+    "kind": "array",
+    "metrics": {
+      "array_len": 15
+    }
+  },
+  "selection": {
+    "top_k": 9
+  },
+  "template": "text"
+}
+

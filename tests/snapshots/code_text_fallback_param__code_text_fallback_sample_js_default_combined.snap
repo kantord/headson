@@ -1,0 +1,49 @@
+---
+source: tests/code_text_fallback_param.rs
+assertion_line: 155
+expression: snap
+---
+STDOUT:
+function greet(name) {
+  console.log(`Hello, ${name}`);
+}
+  …
+
+function main() {
+  greet("world");
+
+…
+  …
+
+  …
+
+DEBUG (normalized):
+{
+  "counts": {
+    "included": 0,
+    "omitted_children": 8,
+    "total_nodes": 0
+  },
+  "output_stats": {
+    "bytes": 119,
+    "lines": 13
+  },
+  "renderer": {
+    "style": "default",
+    "template": "text"
+  },
+  "root": {
+    "children_len": 7,
+    "fileset_root": null,
+    "gaps_len": 2,
+    "kind": "array",
+    "metrics": {
+      "array_len": 13
+    }
+  },
+  "selection": {
+    "top_k": 18
+  },
+  "template": "text"
+}
+

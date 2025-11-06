@@ -1,0 +1,49 @@
+---
+source: tests/code_text_fallback_param.rs
+assertion_line: 155
+expression: snap
+---
+STDOUT:
+#!/usr/bin/env bash
+
+greet() {
+  local name="$1"
+compute() {
+}
+
+main() {
+  greet "world"
+
+
+main "$@"
+
+DEBUG (normalized):
+{
+  "counts": {
+    "included": 0,
+    "omitted_children": 7,
+    "total_nodes": 0
+  },
+  "output_stats": {
+    "bytes": 102,
+    "lines": 14
+  },
+  "renderer": {
+    "style": "strict",
+    "template": "text"
+  },
+  "root": {
+    "children_len": 11,
+    "fileset_root": null,
+    "gaps_len": 2,
+    "kind": "array",
+    "metrics": {
+      "array_len": 15
+    }
+  },
+  "selection": {
+    "top_k": 32
+  },
+  "template": "text"
+}
+

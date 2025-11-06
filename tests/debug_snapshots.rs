@@ -37,7 +37,7 @@ fn normalize_debug(s: &str) -> String {
 }
 
 #[test]
-fn snapshot_debug_json_stdin_strict() {
+fn snapshot_debug_json_stdin_strict_combined() {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert = cmd
         .args([
@@ -55,13 +55,15 @@ fn snapshot_debug_json_stdin_strict() {
         .write_stdin("{\"a\":1,\"b\":{\"c\":2}}\n")
         .assert()
         .success();
+    let out = String::from_utf8_lossy(&assert.get_output().stdout);
     let err = String::from_utf8_lossy(&assert.get_output().stderr);
     let norm = normalize_debug(&err);
-    insta::assert_snapshot!("debug_json_stdin_strict", norm);
+    let snap = format!("STDOUT:\n{out}\nDEBUG (normalized):\n{norm}\n");
+    insta::assert_snapshot!("debug_json_stdin_strict_combined", snap);
 }
 
 #[test]
-fn snapshot_debug_fileset_auto() {
+fn snapshot_debug_fileset_auto_combined() {
     let dir = tempfile::tempdir().expect("tmpdir");
     let p_json = dir.path().join("a.json");
     let p_yaml = dir.path().join("b.yaml");
@@ -74,7 +76,7 @@ fn snapshot_debug_fileset_auto() {
             "--no-color",
             "--debug",
             "-c",
-            "10000",
+            "20000",
             "-f",
             "auto",
             "-i",
@@ -85,7 +87,9 @@ fn snapshot_debug_fileset_auto() {
         .current_dir(dir.path())
         .assert()
         .success();
+    let out = String::from_utf8_lossy(&assert.get_output().stdout);
     let err = String::from_utf8_lossy(&assert.get_output().stderr);
     let norm = normalize_debug(&err);
-    insta::assert_snapshot!("debug_fileset_auto", norm);
+    let snap = format!("STDOUT:\n{out}\nDEBUG (normalized):\n{norm}\n");
+    insta::assert_snapshot!("debug_fileset_auto_combined", snap);
 }

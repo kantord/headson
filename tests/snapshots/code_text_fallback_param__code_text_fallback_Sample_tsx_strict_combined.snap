@@ -1,0 +1,44 @@
+---
+source: tests/code_text_fallback_param.rs
+assertion_line: 155
+expression: snap
+---
+STDOUT:
+import React from 'react';
+
+function Item({ i }: { i: number }) {
+  return <li>i: {i}</li>;
+}
+
+}
+
+DEBUG (normalized):
+{
+  "counts": {
+    "included": 0,
+    "omitted_children": 1,
+    "total_nodes": 0
+  },
+  "output_stats": {
+    "bytes": 98,
+    "lines": 9
+  },
+  "renderer": {
+    "style": "strict",
+    "template": "text"
+  },
+  "root": {
+    "children_len": 11,
+    "fileset_root": null,
+    "gaps_len": 1,
+    "kind": "array",
+    "metrics": {
+      "array_len": 12
+    }
+  },
+  "selection": {
+    "top_k": 21
+  },
+  "template": "text"
+}
+

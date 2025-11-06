@@ -151,14 +151,10 @@ fn code_text_fallback_case(path: &Path) {
     let name = stem_with_ext(path);
     for style in ["strict", "default", "detailed"] {
         let (out, err_dbg) = run_cli_auto_text_with_debug(path, style);
+        let snap = format!("STDOUT:\n{out}\nDEBUG (normalized):\n{err_dbg}\n");
         assert_snapshot!(
-            format!("code_text_fallback_{}_{}", name, style),
-            out
-        );
-        // Also snapshot the underlying structure via debug JSON on stderr
-        assert_snapshot!(
-            format!("code_text_fallback_{}_{}__debug", name, style),
-            err_dbg
+            format!("code_text_fallback_{}_{}_combined", name, style),
+            snap
         );
     }
 }

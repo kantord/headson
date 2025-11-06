@@ -1,0 +1,47 @@
+---
+source: tests/code_text_fallback_param.rs
+assertion_line: 155
+expression: snap
+---
+STDOUT:
+#include <iostream>
+
+void greet(const std::string& name) {
+}
+
+int main() {
+    greet("world");
+
+
+}
+
+DEBUG (normalized):
+{
+  "counts": {
+    "included": 0,
+    "omitted_children": 0,
+    "total_nodes": 0
+  },
+  "output_stats": {
+    "bytes": 100,
+    "lines": 12
+  },
+  "renderer": {
+    "style": "strict",
+    "template": "text"
+  },
+  "root": {
+    "children_len": 10,
+    "fileset_root": null,
+    "gaps_len": 0,
+    "kind": "array",
+    "metrics": {
+      "array_len": 10
+    }
+  },
+  "selection": {
+    "top_k": 27
+  },
+  "template": "text"
+}
+

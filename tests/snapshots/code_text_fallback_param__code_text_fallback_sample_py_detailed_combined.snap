@@ -1,0 +1,42 @@
+---
+source: tests/code_text_fallback_param.rs
+assertion_line: 155
+expression: snap
+---
+STDOUT:
+def greet(name: str):
+  … 1 more lines …
+  … 3 more lines …
+… 1 more lines …
+  … 8 more lines …
+
+DEBUG (normalized):
+{
+  "counts": {
+    "included": 0,
+    "omitted_children": 7,
+    "total_nodes": 0
+  },
+  "output_stats": {
+    "bytes": 112,
+    "lines": 6
+  },
+  "renderer": {
+    "style": "detailed",
+    "template": "text"
+  },
+  "root": {
+    "children_len": 3,
+    "fileset_root": null,
+    "gaps_len": 2,
+    "kind": "array",
+    "metrics": {
+      "array_len": 10
+    }
+  },
+  "selection": {
+    "top_k": 6
+  },
+  "template": "text"
+}
+
