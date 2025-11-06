@@ -1,9 +1,0 @@
----
-source: tests/code_text_fallback_param.rs
-assertion_line: 80
-expression: out
----
-package main
-… 6 more lines …
-… 5 more lines …
-… 13 more lines …
