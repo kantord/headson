@@ -354,12 +354,12 @@ fn run_from_paths(
     let eff_chars = compute_effective_chars(cli, input_count);
     let eff_lines = compute_effective_lines(cli, input_count);
     let prio = compute_priority(cli, eff, eff_chars, input_count);
-        if cli.inputs.len() > 1 {
-            let chosen_input = choose_input_format_fileset(cli, &entries);
-            let mut cfg = render_cfg.clone();
-            // For filesets: if format=auto, enable per-file template selection.
-            cfg.template = effective_fileset_template(cli, cfg.style);
-            let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
+    if cli.inputs.len() > 1 {
+        let chosen_input = choose_input_format_fileset(cli, &entries);
+        let mut cfg = render_cfg.clone();
+        // For filesets: if format=auto, enable per-file template selection.
+        cfg.template = effective_fileset_template(cli, cfg.style);
+        let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
         if budgets.byte_budget.is_none()
             && budgets.char_budget.is_none()
             && budgets.line_budget.is_some()
@@ -377,11 +377,11 @@ fn run_from_paths(
                 // If fileset contains any code-like files, enable code-friendly
                 // behavior: per-file Code template (handled in fileset renderer)
                 // and edge-favoring array bias for better structural framing.
-                let any_code = entries
-                    .iter()
-                    .any(|(name, _)| headson::extensions::is_code_like_name(
+                let any_code = entries.iter().any(|(name, _)| {
+                    headson::extensions::is_code_like_name(
                         &name.to_ascii_lowercase(),
-                    ));
+                    )
+                });
                 if any_code {
                     cfg.show_line_numbers = true;
                     let mut prio_code = prio.clone();

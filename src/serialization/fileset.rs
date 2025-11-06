@@ -103,7 +103,7 @@ impl<'a> RenderScope<'a> {
                     } else {
                         OutputTemplate::Text
                     }
-                },
+                }
             };
             return self.render_node_to_string_with_template(
                 child_id, depth, false, template,
