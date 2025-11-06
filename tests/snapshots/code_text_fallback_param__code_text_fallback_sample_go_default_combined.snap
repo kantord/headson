@@ -6,8 +6,10 @@ STDOUT:
 package main
 …
 func compute(n int) int {
-  …
-  …
+    …
+    for i := 0; i < n; i++ {
+    …
+    …
   …
   …
 
@@ -22,13 +24,13 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 14,
+    "omitted_children": 15,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 74,
+    "bytes": 115,
     "chars": 0,
-    "lines": 10
+    "lines": 12
   },
   "renderer": {
     "array_sampler": "default",
@@ -65,6 +67,37 @@ DEBUG (normalized):
             "metrics": {}
           },
           {
+            "children": [
+              {
+                "atomic_token": "    for i := 0; i < n; i++ {",
+                "id": 0,
+                "index_in_parent_array": 0,
+                "kind": "string",
+                "metrics": {}
+              },
+              {
+                "id": 0,
+                "index_in_parent_array": 1,
+                "kind": "array",
+                "metrics": {
+                  "array_len": 2
+                }
+              },
+              {
+                "id": 0,
+                "index_in_parent_array": 3,
+                "kind": "array",
+                "metrics": {
+                  "array_len": 1
+                }
+              }
+            ],
+            "gaps": [
+              {
+                "before_child_index": 2,
+                "omitted_count": 1
+              }
+            ],
             "id": 0,
             "index_in_parent_array": 2,
             "kind": "array",
@@ -133,7 +166,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 9
+    "top_k": 12
   },
   "template": "text"
 }

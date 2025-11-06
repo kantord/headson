@@ -5,14 +5,12 @@ expression: snap
 STDOUT:
 public class Sample {
     static void greet(String name) {
-    …
     }
     …
 
-  …
-  …
+    …
 
-  …
+    …
 
 DEBUG (normalized):
 {
@@ -27,9 +25,9 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 101,
+    "bytes": 91,
     "chars": 0,
-    "lines": 11
+    "lines": 9
   },
   "renderer": {
     "array_sampler": "default",

@@ -8,7 +8,6 @@ function greet(name: string) {
   …
 function main(): void {
   …
-  …
 
   …
 
@@ -25,9 +24,9 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 113,
+    "bytes": 107,
     "chars": 0,
-    "lines": 9
+    "lines": 8
   },
   "renderer": {
     "array_sampler": "default",

@@ -4,10 +4,8 @@ expression: snap
 ---
 STDOUT:
 function greet(name) {
-  … 1 more lines …
-  … 5 more lines …
-… 2 more lines …
-  … 11 more lines …
+… 5 more lines …
+… 11 more lines …
 
 DEBUG (normalized):
 {
@@ -22,9 +20,9 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 114,
+    "bytes": 66,
     "chars": 0,
-    "lines": 6
+    "lines": 4
   },
   "renderer": {
     "array_sampler": "default",

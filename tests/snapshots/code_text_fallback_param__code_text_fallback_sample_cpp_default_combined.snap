@@ -5,16 +5,13 @@ expression: snap
 STDOUT:
 #include <iostream>
 
-…
+void greet(const std::string& name) {
 }
 
 int main() {
     greet("world");
-…
-    …
-}
 
-    …
+}
 
 DEBUG (normalized):
 {
@@ -29,9 +26,9 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 84,
+    "bytes": 99,
     "chars": 0,
-    "lines": 13
+    "lines": 11
   },
   "renderer": {
     "array_sampler": "default",
@@ -76,6 +73,23 @@ DEBUG (normalized):
         }
       },
       {
+        "children": [
+          {
+            "atomic_token": "void greet(const std::string& name) {",
+            "id": 0,
+            "index_in_parent_array": 0,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 1,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 2,
         "kind": "array",
@@ -152,6 +166,31 @@ DEBUG (normalized):
         }
       },
       {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 0,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 1,
+            "kind": "array",
+            "metrics": {
+              "array_len": 4
+            }
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 2,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 6,
         "kind": "array",
@@ -160,6 +199,23 @@ DEBUG (normalized):
         }
       },
       {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 0,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 1,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 7,
         "kind": "array",
@@ -209,7 +265,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 20
+    "top_k": 27
   },
   "template": "text"
 }

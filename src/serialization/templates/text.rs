@@ -129,7 +129,43 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
         let is_multiline = item.contains('\n');
         match kind {
             super::super::NodeKind::Array | super::super::NodeKind::Object => {
-                out.push_str(item);
+                // If the nested rendered block consists only of omission lines
+                // (for the current style), skip emitting it to avoid stacked
+                // omission markers at different indentation levels.
+                let style = out.style();
+                let pure_omission = {
+                    // Mirror RenderScope::rendered_is_pure_text_omission logic
+                    let mut any = false;
+                    let mut all_match = true;
+                    for line in item.split('\n') {
+                        if line.trim().is_empty() {
+                            continue;
+                        }
+                        any = true;
+                        // Style-specific omission patterns
+                        let s = line.trim();
+                        let is_match = match style {
+                            crate::serialization::types::Style::Default => {
+                                s == "…"
+                            }
+                            crate::serialization::types::Style::Detailed => {
+                                s == "…"
+                                    || (s.starts_with('…') && s.ends_with('…'))
+                            }
+                            crate::serialization::types::Style::Strict => {
+                                s.is_empty()
+                            }
+                        };
+                        if !is_match {
+                            all_match = false;
+                            break;
+                        }
+                    }
+                    any && all_match
+                };
+                if !pure_omission {
+                    out.push_str(item);
+                }
                 if let Some(ind) = last_nonempty_line_indent(item) {
                     if !ind.is_empty() {
                         last_nonempty_indent.clear();

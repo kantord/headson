@@ -5,7 +5,6 @@ expression: snap
 STDOUT:
 package main
 … 6 more lines …
-… 5 more lines …
 … 13 more lines …
 
 DEBUG (normalized):
@@ -21,9 +20,9 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 77,
+    "bytes": 56,
     "chars": 0,
-    "lines": 5
+    "lines": 4
   },
   "renderer": {
     "array_sampler": "default",

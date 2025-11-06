@@ -8,15 +8,15 @@ STDOUT:
 greet() {
   …
   …
-  …
 compute() {
-…
+  …
+  …
 }
 
 main() {
   greet "world"
-…
   …
+
 main "$@"
 
   …
@@ -28,16 +28,13 @@ DEBUG (normalized):
     "chars": null,
     "lines": null
   },
-  "constrained_by": [
-    "bytes"
-  ],
   "counts": {
     "included": 0,
-    "omitted_children": 9,
+    "omitted_children": 7,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 120,
+    "bytes": 119,
     "chars": 0,
     "lines": 18
   },
@@ -124,6 +121,32 @@ DEBUG (normalized):
             "index_in_parent_array": 0,
             "kind": "string",
             "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 2,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 5,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "before_child_index": 1,
+            "omitted_count": 1
+          },
+          {
+            "before_child_index": 2,
+            "omitted_count": 2
           }
         ],
         "id": 0,
@@ -131,8 +154,7 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 6
-        },
-        "omitted_after": 5
+        }
       },
       {
         "children": [
@@ -203,6 +225,31 @@ DEBUG (normalized):
         }
       },
       {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 0,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 1,
+            "kind": "array",
+            "metrics": {
+              "array_len": 2
+            }
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 2,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 9,
         "kind": "array",
@@ -211,6 +258,15 @@ DEBUG (normalized):
         }
       },
       {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 0,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 12,
         "kind": "array",
@@ -270,7 +326,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 25
+    "top_k": 31
   },
   "template": "text"
 }

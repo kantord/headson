@@ -5,7 +5,7 @@ expression: snap
 STDOUT:
 def greet(name: str):
     print(f"Hello, {name}")
-…
+
     …
 
     …
@@ -22,11 +22,11 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 5,
+    "omitted_children": 3,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 117,
+    "bytes": 114,
     "chars": 0,
     "lines": 10
   },
@@ -73,6 +73,15 @@ DEBUG (normalized):
         }
       },
       {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 0,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 1,
         "kind": "array",
@@ -100,6 +109,22 @@ DEBUG (normalized):
         ],
         "id": 0,
         "index_in_parent_array": 4,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        }
+      },
+      {
+        "id": 0,
+        "index_in_parent_array": 5,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        }
+      },
+      {
+        "id": 0,
+        "index_in_parent_array": 8,
         "kind": "array",
         "metrics": {
           "array_len": 1
@@ -146,8 +171,8 @@ DEBUG (normalized):
         "omitted_count": 1
       },
       {
-        "before_child_index": 4,
-        "omitted_count": 4
+        "before_child_index": 5,
+        "omitted_count": 2
       }
     ],
     "id": 0,
@@ -157,7 +182,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 13
+    "top_k": 16
   },
   "template": "text"
 }

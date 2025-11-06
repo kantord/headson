@@ -1,17 +1,13 @@
 ---
 source: tests/cpp_text_fallback.rs
-assertion_line: 27
 expression: out
 ---
 #include <iostream>
 
-…
+void greet(const std::string& name) {
 }
 
 int main() {
     greet("world");
-…
-    …
-}
 
-    …
+}

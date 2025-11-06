@@ -10,8 +10,6 @@ function greet(name) {
 
 function main() {
   greet("world");
-
-…
   …
 
   …
@@ -25,13 +23,13 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 8,
+    "omitted_children": 6,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 119,
+    "bytes": 114,
     "chars": 0,
-    "lines": 13
+    "lines": 11
   },
   "renderer": {
     "array_sampler": "default",
@@ -151,6 +149,22 @@ DEBUG (normalized):
             "index_in_parent_array": 0,
             "kind": "string",
             "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 1,
+            "kind": "array",
+            "metrics": {
+              "array_len": 2
+            }
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 2,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
           }
         ],
         "id": 0,
@@ -158,8 +172,7 @@ DEBUG (normalized):
         "kind": "array",
         "metrics": {
           "array_len": 3
-        },
-        "omitted_after": 2
+        }
       },
       {
         "id": 0,
@@ -204,7 +217,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 18
+    "top_k": 20
   },
   "template": "text"
 }
