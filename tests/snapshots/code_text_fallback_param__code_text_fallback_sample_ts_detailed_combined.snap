@@ -5,7 +5,10 @@ expression: snap
 STDOUT:
  1: function greet(name: string) {
  2:   console.log(`Hello, ${name}`);
-17: function main(): void {
+ 3: }
+ 4: 
+27: 
+28: main();
 29: 
 
 DEBUG (normalized):
@@ -17,13 +20,13 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 10,
+    "omitted_children": 5,
     "total_nodes": 0
   },
   "output_stats": {
     "bytes": 105,
     "chars": 0,
-    "lines": 5
+    "lines": 8
   },
   "renderer": {
     "array_sampler": "default",
@@ -71,28 +74,90 @@ DEBUG (normalized):
       {
         "children": [
           {
-            "atomic_token": "function main(): void {",
+            "atomic_token": "}",
             "id": 0,
-            "index_in_parent_array": 16,
+            "index_in_parent_array": 2,
             "kind": "string",
             "metrics": {}
-          },
-          {
-            "id": 0,
-            "index_in_parent_array": 17,
-            "kind": "array",
-            "metrics": {
-              "array_len": 1
-            }
           }
         ],
         "id": 0,
-        "index_in_parent_array": 6,
+        "index_in_parent_array": 1,
         "kind": "array",
         "metrics": {
-          "array_len": 2
+          "array_len": 1
         },
-        "omitted_before": 16
+        "omitted_before": 2
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 3,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "index_in_parent_array": 2,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        },
+        "omitted_before": 3
+      },
+      {
+        "id": 0,
+        "index_in_parent_array": 3,
+        "kind": "array",
+        "metrics": {
+          "array_len": 5
+        }
+      },
+      {
+        "id": 0,
+        "index_in_parent_array": 9,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        }
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 26,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "index_in_parent_array": 10,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        },
+        "omitted_before": 26
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "main();",
+            "id": 0,
+            "index_in_parent_array": 27,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "index_in_parent_array": 11,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        },
+        "omitted_before": 27
       },
       {
         "children": [
@@ -115,11 +180,7 @@ DEBUG (normalized):
     ],
     "gaps": [
       {
-        "before_child_index": 1,
-        "omitted_count": 5
-      },
-      {
-        "before_child_index": 2,
+        "before_child_index": 4,
         "omitted_count": 5
       }
     ],
@@ -130,7 +191,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 10
+    "top_k": 17
   },
   "template": "code"
 }

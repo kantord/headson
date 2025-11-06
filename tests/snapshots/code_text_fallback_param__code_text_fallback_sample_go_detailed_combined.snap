@@ -4,9 +4,11 @@ expression: snap
 ---
 STDOUT:
  1: package main
- 9: func compute(n int) int {
-11:     for i := 0; i < n; i++ {
-18:     return total
+ 2: 
+ 3: import "fmt"
+27: 
+29:     fmt.Println("value:", value)
+30: }
 31: 
 
 DEBUG (normalized):
@@ -18,13 +20,13 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 15,
+    "omitted_children": 9,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 106,
+    "bytes": 92,
     "chars": 0,
-    "lines": 6
+    "lines": 8
   },
   "renderer": {
     "array_sampler": "default",
@@ -54,88 +56,100 @@ DEBUG (normalized):
       {
         "children": [
           {
-            "atomic_token": "func compute(n int) int {",
+            "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 8,
+            "index_in_parent_array": 1,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "index_in_parent_array": 1,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        },
+        "omitted_before": 1
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "import \"fmt\"",
+            "id": 0,
+            "index_in_parent_array": 2,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "index_in_parent_array": 2,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        },
+        "omitted_before": 2
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 26,
             "kind": "string",
             "metrics": {}
           },
           {
-            "children": [
-              {
-                "atomic_token": "    for i := 0; i < n; i++ {",
-                "id": 0,
-                "index_in_parent_array": 10,
-                "kind": "string",
-                "metrics": {}
-              },
-              {
-                "id": 0,
-                "index_in_parent_array": 11,
-                "kind": "array",
-                "metrics": {
-                  "array_len": 2
-                }
-              },
-              {
-                "id": 0,
-                "index_in_parent_array": 15,
-                "kind": "array",
-                "metrics": {
-                  "array_len": 1
-                }
-              }
-            ],
-            "gaps": [
-              {
-                "before_child_index": 2,
-                "omitted_count": 3
-              }
-            ],
             "id": 0,
-            "index_in_parent_array": 10,
+            "index_in_parent_array": 27,
             "kind": "array",
             "metrics": {
-              "array_len": 4
-            },
-            "omitted_before": 10
+              "array_len": 1
+            }
           },
           {
             "children": [
               {
-                "atomic_token": "    return total",
+                "atomic_token": "    fmt.Println(\"value:\", value)",
                 "id": 0,
-                "index_in_parent_array": 17,
+                "index_in_parent_array": 28,
                 "kind": "string",
                 "metrics": {}
               }
             ],
             "id": 0,
-            "index_in_parent_array": 17,
+            "index_in_parent_array": 28,
             "kind": "array",
             "metrics": {
               "array_len": 1
             },
-            "omitted_before": 17
-          }
-        ],
-        "gaps": [
-          {
-            "before_child_index": 1,
-            "omitted_count": 1
-          },
-          {
-            "before_child_index": 2,
-            "omitted_count": 6
+            "omitted_before": 28
           }
         ],
         "id": 0,
-        "index_in_parent_array": 7,
+        "index_in_parent_array": 12,
         "kind": "array",
         "metrics": {
-          "array_len": 5
+          "array_len": 3
         },
-        "omitted_before": 8
+        "omitted_before": 26
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "}",
+            "id": 0,
+            "index_in_parent_array": 29,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "index_in_parent_array": 13,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        },
+        "omitted_before": 29
       },
       {
         "children": [
@@ -158,12 +172,8 @@ DEBUG (normalized):
     ],
     "gaps": [
       {
-        "before_child_index": 1,
-        "omitted_count": 6
-      },
-      {
-        "before_child_index": 2,
-        "omitted_count": 6
+        "before_child_index": 3,
+        "omitted_count": 9
       }
     ],
     "id": 0,
@@ -173,7 +183,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 13
+    "top_k": 16
   },
   "template": "code"
 }

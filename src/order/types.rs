@@ -53,6 +53,7 @@ pub enum ObjectType {
 pub enum ArrayBias {
     Head,
     HeadMidTail,
+    HeadTail,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

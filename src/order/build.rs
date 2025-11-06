@@ -146,6 +146,13 @@ impl<'a> Scope<'a> {
                 let d = d_head.min(d_tail).min(d_mid).unsigned_abs() as u128;
                 d * d * d * ARRAY_INDEX_CUBIC_WEIGHT
             }
+            super::types::ArrayBias::HeadTail => {
+                // Favor edges only: distance to nearest edge (head or tail).
+                let d_head = i as isize;
+                let d_tail = kept.saturating_sub(1) as isize - i as isize;
+                let d = d_head.min(d_tail).unsigned_abs() as u128;
+                d * d * d * ARRAY_INDEX_CUBIC_WEIGHT
+            }
         }
     }
 

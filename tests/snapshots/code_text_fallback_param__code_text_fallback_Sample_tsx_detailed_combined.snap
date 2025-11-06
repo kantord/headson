@@ -5,9 +5,10 @@ expression: snap
 STDOUT:
  1: import React from 'react';
  2: 
- 5: function Item({ i }: { i: number }) {
- 7: }
- 8: 
+ 3: type Props = { name: string };
+23: 
+24:   return (
+34:   );
 35: }
 36: 
 
@@ -20,13 +21,13 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 5,
+    "omitted_children": 7,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 100,
+    "bytes": 111,
     "chars": 0,
-    "lines": 8
+    "lines": 9
   },
   "renderer": {
     "array_sampler": "default",
@@ -74,64 +75,94 @@ DEBUG (normalized):
       {
         "children": [
           {
-            "atomic_token": "function Item({ i }: { i: number }) {",
+            "atomic_token": "type Props = { name: string };",
             "id": 0,
-            "index_in_parent_array": 4,
-            "kind": "string",
-            "metrics": {}
-          },
-          {
-            "id": 0,
-            "index_in_parent_array": 5,
-            "kind": "array",
-            "metrics": {
-              "array_len": 1
-            }
-          }
-        ],
-        "id": 0,
-        "index_in_parent_array": 4,
-        "kind": "array",
-        "metrics": {
-          "array_len": 2
-        },
-        "omitted_before": 4
-      },
-      {
-        "children": [
-          {
-            "atomic_token": "}",
-            "id": 0,
-            "index_in_parent_array": 6,
+            "index_in_parent_array": 2,
             "kind": "string",
             "metrics": {}
           }
         ],
         "id": 0,
-        "index_in_parent_array": 5,
+        "index_in_parent_array": 2,
         "kind": "array",
         "metrics": {
           "array_len": 1
         },
-        "omitted_before": 6
+        "omitted_before": 2
       },
       {
         "children": [
           {
             "atomic_token": "",
             "id": 0,
-            "index_in_parent_array": 7,
+            "index_in_parent_array": 22,
             "kind": "string",
             "metrics": {}
+          },
+          {
+            "children": [
+              {
+                "atomic_token": "  return (",
+                "id": 0,
+                "index_in_parent_array": 23,
+                "kind": "string",
+                "metrics": {}
+              },
+              {
+                "id": 0,
+                "index_in_parent_array": 32,
+                "kind": "array",
+                "metrics": {
+                  "array_len": 1
+                }
+              }
+            ],
+            "gaps": [
+              {
+                "before_child_index": 1,
+                "omitted_count": 8
+              }
+            ],
+            "id": 0,
+            "index_in_parent_array": 23,
+            "kind": "array",
+            "metrics": {
+              "array_len": 3
+            },
+            "omitted_before": 23
+          },
+          {
+            "children": [
+              {
+                "atomic_token": "  );",
+                "id": 0,
+                "index_in_parent_array": 33,
+                "kind": "string",
+                "metrics": {}
+              }
+            ],
+            "id": 0,
+            "index_in_parent_array": 33,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            },
+            "omitted_before": 33
+          }
+        ],
+        "gaps": [
+          {
+            "before_child_index": 2,
+            "omitted_count": 9
           }
         ],
         "id": 0,
-        "index_in_parent_array": 6,
+        "index_in_parent_array": 9,
         "kind": "array",
         "metrics": {
-          "array_len": 1
+          "array_len": 3
         },
-        "omitted_before": 7
+        "omitted_before": 22
       },
       {
         "children": [
@@ -172,12 +203,8 @@ DEBUG (normalized):
     ],
     "gaps": [
       {
-        "before_child_index": 2,
-        "omitted_count": 2
-      },
-      {
-        "before_child_index": 5,
-        "omitted_count": 3
+        "before_child_index": 3,
+        "omitted_count": 6
       }
     ],
     "id": 0,
@@ -187,7 +214,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 16
+    "top_k": 18
   },
   "template": "code"
 }

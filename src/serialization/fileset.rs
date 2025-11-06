@@ -96,7 +96,14 @@ impl<'a> RenderScope<'a> {
                         OutputTemplate::Js
                     }
                 },
-                Format::Unknown => OutputTemplate::Text,
+                Format::Unknown => {
+                    // Treat code-like filenames as Code; others as Text.
+                    if crate::utils::extensions::is_code_like_name(raw_key) {
+                        OutputTemplate::Code
+                    } else {
+                        OutputTemplate::Text
+                    }
+                },
             };
             return self.render_node_to_string_with_template(
                 child_id, depth, false, template,

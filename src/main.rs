@@ -354,12 +354,12 @@ fn run_from_paths(
     let eff_chars = compute_effective_chars(cli, input_count);
     let eff_lines = compute_effective_lines(cli, input_count);
     let prio = compute_priority(cli, eff, eff_chars, input_count);
-    if cli.inputs.len() > 1 {
-        let chosen_input = choose_input_format_fileset(cli, &entries);
-        let mut cfg = render_cfg.clone();
-        // For filesets: if format=auto, enable per-file template selection.
-        cfg.template = effective_fileset_template(cli, cfg.style);
-        let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
+        if cli.inputs.len() > 1 {
+            let chosen_input = choose_input_format_fileset(cli, &entries);
+            let mut cfg = render_cfg.clone();
+            // For filesets: if format=auto, enable per-file template selection.
+            cfg.template = effective_fileset_template(cli, cfg.style);
+            let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
         if budgets.byte_budget.is_none()
             && budgets.char_budget.is_none()
             && budgets.line_budget.is_some()
@@ -373,9 +373,28 @@ fn run_from_paths(
             InputFormat::Yaml => headson::headson_many_yaml_with_budgets(
                 entries, &cfg, &prio, budgets,
             )?,
-            InputFormat::Text => headson::headson_many_text_with_budgets(
-                entries, &cfg, &prio, budgets,
-            )?,
+            InputFormat::Text => {
+                // If fileset contains any code-like files, enable code-friendly
+                // behavior: per-file Code template (handled in fileset renderer)
+                // and edge-favoring array bias for better structural framing.
+                let any_code = entries
+                    .iter()
+                    .any(|(name, _)| headson::extensions::is_code_like_name(
+                        &name.to_ascii_lowercase(),
+                    ));
+                if any_code {
+                    cfg.show_line_numbers = true;
+                    let mut prio_code = prio.clone();
+                    prio_code.array_bias = headson::ArrayBias::HeadTail;
+                    headson::headson_many_text_with_budgets(
+                        entries, &cfg, &prio_code, budgets,
+                    )?
+                } else {
+                    headson::headson_many_text_with_budgets(
+                        entries, &cfg, &prio, budgets,
+                    )?
+                }
+            }
         };
         Ok((out, ignored))
     } else if included == 0 {
@@ -422,8 +441,11 @@ fn run_from_paths(
                     cfg.show_line_numbers = true;
                     // Switch to the Code template for rendering
                     cfg.template = headson::OutputTemplate::Code;
+                    // Bias arrays to favor edges (head+tail) for code readability
+                    let mut prio_code = prio.clone();
+                    prio_code.array_bias = headson::ArrayBias::HeadTail;
                     headson::headson_text_with_budgets_code(
-                        bytes, &cfg, &prio, budgets,
+                        bytes, &cfg, &prio_code, budgets,
                     )?
                 } else {
                     headson::headson_text_with_budgets(

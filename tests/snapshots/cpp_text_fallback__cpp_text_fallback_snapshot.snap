@@ -4,9 +4,7 @@ expression: out
 ---
  1: #include <iostream>
  2: 
- 5: }
- 6: 
- 7: int main() {
- 8:     greet("world");
+ 3: void greet(const std::string& name) {
+17: 
 19: }
 20:
