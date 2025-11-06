@@ -7,10 +7,11 @@ STDOUT:
  2: 
  …
  5: function Item({ i }: { i: number }) {
+  …
  7: }
  8: 
  …
-35: }
+…
 36: 
  …
 
@@ -27,15 +28,15 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 115,
+    "bytes": 119,
     "chars": 0,
-    "lines": 11
+    "lines": 12
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "default",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -137,22 +138,12 @@ DEBUG (normalized):
         "omitted_before": 7
       },
       {
-        "children": [
-          {
-            "atomic_token": "}",
-            "id": 0,
-            "index_in_parent_array": 34,
-            "kind": "string",
-            "metrics": {}
-          }
-        ],
         "id": 0,
         "index_in_parent_array": 10,
         "kind": "array",
         "metrics": {
           "array_len": 1
-        },
-        "omitted_before": 34
+        }
       },
       {
         "children": [
@@ -190,7 +181,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 16
+    "top_k": 15
   },
-  "template": "text"
+  "template": "code"
 }

@@ -4,10 +4,13 @@ expression: snap
 ---
 STDOUT:
  1: def greet(name: str):
- … 3 more lines …
+ 2:     print(f"Hello, {name}")
+ …
 13: 
- … 4 more lines …
- … 7 more lines …
+ …
+23: if __name__ == "__main__":
+  …
+  …
 
 DEBUG (normalized):
 {
@@ -22,15 +25,15 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 97,
+    "bytes": 116,
     "chars": 0,
-    "lines": 6
+    "lines": 9
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "detailed",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -44,12 +47,22 @@ DEBUG (normalized):
             "metrics": {}
           },
           {
+            "children": [
+              {
+                "atomic_token": "    print(f\"Hello, {name}\")",
+                "id": 0,
+                "index_in_parent_array": 1,
+                "kind": "string",
+                "metrics": {}
+              }
+            ],
             "id": 0,
             "index_in_parent_array": 1,
             "kind": "array",
             "metrics": {
               "array_len": 1
-            }
+            },
+            "omitted_before": 1
           }
         ],
         "id": 0,
@@ -78,12 +91,30 @@ DEBUG (normalized):
         "omitted_before": 12
       },
       {
+        "children": [
+          {
+            "atomic_token": "if __name__ == \"__main__\":",
+            "id": 0,
+            "index_in_parent_array": 22,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 23,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 9,
         "kind": "array",
         "metrics": {
           "array_len": 2
-        }
+        },
+        "omitted_before": 22
       }
     ],
     "gaps": [
@@ -103,7 +134,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 7
+    "top_k": 10
   },
-  "template": "text"
+  "template": "code"
 }

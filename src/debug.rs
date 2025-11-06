@@ -133,6 +133,7 @@ fn template_str_for_root(
         T::Js => "js",
         T::Yaml => "yaml",
         T::Text => "text",
+        T::Code => "code",
         T::Auto => match cfg.style {
             crate::serialization::types::Style::Strict => "json",
             crate::serialization::types::Style::Default => "pseudo",
@@ -376,11 +377,12 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
         render_id,
         &mut included,
         &mut omitted_children_sum,
-        // Treat atomic leaves as strings when rendering via Text template at root
+        // Treat atomic leaves as strings when rendering via Text/Code template at root
         // (single-file text inputs). Filesets report "auto" and retain defaults.
         matches!(
             cfg.template,
             crate::serialization::types::OutputTemplate::Text
+                | crate::serialization::types::OutputTemplate::Code
         ),
     );
     let dump = DumpDbg {

@@ -4,14 +4,15 @@ expression: snap
 ---
 STDOUT:
  1: public class Sample {
- 2:     static void greet(String name) {
- …
- 4:     }
- …
+  …
+  …
+  …
+  …
 20: 
- …
+  …
+  …
 29: 
- …
+  …
 
 DEBUG (normalized):
 {
@@ -26,15 +27,15 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 107,
+    "bytes": 78,
     "chars": 0,
-    "lines": 10
+    "lines": 11
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "default",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -48,48 +49,20 @@ DEBUG (normalized):
             "metrics": {}
           },
           {
-            "children": [
-              {
-                "atomic_token": "    static void greet(String name) {",
-                "id": 0,
-                "index_in_parent_array": 1,
-                "kind": "string",
-                "metrics": {}
-              },
-              {
-                "id": 0,
-                "index_in_parent_array": 2,
-                "kind": "array",
-                "metrics": {
-                  "array_len": 1
-                }
-              }
-            ],
             "id": 0,
             "index_in_parent_array": 1,
             "kind": "array",
             "metrics": {
               "array_len": 2
-            },
-            "omitted_before": 1
+            }
           },
           {
-            "children": [
-              {
-                "atomic_token": "    }",
-                "id": 0,
-                "index_in_parent_array": 3,
-                "kind": "string",
-                "metrics": {}
-              }
-            ],
             "id": 0,
             "index_in_parent_array": 3,
             "kind": "array",
             "metrics": {
               "array_len": 1
-            },
-            "omitted_before": 3
+            }
           }
         ],
         "gaps": [
@@ -167,7 +140,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 13
+    "top_k": 10
   },
-  "template": "text"
+  "template": "code"
 }

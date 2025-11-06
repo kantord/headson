@@ -36,24 +36,18 @@ fn push_optional_indent(
     }
 }
 
-fn push_text_omission_line(
+fn push_code_omission_line(
     out: &mut Out<'_>,
     depth: usize,
-    omitted: usize,
+    _omitted: usize,
     indent_prefix: Option<&str>,
 ) {
-    use crate::serialization::types::Style;
-    let style = out.style();
-    if matches!(style, Style::Strict) {
+    // In code template, omissions render as a single ellipsis line regardless of style.
+    if matches!(out.style(), crate::serialization::types::Style::Strict) {
         return;
     }
     push_optional_indent(out, depth, indent_prefix);
     out.push_omission();
-    if matches!(style, Style::Detailed) {
-        out.push_str(" ");
-        out.push_str(&format!("{omitted} more lines "));
-        out.push_omission();
-    }
     out.push_newline();
 }
 
@@ -62,18 +56,13 @@ fn push_text_omission_line(
     reason = "Indent + omission flow is clearer inline"
 )]
 pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
-    // For text, arrays are treated as raw lines of text.
-    // Indentation depth for lines equals (ctx.depth - 1), so top-level
-    // line-arrays render without indentation, and nested arrays increase it.
+    // For code, arrays are treated as raw lines of text with line numbers.
     let indent_depth = ctx.depth.saturating_sub(1);
 
-    // Track the last seen non-empty line's textual indent. This lets us
-    // indent omission markers to match surrounding context even for
-    // top-level text arrays (e.g., code files), without parsing semantics.
+    // Track the last seen non-empty line's textual indent for omission alignment.
     let mut last_nonempty_indent: String = String::new();
 
-    // If we start with an omission, try to peek the first child's textual indent
-    // so we can align the starting omission marker with the upcoming context.
+    // If we start with an omission, try to peek the first child's textual indent.
     let start_peek_indent: Option<String> =
         ctx.children
             .first()
@@ -92,7 +81,7 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
 
     // Optional omission at start (head/tail preference)
     if ctx.omitted_at_start && ctx.omitted > 0 {
-        push_text_omission_line(
+        push_code_omission_line(
             out,
             indent_depth,
             ctx.omitted,
@@ -106,12 +95,10 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
         if let Some(prev) = prev_index {
             let gap = orig_index.saturating_sub(prev).saturating_sub(1);
             if gap > 0 {
-                // Emit a gap omission marker aligned with the last non-empty
-                // line's textual indent when available; otherwise structural.
+                // Emit a gap omission marker aligned to surrounding context.
                 let prefix_opt = if !last_nonempty_indent.is_empty() {
                     Some(last_nonempty_indent.as_str())
                 } else {
-                    // Try to align with the upcoming line's indent as a best-effort.
                     let next_pref = leading_ws_prefix(item);
                     if next_pref.is_empty() {
                         None
@@ -119,16 +106,14 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
                         Some(next_pref)
                     }
                 };
-                push_text_omission_line(out, indent_depth, gap, prefix_opt);
+                push_code_omission_line(out, indent_depth, gap, prefix_opt);
             }
         }
 
-        // Multi-line children (e.g., nested blocks) are already indented
-        // by their own renderer at depth+1; push as-is to avoid double indent.
         let is_multiline = item.contains('\n');
         match kind {
             super::super::NodeKind::Array | super::super::NodeKind::Object => {
-                // Keep nested rendered block verbatim (no suppression heuristic).
+                // Nested blocks are rendered verbatim.
                 out.push_str(item);
                 if let Some(ind) = last_nonempty_line_indent(item) {
                     if !ind.is_empty() {
@@ -147,7 +132,15 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
                 }
             }
             _ => {
-                // Leaf line: print exactly as in source (keeps original indent).
+                // Leaf line: print line number and content.
+                if out.line_numbers_enabled() {
+                    let n = orig_index.saturating_add(1);
+                    if let Some(w) = out.line_number_width() {
+                        out.push_str(&format!("{:>width$}: ", n, width = w));
+                    } else {
+                        out.push_str(&format!("{n}: "));
+                    }
+                }
                 out.push_str(item);
                 out.push_newline();
                 if !item.trim().is_empty() {
@@ -157,7 +150,6 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
             }
         }
 
-        // Remember last original index we printed.
         prev_index = Some(*orig_index);
     }
 
@@ -168,16 +160,11 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
         } else {
             Some(last_nonempty_indent.as_str())
         };
-        // Only apply textual indentation; do not fall back to structural.
-        push_text_omission_line(out, indent_depth, ctx.omitted, prefix_opt);
+        push_code_omission_line(out, indent_depth, ctx.omitted, prefix_opt);
     }
 }
 
 pub(super) fn render_object(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
-    // Text template defines custom rendering only for arrays (raw lines).
-    // Objects should not normally appear under the text template because
-    // fileset roots are handled by the dedicated fileset renderer before
-    // template dispatch. If an object does reach here (defensive case),
-    // delegate to the generic pseudo object renderer for a consistent shape.
+    // Code template defines custom rendering only for arrays (raw lines).
     super::pseudo::render_object(ctx, out);
 }

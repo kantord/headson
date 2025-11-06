@@ -5,11 +5,15 @@ expression: snap
 STDOUT:
  1: import React from 'react';
  2: 
- … 2 more lines …
+ …
+ 5: function Item({ i }: { i: number }) {
+  …
  7: }
- … 4 more lines …
+ 8: 
+ …
+…
 36: 
- … 6 more lines …
+ …
 
 DEBUG (normalized):
 {
@@ -24,15 +28,15 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 113,
+    "bytes": 119,
     "chars": 0,
-    "lines": 8
+    "lines": 12
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "detailed",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -72,12 +76,30 @@ DEBUG (normalized):
         "omitted_before": 1
       },
       {
+        "children": [
+          {
+            "atomic_token": "function Item({ i }: { i: number }) {",
+            "id": 0,
+            "index_in_parent_array": 4,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 5,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 4,
         "kind": "array",
         "metrics": {
           "array_len": 2
-        }
+        },
+        "omitted_before": 4
       },
       {
         "children": [
@@ -98,12 +120,22 @@ DEBUG (normalized):
         "omitted_before": 6
       },
       {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 7,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 6,
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 7
       },
       {
         "id": 0,
@@ -149,7 +181,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 12
+    "top_k": 15
   },
-  "template": "text"
+  "template": "code"
 }

@@ -5,12 +5,18 @@ expression: snap
 STDOUT:
  1: #!/usr/bin/env bash
  2: 
- … 4 more lines …
+…
+ …
+…
 19: }
 20: 
- … 5 more lines …
+21: main() {
+22:   greet "world"
+…
+ …
+32: main "$@"
 33: 
- … 9 more lines …
+ …
 
 DEBUG (normalized):
 {
@@ -21,19 +27,19 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 8,
+    "omitted_children": 5,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 111,
+    "bytes": 119,
     "chars": 0,
-    "lines": 9
+    "lines": 15
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "detailed",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -73,6 +79,22 @@ DEBUG (normalized):
         "omitted_before": 1
       },
       {
+        "id": 0,
+        "index_in_parent_array": 2,
+        "kind": "array",
+        "metrics": {
+          "array_len": 3
+        }
+      },
+      {
+        "id": 0,
+        "index_in_parent_array": 5,
+        "kind": "array",
+        "metrics": {
+          "array_len": 6
+        }
+      },
+      {
         "children": [
           {
             "atomic_token": "}",
@@ -109,20 +131,66 @@ DEBUG (normalized):
         "omitted_before": 19
       },
       {
+        "children": [
+          {
+            "atomic_token": "main() {",
+            "id": 0,
+            "index_in_parent_array": 20,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "children": [
+              {
+                "atomic_token": "  greet \"world\"",
+                "id": 0,
+                "index_in_parent_array": 21,
+                "kind": "string",
+                "metrics": {}
+              }
+            ],
+            "id": 0,
+            "index_in_parent_array": 21,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            },
+            "omitted_before": 21
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 8,
         "kind": "array",
         "metrics": {
           "array_len": 2
+        },
+        "omitted_before": 20
+      },
+      {
+        "id": 0,
+        "index_in_parent_array": 9,
+        "kind": "array",
+        "metrics": {
+          "array_len": 3
         }
       },
       {
+        "children": [
+          {
+            "atomic_token": "main \"$@\"",
+            "id": 0,
+            "index_in_parent_array": 31,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 13,
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 31
       },
       {
         "children": [
@@ -145,12 +213,12 @@ DEBUG (normalized):
     ],
     "gaps": [
       {
-        "before_child_index": 2,
-        "omitted_count": 4
+        "before_child_index": 3,
+        "omitted_count": 2
       },
       {
-        "before_child_index": 5,
-        "omitted_count": 4
+        "before_child_index": 8,
+        "omitted_count": 3
       }
     ],
     "id": 0,
@@ -160,7 +228,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 13
+    "top_k": 20
   },
-  "template": "text"
+  "template": "code"
 }

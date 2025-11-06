@@ -216,6 +216,7 @@ impl<'a> RenderScope<'a> {
         if matches!(
             self.config.template,
             crate::serialization::types::OutputTemplate::Text
+                | crate::serialization::types::OutputTemplate::Code
         ) {
             if omitted == 0 {
                 full.to_string()
@@ -266,6 +267,7 @@ impl<'a> RenderScope<'a> {
         if matches!(
             template,
             crate::serialization::types::OutputTemplate::Text
+                | crate::serialization::types::OutputTemplate::Code
         ) {
             if omitted == 0 {
                 full.to_string()
@@ -718,6 +720,7 @@ pub fn render_from_render_set(
         && matches!(
             config.template,
             crate::serialization::types::OutputTemplate::Text
+                | crate::serialization::types::OutputTemplate::Code
         ) {
         let max_index = compute_max_index(
             order_build,

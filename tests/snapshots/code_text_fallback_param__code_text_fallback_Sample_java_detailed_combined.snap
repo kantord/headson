@@ -3,10 +3,16 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: public class Sample {
-  … 1 more lines …
-  … 2 more lines …
-  … 5 more lines …
+ 1: public class Sample {
+  …
+  …
+  …
+  …
+20: 
+  …
+  …
+29: 
+  …
 
 DEBUG (normalized):
 {
@@ -21,15 +27,15 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 94,
+    "bytes": 78,
     "chars": 0,
-    "lines": 5
+    "lines": 11
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "detailed",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -73,20 +79,48 @@ DEBUG (normalized):
         }
       },
       {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 19,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 20,
+            "kind": "array",
+            "metrics": {
+              "array_len": 3
+            }
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 3,
         "kind": "array",
         "metrics": {
           "array_len": 2
-        }
+        },
+        "omitted_before": 19
       },
       {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 28,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 6,
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 28
       }
     ],
     "gaps": [
@@ -106,7 +140,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 7
+    "top_k": 10
   },
-  "template": "text"
+  "template": "code"
 }

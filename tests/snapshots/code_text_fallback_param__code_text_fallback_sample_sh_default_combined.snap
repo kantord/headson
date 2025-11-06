@@ -5,11 +5,14 @@ expression: snap
 STDOUT:
  1: #!/usr/bin/env bash
  2: 
+…
  …
+…
 19: }
 20: 
 21: main() {
 22:   greet "world"
+…
  …
 32: main "$@"
 33: 
@@ -24,19 +27,19 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 4,
+    "omitted_children": 5,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 107,
+    "bytes": 119,
     "chars": 0,
-    "lines": 12
+    "lines": 15
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "default",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -172,14 +175,6 @@ DEBUG (normalized):
         }
       },
       {
-        "id": 0,
-        "index_in_parent_array": 12,
-        "kind": "array",
-        "metrics": {
-          "array_len": 1
-        }
-      },
-      {
         "children": [
           {
             "atomic_token": "main \"$@\"",
@@ -223,7 +218,7 @@ DEBUG (normalized):
       },
       {
         "before_child_index": 8,
-        "omitted_count": 2
+        "omitted_count": 3
       }
     ],
     "id": 0,
@@ -233,7 +228,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 21
+    "top_k": 20
   },
-  "template": "text"
+  "template": "code"
 }

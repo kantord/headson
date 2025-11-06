@@ -3,9 +3,17 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: package main
-… 6 more lines …
-… 13 more lines …
+ 1: package main
+ …
+ 9: func compute(n int) int {
+  …
+  …
+  …
+  …
+  …
+  …
+31: 
+  …
 
 DEBUG (normalized):
 {
@@ -16,19 +24,19 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 12,
+    "omitted_children": 14,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 59,
+    "bytes": 99,
     "chars": 0,
-    "lines": 4
+    "lines": 12
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "detailed",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -50,20 +58,66 @@ DEBUG (normalized):
         }
       },
       {
+        "children": [
+          {
+            "atomic_token": "func compute(n int) int {",
+            "id": 0,
+            "index_in_parent_array": 8,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 10,
+            "kind": "array",
+            "metrics": {
+              "array_len": 4
+            }
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 17,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
+          }
+        ],
+        "gaps": [
+          {
+            "before_child_index": 1,
+            "omitted_count": 1
+          },
+          {
+            "before_child_index": 2,
+            "omitted_count": 6
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 7,
         "kind": "array",
         "metrics": {
           "array_len": 5
-        }
+        },
+        "omitted_before": 8
       },
       {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 30,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 14,
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 30
       }
     ],
     "gaps": [
@@ -83,7 +137,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 5
+    "top_k": 9
   },
-  "template": "text"
+  "template": "code"
 }

@@ -3,9 +3,14 @@ source: tests/code_text_fallback_param.rs
 expression: snap
 ---
 STDOUT:
-1: function greet(name) {
-… 5 more lines …
-… 11 more lines …
+ 1: function greet(name) {
+ 2:   console.log(`Hello, ${name}`);
+ …
+17: function main() {
+  …
+  …
+29: 
+  …
 
 DEBUG (normalized):
 {
@@ -20,15 +25,15 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 69,
+    "bytes": 114,
     "chars": 0,
-    "lines": 4
+    "lines": 9
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "detailed",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -42,12 +47,22 @@ DEBUG (normalized):
             "metrics": {}
           },
           {
+            "children": [
+              {
+                "atomic_token": "  console.log(`Hello, ${name}`);",
+                "id": 0,
+                "index_in_parent_array": 1,
+                "kind": "string",
+                "metrics": {}
+              }
+            ],
             "id": 0,
             "index_in_parent_array": 1,
             "kind": "array",
             "metrics": {
               "array_len": 1
-            }
+            },
+            "omitted_before": 1
           }
         ],
         "id": 0,
@@ -58,20 +73,48 @@ DEBUG (normalized):
         }
       },
       {
+        "children": [
+          {
+            "atomic_token": "function main() {",
+            "id": 0,
+            "index_in_parent_array": 16,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 17,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 6,
         "kind": "array",
         "metrics": {
           "array_len": 2
-        }
+        },
+        "omitted_before": 16
       },
       {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 28,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 12,
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 28
       }
     ],
     "gaps": [
@@ -91,7 +134,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 6
+    "top_k": 10
   },
-  "template": "text"
+  "template": "code"
 }

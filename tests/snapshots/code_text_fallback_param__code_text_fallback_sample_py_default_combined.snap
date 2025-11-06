@@ -9,7 +9,8 @@ STDOUT:
 13: 
  …
 23: if __name__ == "__main__":
- …
+  …
+  …
 
 DEBUG (normalized):
 {
@@ -24,15 +25,15 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 109,
+    "bytes": 116,
     "chars": 0,
-    "lines": 8
+    "lines": 9
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "default",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -135,5 +136,5 @@ DEBUG (normalized):
   "selection": {
     "top_k": 10
   },
-  "template": "text"
+  "template": "code"
 }

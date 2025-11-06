@@ -31,7 +31,7 @@ DEBUG (normalized):
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "strict",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -186,5 +186,5 @@ DEBUG (normalized):
   "selection": {
     "top_k": 16
   },
-  "template": "text"
+  "template": "code"
 }

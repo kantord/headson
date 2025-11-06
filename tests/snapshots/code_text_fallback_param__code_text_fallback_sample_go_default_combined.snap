@@ -9,6 +9,9 @@ STDOUT:
   …
   …
   …
+  …
+  …
+  …
 31: 
   …
 
@@ -25,15 +28,15 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 81,
+    "bytes": 99,
     "chars": 0,
-    "lines": 9
+    "lines": 12
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "default",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -136,5 +139,5 @@ DEBUG (normalized):
   "selection": {
     "top_k": 9
   },
-  "template": "text"
+  "template": "code"
 }

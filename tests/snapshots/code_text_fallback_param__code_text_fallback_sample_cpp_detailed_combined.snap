@@ -5,12 +5,15 @@ expression: snap
 STDOUT:
  1: #include <iostream>
  2: 
- … 1 more lines …
+…
  5: }
  6: 
- … 3 more lines …
+ 7: int main() {
+ 8:     greet("world");
+…
+…
+19: }
 20: 
- … 4 more lines …
 
 DEBUG (normalized):
 {
@@ -21,19 +24,19 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 3,
+    "omitted_children": 0,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 111,
+    "bytes": 104,
     "chars": 0,
-    "lines": 9
+    "lines": 12
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "detailed",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -73,6 +76,14 @@ DEBUG (normalized):
         "omitted_before": 1
       },
       {
+        "id": 0,
+        "index_in_parent_array": 2,
+        "kind": "array",
+        "metrics": {
+          "array_len": 2
+        }
+      },
+      {
         "children": [
           {
             "atomic_token": "}",
@@ -109,20 +120,74 @@ DEBUG (normalized):
         "omitted_before": 5
       },
       {
+        "children": [
+          {
+            "atomic_token": "int main() {",
+            "id": 0,
+            "index_in_parent_array": 6,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "children": [
+              {
+                "atomic_token": "    greet(\"world\");",
+                "id": 0,
+                "index_in_parent_array": 7,
+                "kind": "string",
+                "metrics": {}
+              }
+            ],
+            "id": 0,
+            "index_in_parent_array": 7,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            },
+            "omitted_before": 7
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 5,
+        "kind": "array",
+        "metrics": {
+          "array_len": 2
+        },
+        "omitted_before": 6
+      },
+      {
+        "id": 0,
+        "index_in_parent_array": 6,
+        "kind": "array",
+        "metrics": {
+          "array_len": 3
+        }
+      },
+      {
+        "id": 0,
+        "index_in_parent_array": 7,
         "kind": "array",
         "metrics": {
           "array_len": 2
         }
       },
       {
+        "children": [
+          {
+            "atomic_token": "}",
+            "id": 0,
+            "index_in_parent_array": 18,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 8,
         "kind": "array",
         "metrics": {
           "array_len": 1
-        }
+        },
+        "omitted_before": 18
       },
       {
         "children": [
@@ -143,16 +208,6 @@ DEBUG (normalized):
         "omitted_before": 19
       }
     ],
-    "gaps": [
-      {
-        "before_child_index": 2,
-        "omitted_count": 1
-      },
-      {
-        "before_child_index": 5,
-        "omitted_count": 2
-      }
-    ],
     "id": 0,
     "kind": "array",
     "metrics": {
@@ -160,7 +215,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 13
+    "top_k": 20
   },
-  "template": "text"
+  "template": "code"
 }

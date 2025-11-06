@@ -5,14 +5,15 @@ expression: snap
 STDOUT:
  1: #include <iostream>
  2: 
+…
  5: }
  6: 
  7: int main() {
  8:     greet("world");
- …
+…
+…
 19: }
 20: 
- …
 
 DEBUG (normalized):
 {
@@ -27,15 +28,15 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 102,
+    "bytes": 104,
     "chars": 0,
-    "lines": 11
+    "lines": 12
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "default",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -216,5 +217,5 @@ DEBUG (normalized):
   "selection": {
     "top_k": 20
   },
-  "template": "text"
+  "template": "code"
 }

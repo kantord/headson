@@ -7,9 +7,10 @@ STDOUT:
  2:   console.log(`Hello, ${name}`);
  …
 17: function main() {
- …
+  …
+  …
 29: 
- …
+  …
 
 DEBUG (normalized):
 {
@@ -24,15 +25,15 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 106,
+    "bytes": 114,
     "chars": 0,
-    "lines": 8
+    "lines": 9
   },
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,
     "style": "default",
-    "template": "text"
+    "template": "code"
   },
   "root": {
     "children": [
@@ -135,5 +136,5 @@ DEBUG (normalized):
   "selection": {
     "top_k": 10
   },
-  "template": "text"
+  "template": "code"
 }

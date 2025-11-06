@@ -420,6 +420,8 @@ fn run_from_paths(
                 let is_code = headson::extensions::is_code_like_name(&lower);
                 if is_code {
                     cfg.show_line_numbers = true;
+                    // Switch to the Code template for rendering
+                    cfg.template = headson::OutputTemplate::Code;
                     headson::headson_text_with_budgets_code(
                         bytes, &cfg, &prio, budgets,
                     )?
