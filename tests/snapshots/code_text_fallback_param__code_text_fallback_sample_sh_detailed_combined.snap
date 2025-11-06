@@ -1,6 +1,5 @@
 ---
 source: tests/code_text_fallback_param.rs
-assertion_line: 155
 expression: snap
 ---
 STDOUT:
@@ -14,6 +13,11 @@ STDOUT:
 
 DEBUG (normalized):
 {
+  "budgets_effective": {
+    "bytes": 120,
+    "chars": null,
+    "lines": null
+  },
   "counts": {
     "included": 0,
     "omitted_children": 10,
@@ -21,16 +25,96 @@ DEBUG (normalized):
   },
   "output_stats": {
     "bytes": 107,
+    "chars": 0,
     "lines": 8
   },
   "renderer": {
+    "array_sampler": "default",
+    "prefer_tail_arrays": false,
     "style": "detailed",
     "template": "text"
   },
   "root": {
-    "children_len": 5,
-    "fileset_root": null,
-    "gaps_len": 2,
+    "children": [
+      {
+        "children": [
+          {
+            "atomic_token": "#!/usr/bin/env bash",
+            "id": 0,
+            "index_in_parent_array": 0,
+            "kind": "number",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "index_in_parent_array": 0,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        }
+      },
+      {
+        "id": 0,
+        "index_in_parent_array": 1,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        }
+      },
+      {
+        "id": 0,
+        "index_in_parent_array": 6,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        }
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 0,
+            "kind": "number",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "index_in_parent_array": 7,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        }
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
+            "index_in_parent_array": 0,
+            "kind": "number",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "index_in_parent_array": 14,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        }
+      }
+    ],
+    "gaps": [
+      {
+        "before_child_index": 2,
+        "omitted_count": 4
+      },
+      {
+        "before_child_index": 4,
+        "omitted_count": 6
+      }
+    ],
+    "id": 0,
     "kind": "array",
     "metrics": {
       "array_len": 15
@@ -41,4 +125,3 @@ DEBUG (normalized):
   },
   "template": "text"
 }
-

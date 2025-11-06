@@ -57,48 +57,38 @@ fn run_cli_auto_text_with_debug(path: &Path, style: &str) -> (String, String) {
     (out, norm)
 }
 
-// Minimal normalizer to stabilize debug JSON snapshots across internal changes.
-// Mirrors tests/debug_snapshots.rs behavior for id/counts fields.
+// Normalizer to stabilize the full pruned debug JSON tree across runs.
+// Mirrors tests/debug_snapshots.rs: zeroes volatile ids and count totals but
+// keeps full children so we can debug structure.
 fn normalize_debug(s: &str) -> String {
-    use serde_json::{Value, json};
-    let v: Value = serde_json::from_str(s).expect("stderr must be JSON");
-    fn pick(obj: &Value, path: &[&str]) -> Value {
-        let mut cur = obj;
-        for k in path {
-            cur = &cur[*k];
+    use serde_json::Value;
+    fn walk(v: &mut Value) {
+        match v {
+            Value::Object(map) => {
+                if let Some(id) = map.get_mut("id") {
+                    *id = Value::from(0);
+                }
+                if let Some(counts) = map.get_mut("counts") {
+                    if let Some(obj) = counts.as_object_mut() {
+                        obj.insert("total_nodes".to_string(), Value::from(0));
+                        obj.insert("included".to_string(), Value::from(0));
+                    }
+                }
+                for (_k, vv) in map.iter_mut() {
+                    walk(vv);
+                }
+            }
+            Value::Array(arr) => {
+                for vv in arr.iter_mut() {
+                    walk(vv);
+                }
+            }
+            _ => {}
         }
-        cur.clone()
     }
-    let children_len =
-        v["root"]["children"].as_array().map(Vec::len).unwrap_or(0);
-    let gaps_len = v["root"]["gaps"].as_array().map(Vec::len).unwrap_or(0);
-    let summary = json!({
-        "template": pick(&v, &["template"]),
-        "renderer": {
-            "template": pick(&v, &["renderer","template"]),
-            "style": pick(&v, &["renderer","style"]),
-        },
-        "counts": {
-            "included": 0,
-            "total_nodes": 0,
-            "omitted_children": pick(&v, &["counts","omitted_children"]),
-        },
-        "selection": {
-            "top_k": pick(&v, &["selection","top_k"]),
-        },
-        "output_stats": {
-            "bytes": pick(&v, &["output_stats","bytes"]),
-            "lines": pick(&v, &["output_stats","lines"]),
-        },
-        "root": {
-            "kind": pick(&v, &["root","kind"]),
-            "fileset_root": pick(&v, &["root","fileset_root"]),
-            "metrics": pick(&v, &["root","metrics"]),
-            "children_len": children_len,
-            "gaps_len": gaps_len,
-        },
-    });
-    serde_json::to_string_pretty(&summary).unwrap()
+    let mut v: Value = serde_json::from_str(s).expect("stderr must be JSON");
+    walk(&mut v);
+    serde_json::to_string_pretty(&v).unwrap()
 }
 
 fn stem_str(path: &Path) -> String {
