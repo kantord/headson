@@ -4,13 +4,9 @@ expression: snap
 ---
 STDOUT:
  1: function greet(name: string) {
-  …
-  …
+ 2:   console.log(`Hello, ${name}`);
 17: function main(): void {
-  …
-  …
 29: 
-  …
 
 DEBUG (normalized):
 {
@@ -25,9 +21,9 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 98,
+    "bytes": 105,
     "chars": 0,
-    "lines": 9
+    "lines": 5
   },
   "renderer": {
     "array_sampler": "default",
@@ -47,12 +43,22 @@ DEBUG (normalized):
             "metrics": {}
           },
           {
+            "children": [
+              {
+                "atomic_token": "  console.log(`Hello, ${name}`);",
+                "id": 0,
+                "index_in_parent_array": 1,
+                "kind": "string",
+                "metrics": {}
+              }
+            ],
             "id": 0,
             "index_in_parent_array": 1,
             "kind": "array",
             "metrics": {
               "array_len": 1
-            }
+            },
+            "omitted_before": 1
           }
         ],
         "id": 0,
@@ -124,7 +130,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 9
+    "top_k": 10
   },
   "template": "code"
 }

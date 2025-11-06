@@ -5,18 +5,13 @@ expression: snap
 STDOUT:
  1: #!/usr/bin/env bash
  2: 
-…
- …
-…
+ 3: greet() {
 19: }
 20: 
 21: main() {
 22:   greet "world"
-…
- …
 32: main "$@"
 33: 
- …
 
 DEBUG (normalized):
 {
@@ -27,13 +22,13 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 5,
+    "omitted_children": 4,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 119,
+    "bytes": 106,
     "chars": 0,
-    "lines": 15
+    "lines": 10
   },
   "renderer": {
     "array_sampler": "default",
@@ -79,12 +74,38 @@ DEBUG (normalized):
         "omitted_before": 1
       },
       {
+        "children": [
+          {
+            "atomic_token": "greet() {",
+            "id": 0,
+            "index_in_parent_array": 2,
+            "kind": "string",
+            "metrics": {}
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 3,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
+          },
+          {
+            "id": 0,
+            "index_in_parent_array": 4,
+            "kind": "array",
+            "metrics": {
+              "array_len": 1
+            }
+          }
+        ],
         "id": 0,
         "index_in_parent_array": 2,
         "kind": "array",
         "metrics": {
           "array_len": 3
-        }
+        },
+        "omitted_before": 2
       },
       {
         "id": 0,
@@ -175,6 +196,14 @@ DEBUG (normalized):
         }
       },
       {
+        "id": 0,
+        "index_in_parent_array": 12,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        }
+      },
+      {
         "children": [
           {
             "atomic_token": "main \"$@\"",
@@ -218,7 +247,7 @@ DEBUG (normalized):
       },
       {
         "before_child_index": 8,
-        "omitted_count": 3
+        "omitted_count": 2
       }
     ],
     "id": 0,
@@ -228,7 +257,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 20
+    "top_k": 24
   },
   "template": "code"
 }

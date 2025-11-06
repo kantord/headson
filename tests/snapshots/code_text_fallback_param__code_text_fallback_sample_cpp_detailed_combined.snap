@@ -5,13 +5,10 @@ expression: snap
 STDOUT:
  1: #include <iostream>
  2: 
-…
  5: }
  6: 
  7: int main() {
  8:     greet("world");
-…
-…
 19: }
 20: 
 
@@ -28,9 +25,9 @@ DEBUG (normalized):
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 104,
+    "bytes": 92,
     "chars": 0,
-    "lines": 12
+    "lines": 9
   },
   "renderer": {
     "array_sampler": "default",

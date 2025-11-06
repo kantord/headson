@@ -316,8 +316,9 @@ impl<'a> RenderScope<'a> {
                 if matches!(
                     self.config.template,
                     crate::serialization::types::OutputTemplate::Text
+                        | crate::serialization::types::OutputTemplate::Code
                 ) {
-                    // For text template, push raw string without quotes or color.
+                    // For text/code templates, push raw string without quotes or color.
                     out.push_str(&s);
                 } else {
                     out.push_string_literal(&s);

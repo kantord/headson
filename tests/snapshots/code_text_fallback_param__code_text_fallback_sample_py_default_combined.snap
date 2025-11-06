@@ -5,12 +5,10 @@ expression: snap
 STDOUT:
  1: def greet(name: str):
  2:     print(f"Hello, {name}")
- …
+ 3: 
 13: 
- …
 23: if __name__ == "__main__":
-  …
-  …
+24:     main()
 
 DEBUG (normalized):
 {
@@ -21,13 +19,13 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 7,
+    "omitted_children": 3,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 116,
+    "bytes": 114,
     "chars": 0,
-    "lines": 9
+    "lines": 7
   },
   "renderer": {
     "array_sampler": "default",
@@ -77,6 +75,32 @@ DEBUG (normalized):
           {
             "atomic_token": "",
             "id": 0,
+            "index_in_parent_array": 2,
+            "kind": "string",
+            "metrics": {}
+          }
+        ],
+        "id": 0,
+        "index_in_parent_array": 1,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        },
+        "omitted_before": 2
+      },
+      {
+        "id": 0,
+        "index_in_parent_array": 3,
+        "kind": "array",
+        "metrics": {
+          "array_len": 4
+        }
+      },
+      {
+        "children": [
+          {
+            "atomic_token": "",
+            "id": 0,
             "index_in_parent_array": 12,
             "kind": "string",
             "metrics": {}
@@ -91,6 +115,22 @@ DEBUG (normalized):
         "omitted_before": 12
       },
       {
+        "id": 0,
+        "index_in_parent_array": 5,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        }
+      },
+      {
+        "id": 0,
+        "index_in_parent_array": 8,
+        "kind": "array",
+        "metrics": {
+          "array_len": 1
+        }
+      },
+      {
         "children": [
           {
             "atomic_token": "if __name__ == \"__main__\":",
@@ -100,12 +140,22 @@ DEBUG (normalized):
             "metrics": {}
           },
           {
+            "children": [
+              {
+                "atomic_token": "    main()",
+                "id": 0,
+                "index_in_parent_array": 23,
+                "kind": "string",
+                "metrics": {}
+              }
+            ],
             "id": 0,
             "index_in_parent_array": 23,
             "kind": "array",
             "metrics": {
               "array_len": 1
-            }
+            },
+            "omitted_before": 23
           }
         ],
         "id": 0,
@@ -119,12 +169,12 @@ DEBUG (normalized):
     ],
     "gaps": [
       {
-        "before_child_index": 1,
-        "omitted_count": 3
+        "before_child_index": 2,
+        "omitted_count": 1
       },
       {
-        "before_child_index": 2,
-        "omitted_count": 4
+        "before_child_index": 5,
+        "omitted_count": 2
       }
     ],
     "id": 0,
@@ -134,7 +184,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 10
+    "top_k": 16
   },
   "template": "code"
 }
