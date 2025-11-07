@@ -16,7 +16,6 @@ fn render_config() -> RenderConfig {
         style: Style::Default,
         string_free_prefix_graphemes: None,
         debug: false,
-        show_line_numbers: false,
     }
 }
 

@@ -356,7 +356,6 @@ fn run_from_paths(
         });
         let mut prio_effective = prio;
         if any_code {
-            cfg.show_line_numbers = true;
             prio_effective.array_bias = headson::ArrayBias::HeadTail;
         }
         let out = headson::headson_fileset_multi_with_budgets(
@@ -413,7 +412,6 @@ fn run_from_paths(
                     reason = "code branch requires its own config copy; other paths reuse the original"
                 )]
                 let mut cfg_code = cfg.clone();
-                cfg_code.show_line_numbers = true;
                 cfg_code.template = headson::OutputTemplate::Code;
                 let mut prio_code = prio;
                 prio_code.array_bias = headson::ArrayBias::HeadTail;
@@ -540,7 +538,6 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         style: map_style(cli.style),
         string_free_prefix_graphemes: None,
         debug: cli.debug,
-        show_line_numbers: false,
     }
 }
 

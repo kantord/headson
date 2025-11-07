@@ -369,12 +369,12 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
     let mut omitted_children_sum: usize = 0;
     let root_is_fileset =
         order.object_type.get(ROOT_PQ_ID) == Some(&ObjectType::Fileset);
-    let treat_atomic_as_string = matches!(
-        cfg.template,
-        crate::serialization::types::OutputTemplate::Text
-            | crate::serialization::types::OutputTemplate::Code
-    ) || cfg.show_line_numbers
-        || (matches!(cfg.template, crate::OutputTemplate::Auto)
+    let treat_atomic_as_string =
+        matches!(
+            cfg.template,
+            crate::serialization::types::OutputTemplate::Text
+                | crate::serialization::types::OutputTemplate::Code
+        ) || (matches!(cfg.template, crate::OutputTemplate::Auto)
             && root_is_fileset);
     let mut ctx = BuildCtx {
         order,

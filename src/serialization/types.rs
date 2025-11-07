@@ -39,9 +39,6 @@ pub struct RenderConfig {
     // When true, the core render path emits a debug JSON of the final
     // inclusion set to stderr before rendering. CLI sets this flag.
     pub debug: bool,
-    // When true, text template prefixes source lines with their 1-based line
-    // numbers followed by a colon and space (e.g., "10:    def hello():").
-    pub show_line_numbers: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

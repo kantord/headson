@@ -696,10 +696,10 @@ pub fn render_from_render_set(
     }
     let root_is_fileset =
         order_build.object_type.get(root_id) == Some(&ObjectType::Fileset);
-    let should_measure_line_numbers = config.show_line_numbers
-        || matches!(config.template, crate::OutputTemplate::Code)
-        || (matches!(config.template, crate::OutputTemplate::Auto)
-            && root_is_fileset);
+    let should_measure_line_numbers =
+        matches!(config.template, crate::OutputTemplate::Code)
+            || (matches!(config.template, crate::OutputTemplate::Auto)
+                && root_is_fileset);
     let line_number_width = if should_measure_line_numbers {
         let max_index = compute_max_index(
             order_build,
@@ -783,7 +783,6 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -821,7 +820,6 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         // Sanity: output should contain CRLF newlines and render the object child across lines.
@@ -861,7 +859,6 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_snapshot!("arena_render_single", out);
@@ -902,7 +899,6 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_snapshot!("array_omitted_pseudo_head", out_head);
@@ -924,7 +920,6 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_snapshot!("array_omitted_pseudo_tail", out_tail);
@@ -963,7 +958,6 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_snapshot!("array_omitted_js_head", out_head);
@@ -984,7 +978,6 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_snapshot!("array_omitted_js_tail", out_tail);
@@ -1023,7 +1016,6 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out_head);
@@ -1045,7 +1037,6 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out_tail);
@@ -1081,7 +1072,6 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1117,7 +1107,6 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1151,7 +1140,6 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1213,7 +1201,6 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1286,7 +1273,6 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         // Expect the first 5 characters plus an ellipsis, as a valid JSON string literal.
@@ -1322,7 +1308,6 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_yaml_valid(&out);
@@ -1365,7 +1350,6 @@ mod tests {
             style: crate::serialization::types::Style::Strict,
             string_free_prefix_graphemes: None,
             debug: false,
-            show_line_numbers: false,
         };
         let scope = RenderScope {
             order: &build,
@@ -1406,7 +1390,6 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         assert_snapshot!("inline_open_array_in_object_json", out);
@@ -1443,7 +1426,6 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
-                show_line_numbers: false,
             },
         );
         // Should be a valid JS object with one property and an omitted summary.
@@ -1493,7 +1475,6 @@ mod tests {
             style,
             string_free_prefix_graphemes: None,
             debug: false,
-            show_line_numbers: false,
         }
     }
 

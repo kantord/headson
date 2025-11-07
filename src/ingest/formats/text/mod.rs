@@ -329,7 +329,6 @@ mod tests {
             style: Style::Default,
             string_free_prefix_graphemes: None,
             debug: false,
-            show_line_numbers: false,
         };
         let prio = PriorityConfig::new(100, 100);
         (cfg, prio)

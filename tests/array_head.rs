@@ -74,7 +74,6 @@ fn array_head_json_contains_first_k_values() {
         style: headson::Style::Strict,
         string_free_prefix_graphemes: None,
         debug: false,
-        show_line_numbers: false,
     };
     let mut prio = headson::PriorityConfig::new(usize::MAX, 15);
     prio.prefer_tail_arrays = false;
