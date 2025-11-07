@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::{ArgAction, Parser, ValueEnum};
 use content_inspector::{ContentType, inspect};
 
@@ -250,41 +250,6 @@ fn compute_priority(
     get_priority_config(per_file_for_priority, cli)
 }
 
-fn any_yaml_ext(entries: &InputEntries) -> bool {
-    entries.iter().any(|(name, _)| {
-        let lower = name.to_ascii_lowercase();
-        lower.ends_with(".yaml") || lower.ends_with(".yml")
-    })
-}
-
-fn all_json_ext(entries: &InputEntries) -> bool {
-    entries
-        .iter()
-        .all(|(name, _)| name.to_ascii_lowercase().ends_with(".json"))
-}
-
-fn choose_input_format_fileset(
-    cli: &Cli,
-    entries: &InputEntries,
-) -> InputFormat {
-    if matches!(cli.format, OutputFormat::Auto) {
-        if any_yaml_ext(entries) {
-            InputFormat::Yaml
-        } else if all_json_ext(entries) {
-            InputFormat::Json
-        } else {
-            // Mixed or unknown extensions: treat as text to avoid JSON/YAML parse errors
-            InputFormat::Text
-        }
-    } else {
-        cli.input_format
-    }
-}
-
-fn should_use_multi_format_fileset(cli: &Cli) -> bool {
-    matches!(cli.format, OutputFormat::Auto)
-}
-
 fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
     let lower = name.to_ascii_lowercase();
     if lower.ends_with(".yaml") || lower.ends_with(".yml") {
@@ -296,18 +261,6 @@ fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
         headson::FilesetInputKind::Text {
             atomic_lines: atomic,
         }
-    }
-}
-
-fn effective_fileset_template(
-    cli: &Cli,
-    style: headson::Style,
-) -> headson::OutputTemplate {
-    match cli.format {
-        OutputFormat::Auto => headson::OutputTemplate::Auto,
-        OutputFormat::Json => map_json_template_for_style(style),
-        OutputFormat::Yaml => headson::OutputTemplate::Yaml,
-        OutputFormat::Text => headson::OutputTemplate::Text,
     }
 }
 
@@ -373,47 +326,14 @@ fn run_from_paths(
     let eff_lines = compute_effective_lines(cli, input_count);
     let prio = compute_priority(cli, eff, eff_chars, input_count);
     if cli.inputs.len() > 1 {
-        if should_use_multi_format_fileset(cli) {
-            let mut cfg = render_cfg.clone();
-            cfg.template = effective_fileset_template(cli, cfg.style);
-            let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
-            if budgets.byte_budget.is_none()
-                && budgets.char_budget.is_none()
-                && budgets.line_budget.is_some()
-            {
-                cfg.string_free_prefix_graphemes = Some(40);
-            }
-            let files: Vec<headson::FilesetInput> = entries
-                .into_iter()
-                .map(|(name, bytes)| {
-                    let kind = detect_fileset_input_kind(&name);
-                    headson::FilesetInput { name, bytes, kind }
-                })
-                .collect();
-            let any_code = files.iter().any(|f| {
-                matches!(
-                    f.kind,
-                    headson::FilesetInputKind::Text { atomic_lines: true }
-                )
-            });
-            let mut prio_effective = prio;
-            if any_code {
-                cfg.show_line_numbers = true;
-                prio_effective.array_bias = headson::ArrayBias::HeadTail;
-            }
-            let out = headson::headson_fileset_multi_with_budgets(
-                files,
-                &cfg,
-                &prio_effective,
-                budgets,
-            )?;
-            return Ok((out, ignored));
+        if !matches!(cli.format, OutputFormat::Auto) {
+            bail!(
+                "--format cannot be customized for filesets; remove it or set to auto"
+            );
         }
-
-        let chosen_input = choose_input_format_fileset(cli, &entries);
         let mut cfg = render_cfg.clone();
-        // For filesets: if format=auto, enable per-file template selection.
-        cfg.template = effective_fileset_template(cli, cfg.style);
+        // Filesets always render with per-file auto templates.
+        cfg.template = headson::OutputTemplate::Auto;
         let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
         if budgets.byte_budget.is_none()
             && budgets.char_budget.is_none()
@@ -421,36 +341,30 @@ fn run_from_paths(
         {
             cfg.string_free_prefix_graphemes = Some(40);
         }
-        let out = match chosen_input {
-            InputFormat::Json => headson::headson_many_with_budgets(
-                entries, &cfg, &prio, budgets,
-            )?,
-            InputFormat::Yaml => headson::headson_many_yaml_with_budgets(
-                entries, &cfg, &prio, budgets,
-            )?,
-            InputFormat::Text => {
-                // If fileset contains any code-like files, enable code-friendly
-                // behavior: per-file Code template (handled in fileset renderer)
-                // and edge-favoring array bias for better structural framing.
-                let any_code = entries.iter().any(|(name, _)| {
-                    headson::extensions::is_code_like_name(
-                        &name.to_ascii_lowercase(),
-                    )
-                });
-                if any_code {
-                    cfg.show_line_numbers = true;
-                    let mut prio_code = prio;
-                    prio_code.array_bias = headson::ArrayBias::HeadTail;
-                    headson::headson_many_text_with_budgets(
-                        entries, &cfg, &prio_code, budgets,
-                    )?
-                } else {
-                    headson::headson_many_text_with_budgets(
-                        entries, &cfg, &prio, budgets,
-                    )?
-                }
-            }
-        };
+        let files: Vec<headson::FilesetInput> = entries
+            .into_iter()
+            .map(|(name, bytes)| {
+                let kind = detect_fileset_input_kind(&name);
+                headson::FilesetInput { name, bytes, kind }
+            })
+            .collect();
+        let any_code = files.iter().any(|f| {
+            matches!(
+                f.kind,
+                headson::FilesetInputKind::Text { atomic_lines: true }
+            )
+        });
+        let mut prio_effective = prio;
+        if any_code {
+            cfg.show_line_numbers = true;
+            prio_effective.array_bias = headson::ArrayBias::HeadTail;
+        }
+        let out = headson::headson_fileset_multi_with_budgets(
+            files,
+            &cfg,
+            &prio_effective,
+            budgets,
+        )?;
         return Ok((out, ignored));
     }
 
