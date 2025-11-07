@@ -1,0 +1,31 @@
+---
+source: tests/fileset_multi_ingest.rs
+assertion_line: 84
+expression: out
+---
+==> config.json <==
+{
+  "service": {
+    "enabled": true,
+    "endpoints": [
+      "/health",
+      "/status"
+      …
+    ]
+  }
+}
+
+==> script.sh <==
+#!/usr/bin/env bash
+set -euo pipefail
+…
+
+
+==> settings.yaml <==
+environments:
+  prod:
+    region: eu-west-1
+    replicas: 4
+  staging:
+    region: us-east-1
+    replicas: 1
