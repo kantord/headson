@@ -6,10 +6,8 @@ STDOUT:
  1: public class Sample {
  2:     static void greet(String name) {
  4:     }
- 5: 
 16:     }
 28: }
-29: 
 
 DEBUG (normalized):
 {
@@ -20,13 +18,13 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 4,
+    "omitted_children": 5,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 103,
+    "bytes": 93,
     "chars": 0,
-    "lines": 8
+    "lines": 6
   },
   "renderer": {
     "array_sampler": "default",
@@ -106,13 +104,6 @@ DEBUG (normalized):
       {
         "children": [
           {
-            "atomic_token": "",
-            "id": 0,
-            "index_in_parent_array": 4,
-            "kind": "string",
-            "metrics": {}
-          },
-          {
             "children": [
               {
                 "atomic_token": "    }",
@@ -131,19 +122,13 @@ DEBUG (normalized):
             "omitted_before": 15
           }
         ],
-        "gaps": [
-          {
-            "before_child_index": 1,
-            "omitted_count": 10
-          }
-        ],
         "id": 0,
         "index_in_parent_array": 1,
         "kind": "array",
         "metrics": {
           "array_len": 3
         },
-        "omitted_before": 4
+        "omitted_before": 15
       },
       {
         "children": [
@@ -164,22 +149,12 @@ DEBUG (normalized):
         "omitted_before": 27
       },
       {
-        "children": [
-          {
-            "atomic_token": "",
-            "id": 0,
-            "index_in_parent_array": 28,
-            "kind": "string",
-            "metrics": {}
-          }
-        ],
         "id": 0,
         "index_in_parent_array": 6,
         "kind": "array",
         "metrics": {
           "array_len": 1
-        },
-        "omitted_before": 28
+        }
       }
     ],
     "gaps": [
@@ -195,7 +170,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 16
+    "top_k": 14
   },
   "template": "code"
 }

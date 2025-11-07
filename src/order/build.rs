@@ -176,8 +176,19 @@ impl<'a> Scope<'a> {
                 i
             };
             let extra: u128 = self.array_extra_for_index(i, kept);
-            let score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
+            let mut score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
             let child_node = &self.arena.nodes[child_arena_id];
+            if matches!(
+                child_kind,
+                NodeKind::Null | NodeKind::Bool | NodeKind::Number
+            ) && child_node
+                .atomic_token
+                .as_deref()
+                .map(|s| s.trim().is_empty())
+                .unwrap_or(false)
+            {
+                score = score.saturating_add(CODE_EMPTY_LINE_PENALTY);
+            }
             let atomic = child_node.atomic_token.clone();
             self.push_child_common(
                 entry,

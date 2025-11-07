@@ -6,7 +6,6 @@ STDOUT:
  1: import React from 'react';
  2: 
  3: type Props = { name: string };
-23: 
 24:   return (
 34:   );
 35: }
@@ -21,13 +20,13 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 7,
+    "omitted_children": 8,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 111,
+    "bytes": 106,
     "chars": 0,
-    "lines": 9
+    "lines": 8
   },
   "renderer": {
     "array_sampler": "default",
@@ -93,13 +92,6 @@ DEBUG (normalized):
       {
         "children": [
           {
-            "atomic_token": "",
-            "id": 0,
-            "index_in_parent_array": 22,
-            "kind": "string",
-            "metrics": {}
-          },
-          {
             "children": [
               {
                 "atomic_token": "  return (",
@@ -152,7 +144,7 @@ DEBUG (normalized):
         ],
         "gaps": [
           {
-            "before_child_index": 2,
+            "before_child_index": 1,
             "omitted_count": 9
           }
         ],
@@ -162,7 +154,7 @@ DEBUG (normalized):
         "metrics": {
           "array_len": 3
         },
-        "omitted_before": 22
+        "omitted_before": 23
       },
       {
         "children": [
@@ -214,7 +206,7 @@ DEBUG (normalized):
     }
   },
   "selection": {
-    "top_k": 18
+    "top_k": 17
   },
   "template": "code"
 }

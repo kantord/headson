@@ -6,7 +6,7 @@ STDOUT:
  1: package main
  2: 
  3: import "fmt"
-27: 
+28:     value := compute(10)
 29:     fmt.Println("value:", value)
 30: }
 31: 
@@ -20,11 +20,11 @@ DEBUG (normalized):
   },
   "counts": {
     "included": 0,
-    "omitted_children": 9,
+    "omitted_children": 10,
     "total_nodes": 0
   },
   "output_stats": {
-    "bytes": 92,
+    "bytes": 116,
     "chars": 0,
     "lines": 8
   },
@@ -92,19 +92,22 @@ DEBUG (normalized):
       {
         "children": [
           {
-            "atomic_token": "",
-            "id": 0,
-            "index_in_parent_array": 26,
-            "kind": "string",
-            "metrics": {}
-          },
-          {
+            "children": [
+              {
+                "atomic_token": "    value := compute(10)",
+                "id": 0,
+                "index_in_parent_array": 27,
+                "kind": "string",
+                "metrics": {}
+              }
+            ],
             "id": 0,
             "index_in_parent_array": 27,
             "kind": "array",
             "metrics": {
               "array_len": 1
-            }
+            },
+            "omitted_before": 27
           },
           {
             "children": [
@@ -131,7 +134,7 @@ DEBUG (normalized):
         "metrics": {
           "array_len": 3
         },
-        "omitted_before": 26
+        "omitted_before": 27
       },
       {
         "children": [
