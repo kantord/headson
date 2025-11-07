@@ -61,13 +61,11 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
             }
             _ => {
                 // Leaf line: print line number and content.
-                if out.line_numbers_enabled() {
-                    let n = orig_index.saturating_add(1);
-                    if let Some(w) = out.line_number_width() {
-                        out.push_str(&format!("{n:>w$}: "));
-                    } else {
-                        out.push_str(&format!("{n}: "));
-                    }
+                let n = orig_index.saturating_add(1);
+                if let Some(w) = out.line_number_width() {
+                    out.push_str(&format!("{n:>w$}: "));
+                } else {
+                    out.push_str(&format!("{n}: "));
                 }
                 out.push_str(item);
                 out.push_newline();

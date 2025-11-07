@@ -16,8 +16,8 @@ expression: out
 }
 
 ==> script.sh <==
-#!/usr/bin/env bash
-set -euo pipefail
+1: #!/usr/bin/env bash
+2: set -euo pipefail
 
 
 ==> settings.yaml <==

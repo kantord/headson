@@ -8,7 +8,6 @@ pub struct Out<'a> {
     indent_unit: String,
     color_enabled: bool,
     style: crate::serialization::types::Style,
-    show_line_numbers: bool,
     line_number_width: Option<usize>,
 }
 
@@ -24,7 +23,6 @@ impl<'a> Out<'a> {
             indent_unit: config.indent_unit.clone(),
             color_enabled: config.color_enabled,
             style: config.style,
-            show_line_numbers: config.show_line_numbers,
             line_number_width,
         }
     }
@@ -91,10 +89,6 @@ impl<'a> Out<'a> {
 
     pub fn style(&self) -> crate::serialization::types::Style {
         self.style
-    }
-
-    pub fn line_numbers_enabled(&self) -> bool {
-        self.show_line_numbers
     }
 
     pub fn line_number_width(&self) -> Option<usize> {

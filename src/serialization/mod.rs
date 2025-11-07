@@ -694,12 +694,13 @@ pub fn render_from_render_set(
         }
         max_idx
     }
-    let line_number_width = if config.show_line_numbers
-        && matches!(
-            config.template,
-            crate::serialization::types::OutputTemplate::Text
-                | crate::serialization::types::OutputTemplate::Code
-        ) {
+    let root_is_fileset =
+        order_build.object_type.get(root_id) == Some(&ObjectType::Fileset);
+    let should_measure_line_numbers = config.show_line_numbers
+        || matches!(config.template, crate::OutputTemplate::Code)
+        || (matches!(config.template, crate::OutputTemplate::Auto)
+            && root_is_fileset);
+    let line_number_width = if should_measure_line_numbers {
         let max_index = compute_max_index(
             order_build,
             inclusion_flags,
