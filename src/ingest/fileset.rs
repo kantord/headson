@@ -57,7 +57,7 @@ pub fn parse_fileset_multi(
     Ok(build_fileset_root(arenas))
 }
 
-fn build_fileset_root(
+pub(crate) fn build_fileset_root(
     mut items: Vec<(String, JsonTreeArena)>,
 ) -> JsonTreeArena {
     let mut arena = JsonTreeArena {

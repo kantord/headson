@@ -5,8 +5,8 @@ use crate::PriorityConfig;
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
-use crate::ingest::Ingest;
 use crate::ingest::sampling::{ArraySamplerKind, choose_indices};
+use crate::ingest::{Ingest, fileset::build_fileset_root};
 
 fn normalize_newlines(s: &str) -> Cow<'_, str> {
     // Normalize CRLF and CR to LF in a single allocation when needed.
@@ -112,63 +112,6 @@ impl TextArenaBuilder {
         let len = self.arena.arr_indices.len().saturating_sub(start);
         n.arr_indices_start = start;
         n.arr_indices_len = len.min(kept);
-        id
-    }
-
-    fn push_array_of_lines(
-        &mut self,
-        lines: &[String],
-        total: usize,
-        atomic: bool,
-    ) -> usize {
-        let id = self.push_default();
-        let idxs = choose_indices(self.sampler, total, self.array_cap);
-        let kept = idxs.len().min(self.array_cap);
-        let mut pushed = 0usize;
-        for (i, &orig_index) in idxs.iter().take(kept).enumerate() {
-            if let Some(line) = lines.get(orig_index) {
-                let child = if atomic {
-                    self.push_string_atomic(line.clone())
-                } else {
-                    self.push_string(line.clone())
-                };
-                self.arena.children.push(child);
-                pushed = i + 1;
-            }
-        }
-        let n = &mut self.arena.nodes[id];
-        n.kind = NodeKind::Array;
-        n.children_start = self.arena.children.len().saturating_sub(pushed);
-        n.children_len = pushed;
-        n.array_len = Some(total);
-        // Always store original indices for children so per-file numbering works
-        let start = self.arena.arr_indices.len();
-        self.arena.arr_indices.extend(idxs.into_iter().take(kept));
-        let len = self.arena.arr_indices.len().saturating_sub(start);
-        n.arr_indices_start = start;
-        n.arr_indices_len = len.min(pushed);
-        id
-    }
-
-    fn push_object_root(
-        &mut self,
-        keys: Vec<String>,
-        children: Vec<usize>,
-    ) -> usize {
-        let id = self.push_default();
-        let count = keys.len().min(children.len());
-        let children_start = self.arena.children.len();
-        let obj_keys_start = self.arena.obj_keys.len();
-        self.arena.children.extend(children);
-        self.arena.obj_keys.extend(keys);
-        let n = &mut self.arena.nodes[id];
-        n.kind = NodeKind::Object;
-        n.children_start = children_start;
-        n.children_len = count;
-        n.obj_keys_start = obj_keys_start;
-        n.obj_keys_len = count;
-        n.object_len = Some(count);
-        // No global line numbering across files here.
         id
     }
 }
@@ -320,34 +263,18 @@ pub fn build_text_tree_arena_from_bytes(
     reason = "Signature matches other ingest helpers and trait expectations"
 )]
 pub fn build_text_tree_arena_from_many(
-    mut inputs: Vec<(String, Vec<u8>)>,
+    inputs: Vec<(String, Vec<u8>)>,
     config: &PriorityConfig,
 ) -> Result<JsonTreeArena> {
-    let mut b = TextArenaBuilder::new(
-        config.array_max_items,
-        config.array_sampler.into(),
-    );
-    let mut keys: Vec<String> = Vec::with_capacity(inputs.len());
-    let mut children_ids: Vec<usize> = Vec::with_capacity(inputs.len());
-
-    for (key, bytes) in inputs.drain(..) {
-        let lossy = String::from_utf8_lossy(&bytes);
-        let norm = normalize_newlines(&lossy);
-        let lines_vec: Vec<String> = norm
-            .split_terminator('\n')
-            .map(std::string::ToString::to_string)
-            .collect();
-        let total = lines_vec.len();
+    let mut arenas: Vec<(String, JsonTreeArena)> =
+        Vec::with_capacity(inputs.len());
+    for (key, bytes) in inputs {
         let atomic = crate::utils::extensions::is_code_like_name(&key);
-        let child_id = b.push_array_of_lines(&lines_vec, total, atomic);
-        keys.push(key);
-        children_ids.push(child_id);
+        let arena =
+            build_text_tree_arena_from_bytes_with_mode(bytes, config, atomic)?;
+        arenas.push((key, arena));
     }
-    let root_id = b.push_object_root(keys, children_ids);
-    let mut a = b.finish();
-    a.root_id = root_id;
-    a.is_fileset = true;
-    Ok(a)
+    Ok(build_fileset_root(arenas))
 }
 
 pub struct TextIngest;
