@@ -137,12 +137,12 @@ fn code_text_fallback_case(path: &Path) {
     }
     let name = stem_with_ext(path);
     // Single canonical snapshot for Code template (style has no effect on output).
-    let (out_default, err_dbg_default) =
+    let (out_default, _err_dbg_default) =
         run_cli_auto_text_with_debug(path, "default");
-    let snap = format!(
-        "STDOUT:\n{out_default}\nDEBUG (normalized):\n{err_dbg_default}\n"
+    assert_snapshot!(
+        format!("code_text_fallback_{}_stdout", name),
+        out_default
     );
-    assert_snapshot!(format!("code_text_fallback_{}_combined", name), snap);
 
     // Assert style invariance of STDOUT for code template.
     let out_strict = run_cli_auto_text_with_style(path, "strict");

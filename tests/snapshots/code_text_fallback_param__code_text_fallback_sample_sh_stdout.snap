@@ -1,0 +1,13 @@
+---
+source: tests/code_text_fallback_param.rs
+assertion_line: 142
+expression: out_default
+---
+ 1: #!/usr/bin/env bash
+ 2: 
+ 3: greet() {
+ 4:   local name="$1"
+ 5:   echo "Hello, ${name}"
+31: 
+32: main "$@"
+33:

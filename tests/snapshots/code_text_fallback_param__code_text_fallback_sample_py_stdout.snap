@@ -1,0 +1,12 @@
+---
+source: tests/code_text_fallback_param.rs
+assertion_line: 142
+expression: out_default
+---
+ 1: def greet(name: str):
+ 2:     print(f"Hello, {name}")
+ 3: 
+ 4: 
+22: 
+23: if __name__ == "__main__":
+24:     main()
