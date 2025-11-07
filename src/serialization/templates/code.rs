@@ -37,7 +37,7 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
 
     // No omission marker at start for code template.
 
-    for (_i, (orig_index, (kind, item))) in ctx.children.iter().enumerate() {
+    for (orig_index, (kind, item)) in ctx.children.iter() {
         let is_multiline = item.contains('\n');
         match kind {
             super::super::NodeKind::Array | super::super::NodeKind::Object => {
@@ -64,7 +64,7 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
                 if out.line_numbers_enabled() {
                     let n = orig_index.saturating_add(1);
                     if let Some(w) = out.line_number_width() {
-                        out.push_str(&format!("{:>width$}: ", n, width = w));
+                        out.push_str(&format!("{n:>w$}: "));
                     } else {
                         out.push_str(&format!("{n}: "));
                     }
@@ -77,8 +77,6 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
                 }
             }
         }
-
-        let _ = orig_index;
     }
 
     // No omission marker at end for code template.

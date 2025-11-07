@@ -384,7 +384,7 @@ fn run_from_paths(
                 });
                 if any_code {
                     cfg.show_line_numbers = true;
-                    let mut prio_code = prio.clone();
+                    let mut prio_code = prio;
                     prio_code.array_bias = headson::ArrayBias::HeadTail;
                     headson::headson_many_text_with_budgets(
                         entries, &cfg, &prio_code, budgets,
@@ -442,7 +442,7 @@ fn run_from_paths(
                     // Switch to the Code template for rendering
                     cfg.template = headson::OutputTemplate::Code;
                     // Bias arrays to favor edges (head+tail) for code readability
-                    let mut prio_code = prio.clone();
+                    let mut prio_code = prio;
                     prio_code.array_bias = headson::ArrayBias::HeadTail;
                     headson::headson_text_with_budgets_code(
                         bytes, &cfg, &prio_code, budgets,

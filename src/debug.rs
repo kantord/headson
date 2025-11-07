@@ -196,20 +196,25 @@ fn string_preview(value: &str) -> String {
     }
 }
 
+struct BuildCtx<'a> {
+    order: &'a PriorityOrder,
+    inclusion_flags: &'a [u32],
+    render_id: u32,
+    include_count: &'a mut usize,
+    omitted_children_sum: &'a mut usize,
+    treat_atomic_as_string: bool,
+}
+
 #[allow(
     clippy::cognitive_complexity,
     clippy::too_many_lines,
     reason = "Pruned tree emission keeps branching in one place for clarity"
 )]
-fn build_node(
-    order: &PriorityOrder,
-    id: usize,
-    inclusion_flags: &[u32],
-    render_id: u32,
-    include_count: &mut usize,
-    omitted_children_sum: &mut usize,
-    treat_atomic_as_string: bool,
-) -> NodeDbg {
+fn build_node(ctx: &mut BuildCtx<'_>, id: usize) -> NodeDbg {
+    let order = ctx.order;
+    let inclusion_flags = ctx.inclusion_flags;
+    let render_id = ctx.render_id;
+    let treat_atomic_as_string = ctx.treat_atomic_as_string;
     let rn = &order.nodes[id];
     let key_in_object =
         rn.key_in_object().map(std::string::ToString::to_string);
@@ -225,7 +230,7 @@ fn build_node(
     // Count only renderable nodes (skip string parts).
     let renderable = !matches!(rn, RankedNode::LeafPart { .. });
     if renderable {
-        *include_count += 1;
+        *ctx.include_count += 1;
     }
 
     // Leaf handling and children traversal
@@ -275,15 +280,7 @@ fn build_node(
                         .flatten()
                         .unwrap_or(i);
                     idxs.push(orig_index);
-                    kids.push(build_node(
-                        order,
-                        cid_usize,
-                        inclusion_flags,
-                        render_id,
-                        include_count,
-                        omitted_children_sum,
-                        treat_atomic_as_string,
-                    ));
+                    kids.push(build_node(ctx, cid_usize));
                 }
             }
             Built {
@@ -330,8 +327,8 @@ fn build_node(
             }
             let kept_count = kept_indices.len();
             let omitted = total.saturating_sub(kept_count);
-            *omitted_children_sum =
-                omitted_children_sum.saturating_add(omitted);
+            *ctx.omitted_children_sum =
+                ctx.omitted_children_sum.saturating_add(omitted);
         }
     }
 
@@ -370,21 +367,20 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
     } = args;
     let mut included = 0usize;
     let mut omitted_children_sum: usize = 0;
-    let root = build_node(
+    let treat_atomic_as_string = matches!(
+        cfg.template,
+        crate::serialization::types::OutputTemplate::Text
+            | crate::serialization::types::OutputTemplate::Code
+    );
+    let mut ctx = BuildCtx {
         order,
-        ROOT_PQ_ID,
         inclusion_flags,
         render_id,
-        &mut included,
-        &mut omitted_children_sum,
-        // Treat atomic leaves as strings when rendering via Text/Code template at root
-        // (single-file text inputs). Filesets report "auto" and retain defaults.
-        matches!(
-            cfg.template,
-            crate::serialization::types::OutputTemplate::Text
-                | crate::serialization::types::OutputTemplate::Code
-        ),
-    );
+        include_count: &mut included,
+        omitted_children_sum: &mut omitted_children_sum,
+        treat_atomic_as_string,
+    };
+    let root = build_node(&mut ctx, ROOT_PQ_ID);
     let dump = DumpDbg {
         root,
         counts: CountsDbg {

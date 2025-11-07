@@ -82,33 +82,35 @@ impl<'a> RenderScope<'a> {
         raw_key: &str,
     ) -> String {
         if matches!(self.config.template, OutputTemplate::Auto) {
-            let fmt = Format::from_filename(raw_key);
-            let template = match fmt {
-                Format::Yaml => OutputTemplate::Yaml,
-                Format::Json => match self.config.style {
-                    crate::serialization::types::Style::Strict => {
-                        OutputTemplate::Json
-                    }
-                    crate::serialization::types::Style::Default => {
-                        OutputTemplate::Pseudo
-                    }
-                    crate::serialization::types::Style::Detailed => {
-                        OutputTemplate::Js
-                    }
-                },
-                Format::Unknown => {
-                    // Treat code-like filenames as Code; others as Text.
-                    if crate::utils::extensions::is_code_like_name(raw_key) {
-                        OutputTemplate::Code
-                    } else {
-                        OutputTemplate::Text
-                    }
-                }
-            };
+            let template = self.fileset_template_for(raw_key);
             return self.render_node_to_string_with_template(
                 child_id, depth, false, template,
             );
         }
         self.render_node_to_string(child_id, depth, false)
+    }
+
+    fn fileset_template_for(&self, raw_key: &str) -> OutputTemplate {
+        match Format::from_filename(raw_key) {
+            Format::Yaml => OutputTemplate::Yaml,
+            Format::Json => match self.config.style {
+                crate::serialization::types::Style::Strict => {
+                    OutputTemplate::Json
+                }
+                crate::serialization::types::Style::Default => {
+                    OutputTemplate::Pseudo
+                }
+                crate::serialization::types::Style::Detailed => {
+                    OutputTemplate::Js
+                }
+            },
+            Format::Unknown => {
+                if crate::utils::extensions::is_code_like_name(raw_key) {
+                    OutputTemplate::Code
+                } else {
+                    OutputTemplate::Text
+                }
+            }
+        }
     }
 }

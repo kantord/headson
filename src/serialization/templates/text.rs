@@ -102,7 +102,7 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
 
     // Track original indices to emit omission markers for internal gaps.
     let mut prev_index: Option<usize> = None;
-    for (_i, (orig_index, (kind, item))) in ctx.children.iter().enumerate() {
+    for (orig_index, (kind, item)) in ctx.children.iter() {
         if let Some(prev) = prev_index {
             let gap = orig_index.saturating_sub(prev).saturating_sub(1);
             if gap > 0 {

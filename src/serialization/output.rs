@@ -15,20 +15,16 @@ pub struct Out<'a> {
 impl<'a> Out<'a> {
     pub fn new(
         buf: &'a mut String,
-        newline: &str,
-        indent_unit: &str,
-        color_enabled: bool,
-        style: crate::serialization::types::Style,
-        show_line_numbers: bool,
+        config: &crate::RenderConfig,
         line_number_width: Option<usize>,
     ) -> Self {
         Self {
             buf,
-            newline: newline.to_string(),
-            indent_unit: indent_unit.to_string(),
-            color_enabled,
-            style,
-            show_line_numbers,
+            newline: config.newline.clone(),
+            indent_unit: config.indent_unit.clone(),
+            color_enabled: config.color_enabled,
+            style: config.style,
+            show_line_numbers: config.show_line_numbers,
             line_number_width,
         }
     }

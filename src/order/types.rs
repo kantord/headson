@@ -1,4 +1,4 @@
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct PriorityConfig {
     pub max_string_graphemes: usize,
     pub array_max_items: usize,

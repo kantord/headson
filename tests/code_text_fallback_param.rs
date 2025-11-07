@@ -62,27 +62,24 @@ fn run_cli_auto_text_with_debug(path: &Path, style: &str) -> (String, String) {
 // keeps full children so we can debug structure.
 fn normalize_debug(s: &str) -> String {
     use serde_json::Value;
+    fn zero_ids_and_counts(map: &mut serde_json::Map<String, Value>) {
+        if let Some(id) = map.get_mut("id") {
+            *id = Value::from(0);
+        }
+        if let Some(counts) = map.get_mut("counts") {
+            if let Some(obj) = counts.as_object_mut() {
+                obj.insert("total_nodes".to_string(), Value::from(0));
+                obj.insert("included".to_string(), Value::from(0));
+            }
+        }
+    }
     fn walk(v: &mut Value) {
         match v {
             Value::Object(map) => {
-                if let Some(id) = map.get_mut("id") {
-                    *id = Value::from(0);
-                }
-                if let Some(counts) = map.get_mut("counts") {
-                    if let Some(obj) = counts.as_object_mut() {
-                        obj.insert("total_nodes".to_string(), Value::from(0));
-                        obj.insert("included".to_string(), Value::from(0));
-                    }
-                }
-                for (_k, vv) in map.iter_mut() {
-                    walk(vv);
-                }
+                zero_ids_and_counts(map);
+                map.iter_mut().for_each(|(_, vv)| walk(vv));
             }
-            Value::Array(arr) => {
-                for vv in arr.iter_mut() {
-                    walk(vv);
-                }
-            }
+            Value::Array(arr) => arr.iter_mut().for_each(walk),
             _ => {}
         }
     }

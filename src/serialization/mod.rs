@@ -503,29 +503,15 @@ impl<'a> RenderScope<'a> {
         match &self.order.nodes[id] {
             RankedNode::Array { .. } => {
                 let mut s = String::new();
-                let mut ow = Out::new(
-                    &mut s,
-                    &self.config.newline,
-                    &self.config.indent_unit,
-                    self.config.color_enabled,
-                    self.config.style,
-                    self.config.show_line_numbers,
-                    self.line_number_width,
-                );
+                let mut ow =
+                    Out::new(&mut s, self.config, self.line_number_width);
                 self.write_array(id, depth, inline, &mut ow);
                 s
             }
             RankedNode::Object { .. } => {
                 let mut s = String::new();
-                let mut ow = Out::new(
-                    &mut s,
-                    &self.config.newline,
-                    &self.config.indent_unit,
-                    self.config.color_enabled,
-                    self.config.style,
-                    self.config.show_line_numbers,
-                    self.line_number_width,
-                );
+                let mut ow =
+                    Out::new(&mut s, self.config, self.line_number_width);
                 self.write_object(id, depth, inline, &mut ow);
                 s
             }
@@ -599,15 +585,8 @@ impl<'a> RenderScope<'a> {
         match &self.order.nodes[id] {
             RankedNode::Array { .. } => {
                 let mut s = String::new();
-                let mut ow = Out::new(
-                    &mut s,
-                    &self.config.newline,
-                    &self.config.indent_unit,
-                    self.config.color_enabled,
-                    self.config.style,
-                    self.config.show_line_numbers,
-                    self.line_number_width,
-                );
+                let mut ow =
+                    Out::new(&mut s, self.config, self.line_number_width);
                 self.write_array_with_template(
                     id, depth, inline, &mut ow, template,
                 );
@@ -615,15 +594,8 @@ impl<'a> RenderScope<'a> {
             }
             RankedNode::Object { .. } => {
                 let mut s = String::new();
-                let mut ow = Out::new(
-                    &mut s,
-                    &self.config.newline,
-                    &self.config.indent_unit,
-                    self.config.color_enabled,
-                    self.config.style,
-                    self.config.show_line_numbers,
-                    self.line_number_width,
-                );
+                let mut ow =
+                    Out::new(&mut s, self.config, self.line_number_width);
                 self.write_object_with_template(
                     id, depth, inline, &mut ow, template,
                 );
@@ -680,6 +652,27 @@ pub fn render_from_render_set(
         }
         d
     }
+    fn max_index_for_child(
+        order: &PriorityOrder,
+        flags: &[u32],
+        rid: u32,
+        child: usize,
+    ) -> Option<usize> {
+        if flags.get(child).copied().unwrap_or_default() != rid {
+            return None;
+        }
+        match order.nodes[child] {
+            RankedNode::AtomicLeaf { .. }
+            | RankedNode::SplittableLeaf { .. } => {
+                order.index_in_parent_array.get(child).and_then(|idx| *idx)
+            }
+            RankedNode::Array { .. } | RankedNode::Object { .. } => {
+                Some(compute_max_index(order, flags, rid, child))
+            }
+            _ => None,
+        }
+    }
+
     fn compute_max_index(
         order: &PriorityOrder,
         flags: &[u32],
@@ -689,29 +682,13 @@ pub fn render_from_render_set(
         let mut max_idx = 0usize;
         if let Some(kids) = order.children.get(id) {
             for &cid in kids.iter() {
-                let c = cid.0;
-                if flags[c] != rid {
-                    continue;
-                }
-                // Only consider leaf nodes (printed lines) for width calc.
-                match order.nodes[c] {
-                    RankedNode::AtomicLeaf { .. }
-                    | RankedNode::SplittableLeaf { .. } => {
-                        if let Some(idx) =
-                            order.index_in_parent_array.get(c).and_then(|o| *o)
-                        {
-                            if idx > max_idx {
-                                max_idx = idx;
-                            }
-                        }
+                let child_id = cid.0;
+                if let Some(child_max) =
+                    max_index_for_child(order, flags, rid, child_id)
+                {
+                    if child_max > max_idx {
+                        max_idx = child_max;
                     }
-                    RankedNode::Array { .. } | RankedNode::Object { .. } => {
-                        let m = compute_max_index(order, flags, rid, c);
-                        if m > max_idx {
-                            max_idx = m;
-                        }
-                    }
-                    _ => {}
                 }
             }
         }
@@ -741,15 +718,7 @@ pub fn render_from_render_set(
         line_number_width,
     };
     let mut s = String::new();
-    let mut out = Out::new(
-        &mut s,
-        &config.newline,
-        &config.indent_unit,
-        config.color_enabled,
-        config.style,
-        config.show_line_numbers,
-        line_number_width,
-    );
+    let mut out = Out::new(&mut s, config, line_number_width);
     scope.write_node(root_id, 0, false, &mut out);
     s
 }
@@ -1192,15 +1161,12 @@ mod tests {
     fn array_internal_gaps_yaml() {
         let ctx = mk_gap_ctx();
         let mut s = String::new();
-        let mut outw = crate::serialization::output::Out::new(
-            &mut s,
-            "\n",
-            "  ",
-            false,
+        let cfg = test_render_cfg(
+            crate::OutputTemplate::Yaml,
             crate::serialization::types::Style::Default,
-            false,
-            None,
         );
+        let mut outw =
+            crate::serialization::output::Out::new(&mut s, &cfg, None);
         super::templates::render_array(
             crate::OutputTemplate::Yaml,
             &ctx,
@@ -1511,19 +1477,35 @@ mod tests {
         needles.iter().for_each(|n| assert!(out.contains(n)));
     }
 
+    fn test_render_cfg(
+        template: crate::OutputTemplate,
+        style: crate::serialization::types::Style,
+    ) -> crate::RenderConfig {
+        crate::RenderConfig {
+            template,
+            indent_unit: "  ".to_string(),
+            space: " ".to_string(),
+            newline: "\n".to_string(),
+            prefer_tail_arrays: false,
+            color_mode: crate::ColorMode::Off,
+            color_enabled: false,
+            style,
+            string_free_prefix_graphemes: None,
+            debug: false,
+            show_line_numbers: false,
+        }
+    }
+
     #[test]
     fn array_internal_gaps_pseudo() {
         let ctx = mk_gap_ctx();
         let mut s = String::new();
-        let mut outw = crate::serialization::output::Out::new(
-            &mut s,
-            "\n",
-            "  ",
-            false,
+        let cfg = test_render_cfg(
+            crate::OutputTemplate::Pseudo,
             crate::serialization::types::Style::Default,
-            false,
-            None,
         );
+        let mut outw =
+            crate::serialization::output::Out::new(&mut s, &cfg, None);
         super::templates::render_array(
             crate::OutputTemplate::Pseudo,
             &ctx,
@@ -1540,15 +1522,12 @@ mod tests {
     fn array_internal_gaps_js() {
         let ctx = mk_gap_ctx();
         let mut s = String::new();
-        let mut outw = crate::serialization::output::Out::new(
-            &mut s,
-            "\n",
-            "  ",
-            false,
+        let cfg = test_render_cfg(
+            crate::OutputTemplate::Js,
             crate::serialization::types::Style::Default,
-            false,
-            None,
         );
+        let mut outw =
+            crate::serialization::output::Out::new(&mut s, &cfg, None);
         super::templates::render_array(
             crate::OutputTemplate::Js,
             &ctx,
