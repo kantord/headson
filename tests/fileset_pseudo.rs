@@ -2,7 +2,7 @@ fn run_pseudo(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let mut args =
-        vec!["--no-color", "-c", &budget_s, "-f", "json", "-t", "default"]; // newline mode
+        vec!["--no-color", "-c", &budget_s, "-f", "auto", "-t", "default"]; // newline mode
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert().success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
@@ -44,7 +44,7 @@ fn pseudo_fileset_compact_shows_ellipsis_for_omitted() {
             "-c",
             &budget_s,
             "-f",
-            "json",
+            "auto",
             "-t",
             "default",
             "--compact",

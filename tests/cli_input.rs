@@ -87,7 +87,7 @@ fn directories_and_binary_files_are_ignored_with_notices() {
             "-c",
             "100",
             "-f",
-            "json",
+            "auto",
             json_path.to_str().unwrap(),
             dir_path.to_str().unwrap(),
             bin_path.to_str().unwrap(),
@@ -127,7 +127,7 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
             "-c",
             "100",
             "-f",
-            "json",
+            "auto",
             dir_path.to_str().unwrap(),
         ])
         .assert();
@@ -146,7 +146,7 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
             "-c",
             "100",
             "-f",
-            "json",
+            "auto",
             dir_path.to_str().unwrap(),
             bin_path.to_str().unwrap(),
         ])
@@ -177,7 +177,7 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
     // Per-file budget (-c) scenario
     let mut cmd_pf = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let assert_pf = cmd_pf
-        .args(["--no-color", "-c", "40", "-f", "json", "a.json", "b.json"])
+        .args(["--no-color", "-c", "40", "-f", "auto", "a.json", "b.json"])
         .current_dir(tmp.path())
         .assert()
         .success();
@@ -192,7 +192,7 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
             "--global-bytes",
             "40",
             "-f",
-            "json",
+            "auto",
             "a.json",
             "b.json",
         ])

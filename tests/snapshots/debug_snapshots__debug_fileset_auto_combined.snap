@@ -44,7 +44,7 @@ DEBUG (normalized):
             "atomic_token": "1",
             "id": 0,
             "key_in_object": "a",
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],
@@ -61,7 +61,7 @@ DEBUG (normalized):
             "atomic_token": "2",
             "id": 0,
             "key_in_object": "k",
-            "kind": "number",
+            "kind": "string",
             "metrics": {}
           }
         ],

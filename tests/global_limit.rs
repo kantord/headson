@@ -3,7 +3,7 @@ mod util;
 
 fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
-    let mut full_args = vec!["--no-color", "-f", "json"];
+    let mut full_args = vec!["--no-color", "-f", "auto"];
     full_args.extend_from_slice(args);
     full_args.extend_from_slice(paths);
     let assert = cmd.args(full_args).assert();
@@ -19,7 +19,7 @@ fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let limit_s = limit.to_string();
     let mut args =
-        vec!["--no-color", "-f", "json", "-t", "detailed", "-C", &limit_s];
+        vec!["--no-color", "-f", "auto", "-t", "detailed", "-C", &limit_s];
     args.extend_from_slice(extra);
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert();
@@ -57,7 +57,7 @@ fn run_pseudo_with_limit(paths: &[&str], limit: usize) -> String {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     let limit_s = limit.to_string();
     let args =
-        vec!["--no-color", "-f", "json", "-t", "default", "-C", &limit_s];
+        vec!["--no-color", "-f", "auto", "-t", "default", "-C", &limit_s];
     let assert = cmd
         .args(args.into_iter().chain(paths.iter().copied()))
         .assert();

@@ -1,8 +1,8 @@
 fn run_with_paths(paths: &[&str], budget: usize) -> (bool, String, String) {
     let budget_s = budget.to_string();
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
-    // Force JSON template to allow JSON parsing assertions
-    let mut args = vec!["--no-color", "-c", &budget_s, "-f", "json"];
+    // Auto format selects per-file JSON renderings for .json inputs.
+    let mut args = vec!["--no-color", "-c", &budget_s, "-f", "auto"];
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert();
     let ok = assert.get_output().status.success();

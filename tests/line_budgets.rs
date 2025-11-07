@@ -112,7 +112,7 @@ fn fileset_global_lines() {
     fs::write(&b, b"[]\n").unwrap();
     let out = run(&[
         "-f",
-        "json",
+        "auto",
         "--global-lines",
         "3",
         a.to_str().unwrap(),

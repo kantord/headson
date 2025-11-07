@@ -2,7 +2,7 @@ fn run_yaml(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
     // newline mode
-    let mut args = vec!["--no-color", "-c", &budget_s, "-f", "yaml"];
+    let mut args = vec!["--no-color", "-c", &budget_s, "-f", "auto"];
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert().success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
@@ -41,7 +41,7 @@ fn yaml_compact_falls_back_to_json_style() {
             "-c",
             &budget_s,
             "-f",
-            "yaml",
+            "auto",
             "--compact",
             p1,
             p2,
@@ -70,7 +70,7 @@ fn yaml_fileset_compact_snapshot() {
             "-c",
             &budget_s,
             "-f",
-            "yaml",
+            "auto",
             "--compact",
             p1,
             p2,

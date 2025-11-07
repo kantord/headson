@@ -6,7 +6,7 @@ fn run_js(paths: &[&str], budget: usize) -> String {
         "-c",
         &budget_s,
         "-f",
-        "json",
+        "auto",
         "-t",
         "detailed",
     ]; // newline mode
@@ -52,7 +52,7 @@ fn js_fileset_compact_shows_inline_omitted_summary() {
             "-c",
             &budget_s,
             "-f",
-            "json",
+            "auto",
             "-t",
             "detailed",
             "--compact",

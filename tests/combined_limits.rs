@@ -29,7 +29,7 @@ fn run_fileset_json_with_budgets_raw(
     let mut args: Vec<String> = vec![
         "--no-color".into(),
         "-f".into(),
-        "json".into(),
+        "auto".into(),
         "-c".into(),
         per_file.to_string(),
         "-C".into(),
@@ -48,8 +48,8 @@ fn combined_limits_across_multiple_files_matches_minimum_global() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     // -c 300, -C 120 => effective global limit 120
-    let out_both = run_args(&["-f", "json", "-c", "300", "-C", "120", p1, p2]);
-    let out_min_only = run_args(&["-f", "json", "-C", "120", p1, p2]);
+    let out_both = run_args(&["-f", "auto", "-c", "300", "-C", "120", p1, p2]);
+    let out_min_only = run_args(&["-f", "auto", "-C", "120", p1, p2]);
     assert_eq!(out_both, out_min_only, "-c + -C should equal -C=min(c,C)");
     // Snapshot removed: assert equality only.
 }

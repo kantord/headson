@@ -181,7 +181,7 @@ fn fileset_char_budget_scales_with_inputs() {
             "-u",
             "40",
             "-f",
-            "json",
+            "auto",
             a.to_str().unwrap(),
             b.to_str().unwrap(),
         ])
