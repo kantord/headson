@@ -26,6 +26,7 @@ mod ingest;
 mod order;
 mod serialization;
 mod utils;
+pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
 pub use order::{
     NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
@@ -374,6 +375,23 @@ pub fn headson_many_text_with_budgets(
     budgets: Budgets,
 ) -> Result<String> {
     let arena = crate::ingest::parse_text_many(inputs, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+    Ok(find_largest_render_under_budgets(
+        &order_build,
+        config,
+        budgets,
+    ))
+}
+
+/// Fileset helper that ingests each input according to its detected format.
+pub fn headson_fileset_multi_with_budgets(
+    inputs: Vec<crate::ingest::fileset::FilesetInput>,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    budgets: Budgets,
+) -> Result<String> {
+    let arena =
+        crate::ingest::fileset::parse_fileset_multi(inputs, priority_cfg)?;
     let order_build = order::build_order(&arena, priority_cfg)?;
     Ok(find_largest_render_under_budgets(
         &order_build,

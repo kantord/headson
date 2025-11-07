@@ -14,6 +14,7 @@ pub trait Ingest {
 }
 
 // Format adapters and builders live under `formats/`.
+pub mod fileset;
 pub mod formats;
 
 // Use `crate::ingest::formats::{json,yaml,text}` for format-specific helpers.

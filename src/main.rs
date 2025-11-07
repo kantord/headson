@@ -281,6 +281,21 @@ fn choose_input_format_fileset(
     }
 }
 
+fn should_use_multi_format_fileset(cli: &Cli) -> bool {
+    matches!(cli.format, OutputFormat::Auto)
+}
+
+fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
+    let lower = name.to_ascii_lowercase();
+    if lower.ends_with(".yaml") || lower.ends_with(".yml") {
+        headson::FilesetInputKind::Yaml
+    } else if lower.ends_with(".json") {
+        headson::FilesetInputKind::Json
+    } else {
+        headson::FilesetInputKind::Text
+    }
+}
+
 fn effective_fileset_template(
     cli: &Cli,
     style: headson::Style,
@@ -355,6 +370,30 @@ fn run_from_paths(
     let eff_lines = compute_effective_lines(cli, input_count);
     let prio = compute_priority(cli, eff, eff_chars, input_count);
     if cli.inputs.len() > 1 {
+        if should_use_multi_format_fileset(cli) {
+            let mut cfg = render_cfg.clone();
+            cfg.template = effective_fileset_template(cli, cfg.style);
+            let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
+            if budgets.byte_budget.is_none()
+                && budgets.char_budget.is_none()
+                && budgets.line_budget.is_some()
+            {
+                cfg.string_free_prefix_graphemes = Some(40);
+            }
+            let files: Vec<headson::FilesetInput> = entries
+                .into_iter()
+                .map(|(name, bytes)| headson::FilesetInput {
+                    kind: detect_fileset_input_kind(&name),
+                    name,
+                    bytes,
+                })
+                .collect();
+            let out = headson::headson_fileset_multi_with_budgets(
+                files, &cfg, &prio, budgets,
+            )?;
+            return Ok((out, ignored));
+        }
+
         let chosen_input = choose_input_format_fileset(cli, &entries);
         let mut cfg = render_cfg.clone();
         // For filesets: if format=auto, enable per-file template selection.
@@ -377,50 +416,51 @@ fn run_from_paths(
                 entries, &cfg, &prio, budgets,
             )?,
         };
-        Ok((out, ignored))
-    } else if included == 0 {
-        Ok((String::new(), ignored))
-    } else {
-        let (name, bytes) = entries.into_iter().next().unwrap();
-        // Single file: pick ingest and output template per CLI format+style.
-        let lower = name.to_ascii_lowercase();
-        let is_yaml_ext = lower.ends_with(".yaml") || lower.ends_with(".yml");
-        let chosen_input = match cli.format {
-            OutputFormat::Auto => {
-                if is_yaml_ext {
-                    InputFormat::Yaml
-                } else if lower.ends_with(".json") {
-                    InputFormat::Json
-                } else {
-                    InputFormat::Text
-                }
-            }
-            _ => cli.input_format,
-        };
-        let mut cfg = render_cfg.clone();
-        cfg.template = resolve_effective_template_for_single(
-            cli.format, cfg.style, &lower,
-        );
-        let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
-        if budgets.byte_budget.is_none()
-            && budgets.char_budget.is_none()
-            && budgets.line_budget.is_some()
-        {
-            cfg.string_free_prefix_graphemes = Some(40);
-        }
-        let out = match chosen_input {
-            InputFormat::Json => {
-                headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
-            }
-            InputFormat::Yaml => headson::headson_yaml_with_budgets(
-                bytes, &cfg, &prio, budgets,
-            )?,
-            InputFormat::Text => headson::headson_text_with_budgets(
-                bytes, &cfg, &prio, budgets,
-            )?,
-        };
-        Ok((out, ignored))
+        return Ok((out, ignored));
     }
+
+    if included == 0 {
+        return Ok((String::new(), ignored));
+    }
+
+    let (name, bytes) = entries.into_iter().next().unwrap();
+    // Single file: pick ingest and output template per CLI format+style.
+    let lower = name.to_ascii_lowercase();
+    let is_yaml_ext = lower.ends_with(".yaml") || lower.ends_with(".yml");
+    let chosen_input = match cli.format {
+        OutputFormat::Auto => {
+            if is_yaml_ext {
+                InputFormat::Yaml
+            } else if lower.ends_with(".json") {
+                InputFormat::Json
+            } else {
+                InputFormat::Text
+            }
+        }
+        _ => cli.input_format,
+    };
+    let mut cfg = render_cfg.clone();
+    cfg.template =
+        resolve_effective_template_for_single(cli.format, cfg.style, &lower);
+    let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
+    if budgets.byte_budget.is_none()
+        && budgets.char_budget.is_none()
+        && budgets.line_budget.is_some()
+    {
+        cfg.string_free_prefix_graphemes = Some(40);
+    }
+    let out = match chosen_input {
+        InputFormat::Json => {
+            headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
+        }
+        InputFormat::Yaml => {
+            headson::headson_yaml_with_budgets(bytes, &cfg, &prio, budgets)?
+        }
+        InputFormat::Text => {
+            headson::headson_text_with_budgets(bytes, &cfg, &prio, budgets)?
+        }
+    };
+    Ok((out, ignored))
 }
 
 fn read_stdin() -> Result<Vec<u8>> {
