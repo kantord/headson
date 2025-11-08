@@ -22,10 +22,66 @@ fn run_sample_py_auto() -> String {
     out
 }
 
+fn run_large_code_huge_budget() -> String {
+    let assert = cargo_bin_cmd!("headson")
+        .args([
+            "--no-color",
+            "-c",
+            "1000000",
+            "-n",
+            "1000000",
+            "-f",
+            "auto",
+            "tests/fixtures/code/big_sample.py",
+        ])
+        .assert()
+        .success();
+    let mut out =
+        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    while out.ends_with('\n') {
+        out.pop();
+    }
+    out.push('\n');
+    out
+}
+
+fn run_synthetic_code_huge_budget() -> String {
+    let assert = cargo_bin_cmd!("headson")
+        .args([
+            "--no-color",
+            "-n",
+            "1000000",
+            "-f",
+            "auto",
+            "tests/fixtures/code/synthetic_code_large.js",
+        ])
+        .assert()
+        .success();
+    let mut out =
+        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    while out.ends_with('\n') {
+        out.pop();
+    }
+    out.push('\n');
+    out
+}
+
 #[test]
 fn code_auto_sample_snapshot() {
     let out = run_sample_py_auto();
     assert_snapshot!("code_auto_sample_snapshot", out);
+}
+
+#[test]
+fn code_huge_budget_snapshot() {
+    let out = run_large_code_huge_budget();
+    assert_snapshot!("code_huge_budget_snapshot", out);
+}
+
+#[test]
+fn code_synthetic_huge_budget_snapshot() {
+    let out = run_synthetic_code_huge_budget();
+    assert_snapshot!("code_synthetic_huge_budget_snapshot", out);
 }
 
 #[test]
