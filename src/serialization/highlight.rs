@@ -34,12 +34,29 @@ impl CodeHighlighter<'static> {
     }
 
     pub fn highlight_line(&mut self, line: &str) -> String {
+        let mut owned;
+        let appended_newline;
+        let text = if line.ends_with('\n') {
+            appended_newline = false;
+            line
+        } else {
+            appended_newline = true;
+            owned = String::with_capacity(line.len() + 1);
+            owned.push_str(line);
+            owned.push('\n');
+            &owned
+        };
         let ranges = self
             .inner
-            .highlight_line(line, &SYNTAXES)
-            .unwrap_or_else(|_| vec![(Style::default(), line)]);
+            .highlight_line(text, &SYNTAXES)
+            .unwrap_or_else(|_| vec![(Style::default(), text)]);
         // Use standard 8/16 ANSI colors so user terminal themes stay in control.
         let mut s = as_24_bit_terminal_escaped(&ranges, false);
+        if appended_newline {
+            if let Some(pos) = s.rfind('\n') {
+                s.remove(pos);
+            }
+        }
         s.push_str("\u{001b}[0m");
         s
     }
@@ -96,5 +113,25 @@ mod tests {
                     .any(|ext| ext.eq_ignore_ascii_case("js"))
         });
         assert!(has_ts, "SyntaxSet is missing JavaScript fallback");
+    }
+
+    #[test]
+    fn detects_shell_syntax_from_extension() {
+        let syntax = syntax_for_hint(Some("script.sh"));
+        assert!(
+            syntax.name != "Plain Text",
+            "expected non-plain syntax for .sh, got {}",
+            syntax.name
+        );
+    }
+
+    #[test]
+    fn detects_python_syntax_from_extension() {
+        let syntax = syntax_for_hint(Some("file.PY"));
+        assert!(
+            syntax.name != "Plain Text",
+            "expected non-plain syntax for .py, got {}",
+            syntax.name
+        );
     }
 }
