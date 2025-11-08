@@ -34,6 +34,31 @@ const FIXTURES: &[FixtureExpectation] = &[
         min_multi_color_lines: 5,
     },
     FixtureExpectation {
+        path: "tests/fixtures/code/sample.sh",
+        min_unique_colors: 3,
+        min_multi_color_lines: 3,
+    },
+    FixtureExpectation {
+        path: "tests/fixtures/code/sample.cpp",
+        min_unique_colors: 4,
+        min_multi_color_lines: 4,
+    },
+    FixtureExpectation {
+        path: "tests/fixtures/code/Sample.java",
+        min_unique_colors: 4,
+        min_multi_color_lines: 4,
+    },
+    FixtureExpectation {
+        path: "tests/fixtures/code/big_sample.py",
+        min_unique_colors: 3,
+        min_multi_color_lines: 3,
+    },
+    FixtureExpectation {
+        path: "tests/fixtures/code/minimal_drop_case.py",
+        min_unique_colors: 3,
+        min_multi_color_lines: 3,
+    },
+    FixtureExpectation {
         path: "tests/fixtures/code/multi_describe.test.js",
         min_unique_colors: 5,
         min_multi_color_lines: 6,

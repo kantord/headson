@@ -197,7 +197,6 @@ fn build_text_tree_arena_plain(
     let root_id = b.push_array_of_lines(&lines_vec, total);
     let mut a = b.finish();
     a.root_id = root_id;
-    a.code_lines.insert(root_id, Arc::new(lines_vec));
     Ok(a)
 }
 

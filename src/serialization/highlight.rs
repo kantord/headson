@@ -134,4 +134,14 @@ mod tests {
             syntax.name
         );
     }
+
+    #[test]
+    fn detects_tsx_syntax_from_extension() {
+        let syntax = syntax_for_hint(Some("component.tsx"));
+        assert!(
+            syntax.name != "Plain Text",
+            "expected non-plain syntax for .tsx, got {}",
+            syntax.name
+        );
+    }
 }
