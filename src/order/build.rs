@@ -451,6 +451,7 @@ impl<'a> Scope<'a> {
 
 #[allow(
     clippy::cognitive_complexity,
+    clippy::too_many_lines,
     reason = "Orchestrates the full build; further splitting would decrease readability"
 )]
 pub fn build_order(

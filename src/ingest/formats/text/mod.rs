@@ -398,7 +398,7 @@ fn build_code_tree_arena(
         .map(std::string::ToString::to_string)
         .collect();
     let raw_lines: Vec<&str> =
-        owned_lines.iter().map(|s| s.as_str()).collect();
+        owned_lines.iter().map(String::as_str).collect();
     let (uses_tab, space_unit) = detect_indent_unit(&raw_lines);
     let (tnodes, roots) = build_code_nodes(&raw_lines, uses_tab, space_unit);
     let mut arena = transcribe_code_tree(&tnodes, &roots, config);

@@ -96,6 +96,10 @@ pub(crate) fn build_fileset_root(
     arena
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Tree merge touches multiple parallel arrays and offsets; easier to follow inline"
+)]
 fn append_subtree(dest: &mut JsonTreeArena, src: JsonTreeArena) -> usize {
     let node_offset = dest.nodes.len();
     let child_offset = dest.children.len();
