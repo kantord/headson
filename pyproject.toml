@@ -39,6 +39,9 @@ dev = [
 line-length = 100
 target-version = "py310"
 src = ["python", "tests_py"]
+extend-exclude = [
+  "tests/fixtures",
+]
 
 [tool.ruff.lint]
 select = ["E", "F"]
