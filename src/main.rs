@@ -406,7 +406,7 @@ fn run_from_paths(
         }
         InputFormat::Text => {
             let is_code = headson::extensions::is_code_like_name(&lower);
-            if is_code {
+            if is_code && matches!(cli.format, OutputFormat::Auto) {
                 #[allow(
                     clippy::redundant_clone,
                     reason = "code branch requires its own config copy; other paths reuse the original"

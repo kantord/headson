@@ -1,9 +1,22 @@
 ---
 source: tests/cpp_text_fallback.rs
+assertion_line: 54
 expression: out
 ---
- 1: #include <iostream>
- 2: 
- 3: void greet(const std::string& name) {
-19: }
-20:
+[
+  [
+    "#include <iostream>"
+  ],
+  [ … ],
+  …
+  [ … ],
+  [
+    ""
+  ],
+  [ … ],
+  …
+  [
+    ""
+  ]
+  …
+]
