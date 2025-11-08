@@ -3,583 +3,583 @@ source: tests/code_root_sampling.rs
 expression: out
 ---
   1: # big sample file for snapshot testing
-  3: def func_1():
-  4:     print('line 1')
-  6: def func_2():
-  7:     print('line 2')
-  9: def func_3():
- 10:     print('line 3')
- 12: def func_4():
- 13:     print('line 4')
- 14:     for j in range(3):
- 15:         print(j)
- 17: def func_5():
- 18:     print('line 5')
- 19:     if i % 2 == 0:
- 20:         print('even branch')
- 22: def func_6():
- 23:     print('line 6')
- 25: def func_7():
- 26:     print('line 7')
- 28: def func_8():
- 29:     print('line 8')
- 30:     for j in range(3):
- 31:         print(j)
- 33: def func_9():
- 34:     print('line 9')
- 36: def func_10():
- 37:     print('line 10')
- 38:     if i % 2 == 0:
- 39:         print('even branch')
- 41: def func_11():
- 42:     print('line 11')
- 44: def func_12():
- 45:     print('line 12')
- 46:     for j in range(3):
- 47:         print(j)
- 49: def func_13():
- 50:     print('line 13')
- 52: def func_14():
- 53:     print('line 14')
- 55: def func_15():
- 56:     print('line 15')
- 57:     if i % 2 == 0:
- 58:         print('even branch')
- 60: def func_16():
- 61:     print('line 16')
- 62:     for j in range(3):
- 63:         print(j)
- 65: def func_17():
- 66:     print('line 17')
- 68: def func_18():
- 69:     print('line 18')
- 71: def func_19():
- 72:     print('line 19')
- 74: def func_20():
- 75:     print('line 20')
- 76:     for j in range(3):
- 77:         print(j)
- 78:     if i % 2 == 0:
- 79:         print('even branch')
- 81: def func_21():
- 82:     print('line 21')
- 84: def func_22():
- 85:     print('line 22')
- 87: def func_23():
- 88:     print('line 23')
- 90: def func_24():
- 91:     print('line 24')
- 92:     for j in range(3):
- 93:         print(j)
- 95: def func_25():
- 96:     print('line 25')
- 97:     if i % 2 == 0:
- 98:         print('even branch')
-100: def func_26():
-101:     print('line 26')
-103: def func_27():
-104:     print('line 27')
-106: def func_28():
-107:     print('line 28')
-108:     for j in range(3):
-109:         print(j)
-111: def func_29():
-112:     print('line 29')
-114: def func_30():
-115:     print('line 30')
-116:     if i % 2 == 0:
-117:         print('even branch')
-119: def func_31():
-120:     print('line 31')
-122: def func_32():
-123:     print('line 32')
-124:     for j in range(3):
-125:         print(j)
-127: def func_33():
-128:     print('line 33')
-130: def func_34():
-131:     print('line 34')
-133: def func_35():
-134:     print('line 35')
-135:     if i % 2 == 0:
-136:         print('even branch')
-138: def func_36():
-139:     print('line 36')
-140:     for j in range(3):
-141:         print(j)
-143: def func_37():
-144:     print('line 37')
-146: def func_38():
-147:     print('line 38')
-149: def func_39():
-150:     print('line 39')
-152: def func_40():
-153:     print('line 40')
-154:     for j in range(3):
-155:         print(j)
-156:     if i % 2 == 0:
-157:         print('even branch')
-159: def func_41():
-160:     print('line 41')
-162: def func_42():
-163:     print('line 42')
-165: def func_43():
-166:     print('line 43')
-168: def func_44():
-169:     print('line 44')
-170:     for j in range(3):
-171:         print(j)
-173: def func_45():
-174:     print('line 45')
-175:     if i % 2 == 0:
-176:         print('even branch')
-178: def func_46():
-179:     print('line 46')
-181: def func_47():
-182:     print('line 47')
-184: def func_48():
-185:     print('line 48')
-186:     for j in range(3):
-187:         print(j)
-189: def func_49():
-190:     print('line 49')
-192: def func_50():
-193:     print('line 50')
-194:     if i % 2 == 0:
-195:         print('even branch')
-197: def func_51():
-198:     print('line 51')
-200: def func_52():
-201:     print('line 52')
-202:     for j in range(3):
-203:         print(j)
-205: def func_53():
-206:     print('line 53')
-208: def func_54():
-209:     print('line 54')
-211: def func_55():
-212:     print('line 55')
-213:     if i % 2 == 0:
-214:         print('even branch')
-216: def func_56():
-217:     print('line 56')
-218:     for j in range(3):
-219:         print(j)
-221: def func_57():
-222:     print('line 57')
-224: def func_58():
-225:     print('line 58')
-227: def func_59():
-228:     print('line 59')
-230: def func_60():
-231:     print('line 60')
-232:     for j in range(3):
-233:         print(j)
-234:     if i % 2 == 0:
-235:         print('even branch')
-237: def func_61():
-238:     print('line 61')
-240: def func_62():
-241:     print('line 62')
-243: def func_63():
-244:     print('line 63')
-246: def func_64():
-247:     print('line 64')
-248:     for j in range(3):
-249:         print(j)
-251: def func_65():
-252:     print('line 65')
-253:     if i % 2 == 0:
-254:         print('even branch')
-256: def func_66():
-257:     print('line 66')
-259: def func_67():
-260:     print('line 67')
-262: def func_68():
-263:     print('line 68')
-264:     for j in range(3):
-265:         print(j)
-267: def func_69():
-268:     print('line 69')
-270: def func_70():
-271:     print('line 70')
-272:     if i % 2 == 0:
-273:         print('even branch')
-275: def func_71():
-276:     print('line 71')
-278: def func_72():
-279:     print('line 72')
-280:     for j in range(3):
-281:         print(j)
-283: def func_73():
-284:     print('line 73')
-286: def func_74():
-287:     print('line 74')
-289: def func_75():
-290:     print('line 75')
-291:     if i % 2 == 0:
-292:         print('even branch')
-294: def func_76():
-295:     print('line 76')
-296:     for j in range(3):
-297:         print(j)
-299: def func_77():
-300:     print('line 77')
-302: def func_78():
-303:     print('line 78')
-305: def func_79():
-306:     print('line 79')
-308: def func_80():
-309:     print('line 80')
-310:     for j in range(3):
-311:         print(j)
-312:     if i % 2 == 0:
-313:         print('even branch')
-315: def func_81():
-316:     print('line 81')
-318: def func_82():
-319:     print('line 82')
-321: def func_83():
-322:     print('line 83')
-324: def func_84():
-325:     print('line 84')
-326:     for j in range(3):
-327:         print(j)
-329: def func_85():
-330:     print('line 85')
-331:     if i % 2 == 0:
-332:         print('even branch')
-334: def func_86():
-335:     print('line 86')
-337: def func_87():
-338:     print('line 87')
-340: def func_88():
-341:     print('line 88')
-342:     for j in range(3):
-343:         print(j)
-345: def func_89():
-346:     print('line 89')
-348: def func_90():
-349:     print('line 90')
-350:     if i % 2 == 0:
-351:         print('even branch')
-353: def func_91():
-354:     print('line 91')
-356: def func_92():
-357:     print('line 92')
-358:     for j in range(3):
-359:         print(j)
-361: def func_93():
-362:     print('line 93')
-364: def func_94():
-365:     print('line 94')
-367: def func_95():
-368:     print('line 95')
-369:     if i % 2 == 0:
-370:         print('even branch')
-372: def func_96():
-373:     print('line 96')
-374:     for j in range(3):
-375:         print(j)
-377: def func_97():
-378:     print('line 97')
-380: def func_98():
-381:     print('line 98')
-383: def func_99():
-384:     print('line 99')
-386: def func_100():
-387:     print('line 100')
-388:     for j in range(3):
-389:         print(j)
-390:     if i % 2 == 0:
-391:         print('even branch')
-393: def func_101():
-394:     print('line 101')
-396: def func_102():
-397:     print('line 102')
-399: def func_103():
-400:     print('line 103')
-402: def func_104():
-403:     print('line 104')
-404:     for j in range(3):
-405:         print(j)
-407: def func_105():
-408:     print('line 105')
-409:     if i % 2 == 0:
-410:         print('even branch')
-412: def func_106():
-413:     print('line 106')
-415: def func_107():
-416:     print('line 107')
-418: def func_108():
-419:     print('line 108')
-420:     for j in range(3):
-421:         print(j)
-423: def func_109():
-424:     print('line 109')
-426: def func_110():
-427:     print('line 110')
-428:     if i % 2 == 0:
-429:         print('even branch')
-431: def func_111():
-432:     print('line 111')
-434: def func_112():
-435:     print('line 112')
-436:     for j in range(3):
-437:         print(j)
-439: def func_113():
-440:     print('line 113')
-442: def func_114():
-443:     print('line 114')
-445: def func_115():
-446:     print('line 115')
-447:     if i % 2 == 0:
-448:         print('even branch')
-450: def func_116():
-451:     print('line 116')
-452:     for j in range(3):
-453:         print(j)
-455: def func_117():
-456:     print('line 117')
-458: def func_118():
-459:     print('line 118')
-461: def func_119():
-462:     print('line 119')
-464: def func_120():
-465:     print('line 120')
-466:     for j in range(3):
-467:         print(j)
-468:     if i % 2 == 0:
-469:         print('even branch')
-471: def func_121():
-472:     print('line 121')
-474: def func_122():
-475:     print('line 122')
-477: def func_123():
-478:     print('line 123')
-480: def func_124():
-481:     print('line 124')
-482:     for j in range(3):
-483:         print(j)
-485: def func_125():
-486:     print('line 125')
-487:     if i % 2 == 0:
-488:         print('even branch')
-490: def func_126():
-491:     print('line 126')
-493: def func_127():
-494:     print('line 127')
-496: def func_128():
-497:     print('line 128')
-498:     for j in range(3):
-499:         print(j)
-501: def func_129():
-502:     print('line 129')
-504: def func_130():
-505:     print('line 130')
-506:     if i % 2 == 0:
-507:         print('even branch')
-509: def func_131():
-510:     print('line 131')
-512: def func_132():
-513:     print('line 132')
-514:     for j in range(3):
-515:         print(j)
-517: def func_133():
-518:     print('line 133')
-520: def func_134():
-521:     print('line 134')
-523: def func_135():
-524:     print('line 135')
-525:     if i % 2 == 0:
-526:         print('even branch')
-528: def func_136():
-529:     print('line 136')
-530:     for j in range(3):
-531:         print(j)
-533: def func_137():
-534:     print('line 137')
-536: def func_138():
-537:     print('line 138')
-539: def func_139():
-540:     print('line 139')
-542: def func_140():
-543:     print('line 140')
-544:     for j in range(3):
-545:         print(j)
-546:     if i % 2 == 0:
-547:         print('even branch')
-549: def func_141():
-550:     print('line 141')
-552: def func_142():
-553:     print('line 142')
-555: def func_143():
-556:     print('line 143')
-558: def func_144():
-559:     print('line 144')
-560:     for j in range(3):
-561:         print(j)
-563: def func_145():
-564:     print('line 145')
-565:     if i % 2 == 0:
-566:         print('even branch')
-568: def func_146():
-569:     print('line 146')
-571: def func_147():
-572:     print('line 147')
-574: def func_148():
-575:     print('line 148')
-576:     for j in range(3):
-577:         print(j)
-579: def func_149():
-580:     print('line 149')
-582: def func_150():
-583:     print('line 150')
-584:     if i % 2 == 0:
-585:         print('even branch')
-587: def func_151():
-588:     print('line 151')
-590: def func_152():
-591:     print('line 152')
-592:     for j in range(3):
-593:         print(j)
-595: def func_153():
-596:     print('line 153')
-598: def func_154():
-599:     print('line 154')
-601: def func_155():
-602:     print('line 155')
-603:     if i % 2 == 0:
-604:         print('even branch')
-606: def func_156():
-607:     print('line 156')
-608:     for j in range(3):
-609:         print(j)
-611: def func_157():
-612:     print('line 157')
-614: def func_158():
-615:     print('line 158')
-617: def func_159():
-618:     print('line 159')
-620: def func_160():
-621:     print('line 160')
-622:     for j in range(3):
-623:         print(j)
-624:     if i % 2 == 0:
-625:         print('even branch')
-627: def func_161():
-628:     print('line 161')
-630: def func_162():
-631:     print('line 162')
-633: def func_163():
-634:     print('line 163')
-636: def func_164():
-637:     print('line 164')
-638:     for j in range(3):
-639:         print(j)
-641: def func_165():
-642:     print('line 165')
-643:     if i % 2 == 0:
-644:         print('even branch')
-646: def func_166():
-647:     print('line 166')
-649: def func_167():
-650:     print('line 167')
-652: def func_168():
-653:     print('line 168')
-654:     for j in range(3):
-655:         print(j)
-657: def func_169():
-658:     print('line 169')
-660: def func_170():
-661:     print('line 170')
-662:     if i % 2 == 0:
-663:         print('even branch')
-665: def func_171():
-666:     print('line 171')
-668: def func_172():
-669:     print('line 172')
-670:     for j in range(3):
-671:         print(j)
-673: def func_173():
-674:     print('line 173')
-676: def func_174():
-677:     print('line 174')
-679: def func_175():
-680:     print('line 175')
-681:     if i % 2 == 0:
-682:         print('even branch')
-684: def func_176():
-685:     print('line 176')
-686:     for j in range(3):
-687:         print(j)
-689: def func_177():
-690:     print('line 177')
-692: def func_178():
-693:     print('line 178')
-695: def func_179():
-696:     print('line 179')
-698: def func_180():
-699:     print('line 180')
-700:     for j in range(3):
-701:         print(j)
-702:     if i % 2 == 0:
-703:         print('even branch')
-705: def func_181():
-706:     print('line 181')
-708: def func_182():
-709:     print('line 182')
-711: def func_183():
-712:     print('line 183')
-714: def func_184():
-715:     print('line 184')
-716:     for j in range(3):
-717:         print(j)
-719: def func_185():
-720:     print('line 185')
-721:     if i % 2 == 0:
-722:         print('even branch')
-724: def func_186():
-725:     print('line 186')
-727: def func_187():
-728:     print('line 187')
-730: def func_188():
-731:     print('line 188')
-732:     for j in range(3):
-733:         print(j)
-735: def func_189():
-736:     print('line 189')
-738: def func_190():
-739:     print('line 190')
-740:     if i % 2 == 0:
-741:         print('even branch')
-743: def func_191():
-744:     print('line 191')
-746: def func_192():
-747:     print('line 192')
-748:     for j in range(3):
-749:         print(j)
-751: def func_193():
-752:     print('line 193')
-754: def func_194():
-755:     print('line 194')
-757: def func_195():
-758:     print('line 195')
-759:     if i % 2 == 0:
-760:         print('even branch')
-762: def func_196():
-763:     print('line 196')
+  4: def func_1():
+  5:     print("line 1")
+  8: def func_2():
+  9:     print("line 2")
+ 12: def func_3():
+ 13:     print("line 3")
+ 16: def func_4():
+ 17:     print("line 4")
+ 18:     for j in range(3):
+ 19:         print(j)
+ 22: def func_5():
+ 23:     print("line 5")
+ 24:     if i % 2 == 0:
+ 25:         print("even branch")
+ 28: def func_6():
+ 29:     print("line 6")
+ 32: def func_7():
+ 33:     print("line 7")
+ 36: def func_8():
+ 37:     print("line 8")
+ 38:     for j in range(3):
+ 39:         print(j)
+ 42: def func_9():
+ 43:     print("line 9")
+ 46: def func_10():
+ 47:     print("line 10")
+ 48:     if i % 2 == 0:
+ 49:         print("even branch")
+ 52: def func_11():
+ 53:     print("line 11")
+ 56: def func_12():
+ 57:     print("line 12")
+ 58:     for j in range(3):
+ 59:         print(j)
+ 62: def func_13():
+ 63:     print("line 13")
+ 66: def func_14():
+ 67:     print("line 14")
+ 70: def func_15():
+ 71:     print("line 15")
+ 72:     if i % 2 == 0:
+ 73:         print("even branch")
+ 76: def func_16():
+ 77:     print("line 16")
+ 78:     for j in range(3):
+ 79:         print(j)
+ 82: def func_17():
+ 83:     print("line 17")
+ 86: def func_18():
+ 87:     print("line 18")
+ 90: def func_19():
+ 91:     print("line 19")
+ 94: def func_20():
+ 95:     print("line 20")
+ 96:     for j in range(3):
+ 97:         print(j)
+ 98:     if i % 2 == 0:
+ 99:         print("even branch")
+102: def func_21():
+103:     print("line 21")
+106: def func_22():
+107:     print("line 22")
+110: def func_23():
+111:     print("line 23")
+114: def func_24():
+115:     print("line 24")
+116:     for j in range(3):
+117:         print(j)
+120: def func_25():
+121:     print("line 25")
+122:     if i % 2 == 0:
+123:         print("even branch")
+126: def func_26():
+127:     print("line 26")
+130: def func_27():
+131:     print("line 27")
+134: def func_28():
+135:     print("line 28")
+136:     for j in range(3):
+137:         print(j)
+140: def func_29():
+141:     print("line 29")
+144: def func_30():
+145:     print("line 30")
+146:     if i % 2 == 0:
+147:         print("even branch")
+150: def func_31():
+151:     print("line 31")
+154: def func_32():
+155:     print("line 32")
+156:     for j in range(3):
+157:         print(j)
+160: def func_33():
+161:     print("line 33")
+164: def func_34():
+165:     print("line 34")
+168: def func_35():
+169:     print("line 35")
+170:     if i % 2 == 0:
+171:         print("even branch")
+174: def func_36():
+175:     print("line 36")
+176:     for j in range(3):
+177:         print(j)
+180: def func_37():
+181:     print("line 37")
+184: def func_38():
+185:     print("line 38")
+188: def func_39():
+189:     print("line 39")
+192: def func_40():
+193:     print("line 40")
+194:     for j in range(3):
+195:         print(j)
+196:     if i % 2 == 0:
+197:         print("even branch")
+200: def func_41():
+201:     print("line 41")
+204: def func_42():
+205:     print("line 42")
+208: def func_43():
+209:     print("line 43")
+212: def func_44():
+213:     print("line 44")
+214:     for j in range(3):
+215:         print(j)
+218: def func_45():
+219:     print("line 45")
+220:     if i % 2 == 0:
+221:         print("even branch")
+224: def func_46():
+225:     print("line 46")
+228: def func_47():
+229:     print("line 47")
+232: def func_48():
+233:     print("line 48")
+234:     for j in range(3):
+235:         print(j)
+238: def func_49():
+239:     print("line 49")
+242: def func_50():
+243:     print("line 50")
+244:     if i % 2 == 0:
+245:         print("even branch")
+248: def func_51():
+249:     print("line 51")
+252: def func_52():
+253:     print("line 52")
+254:     for j in range(3):
+255:         print(j)
+258: def func_53():
+259:     print("line 53")
+262: def func_54():
+263:     print("line 54")
+266: def func_55():
+267:     print("line 55")
+268:     if i % 2 == 0:
+269:         print("even branch")
+272: def func_56():
+273:     print("line 56")
+274:     for j in range(3):
+275:         print(j)
+278: def func_57():
+279:     print("line 57")
+282: def func_58():
+283:     print("line 58")
+286: def func_59():
+287:     print("line 59")
+290: def func_60():
+291:     print("line 60")
+292:     for j in range(3):
+293:         print(j)
+294:     if i % 2 == 0:
+295:         print("even branch")
+298: def func_61():
+299:     print("line 61")
+302: def func_62():
+303:     print("line 62")
+306: def func_63():
+307:     print("line 63")
+310: def func_64():
+311:     print("line 64")
+312:     for j in range(3):
+313:         print(j)
+316: def func_65():
+317:     print("line 65")
+318:     if i % 2 == 0:
+319:         print("even branch")
+322: def func_66():
+323:     print("line 66")
+326: def func_67():
+327:     print("line 67")
+330: def func_68():
+331:     print("line 68")
+332:     for j in range(3):
+333:         print(j)
+336: def func_69():
+337:     print("line 69")
+340: def func_70():
+341:     print("line 70")
+342:     if i % 2 == 0:
+343:         print("even branch")
+346: def func_71():
+347:     print("line 71")
+350: def func_72():
+351:     print("line 72")
+352:     for j in range(3):
+353:         print(j)
+356: def func_73():
+357:     print("line 73")
+360: def func_74():
+361:     print("line 74")
+364: def func_75():
+365:     print("line 75")
+366:     if i % 2 == 0:
+367:         print("even branch")
+370: def func_76():
+371:     print("line 76")
+372:     for j in range(3):
+373:         print(j)
+376: def func_77():
+377:     print("line 77")
+380: def func_78():
+381:     print("line 78")
+384: def func_79():
+385:     print("line 79")
+388: def func_80():
+389:     print("line 80")
+390:     for j in range(3):
+391:         print(j)
+392:     if i % 2 == 0:
+393:         print("even branch")
+396: def func_81():
+397:     print("line 81")
+400: def func_82():
+401:     print("line 82")
+404: def func_83():
+405:     print("line 83")
+408: def func_84():
+409:     print("line 84")
+410:     for j in range(3):
+411:         print(j)
+414: def func_85():
+415:     print("line 85")
+416:     if i % 2 == 0:
+417:         print("even branch")
+420: def func_86():
+421:     print("line 86")
+424: def func_87():
+425:     print("line 87")
+428: def func_88():
+429:     print("line 88")
+430:     for j in range(3):
+431:         print(j)
+434: def func_89():
+435:     print("line 89")
+438: def func_90():
+439:     print("line 90")
+440:     if i % 2 == 0:
+441:         print("even branch")
+444: def func_91():
+445:     print("line 91")
+448: def func_92():
+449:     print("line 92")
+450:     for j in range(3):
+451:         print(j)
+454: def func_93():
+455:     print("line 93")
+458: def func_94():
+459:     print("line 94")
+462: def func_95():
+463:     print("line 95")
+464:     if i % 2 == 0:
+465:         print("even branch")
+468: def func_96():
+469:     print("line 96")
+470:     for j in range(3):
+471:         print(j)
+474: def func_97():
+475:     print("line 97")
+478: def func_98():
+479:     print("line 98")
+482: def func_99():
+483:     print("line 99")
+486: def func_100():
+487:     print("line 100")
+488:     for j in range(3):
+489:         print(j)
+490:     if i % 2 == 0:
+491:         print("even branch")
+494: def func_101():
+495:     print("line 101")
+498: def func_102():
+499:     print("line 102")
+502: def func_103():
+503:     print("line 103")
+506: def func_104():
+507:     print("line 104")
+508:     for j in range(3):
+509:         print(j)
+512: def func_105():
+513:     print("line 105")
+514:     if i % 2 == 0:
+515:         print("even branch")
+518: def func_106():
+519:     print("line 106")
+522: def func_107():
+523:     print("line 107")
+526: def func_108():
+527:     print("line 108")
+528:     for j in range(3):
+529:         print(j)
+532: def func_109():
+533:     print("line 109")
+536: def func_110():
+537:     print("line 110")
+538:     if i % 2 == 0:
+539:         print("even branch")
+542: def func_111():
+543:     print("line 111")
+546: def func_112():
+547:     print("line 112")
+548:     for j in range(3):
+549:         print(j)
+552: def func_113():
+553:     print("line 113")
+556: def func_114():
+557:     print("line 114")
+560: def func_115():
+561:     print("line 115")
+562:     if i % 2 == 0:
+563:         print("even branch")
+566: def func_116():
+567:     print("line 116")
+568:     for j in range(3):
+569:         print(j)
+572: def func_117():
+573:     print("line 117")
+576: def func_118():
+577:     print("line 118")
+580: def func_119():
+581:     print("line 119")
+584: def func_120():
+585:     print("line 120")
+586:     for j in range(3):
+587:         print(j)
+588:     if i % 2 == 0:
+589:         print("even branch")
+592: def func_121():
+593:     print("line 121")
+596: def func_122():
+597:     print("line 122")
+600: def func_123():
+601:     print("line 123")
+604: def func_124():
+605:     print("line 124")
+606:     for j in range(3):
+607:         print(j)
+610: def func_125():
+611:     print("line 125")
+612:     if i % 2 == 0:
+613:         print("even branch")
+616: def func_126():
+617:     print("line 126")
+620: def func_127():
+621:     print("line 127")
+624: def func_128():
+625:     print("line 128")
+626:     for j in range(3):
+627:         print(j)
+630: def func_129():
+631:     print("line 129")
+634: def func_130():
+635:     print("line 130")
+636:     if i % 2 == 0:
+637:         print("even branch")
+640: def func_131():
+641:     print("line 131")
+644: def func_132():
+645:     print("line 132")
+646:     for j in range(3):
+647:         print(j)
+650: def func_133():
+651:     print("line 133")
+654: def func_134():
+655:     print("line 134")
+658: def func_135():
+659:     print("line 135")
+660:     if i % 2 == 0:
+661:         print("even branch")
+664: def func_136():
+665:     print("line 136")
+666:     for j in range(3):
+667:         print(j)
+670: def func_137():
+671:     print("line 137")
+674: def func_138():
+675:     print("line 138")
+678: def func_139():
+679:     print("line 139")
+682: def func_140():
+683:     print("line 140")
+684:     for j in range(3):
+685:         print(j)
+686:     if i % 2 == 0:
+687:         print("even branch")
+690: def func_141():
+691:     print("line 141")
+694: def func_142():
+695:     print("line 142")
+698: def func_143():
+699:     print("line 143")
+702: def func_144():
+703:     print("line 144")
+704:     for j in range(3):
+705:         print(j)
+708: def func_145():
+709:     print("line 145")
+710:     if i % 2 == 0:
+711:         print("even branch")
+714: def func_146():
+715:     print("line 146")
+718: def func_147():
+719:     print("line 147")
+722: def func_148():
+723:     print("line 148")
+724:     for j in range(3):
+725:         print(j)
+728: def func_149():
+729:     print("line 149")
+732: def func_150():
+733:     print("line 150")
+734:     if i % 2 == 0:
+735:         print("even branch")
+738: def func_151():
+739:     print("line 151")
+742: def func_152():
+743:     print("line 152")
+744:     for j in range(3):
+745:         print(j)
+748: def func_153():
+749:     print("line 153")
+752: def func_154():
+753:     print("line 154")
+756: def func_155():
+757:     print("line 155")
+758:     if i % 2 == 0:
+759:         print("even branch")
+762: def func_156():
+763:     print("line 156")
 764:     for j in range(3):
 765:         print(j)
-767: def func_197():
-768:     print('line 197')
-770: def func_198():
-771:     print('line 198')
-773: def func_199():
-774:     print('line 199')
-776: def func_200():
-777:     print('line 200')
-778:     for j in range(3):
-779:         print(j)
-780:     if i % 2 == 0:
-781:         print('even branch')
+768: def func_157():
+769:     print("line 157")
+772: def func_158():
+773:     print("line 158")
+776: def func_159():
+777:     print("line 159")
+780: def func_160():
+781:     print("line 160")
+782:     for j in range(3):
+783:         print(j)
+784:     if i % 2 == 0:
+785:         print("even branch")
+788: def func_161():
+789:     print("line 161")
+792: def func_162():
+793:     print("line 162")
+796: def func_163():
+797:     print("line 163")
+800: def func_164():
+801:     print("line 164")
+802:     for j in range(3):
+803:         print(j)
+806: def func_165():
+807:     print("line 165")
+808:     if i % 2 == 0:
+809:         print("even branch")
+812: def func_166():
+813:     print("line 166")
+816: def func_167():
+817:     print("line 167")
+820: def func_168():
+821:     print("line 168")
+822:     for j in range(3):
+823:         print(j)
+826: def func_169():
+827:     print("line 169")
+830: def func_170():
+831:     print("line 170")
+832:     if i % 2 == 0:
+833:         print("even branch")
+836: def func_171():
+837:     print("line 171")
+840: def func_172():
+841:     print("line 172")
+842:     for j in range(3):
+843:         print(j)
+846: def func_173():
+847:     print("line 173")
+850: def func_174():
+851:     print("line 174")
+854: def func_175():
+855:     print("line 175")
+856:     if i % 2 == 0:
+857:         print("even branch")
+860: def func_176():
+861:     print("line 176")
+862:     for j in range(3):
+863:         print(j)
+866: def func_177():
+867:     print("line 177")
+870: def func_178():
+871:     print("line 178")
+874: def func_179():
+875:     print("line 179")
+878: def func_180():
+879:     print("line 180")
+880:     for j in range(3):
+881:         print(j)
+882:     if i % 2 == 0:
+883:         print("even branch")
+886: def func_181():
+887:     print("line 181")
+890: def func_182():
+891:     print("line 182")
+894: def func_183():
+895:     print("line 183")
+898: def func_184():
+899:     print("line 184")
+900:     for j in range(3):
+901:         print(j)
+904: def func_185():
+905:     print("line 185")
+906:     if i % 2 == 0:
+907:         print("even branch")
+910: def func_186():
+911:     print("line 186")
+914: def func_187():
+915:     print("line 187")
+918: def func_188():
+919:     print("line 188")
+920:     for j in range(3):
+921:         print(j)
+924: def func_189():
+925:     print("line 189")
+928: def func_190():
+929:     print("line 190")
+930:     if i % 2 == 0:
+931:         print("even branch")
+934: def func_191():
+935:     print("line 191")
+938: def func_192():
+939:     print("line 192")
+940:     for j in range(3):
+941:         print(j)
+944: def func_193():
+945:     print("line 193")
+948: def func_194():
+949:     print("line 194")
+952: def func_195():
+953:     print("line 195")
+954:     if i % 2 == 0:
+955:         print("even branch")
+958: def func_196():
+959:     print("line 196")
+960:     for j in range(3):
+961:         print(j)
+964: def func_197():
+965:     print("line 197")
+968: def func_198():
+969:     print("line 198")
+972: def func_199():
+973:     print("line 199")
+976: def func_200():
+977:     print("line 200")
+978:     for j in range(3):
+979:         print(j)
+980:     if i % 2 == 0:
+981:         print("even branch")

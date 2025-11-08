@@ -45,7 +45,7 @@ fn run_large_code_huge_budget() -> String {
     out
 }
 
-fn run_synthetic_code_huge_budget() -> String {
+fn run_minimal_drop_huge_budget() -> String {
     let assert = cargo_bin_cmd!("headson")
         .args([
             "--no-color",
@@ -53,7 +53,7 @@ fn run_synthetic_code_huge_budget() -> String {
             "1000000",
             "-f",
             "auto",
-            "tests/fixtures/code/synthetic_code_large.js",
+            "tests/fixtures/code/minimal_drop_case.py",
         ])
         .assert()
         .success();
@@ -79,9 +79,9 @@ fn code_huge_budget_snapshot() {
 }
 
 #[test]
-fn code_synthetic_huge_budget_snapshot() {
-    let out = run_synthetic_code_huge_budget();
-    assert_snapshot!("code_synthetic_huge_budget_snapshot", out);
+fn code_minimal_huge_budget_snapshot() {
+    let out = run_minimal_drop_huge_budget();
+    assert_snapshot!("code_minimal_huge_budget_snapshot", out);
 }
 
 #[test]
