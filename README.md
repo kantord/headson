@@ -229,6 +229,19 @@ doc = "root:\n  items: [1,2,3,4,5,6,7,8,9,10]\n"
 print(headson.summarize(doc, format="yaml", style="default", input_format="yaml", byte_budget=60))
 ```
 
+## Source Code Support
+
+When `headson` detects a code-like file (based on its extension) it switches to a set of heuristics tuned for source code:
+
+- **Atomic line ingest**: each line is treated as an atomic string so omission markers never split a statement midway.
+- **Depth-aware sampling**:
+  - The top-level array (list of functions/classes) uses a balanced `HeadMidTail` bias so you see representative declarations across the file.
+  - Nested blocks (function bodies, loops) prefer head/tail coverage, with internal gaps annotated, so you can glimpse both entry and exit code paths.
+- **Header priority**: lines that introduce a nested block (e.g., `def foo():`) get a small priority boost to ensure they survive tight budgets.
+- **Filesets**: in multi-file mode, each code entry renders with these heuristics while JSON/YAML siblings retain their native format.
+
+You can still override the template/style via CLI flags for single files or stdin (`-f json`, `-t strict`, etc.). Filesets, however, remain auto-only to avoid mixing incompatible formats under one header.
+
 # Algorithm
 
 ![Algorithm overview](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/algorithm.svg)
