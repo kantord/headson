@@ -377,6 +377,7 @@ fn run_from_paths(
     let mut cfg = render_cfg.clone();
     cfg.template =
         resolve_effective_template_for_single(cli.format, cfg.style, &lower);
+    cfg.primary_source_name = Some(name);
     let budgets = make_budgets(cli, eff, eff_lines, eff_chars);
     if budgets.byte_budget.is_none()
         && budgets.char_budget.is_none()
@@ -523,6 +524,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         style: map_style(cli.style),
         string_free_prefix_graphemes: None,
         debug: cli.debug,
+        primary_source_name: None,
     }
 }
 

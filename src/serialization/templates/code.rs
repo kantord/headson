@@ -1,4 +1,5 @@
 use super::{ArrayCtx, ObjectCtx};
+use crate::serialization::highlight::CodeHighlighter;
 use crate::serialization::output::Out;
 
 // Compute the leading whitespace (spaces/tabs) prefix of a single line.
@@ -30,12 +31,15 @@ fn last_nonempty_line_indent(s: &str) -> Option<&str> {
     clippy::cognitive_complexity,
     reason = "Indent + omission flow is clearer inline"
 )]
-pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
+pub(super) fn render_array(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     // For code, arrays are treated as raw lines of text with line numbers.
     let _indent_depth = ctx.depth.saturating_sub(1);
 
     // Track the last seen non-empty line's textual indent for potential future alignment.
     let mut last_nonempty_indent: String = String::new();
+    let mut highlighter = out
+        .colors_enabled()
+        .then(|| CodeHighlighter::new(ctx.source_hint));
 
     // No omission marker at start for code template.
 
@@ -69,7 +73,12 @@ pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
                 } else {
                     out.push_str(&format!("{n}: "));
                 }
-                out.push_str(item);
+                if let Some(hl) = highlighter.as_mut() {
+                    let colored = hl.highlight_line(item);
+                    out.push_str(&colored);
+                } else {
+                    out.push_str(item);
+                }
                 out.push_newline();
                 if !item.trim().is_empty() {
                     last_nonempty_indent.clear();

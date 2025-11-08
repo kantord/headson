@@ -42,6 +42,7 @@ fn colored_and_plain_outputs_should_match_after_stripping() {
         style: headson::Style::Strict,
         string_free_prefix_graphemes: None,
         debug: false,
+        primary_source_name: None,
     };
     let cfg_color = headson::RenderConfig {
         color_enabled: true,

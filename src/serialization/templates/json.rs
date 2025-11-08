@@ -4,7 +4,7 @@ use crate::serialization::templates::core::{
     StyleNoop, push_array_items_with, push_object_items, wrap_block,
 };
 
-pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
+pub(super) fn render_array(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     if ctx.children_len == 0 {
         if !ctx.inline_open {
             out.push_indent(ctx.depth);

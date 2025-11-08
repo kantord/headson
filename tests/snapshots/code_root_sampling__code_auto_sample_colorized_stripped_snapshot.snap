@@ -1,0 +1,8 @@
+---
+source: tests/code_root_sampling.rs
+expression: stripped
+---
+ 1: def greet(name: str):
+ 5: def compute(n: int) -> int:
+15: def main():
+23: if __name__ == "__main__":

@@ -39,6 +39,10 @@ pub struct RenderConfig {
     // When true, the core render path emits a debug JSON of the final
     // inclusion set to stderr before rendering. CLI sets this flag.
     pub debug: bool,
+    // Optional hint for the primary source name (e.g., filename) when rendering
+    // a single logical input outside of filesets. Used by code-specific
+    // features such as syntax highlighting.
+    pub primary_source_name: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

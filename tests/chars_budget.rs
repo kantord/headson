@@ -100,6 +100,7 @@ fn colored_vs_plain_match_after_stripping_under_char_budget() {
         style: headson::Style::Strict,
         string_free_prefix_graphemes: None,
         debug: false,
+        primary_source_name: None,
     };
     let cfg_color = headson::RenderConfig {
         color_enabled: true,

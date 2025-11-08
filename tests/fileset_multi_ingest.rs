@@ -16,6 +16,7 @@ fn render_config() -> RenderConfig {
         style: Style::Default,
         string_free_prefix_graphemes: None,
         debug: false,
+        primary_source_name: None,
     }
 }
 

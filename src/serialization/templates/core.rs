@@ -7,10 +7,10 @@ use crate::serialization::output::Out;
 // - Indentation and newlines come from ctx (depth, indent_unit, newline).
 // - When ctx.inline_open is true, no leading indent is emitted before the opener.
 pub trait Style {
-    fn array_push_omitted(_out: &mut Out<'_>, _ctx: &ArrayCtx) {}
+    fn array_push_omitted(_out: &mut Out<'_>, _ctx: &ArrayCtx<'_>) {}
     fn array_push_internal_gap(
         _out: &mut Out<'_>,
-        _ctx: &ArrayCtx,
+        _ctx: &ArrayCtx<'_>,
         _gap: usize,
     ) {
     }
@@ -23,7 +23,7 @@ fn has_any_newline(s: &str) -> bool {
 
 fn maybe_push_internal_gap<S: Style>(
     out: &mut Out<'_>,
-    ctx: &ArrayCtx,
+    ctx: &ArrayCtx<'_>,
     prev_index: Option<usize>,
     orig_index: usize,
 ) {
@@ -36,7 +36,7 @@ fn maybe_push_internal_gap<S: Style>(
 
 fn push_single_array_item(
     out: &mut Out<'_>,
-    ctx: &ArrayCtx,
+    ctx: &ArrayCtx<'_>,
     kind: NodeKind,
     item: &str,
 ) {
@@ -55,7 +55,7 @@ fn push_single_array_item(
 
 pub(crate) fn push_array_items_with<S: Style>(
     out: &mut Out<'_>,
-    ctx: &ArrayCtx,
+    ctx: &ArrayCtx<'_>,
 ) {
     let mut prev_index: Option<usize> = None;
     for (i, (orig_index, (kind, item))) in ctx.children.iter().enumerate() {

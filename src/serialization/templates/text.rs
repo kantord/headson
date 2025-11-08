@@ -18,7 +18,7 @@ fn push_text_omission_line(out: &mut Out<'_>, omitted: usize) {
     }
 }
 
-pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
+pub(super) fn render_array(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     // For text, arrays are treated as raw lines of text. We do not emit
     // brackets or indentation; we only write lines and optional omission markers.
     if ctx.omitted_at_start && ctx.omitted > 0 {

@@ -44,7 +44,7 @@ fn push_yaml_scalar(out: &mut Out<'_>, token: &str) {
     out.push_str(token);
 }
 
-fn push_array_omitted_start(ctx: &ArrayCtx, out: &mut Out<'_>) {
+fn push_array_omitted_start(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     if ctx.omitted_at_start && ctx.omitted > 0 {
         // Style controls comment content; strict emits nothing.
         match out.style() {
@@ -63,7 +63,7 @@ fn push_array_omitted_start(ctx: &ArrayCtx, out: &mut Out<'_>) {
     }
 }
 
-fn push_array_omitted_end(ctx: &ArrayCtx, out: &mut Out<'_>) {
+fn push_array_omitted_end(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     if !ctx.omitted_at_start && ctx.omitted > 0 {
         match out.style() {
             crate::serialization::types::Style::Strict => {}
@@ -81,7 +81,7 @@ fn push_array_omitted_end(ctx: &ArrayCtx, out: &mut Out<'_>) {
     }
 }
 
-fn render_array_pretty(ctx: &ArrayCtx, out: &mut Out<'_>) {
+fn render_array_pretty(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     push_array_omitted_start(ctx, out);
     for (_, (_, item)) in ctx.children.iter() {
         push_yaml_array_item(out, ctx.depth, item);
@@ -89,7 +89,7 @@ fn render_array_pretty(ctx: &ArrayCtx, out: &mut Out<'_>) {
     push_array_omitted_end(ctx, out);
 }
 
-pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
+pub(super) fn render_array(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     if out.is_compact_mode() {
         super::json::render_array(ctx, out);
         return;

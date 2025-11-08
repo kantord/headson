@@ -1,7 +1,8 @@
 use crate::order::ObjectType;
-use crate::order::{NodeKind, PriorityOrder, ROOT_PQ_ID, RankedNode};
+use crate::order::{NodeId, NodeKind, PriorityOrder, ROOT_PQ_ID, RankedNode};
 pub mod color;
 mod fileset;
+mod highlight;
 pub mod output;
 pub mod templates;
 pub mod types;
@@ -63,6 +64,17 @@ impl<'a> RenderScope<'a> {
             }
         }
         any
+    }
+
+    fn source_hint_for(&self, id: usize) -> Option<&'a str> {
+        let mut cursor = Some(NodeId(id));
+        while let Some(node) = cursor {
+            if let Some(key) = self.order.nodes[node.0].key_in_object() {
+                return Some(key);
+            }
+            cursor = self.order.parent.get(node.0).and_then(|parent| *parent);
+        }
+        self.config.primary_source_name.as_deref()
     }
     fn push_array_child_line(
         &self,
@@ -145,6 +157,7 @@ impl<'a> RenderScope<'a> {
             depth,
             inline_open: inline,
             omitted_at_start: config.prefer_tail_arrays,
+            source_hint: self.source_hint_for(id),
         };
         render_array(config.template, &ctx, out)
     }
@@ -544,6 +557,7 @@ impl<'a> RenderScope<'a> {
             depth,
             inline_open: inline,
             omitted_at_start: config.prefer_tail_arrays,
+            source_hint: self.source_hint_for(id),
         };
         render_array(template, &ctx, out)
     }
@@ -813,6 +827,7 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -850,6 +865,7 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         // Sanity: output should contain CRLF newlines and render the object child across lines.
@@ -889,6 +905,7 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_snapshot!("arena_render_single", out);
@@ -929,6 +946,7 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_snapshot!("array_omitted_pseudo_head", out_head);
@@ -950,6 +968,7 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_snapshot!("array_omitted_pseudo_tail", out_tail);
@@ -988,6 +1007,7 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_snapshot!("array_omitted_js_head", out_head);
@@ -1008,6 +1028,7 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_snapshot!("array_omitted_js_tail", out_tail);
@@ -1046,6 +1067,7 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_yaml_valid(&out_head);
@@ -1067,6 +1089,7 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_yaml_valid(&out_tail);
@@ -1102,6 +1125,7 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1137,6 +1161,7 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1170,6 +1195,7 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1231,6 +1257,7 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1303,6 +1330,7 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         // Expect the first 5 characters plus an ellipsis, as a valid JSON string literal.
@@ -1338,6 +1366,7 @@ mod tests {
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1380,6 +1409,7 @@ mod tests {
             style: crate::serialization::types::Style::Strict,
             string_free_prefix_graphemes: None,
             debug: false,
+            primary_source_name: None,
         };
         let scope = RenderScope {
             order: &build,
@@ -1420,6 +1450,7 @@ mod tests {
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         assert_snapshot!("inline_open_array_in_object_json", out);
@@ -1456,6 +1487,7 @@ mod tests {
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
+                primary_source_name: None,
             },
         );
         // Should be a valid JS object with one property and an omitted summary.
@@ -1471,7 +1503,7 @@ mod tests {
         );
     }
 
-    fn mk_gap_ctx() -> super::templates::ArrayCtx {
+    fn mk_gap_ctx() -> super::templates::ArrayCtx<'static> {
         super::templates::ArrayCtx {
             children: vec![
                 (0, (crate::order::NodeKind::Number, "1".to_string())),
@@ -1483,6 +1515,7 @@ mod tests {
             depth: 0,
             inline_open: false,
             omitted_at_start: false,
+            source_hint: None,
         }
     }
 
@@ -1505,6 +1538,7 @@ mod tests {
             style,
             string_free_prefix_graphemes: None,
             debug: false,
+            primary_source_name: None,
         }
     }
 

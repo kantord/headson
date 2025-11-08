@@ -7,7 +7,7 @@ use crate::serialization::output::Out;
 struct Pseudo;
 
 impl Style for Pseudo {
-    fn array_push_omitted(out: &mut Out<'_>, ctx: &ArrayCtx) {
+    fn array_push_omitted(out: &mut Out<'_>, ctx: &ArrayCtx<'_>) {
         if ctx.omitted > 0 {
             out.push_indent(ctx.depth + 1);
             out.push_omission();
@@ -19,7 +19,7 @@ impl Style for Pseudo {
     }
     fn array_push_internal_gap(
         out: &mut Out<'_>,
-        ctx: &ArrayCtx,
+        ctx: &ArrayCtx<'_>,
         _gap: usize,
     ) {
         out.push_indent(ctx.depth + 1);
@@ -36,7 +36,7 @@ impl Style for Pseudo {
     }
 }
 
-fn render_array_empty(ctx: &ArrayCtx, out: &mut Out<'_>) {
+fn render_array_empty(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     if !ctx.inline_open {
         out.push_indent(ctx.depth);
     }
@@ -49,7 +49,7 @@ fn render_array_empty(ctx: &ArrayCtx, out: &mut Out<'_>) {
     out.push_char(']');
 }
 
-fn render_array_nonempty(ctx: &ArrayCtx, out: &mut Out<'_>) {
+fn render_array_nonempty(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     wrap_block(out, ctx.depth, ctx.inline_open, '[', ']', |o| {
         if ctx.omitted_at_start {
             <Pseudo as Style>::array_push_omitted(o, ctx);
@@ -61,7 +61,7 @@ fn render_array_nonempty(ctx: &ArrayCtx, out: &mut Out<'_>) {
     });
 }
 
-pub(super) fn render_array(ctx: &ArrayCtx, out: &mut Out<'_>) {
+pub(super) fn render_array(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     if ctx.children_len == 0 {
         render_array_empty(ctx, out);
     } else {

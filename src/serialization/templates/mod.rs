@@ -10,13 +10,14 @@ mod pseudo;
 mod text;
 mod yaml;
 //
-pub struct ArrayCtx {
+pub struct ArrayCtx<'a> {
     pub children: Vec<(usize, (NodeKind, String))>,
     pub children_len: usize,
     pub omitted: usize,
     pub depth: usize,
     pub inline_open: bool,
     pub omitted_at_start: bool,
+    pub source_hint: Option<&'a str>,
 }
 
 pub struct ObjectCtx<'a> {
@@ -34,7 +35,7 @@ pub struct ObjectCtx<'a> {
 
 pub fn render_array(
     template: OutputTemplate,
-    ctx: &ArrayCtx,
+    ctx: &ArrayCtx<'_>,
     out: &mut Out<'_>,
 ) {
     match template {

@@ -40,6 +40,7 @@ fn yaml_coloring_applies_and_strips_to_plain() {
         style: headson::Style::Default,
         string_free_prefix_graphemes: None,
         debug: false,
+        primary_source_name: None,
     };
     let cfg_color = RenderConfig {
         color_enabled: true,

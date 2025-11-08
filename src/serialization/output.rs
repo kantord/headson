@@ -94,4 +94,8 @@ impl<'a> Out<'a> {
     pub fn line_number_width(&self) -> Option<usize> {
         self.line_number_width
     }
+
+    pub fn colors_enabled(&self) -> bool {
+        self.color_enabled
+    }
 }
