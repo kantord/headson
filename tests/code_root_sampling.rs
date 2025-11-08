@@ -102,6 +102,20 @@ fn code_auto_sample_stripped_matches_plain_snapshot() {
 }
 
 #[test]
+fn code_line_numbers_remain_plain() {
+    let colored = run_sample_py_colored();
+    for line in colored.lines() {
+        if let Some(colon_idx) = line.find(':') {
+            let prefix = &line[..colon_idx];
+            assert!(
+                !prefix.contains("\u{001b}["),
+                "line number prefix contains ANSI color: {line:?}"
+            );
+        }
+    }
+}
+
+#[test]
 fn code_prefers_top_level_headers() {
     let assert = cargo_bin_cmd!("headson")
         .args([

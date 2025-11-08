@@ -37,9 +37,13 @@ pub(super) fn render_array(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
 
     // Track the last seen non-empty line's textual indent for potential future alignment.
     let mut last_nonempty_indent: String = String::new();
-    let mut highlighter = out
-        .colors_enabled()
-        .then(|| CodeHighlighter::new(ctx.source_hint));
+    let highlight_lookup = ctx.code_highlight.as_ref();
+    let mut fallback_highlighter =
+        if highlight_lookup.is_none() && out.colors_enabled() {
+            Some(CodeHighlighter::new(ctx.source_hint))
+        } else {
+            None
+        };
 
     // No omission marker at start for code template.
 
@@ -73,11 +77,17 @@ pub(super) fn render_array(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
                 } else {
                     out.push_str(&format!("{n}: "));
                 }
-                if let Some(hl) = highlighter.as_mut() {
-                    let colored = hl.highlight_line(item);
-                    out.push_str(&colored);
-                } else {
-                    out.push_str(item);
+                match highlight_lookup.and_then(|lines| lines.get(*orig_index))
+                {
+                    Some(colored) => out.push_str(colored),
+                    None => {
+                        if let Some(hl) = fallback_highlighter.as_mut() {
+                            let colored = hl.highlight_line(item);
+                            out.push_str(&colored);
+                        } else {
+                            out.push_str(item);
+                        }
+                    }
                 }
                 out.push_newline();
                 if !item.trim().is_empty() {

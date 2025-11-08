@@ -1,6 +1,7 @@
 use crate::OutputTemplate;
 use crate::order::NodeKind;
 use crate::serialization::output::Out;
+use std::sync::Arc;
 
 mod code;
 mod core;
@@ -18,6 +19,7 @@ pub struct ArrayCtx<'a> {
     pub inline_open: bool,
     pub omitted_at_start: bool,
     pub source_hint: Option<&'a str>,
+    pub code_highlight: Option<Arc<Vec<String>>>,
 }
 
 pub struct ObjectCtx<'a> {
