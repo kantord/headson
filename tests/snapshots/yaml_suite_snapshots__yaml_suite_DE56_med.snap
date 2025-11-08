@@ -2,19 +2,23 @@
 source: tests/yaml_suite_snapshots.rs
 expression: med
 ---
-- dump: "\"1 trailing\\t tab\"\n"
+- dump: "1 trailing\t tab…
   from: "@ingydotnet"
-  json: "\"1 trailing\\t tab\"\n"
-  name: Trailing tabs in double quoted
+  json: "1 trailing\t tab…
+  name: Trailing tabs in …
   tags: double whitespace
-  tree: "+STR\n +DOC\n  =VAL \"1 trailing\\t tab\n…"
-  yaml: "\"1 trailing\\t\n    tab\"\n"
-- dump: "\"3 trailing\\t tab\"\n"
-  json: "\"3 trailing\\t tab\"\n"
-  tree: "+STR\n +DOC\n  =VAL \"3 trailing\\t tab…"
-  yaml: "\"3 trailing\\————»\n    tab\"\n"
-- dump: "\"6 trailing tab\"\n"
-  json: "\"6 trailing tab\"\n"
-  tree: "+STR\n +DOC\n  =VAL \"6 trailing tab\n …"
-  yaml: "\"6 trailing—»␣␣\n    tab\"\n"
-# 3 more items
+  tree: "+STR\n +DOC\n  =VAL…"
+  yaml: "\"1 trailing\\t\n   …"
+- dump: "3 trailing\t tab…
+  json: "3 trailing\t tab…
+  tree: "+STR\n +DOC\n  =VAL…"
+  yaml: "3 trailing\————»…
+- dump: "4 trailing\t tab…
+  json: "4 trailing\t tab…
+  tree: "+STR\n +DOC\n  =VAL…"
+  yaml: "4 trailing\————…
+- dump: "6 trailing tab"…
+  json: "6 trailing tab"…
+  tree: "+STR\n +DOC\n  =VA…"
+  yaml: "\"6 trailing—»␣␣\n…"
+# 2 more items

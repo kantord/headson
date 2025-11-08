@@ -1,13 +1,10 @@
 ---
 source: tests/code_text_fallback_param.rs
-assertion_line: 142
 expression: out_default
 ---
  1: #!/usr/bin/env bash
- 2: 
- 3: greet() {
- 4:   local name="$1"
- 5:   echo "Hello, ${name}"
-31: 
+ 8: compute() {
+10:   local total=0
+11:   for ((i=0; i<n; i++)); do
+19: }
 32: main "$@"
-33:

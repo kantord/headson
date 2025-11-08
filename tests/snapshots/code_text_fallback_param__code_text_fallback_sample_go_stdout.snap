@@ -1,12 +1,10 @@
 ---
 source: tests/code_text_fallback_param.rs
-assertion_line: 142
 expression: out_default
 ---
  1: package main
- 2: 
- 3: import "fmt"
-28:     value := compute(10)
-29:     fmt.Println("value:", value)
+ 7: }
+ 9: func compute(n int) int {
+11:     for i := 0; i < n; i++ {
+18:     return total
 30: }
-31:
