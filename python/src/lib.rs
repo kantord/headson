@@ -32,8 +32,9 @@ fn map_output_template(format: &str, style: Style) -> Result<OutputTemplate> {
         "json" => Ok(map_json_template_for_style(style)),
         "yaml" | "yml" => Ok(OutputTemplate::Yaml),
         "text" => Ok(OutputTemplate::Text),
+        "code" => Ok(OutputTemplate::Code),
         other => bail!(
-            "unknown format: {} (expected 'auto' | 'json' | 'yaml' | 'text')",
+            "unknown format: {} (expected 'auto' | 'json' | 'yaml' | 'text' | 'code')",
             other
         ),
     }

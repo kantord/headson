@@ -424,7 +424,7 @@ impl Ingest for TextIngest {
         bytes: Vec<u8>,
         cfg: &PriorityConfig,
     ) -> Result<JsonTreeArena> {
-        build_text_tree_arena_from_bytes(bytes, cfg)
+        parse_text_one(bytes, cfg)
     }
 
     fn parse_many(
@@ -440,7 +440,16 @@ pub fn parse_text_one(
     bytes: Vec<u8>,
     cfg: &PriorityConfig,
 ) -> Result<JsonTreeArena> {
-    TextIngest::parse_one(bytes, cfg)
+    parse_text_one_with_mode(bytes, cfg, false)
+}
+
+/// Version of `parse_text_one` that allows explicitly toggling atomic code mode.
+pub fn parse_text_one_with_mode(
+    bytes: Vec<u8>,
+    cfg: &PriorityConfig,
+    atomic_strings: bool,
+) -> Result<JsonTreeArena> {
+    build_text_tree_arena_from_bytes_with_mode(bytes, cfg, atomic_strings)
 }
 
 pub fn parse_text_many(

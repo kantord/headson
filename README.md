@@ -131,14 +131,12 @@ Quick one‑liners:
 
       headson -c 200 -i text -f text notes.txt
 
-- Many text files (fileset):
-
-      headson -c 800 -i text -f text logs/*.txt
-
 - Styles on Text:
   - default: omission as a standalone `…` line.
   - detailed: omission as `… N more lines …`.
   - strict: no array‑level omission line (individual long lines may still truncate with `…`).
+
+> **Note:** Filesets always render with per-file auto templates. When you need to preview a directory of mixed formats, skip `-f text` and let `-f auto` pick the right renderer for each entry.
 
 Show help:
 
@@ -231,16 +229,19 @@ print(headson.summarize(doc, format="yaml", style="default", input_format="yaml"
 
 ## Source Code Support
 
-When `headson` detects a code-like file (based on its extension) it switches to a set of heuristics tuned for source code:
+Source code support is a challenging area. While `headson`'s algorithm and code structure would allow for the use of
+completely accurate parsing using language-specific parsers using `tree-sitter`, this would increase the complexity
+of the application and its number of dependencies.
 
-- **Atomic line ingest**: each line is treated as an atomic string so omission markers never split a statement midway.
+Instead of attempting a deep parse of source code files, we convert them into nested arrays based on a heuristic that
+understands indentation patterns in the file.
+
+When `headson` detects a code-like file, it uses a set of additional heuristics:
+- **Atomic line ingest**: each line is treated as an atomic string so omission markers never split a code line.
 - **Depth-aware sampling**:
-  - The top-level array (list of functions/classes) uses a balanced `HeadMidTail` bias so you see representative declarations across the file.
-  - Nested blocks (function bodies, loops) prefer head/tail coverage, with internal gaps annotated, so you can glimpse both entry and exit code paths.
+  - We attempt to include more of the top level of the source code in order to give a good overview of classes, function and constants at the top level.
+  - Nested blocks (function bodies, loops) prefer to omit lines in the middle to attempt to preserve natural "block" boundaries
 - **Header priority**: lines that introduce a nested block (e.g., `def foo():`) get a small priority boost to ensure they survive tight budgets.
-- **Filesets**: in multi-file mode, each code entry renders with these heuristics while JSON/YAML siblings retain their native format.
-
-You can still override the template/style via CLI flags for single files or stdin (`-f json`, `-t strict`, etc.). Filesets, however, remain auto-only to avoid mixing incompatible formats under one header.
 
 # Algorithm
 

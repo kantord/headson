@@ -134,7 +134,13 @@ pub fn headson_text(
     priority_cfg: &PriorityConfig,
     budget: usize,
 ) -> Result<String> {
-    let arena = crate::ingest::parse_text_one(input, priority_cfg)?;
+    let atomic = matches!(config.template, OutputTemplate::Code);
+    let arena =
+        crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
+            input,
+            priority_cfg,
+            atomic,
+        )?;
     let order_build = order::build_order(&arena, priority_cfg)?;
     let out = find_largest_render_under_budgets(
         &order_build,
@@ -358,7 +364,13 @@ pub fn headson_text_with_budgets(
     priority_cfg: &PriorityConfig,
     budgets: Budgets,
 ) -> Result<String> {
-    let arena = crate::ingest::parse_text_one(input, priority_cfg)?;
+    let atomic = matches!(config.template, OutputTemplate::Code);
+    let arena =
+        crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
+            input,
+            priority_cfg,
+            atomic,
+        )?;
     let order_build = order::build_order(&arena, priority_cfg)?;
     Ok(find_largest_render_under_budgets(
         &order_build,

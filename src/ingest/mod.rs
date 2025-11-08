@@ -23,9 +23,13 @@ pub mod formats;
 pub mod sampling;
 
 // Convenience re-exports so callers can use `crate::ingest::parse_*`.
+#[allow(
+    unused_imports,
+    reason = "Re-exported helpers need to stay public even when unused internally"
+)]
 pub use formats::{
     parse_json_many, parse_json_one, parse_text_many, parse_text_one,
-    parse_yaml_many, parse_yaml_one,
+    parse_text_one_with_mode, parse_yaml_many, parse_yaml_one,
 };
 
 // (intentionally no duplicate re-exports here; see formats::* above)
