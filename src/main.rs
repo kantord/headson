@@ -348,21 +348,8 @@ fn run_from_paths(
                 headson::FilesetInput { name, bytes, kind }
             })
             .collect();
-        let any_code = files.iter().any(|f| {
-            matches!(
-                f.kind,
-                headson::FilesetInputKind::Text { atomic_lines: true }
-            )
-        });
-        let mut prio_effective = prio;
-        if any_code {
-            prio_effective.array_bias = headson::ArrayBias::HeadTail;
-        }
         let out = headson::headson_fileset_multi_with_budgets(
-            files,
-            &cfg,
-            &prio_effective,
-            budgets,
+            files, &cfg, &prio, budgets,
         )?;
         return Ok((out, ignored));
     }
@@ -413,10 +400,8 @@ fn run_from_paths(
                 )]
                 let mut cfg_code = cfg.clone();
                 cfg_code.template = headson::OutputTemplate::Code;
-                let mut prio_code = prio;
-                prio_code.array_bias = headson::ArrayBias::HeadTail;
                 headson::headson_text_with_budgets_code(
-                    bytes, &cfg_code, &prio_code, budgets,
+                    bytes, &cfg_code, &prio, budgets,
                 )?
             } else {
                 headson::headson_text_with_budgets(

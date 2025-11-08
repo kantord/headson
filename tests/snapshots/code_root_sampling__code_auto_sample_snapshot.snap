@@ -1,0 +1,8 @@
+---
+source: tests/code_root_sampling.rs
+assertion_line: 28
+expression: out
+---
+ 1: def greet(name: str):
+ 5: def compute(n: int) -> int:
+23: if __name__ == "__main__":

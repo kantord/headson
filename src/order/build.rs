@@ -56,6 +56,7 @@ struct Scope<'a> {
     safety_cap: usize,
     object_type: &'a mut Vec<ObjectType>,
     index_in_parent_array: &'a mut Vec<Option<usize>>,
+    force_first_child: &'a mut Vec<bool>,
 }
 
 impl<'a> Scope<'a> {
@@ -75,6 +76,13 @@ impl<'a> Scope<'a> {
         // Children created from parsing regular JSON are standard objects/arrays/etc.
         // If child is an object, default to Object type.
         self.object_type.push(ObjectType::Object);
+        let force = common
+            .arena_index
+            .and_then(|idx| {
+                self.arena.nodes.get(idx).map(|n| n.force_first_line)
+            })
+            .unwrap_or(false);
+        self.force_first_child.push(force);
         self.children[id].push(NodeId(child_priority_index));
         self.heap.push(Reverse(Entry {
             score: common.score,
@@ -127,13 +135,32 @@ impl<'a> Scope<'a> {
         }
     }
 
-    fn array_extra_for_index(&self, i: usize, kept: usize) -> u128 {
-        if self.config.prefer_tail_arrays {
-            let idx_for_priority = kept.saturating_sub(1).saturating_sub(i);
-            let ii = idx_for_priority as u128;
-            return ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT;
+    fn resolved_bias(
+        &self,
+        arena_id: Option<usize>,
+        depth: usize,
+    ) -> super::types::ArrayBias {
+        let mut bias = self.config.array_bias;
+        if let Some(aid) = arena_id {
+            if let Some(override_bias) =
+                self.arena.nodes[aid].array_bias_override
+            {
+                bias = override_bias;
+            }
         }
-        match self.config.array_bias {
+        if matches!(bias, super::types::ArrayBias::HeadTail) && depth == 0 {
+            super::types::ArrayBias::HeadMidTail
+        } else {
+            bias
+        }
+    }
+
+    fn bias_extra(
+        bias: super::types::ArrayBias,
+        i: usize,
+        kept: usize,
+    ) -> u128 {
+        match bias {
             super::types::ArrayBias::Head => {
                 let ii = i as u128;
                 ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT
@@ -147,13 +174,28 @@ impl<'a> Scope<'a> {
                 d * d * d * ARRAY_INDEX_CUBIC_WEIGHT
             }
             super::types::ArrayBias::HeadTail => {
-                // Favor edges only: distance to nearest edge (head or tail).
                 let d_head = i as isize;
                 let d_tail = kept.saturating_sub(1) as isize - i as isize;
                 let d = d_head.min(d_tail).unsigned_abs() as u128;
                 d * d * d * ARRAY_INDEX_CUBIC_WEIGHT
             }
         }
+    }
+
+    fn array_extra_for_index(
+        &self,
+        i: usize,
+        kept: usize,
+        arena_id: Option<usize>,
+        depth: usize,
+    ) -> u128 {
+        if self.config.prefer_tail_arrays {
+            let idx_for_priority = kept.saturating_sub(1).saturating_sub(i);
+            let ii = idx_for_priority as u128;
+            return ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT;
+        }
+        let bias = self.resolved_bias(arena_id, depth);
+        Self::bias_extra(bias, i, kept)
     }
 
     #[allow(
@@ -175,7 +217,12 @@ impl<'a> Scope<'a> {
             } else {
                 i
             };
-            let extra: u128 = self.array_extra_for_index(i, kept);
+            let extra: u128 = self.array_extra_for_index(
+                i,
+                kept,
+                Some(arena_id),
+                entry.depth,
+            );
             let mut score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
             let child_node = &self.arena.nodes[child_arena_id];
             if matches!(
@@ -405,6 +452,7 @@ pub fn build_order(
     let mut object_type: Vec<ObjectType> = Vec::new();
     let mut heap: BinaryHeap<Reverse<Entry>> = BinaryHeap::new();
     let mut index_in_parent_array: Vec<Option<usize>> = Vec::new();
+    let mut force_first_child: Vec<bool> = Vec::new();
 
     // Seed root from arena
     let root_ar = arena.root_id;
@@ -447,6 +495,7 @@ pub fn build_order(
         ObjectType::Object
     };
     object_type.push(root_ot);
+    force_first_child.push(arena.nodes[root_ar].force_first_line);
     heap.push(Reverse(Entry {
         score: ROOT_BASE_SCORE,
         priority_index: root_priority_index,
@@ -467,6 +516,7 @@ pub fn build_order(
             safety_cap: SAFETY_CAP,
             object_type: &mut object_type,
             index_in_parent_array: &mut index_in_parent_array,
+            force_first_child: &mut force_first_child,
         };
         scope.process_entry(&entry, &mut order);
         if next_pq_id >= SAFETY_CAP {
@@ -484,6 +534,7 @@ pub fn build_order(
         by_priority: order,
         total_nodes: total,
         object_type,
+        force_first_child,
     })
 }
 

@@ -1,9 +1,9 @@
 use anyhow::Result;
 use std::borrow::Cow;
 
-use crate::PriorityConfig;
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
+use crate::{ArrayBias, PriorityConfig};
 
 use crate::ingest::sampling::{ArraySamplerKind, choose_indices};
 use crate::ingest::{Ingest, fileset::build_fileset_root};
@@ -64,6 +64,8 @@ impl TextArenaBuilder {
         &mut self,
         children: Vec<usize>,
         child_orig_indices: Option<Vec<usize>>,
+        bias_override: Option<ArrayBias>,
+        force_first_line: bool,
     ) -> usize {
         let id = self.push_default();
         let children_start = self.arena.children.len();
@@ -74,6 +76,8 @@ impl TextArenaBuilder {
         n.children_start = children_start;
         n.children_len = children_len;
         n.array_len = Some(children_len);
+        n.array_bias_override = bias_override;
+        n.force_first_line = force_first_line;
         if let Some(orig) = child_orig_indices {
             let start = self.arena.arr_indices.len();
             self.arena.arr_indices.extend(orig);
@@ -91,6 +95,7 @@ impl TextArenaBuilder {
         &mut self,
         all_children: &[usize],
         total: usize,
+        bias_override: Option<ArrayBias>,
     ) -> usize {
         let id = self.push_default();
         let idxs = choose_indices(self.sampler, total, self.array_cap);
@@ -106,6 +111,8 @@ impl TextArenaBuilder {
         n.children_start = children_start;
         n.children_len = kept;
         n.array_len = Some(total);
+        n.array_bias_override = bias_override;
+        n.force_first_line = false;
         // Always store original indices for child arrays to enable global line numbering
         let start = self.arena.arr_indices.len();
         self.arena.arr_indices.extend(idxs.into_iter().take(kept));
@@ -167,7 +174,7 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
     for &l in &raw_lines {
         // Compute structural depth from leading whitespace, but preserve
         // the original line text (including its exact indentation).
-        let (mut d, text) = if uses_tab {
+        let (mut d, text_raw) = if uses_tab {
             let tabs = l.chars().take_while(|c| *c == '\t').count();
             (tabs, l.to_string())
         } else {
@@ -176,6 +183,8 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
             let depth = spaces / unit;
             (depth, l.to_string())
         };
+        let is_blank = text_raw.trim().is_empty();
+        let text = text_raw;
         // Clamp over-indentation to at most +1 level from current, or to top if stack empty.
         let cur_depth = stack.len();
         if cur_depth == 0 && d > 0 {
@@ -194,7 +203,9 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
             children: Vec::new(),
         });
         if d == 0 {
-            roots.push(id);
+            if !(atomic_strings && is_blank) {
+                roots.push(id);
+            }
         } else {
             let parent_id_opt = stack
                 .get(d.saturating_sub(1))
@@ -217,6 +228,7 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
         tnodes: &Vec<TNode>,
         b: &mut TextArenaBuilder,
         atomic: bool,
+        depth: usize,
     ) -> usize {
         let n = &tnodes[id];
         let mut kids: Vec<usize> = Vec::new();
@@ -228,12 +240,28 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
         }
         origs.push(id);
         for &ch in &n.children {
-            let child_arr = push_tnode(ch, tnodes, b, atomic);
+            let child_arr = push_tnode(ch, tnodes, b, atomic, depth + 1);
             kids.push(child_arr);
             // For a nested array, use its header line's global index (child TNode id)
             origs.push(ch);
         }
-        b.push_array_with_children(kids, Some(origs))
+        let bias_override = if atomic {
+            if depth == 0 {
+                Some(ArrayBias::HeadMidTail)
+            } else {
+                Some(ArrayBias::HeadTail)
+            }
+        } else {
+            None
+        };
+        let force_first_line =
+            atomic && depth == 0 && !n.text.trim().is_empty();
+        b.push_array_with_children(
+            kids,
+            Some(origs),
+            bias_override,
+            force_first_line,
+        )
     }
 
     let mut b = TextArenaBuilder::new(
@@ -243,9 +271,14 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
     let total = roots.len();
     let mut all_children: Vec<usize> = Vec::with_capacity(total);
     for &rid in &roots {
-        all_children.push(push_tnode(rid, &tnodes, &mut b, atomic_strings));
+        all_children.push(push_tnode(rid, &tnodes, &mut b, atomic_strings, 0));
     }
-    let root_id = b.push_root_array_sampled(&all_children, total);
+    let root_bias = if atomic_strings {
+        Some(ArrayBias::HeadMidTail)
+    } else {
+        None
+    };
+    let root_id = b.push_root_array_sampled(&all_children, total, root_bias);
     let mut a = b.finish();
     a.root_id = root_id;
     Ok(a)

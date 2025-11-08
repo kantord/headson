@@ -614,6 +614,35 @@ impl<'a> RenderScope<'a> {
 
 /// Prepare a render set by including the first `top_k` nodes by priority
 /// and all of their ancestors so the output remains structurally valid.
+fn enforce_force_first_child(
+    order_build: &PriorityOrder,
+    inclusion_flags: &mut [u32],
+    render_id: u32,
+) {
+    for (idx, force) in order_build.force_first_child.iter().enumerate() {
+        let included =
+            inclusion_flags.get(idx).copied().unwrap_or_default() == render_id;
+        if !*force || !included {
+            continue;
+        }
+        let Some(children) = order_build.children.get(idx) else {
+            continue;
+        };
+        let Some(first_child) = children.first() else {
+            continue;
+        };
+        if inclusion_flags[first_child.0] == render_id {
+            continue;
+        }
+        crate::utils::graph::mark_node_and_ancestors(
+            order_build,
+            *first_child,
+            inclusion_flags,
+            render_id,
+        );
+    }
+}
+
 pub fn prepare_render_set_top_k_and_ancestors(
     order_build: &PriorityOrder,
     top_k: usize,
@@ -630,6 +659,7 @@ pub fn prepare_render_set_top_k_and_ancestors(
         inclusion_flags,
         render_id,
     );
+    enforce_force_first_child(order_build, inclusion_flags, render_id);
 }
 
 /// Render using a previously prepared render set (inclusion flags matching `render_id`).

@@ -59,3 +59,22 @@ pub(crate) fn mark_top_k_and_ancestors(
         &mut work_stack,
     );
 }
+
+pub(crate) fn mark_node_and_ancestors(
+    order: &PriorityOrder,
+    node: NodeId,
+    inclusion_flags: &mut [u32],
+    render_id: u32,
+) {
+    if inclusion_flags[node.0] == render_id {
+        return;
+    }
+    let mut work_stack = vec![node];
+    inclusion_flags[node.0] = render_id;
+    propagate_marks_to_ancestors(
+        &order.parent,
+        inclusion_flags,
+        render_id,
+        &mut work_stack,
+    );
+}
