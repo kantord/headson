@@ -22,7 +22,9 @@ fn last_nonempty_line_indent(s: &str) -> Option<&str> {
     None
 }
 
-// No omission lines for code template.
+// No explicit omission markers for the code template: jumps in the printed
+// line numbers are the omission signal (e.g., `4:` → `22:` means 17 lines were
+// skipped).
 
 #[allow(
     clippy::cognitive_complexity,
