@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.8](https://github.com/kantord/headson/compare/v0.6.7...v0.6.8) - 2025-11-08
+
+### Added
+
+- support synax highlighting for code files ([#156](https://github.com/kantord/headson/pull/156))
+- smart summary for source code files ([#145](https://github.com/kantord/headson/pull/145))
+- properly support multi-format file ingestion ([#153](https://github.com/kantord/headson/pull/153))
+- add --debug flag ([#150](https://github.com/kantord/headson/pull/150))
+
+### Fixed
+
+- improve code "parsing" heuristics ([#158](https://github.com/kantord/headson/pull/158))
+
 ## [0.6.7](https://github.com/kantord/headson/compare/v0.6.6...v0.6.7) - 2025-11-04
 
 ### Other
