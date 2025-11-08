@@ -1,25 +1,13 @@
 ---
 source: tests/cpp_text_fallback.rs
-assertion_line: 54
 expression: out
 ---
 [
-  [
-    "#i…"
-  ],
+  "#include <iostream>",
   …
-  [
-    ""
-  ],
-  [
-    "in…",
-    [
-      " …"
-    ]
-  ],
+  "    for (int i = 0; i < 5; ++…",
+  "        if (i % 2 == 0) {",
   …
-  [
-    ""
-  ]
+  ""
   …
 ]

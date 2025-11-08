@@ -127,6 +127,45 @@ impl TextArenaBuilder {
         n.arr_indices_len = len.min(kept);
         id
     }
+
+    fn push_array_of_lines(
+        &mut self,
+        lines: &[String],
+        total: usize,
+    ) -> usize {
+        let id = self.push_default();
+        let idxs = choose_indices(self.sampler, total, self.array_cap);
+        let kept = idxs.len().min(self.array_cap);
+        let children_start = self.arena.children.len();
+        let mut pushed = 0usize;
+        for (i, &orig_index) in idxs.iter().take(kept).enumerate() {
+            if let Some(line) = lines.get(orig_index) {
+                let child = self.push_string(line.clone(), false);
+                self.arena.children.push(child);
+                pushed = i + 1;
+            }
+        }
+        let n = &mut self.arena.nodes[id];
+        n.kind = NodeKind::Array;
+        n.children_start = children_start;
+        n.children_len = pushed;
+        n.array_len = Some(total);
+        let contiguous =
+            idxs.iter().take(kept).enumerate().all(|(i, &idx)| i == idx);
+        if pushed == 0 || contiguous {
+            n.arr_indices_start = 0;
+            n.arr_indices_len = 0;
+        } else {
+            let start = self.arena.arr_indices.len();
+            self.arena
+                .arr_indices
+                .extend(idxs.iter().take(kept).copied());
+            let len = self.arena.arr_indices.len().saturating_sub(start);
+            n.arr_indices_start = start;
+            n.arr_indices_len = len.min(pushed);
+        }
+        id
+    }
 }
 
 #[allow(
@@ -139,163 +178,224 @@ impl TextArenaBuilder {
     clippy::too_many_lines,
     reason = "Builder + indent/nesting logic is clearest co-located"
 )]
-pub fn build_text_tree_arena_from_bytes_with_mode(
+fn build_text_tree_arena_plain(
     bytes: Vec<u8>,
     config: &PriorityConfig,
-    atomic_strings: bool,
 ) -> Result<JsonTreeArena> {
     let lossy = String::from_utf8_lossy(&bytes);
     let norm = normalize_newlines(&lossy);
-    // split_terminator keeps no trailing empty item for trailing newline
-    let raw_lines: Vec<&str> = norm.split_terminator('\n').collect();
+    let lines_vec: Vec<String> = norm
+        .split_terminator('\n')
+        .map(std::string::ToString::to_string)
+        .collect();
+    let total = lines_vec.len();
+    let mut b = TextArenaBuilder::new(
+        config.array_max_items,
+        config.array_sampler.into(),
+    );
+    let root_id = b.push_array_of_lines(&lines_vec, total);
+    let mut a = b.finish();
+    a.root_id = root_id;
+    Ok(a)
+}
 
-    // Detect indent unit: prefer tabs if present, otherwise minimal positive
-    // number of leading spaces among indented lines; default to 2 spaces.
+// Safe nested builder using indices (no raw pointers).
+#[derive(Default)]
+struct TNode {
+    text: String,
+    children: Vec<usize>,
+}
+
+fn detect_indent_unit(raw_lines: &[&str]) -> (bool, usize) {
     let uses_tab = raw_lines.iter().any(|l| l.starts_with('\t'));
-    let space_unit = if uses_tab {
-        0usize
+    if uses_tab {
+        (true, 0)
     } else {
         let mut min_pos: Option<usize> = None;
-        for l in &raw_lines {
+        for l in raw_lines {
             let count = l.chars().take_while(|c| *c == ' ').count();
             if count > 0 {
                 min_pos = Some(min_pos.map_or(count, |m| m.min(count)));
             }
         }
-        min_pos.unwrap_or(2)
-    };
-
-    // Safe nested builder using indices (no raw pointers).
-    #[derive(Default)]
-    struct TNode {
-        text: String,
-        children: Vec<usize>,
+        (false, min_pos.unwrap_or(2))
     }
+}
 
+fn build_code_nodes(
+    raw_lines: &[&str],
+    uses_tab: bool,
+    space_unit: usize,
+) -> (Vec<TNode>, Vec<usize>) {
     let mut tnodes: Vec<TNode> = Vec::new();
     let mut roots: Vec<usize> = Vec::new();
-    // Stack of node indices representing the current path; length equals current depth.
     let mut stack: Vec<usize> = Vec::new();
 
-    for &l in &raw_lines {
-        // Compute structural depth from leading whitespace, but preserve
-        // the original line text (including its exact indentation).
-        let (mut d, text_raw) = if uses_tab {
-            let tabs = l.chars().take_while(|c| *c == '\t').count();
-            (tabs, l.to_string())
-        } else {
-            let spaces = l.chars().take_while(|c| *c == ' ').count();
-            let unit = space_unit.max(1);
-            let depth = spaces / unit;
-            (depth, l.to_string())
-        };
-        let is_blank = text_raw.trim().is_empty();
-        let text = text_raw;
-        // Clamp over-indentation to at most +1 level from current, or to top if stack empty.
-        let cur_depth = stack.len();
-        if cur_depth == 0 && d > 0 {
-            d = 0;
-        } else if d > cur_depth + 1 {
-            d = cur_depth + 1;
-        }
-        // Pop to the desired parent depth.
-        while stack.len() > d {
-            stack.pop();
-        }
-        // Create node
+    for &l in raw_lines {
+        let (raw_depth, text_raw, is_blank) =
+            parse_code_line(l, uses_tab, space_unit);
+        let depth = clamp_depth(raw_depth, stack.len());
+        pop_to_depth(&mut stack, depth);
         let id = tnodes.len();
         tnodes.push(TNode {
-            text,
+            text: text_raw,
             children: Vec::new(),
         });
-        if d == 0 {
-            if !(atomic_strings && is_blank) {
-                roots.push(id);
-            }
-        } else {
-            let parent_id_opt = stack
-                .get(d.saturating_sub(1))
-                .copied()
-                .or_else(|| stack.last().copied());
-            if let Some(parent_id) = parent_id_opt {
-                tnodes[parent_id].children.push(id);
-            } else {
-                // Fallback: treat as a new root to avoid panics (should be rare due to clamping)
-                roots.push(id);
-            }
-        }
-        // Push this node as the new current for depth d
-        stack.push(id);
+        attach_code_node(
+            depth,
+            is_blank,
+            &mut stack,
+            &mut roots,
+            &mut tnodes,
+            id,
+        );
     }
 
-    // Transcribe TNode tree into the JSON arena.
-    fn push_tnode(
-        id: usize,
-        tnodes: &Vec<TNode>,
-        b: &mut TextArenaBuilder,
-        atomic: bool,
-        depth: usize,
-    ) -> usize {
-        let n = &tnodes[id];
-        let mut kids: Vec<usize> = Vec::new();
-        let mut origs: Vec<usize> = Vec::new();
-        let prefer_line = atomic && !n.children.is_empty();
-        if atomic {
-            kids.push(b.push_string_atomic(n.text.clone(), prefer_line));
-        } else {
-            kids.push(b.push_string(n.text.clone(), prefer_line));
-        }
-        origs.push(id);
-        for &ch in &n.children {
-            let child_arr = push_tnode(ch, tnodes, b, atomic, depth + 1);
-            kids.push(child_arr);
-            // For a nested array, use its header line's global index (child TNode id)
-            origs.push(ch);
-        }
-        let bias_override = if atomic {
-            if depth == 0 {
-                Some(ArrayBias::HeadMidTail)
-            } else {
-                Some(ArrayBias::HeadTail)
-            }
-        } else {
-            None
-        };
-        let force_first_line =
-            atomic && depth == 0 && !n.text.trim().is_empty();
-        b.push_array_with_children(
-            kids,
-            Some(origs),
-            bias_override,
-            force_first_line,
-        )
-    }
+    (tnodes, roots)
+}
 
-    let mut b = TextArenaBuilder::new(
+fn parse_code_line(
+    line: &str,
+    uses_tab: bool,
+    space_unit: usize,
+) -> (usize, String, bool) {
+    if uses_tab {
+        let tabs = line.chars().take_while(|c| *c == '\t').count();
+        let text = line.to_string();
+        let is_blank = text.trim().is_empty();
+        (tabs, text, is_blank)
+    } else {
+        let spaces = line.chars().take_while(|c| *c == ' ').count();
+        let unit = space_unit.max(1);
+        let depth = spaces / unit;
+        let text = line.to_string();
+        let is_blank = text.trim().is_empty();
+        (depth, text, is_blank)
+    }
+}
+
+fn clamp_depth(depth: usize, current_depth: usize) -> usize {
+    if current_depth == 0 && depth > 0 {
+        0
+    } else if depth > current_depth + 1 {
+        current_depth + 1
+    } else {
+        depth
+    }
+}
+
+fn pop_to_depth(stack: &mut Vec<usize>, target_depth: usize) {
+    while stack.len() > target_depth {
+        stack.pop();
+    }
+}
+
+fn attach_code_node(
+    depth: usize,
+    is_blank: bool,
+    stack: &mut Vec<usize>,
+    roots: &mut Vec<usize>,
+    tnodes: &mut [TNode],
+    id: usize,
+) {
+    if depth == 0 {
+        if !is_blank {
+            roots.push(id);
+        }
+    } else if let Some(parent_id) = stack
+        .get(depth.saturating_sub(1))
+        .copied()
+        .or_else(|| stack.last().copied())
+    {
+        tnodes[parent_id].children.push(id);
+    } else {
+        roots.push(id);
+    }
+    stack.push(id);
+}
+
+fn push_code_tnode(
+    id: usize,
+    tnodes: &[TNode],
+    builder: &mut TextArenaBuilder,
+    depth: usize,
+) -> usize {
+    let n = &tnodes[id];
+    let mut kids: Vec<usize> = Vec::with_capacity(1 + n.children.len());
+    let mut origs: Vec<usize> = Vec::with_capacity(1 + n.children.len());
+    let prefer_line = !n.children.is_empty();
+    kids.push(builder.push_string_atomic(n.text.clone(), prefer_line));
+    origs.push(id);
+    for &child in &n.children {
+        let arr = push_code_tnode(child, tnodes, builder, depth + 1);
+        kids.push(arr);
+        origs.push(child);
+    }
+    let bias_override = if depth == 0 {
+        Some(ArrayBias::HeadMidTail)
+    } else {
+        Some(ArrayBias::HeadTail)
+    };
+    let force_first = depth == 0 && !n.text.trim().is_empty();
+    builder.push_array_with_children(
+        kids,
+        Some(origs),
+        bias_override,
+        force_first,
+    )
+}
+
+fn transcribe_code_tree(
+    tnodes: &[TNode],
+    roots: &[usize],
+    config: &PriorityConfig,
+) -> JsonTreeArena {
+    let mut builder = TextArenaBuilder::new(
         config.array_max_items,
         config.array_sampler.into(),
     );
-    let total = roots.len();
-    let mut all_children: Vec<usize> = Vec::with_capacity(total);
-    for &rid in &roots {
-        all_children.push(push_tnode(rid, &tnodes, &mut b, atomic_strings, 0));
+    let mut all_children: Vec<usize> = Vec::with_capacity(roots.len());
+    for &rid in roots {
+        all_children.push(push_code_tnode(rid, tnodes, &mut builder, 0));
     }
-    let root_bias = if atomic_strings {
-        Some(ArrayBias::HeadMidTail)
-    } else {
-        None
-    };
-    let root_id = b.push_root_array_sampled(&all_children, total, root_bias);
-    let mut a = b.finish();
-    a.root_id = root_id;
-    Ok(a)
+    let root_id = builder.push_root_array_sampled(
+        &all_children,
+        all_children.len(),
+        Some(ArrayBias::HeadMidTail),
+    );
+    let mut arena = builder.finish();
+    arena.root_id = root_id;
+    arena
+}
+
+pub fn build_text_tree_arena_from_bytes_with_mode(
+    bytes: Vec<u8>,
+    config: &PriorityConfig,
+    atomic_strings: bool,
+) -> Result<JsonTreeArena> {
+    if !atomic_strings {
+        return build_text_tree_arena_plain(bytes, config);
+    }
+    Ok(build_code_tree_arena(&bytes, config))
+}
+
+fn build_code_tree_arena(
+    bytes: &[u8],
+    config: &PriorityConfig,
+) -> JsonTreeArena {
+    let lossy = String::from_utf8_lossy(bytes);
+    let norm = normalize_newlines(&lossy);
+    let raw_lines: Vec<&str> = norm.split_terminator('\n').collect();
+    let (uses_tab, space_unit) = detect_indent_unit(&raw_lines);
+    let (tnodes, roots) = build_code_nodes(&raw_lines, uses_tab, space_unit);
+    transcribe_code_tree(&tnodes, &roots, config)
 }
 
 pub fn build_text_tree_arena_from_bytes(
     bytes: Vec<u8>,
     config: &PriorityConfig,
 ) -> Result<JsonTreeArena> {
-    build_text_tree_arena_from_bytes_with_mode(bytes, config, false)
+    build_text_tree_arena_plain(bytes, config)
 }
 
 #[allow(
