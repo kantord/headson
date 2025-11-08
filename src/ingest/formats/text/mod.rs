@@ -234,7 +234,11 @@ fn build_code_nodes(
     for &l in raw_lines {
         let (raw_depth, text_raw, is_blank) =
             parse_code_line(l, uses_tab, space_unit);
-        let depth = clamp_depth(raw_depth, stack.len());
+        let mut target_depth = raw_depth;
+        if is_blank {
+            target_depth = stack.len();
+        }
+        let depth = clamp_depth(target_depth, stack.len());
         pop_to_depth(&mut stack, depth);
         let id = tnodes.len();
         tnodes.push(TNode {
@@ -311,7 +315,9 @@ fn attach_code_node(
     } else {
         roots.push(id);
     }
-    stack.push(id);
+    if !is_blank {
+        stack.push(id);
+    }
 }
 
 fn push_code_tnode(

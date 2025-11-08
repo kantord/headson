@@ -55,6 +55,9 @@ pub fn choose_indices_default(total: usize, cap: usize) -> Vec<usize> {
     if cap == 0 || total == 0 {
         return Vec::new();
     }
+    if cap >= total {
+        return (0..total).collect();
+    }
     let mut out = Vec::with_capacity(cap.min(4096));
     // Keep-first phase
     let keep_first = KEEP_FIRST_COUNT.min(cap).min(total);
@@ -114,5 +117,26 @@ pub fn choose_indices(
         ArraySamplerKind::Default => choose_indices_default(total, cap),
         ArraySamplerKind::Head => choose_indices_head(total, cap),
         ArraySamplerKind::Tail => choose_indices_tail(total, cap),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_sampler_returns_all_when_cap_not_binding() {
+        let total = 10usize;
+        let cap = total + 5;
+        let indices = choose_indices_default(total, cap);
+        assert_eq!(indices, (0..total).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn default_sampler_respects_cap_when_smaller() {
+        let total = 10usize;
+        let cap = 3usize;
+        let indices = choose_indices_default(total, cap);
+        assert!(indices.len() <= cap);
     }
 }

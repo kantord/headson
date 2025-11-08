@@ -1,0 +1,492 @@
+---
+source: tests/code_root_sampling.rs
+expression: out
+---
+  1: # Minimal reproduction for huge-budget omission
+  2: 
+  3: 
+  4: def anchor():
+  5:     return "anchor"
+  6: 
+  7: 
+  8: def block_1():
+  9:     total = 0
+ 10:     for j in range(3):
+ 11:         total += j + 1
+ 12:     return total
+ 13: 
+ 14: 
+ 15: def block_2():
+ 16:     total = 0
+ 17:     for j in range(4):
+ 18:         total += j + 2
+ 19:     return total
+ 20: 
+ 21: 
+ 22: def block_3():
+ 23:     total = 0
+ 24:     for j in range(5):
+ 25:         total += j + 3
+ 26:     return total
+ 27: 
+ 28: 
+ 29: def block_4():
+ 30:     total = 0
+ 31:     for j in range(2):
+ 32:         total += j + 4
+ 33:     return total
+ 34: 
+ 35: 
+ 36: def block_5():
+ 37:     total = 0
+ 38:     for j in range(3):
+ 39:         total += j + 5
+ 40:     return total
+ 41: 
+ 42: 
+ 43: def block_6():
+ 44:     total = 0
+ 45:     for j in range(4):
+ 46:         total += j + 6
+ 47:     return total
+ 48: 
+ 49: 
+ 50: def block_7():
+ 51:     total = 0
+ 52:     for j in range(5):
+ 53:         total += j + 7
+ 54:     return total
+ 55: 
+ 56: 
+ 57: def block_8():
+ 58:     total = 0
+ 59:     for j in range(2):
+ 60:         total += j + 8
+ 61:     return total
+ 62: 
+ 63: 
+ 64: def block_9():
+ 65:     total = 0
+ 66:     for j in range(3):
+ 67:         total += j + 9
+ 68:     return total
+ 69: 
+ 70: 
+ 71: def block_10():
+ 72:     total = 0
+ 73:     for j in range(4):
+ 74:         total += j + 10
+ 75:     return total
+ 76: 
+ 77: 
+ 78: def block_11():
+ 79:     total = 0
+ 80:     for j in range(5):
+ 81:         total += j + 11
+ 82:     return total
+ 83: 
+ 84: 
+ 85: def block_12():
+ 86:     total = 0
+ 87:     for j in range(2):
+ 88:         total += j + 12
+ 89:     return total
+ 90: 
+ 91: 
+ 92: def block_13():
+ 93:     total = 0
+ 94:     for j in range(3):
+ 95:         total += j + 13
+ 96:     return total
+ 97: 
+ 98: 
+ 99: def block_14():
+100:     total = 0
+101:     for j in range(4):
+102:         total += j + 14
+103:     return total
+104: 
+105: 
+106: def block_15():
+107:     total = 0
+108:     for j in range(5):
+109:         total += j + 15
+110:     return total
+111: 
+112: 
+113: def block_16():
+114:     total = 0
+115:     for j in range(2):
+116:         total += j + 16
+117:     return total
+118: 
+119: 
+120: def block_17():
+121:     total = 0
+122:     for j in range(3):
+123:         total += j + 17
+124:     return total
+125: 
+126: 
+127: def block_18():
+128:     total = 0
+129:     for j in range(4):
+130:         total += j + 18
+131:     return total
+132: 
+133: 
+134: def block_19():
+135:     total = 0
+136:     for j in range(5):
+137:         total += j + 19
+138:     return total
+139: 
+140: 
+141: def block_20():
+142:     total = 0
+143:     for j in range(2):
+144:         total += j + 20
+145:     return total
+146: 
+147: 
+148: def block_21():
+149:     total = 0
+150:     for j in range(3):
+151:         total += j + 21
+152:     return total
+153: 
+154: 
+155: def block_22():
+156:     total = 0
+157:     for j in range(4):
+158:         total += j + 22
+159:     return total
+160: 
+161: 
+162: def block_23():
+163:     total = 0
+164:     for j in range(5):
+165:         total += j + 23
+166:     return total
+167: 
+168: 
+169: def block_24():
+170:     total = 0
+171:     for j in range(2):
+172:         total += j + 24
+173:     return total
+174: 
+175: 
+176: def block_25():
+177:     total = 0
+178:     for j in range(3):
+179:         total += j + 25
+180:     return total
+181: 
+182: 
+183: def block_26():
+184:     total = 0
+185:     for j in range(4):
+186:         total += j + 26
+187:     return total
+188: 
+189: 
+190: def block_27():
+191:     total = 0
+192:     for j in range(5):
+193:         total += j + 27
+194:     return total
+195: 
+196: 
+197: def block_28():
+198:     total = 0
+199:     for j in range(2):
+200:         total += j + 28
+201:     return total
+202: 
+203: 
+204: def block_29():
+205:     total = 0
+206:     for j in range(3):
+207:         total += j + 29
+208:     return total
+209: 
+210: 
+211: def block_30():
+212:     total = 0
+213:     for j in range(4):
+214:         total += j + 30
+215:     return total
+216: 
+217: 
+218: def block_31():
+219:     total = 0
+220:     for j in range(5):
+221:         total += j + 31
+222:     return total
+223: 
+224: 
+225: def block_32():
+226:     total = 0
+227:     for j in range(2):
+228:         total += j + 32
+229:     return total
+230: 
+231: 
+232: def block_33():
+233:     total = 0
+234:     for j in range(3):
+235:         total += j + 33
+236:     return total
+237: 
+238: 
+239: def block_34():
+240:     total = 0
+241:     for j in range(4):
+242:         total += j + 34
+243:     return total
+244: 
+245: 
+246: def block_35():
+247:     total = 0
+248:     for j in range(5):
+249:         total += j + 35
+250:     return total
+251: 
+252: 
+253: def block_36():
+254:     total = 0
+255:     for j in range(2):
+256:         total += j + 36
+257:     return total
+258: 
+259: 
+260: def block_37():
+261:     total = 0
+262:     for j in range(3):
+263:         total += j + 37
+264:     return total
+265: 
+266: 
+267: def block_38():
+268:     total = 0
+269:     for j in range(4):
+270:         total += j + 38
+271:     return total
+272: 
+273: 
+274: def block_39():
+275:     total = 0
+276:     for j in range(5):
+277:         total += j + 39
+278:     return total
+279: 
+280: 
+281: def block_40():
+282:     total = 0
+283:     for j in range(2):
+284:         total += j + 40
+285:     return total
+286: 
+287: 
+288: def block_41():
+289:     total = 0
+290:     for j in range(3):
+291:         total += j + 41
+292:     return total
+293: 
+294: 
+295: def block_42():
+296:     total = 0
+297:     for j in range(4):
+298:         total += j + 42
+299:     return total
+300: 
+301: 
+302: def block_43():
+303:     total = 0
+304:     for j in range(5):
+305:         total += j + 43
+306:     return total
+307: 
+308: 
+309: def block_44():
+310:     total = 0
+311:     for j in range(2):
+312:         total += j + 44
+313:     return total
+314: 
+315: 
+316: def block_45():
+317:     total = 0
+318:     for j in range(3):
+319:         total += j + 45
+320:     return total
+321: 
+322: 
+323: def block_46():
+324:     total = 0
+325:     for j in range(4):
+326:         total += j + 46
+327:     return total
+328: 
+329: 
+330: def block_47():
+331:     total = 0
+332:     for j in range(5):
+333:         total += j + 47
+334:     return total
+335: 
+336: 
+337: def block_48():
+338:     total = 0
+339:     for j in range(2):
+340:         total += j + 48
+341:     return total
+342: 
+343: 
+344: def block_49():
+345:     total = 0
+346:     for j in range(3):
+347:         total += j + 49
+348:     return total
+349: 
+350: 
+351: def block_50():
+352:     total = 0
+353:     for j in range(4):
+354:         total += j + 50
+355:     return total
+356: 
+357: 
+358: def block_51():
+359:     total = 0
+360:     for j in range(5):
+361:         total += j + 51
+362:     return total
+363: 
+364: 
+365: def block_52():
+366:     total = 0
+367:     for j in range(2):
+368:         total += j + 52
+369:     return total
+370: 
+371: 
+372: def block_53():
+373:     total = 0
+374:     for j in range(3):
+375:         total += j + 53
+376:     return total
+377: 
+378: 
+379: def block_54():
+380:     total = 0
+381:     for j in range(4):
+382:         total += j + 54
+383:     return total
+384: 
+385: 
+386: def block_55():
+387:     total = 0
+388:     for j in range(5):
+389:         total += j + 55
+390:     return total
+391: 
+392: 
+393: def block_56():
+394:     total = 0
+395:     for j in range(2):
+396:         total += j + 56
+397:     return total
+398: 
+399: 
+400: def block_57():
+401:     total = 0
+402:     for j in range(3):
+403:         total += j + 57
+404:     return total
+405: 
+406: 
+407: def block_58():
+408:     total = 0
+409:     for j in range(4):
+410:         total += j + 58
+411:     return total
+412: 
+413: 
+414: def block_59():
+415:     total = 0
+416:     for j in range(5):
+417:         total += j + 59
+418:     return total
+419: 
+420: 
+421: def block_60():
+422:     total = 0
+423:     for j in range(2):
+424:         total += j + 60
+425:     return total
+426: 
+427: 
+428: def block_61():
+429:     total = 0
+430:     for j in range(3):
+431:         total += j + 61
+432:     return total
+433: 
+434: 
+435: def block_62():
+436:     total = 0
+437:     for j in range(4):
+438:         total += j + 62
+439:     return total
+440: 
+441: 
+442: def block_63():
+443:     total = 0
+444:     for j in range(5):
+445:         total += j + 63
+446:     return total
+447: 
+448: 
+449: def block_64():
+450:     total = 0
+451:     for j in range(2):
+452:         total += j + 64
+453:     return total
+454: 
+455: 
+456: def block_65():
+457:     total = 0
+458:     for j in range(3):
+459:         total += j + 65
+460:     return total
+461: 
+462: 
+463: def block_66():
+464:     total = 0
+465:     for j in range(4):
+466:         total += j + 66
+467:     return total
+468: 
+469: 
+470: def block_67():
+471:     total = 0
+472:     for j in range(5):
+473:         total += j + 67
+474:     return total
+475: 
+476: 
+477: def block_68():
+478:     total = 0
+479:     for j in range(2):
+480:         total += j + 68
+481:     return total
+482: 
+483: 
+484: def block_69():
+485:     total = 0
+486:     for j in range(3):
+487:         total += j + 69
+488:     return total
