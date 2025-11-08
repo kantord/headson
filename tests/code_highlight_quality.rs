@@ -81,9 +81,9 @@ fn parse_ansi_sequences(line: &str) -> Result<Vec<String>, String> {
             }
             sequences.push(line[start..i].to_string());
             i += 1;
-        } else {
-            i += 1;
+            continue;
         }
+        i += 1;
     }
     Ok(sequences)
 }
