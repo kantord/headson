@@ -1,4 +1,6 @@
 use crate::{ArrayBias, order::NodeKind};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Debug, Default, Clone)]
 pub struct JsonTreeArena {
@@ -12,6 +14,9 @@ pub struct JsonTreeArena {
     // True when root is a synthetic wrapper object for multi-input ingest.
     // Used to trigger fileset-specific rendering (section headers and summary).
     pub is_fileset: bool,
+    // Optional full text lines for arrays (by arena node id) to support
+    // downstream features like syntax highlighting even after sampling.
+    pub code_lines: HashMap<usize, Arc<Vec<String>>>,
 }
 
 #[derive(Debug, Clone)]

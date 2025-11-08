@@ -1,5 +1,6 @@
 use anyhow::Result;
 use std::borrow::Cow;
+use std::sync::Arc;
 
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
@@ -196,6 +197,7 @@ fn build_text_tree_arena_plain(
     let root_id = b.push_array_of_lines(&lines_vec, total);
     let mut a = b.finish();
     a.root_id = root_id;
+    a.code_lines.insert(root_id, Arc::new(lines_vec));
     Ok(a)
 }
 
@@ -391,10 +393,18 @@ fn build_code_tree_arena(
 ) -> JsonTreeArena {
     let lossy = String::from_utf8_lossy(bytes);
     let norm = normalize_newlines(&lossy);
-    let raw_lines: Vec<&str> = norm.split_terminator('\n').collect();
+    let owned_lines: Vec<String> = norm
+        .split_terminator('\n')
+        .map(std::string::ToString::to_string)
+        .collect();
+    let raw_lines: Vec<&str> =
+        owned_lines.iter().map(|s| s.as_str()).collect();
     let (uses_tab, space_unit) = detect_indent_unit(&raw_lines);
     let (tnodes, roots) = build_code_nodes(&raw_lines, uses_tab, space_unit);
-    transcribe_code_tree(&tnodes, &roots, config)
+    let mut arena = transcribe_code_tree(&tnodes, &roots, config);
+    let root = arena.root_id;
+    arena.code_lines.insert(root, Arc::new(owned_lines));
+    arena
 }
 
 pub fn build_text_tree_arena_from_bytes(

@@ -1,6 +1,7 @@
 use anyhow::Result;
 use std::cmp::Reverse;
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, HashMap};
+use std::sync::Arc;
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::scoring::*;
@@ -57,6 +58,7 @@ struct Scope<'a> {
     object_type: &'a mut Vec<ObjectType>,
     index_in_parent_array: &'a mut Vec<Option<usize>>,
     force_first_child: &'a mut Vec<bool>,
+    arena_to_pq: &'a mut Vec<Option<usize>>,
 }
 
 impl<'a> Scope<'a> {
@@ -84,6 +86,12 @@ impl<'a> Scope<'a> {
             .unwrap_or(false);
         self.force_first_child.push(force);
         self.children[id].push(NodeId(child_priority_index));
+        if let Some(arena_idx) = common.arena_index {
+            if arena_idx >= self.arena_to_pq.len() {
+                self.arena_to_pq.resize(arena_idx + 1, None);
+            }
+            self.arena_to_pq[arena_idx] = Some(child_priority_index);
+        }
         self.heap.push(Reverse(Entry {
             score: common.score,
             priority_index: child_priority_index,
@@ -459,6 +467,7 @@ pub fn build_order(
     let mut heap: BinaryHeap<Reverse<Entry>> = BinaryHeap::new();
     let mut index_in_parent_array: Vec<Option<usize>> = Vec::new();
     let mut force_first_child: Vec<bool> = Vec::new();
+    let mut arena_to_pq: Vec<Option<usize>> = vec![None; arena.nodes.len()];
 
     // Seed root from arena
     let root_ar = arena.root_id;
@@ -502,6 +511,10 @@ pub fn build_order(
     };
     object_type.push(root_ot);
     force_first_child.push(arena.nodes[root_ar].force_first_line);
+    if root_ar >= arena_to_pq.len() {
+        arena_to_pq.resize(root_ar + 1, None);
+    }
+    arena_to_pq[root_ar] = Some(root_priority_index);
     heap.push(Reverse(Entry {
         score: ROOT_BASE_SCORE,
         priority_index: root_priority_index,
@@ -523,6 +536,7 @@ pub fn build_order(
             object_type: &mut object_type,
             index_in_parent_array: &mut index_in_parent_array,
             force_first_child: &mut force_first_child,
+            arena_to_pq: &mut arena_to_pq,
         };
         scope.process_entry(&entry, &mut order);
         if next_pq_id >= SAFETY_CAP {
@@ -531,6 +545,12 @@ pub fn build_order(
     }
 
     let total = next_pq_id;
+    let mut code_lines: HashMap<usize, Arc<Vec<String>>> = HashMap::new();
+    for (arena_idx, lines) in &arena.code_lines {
+        if let Some(Some(pq_id)) = arena_to_pq.get(*arena_idx) {
+            code_lines.insert(*pq_id, Arc::clone(lines));
+        }
+    }
     Ok(PriorityOrder {
         metrics,
         nodes,
@@ -541,6 +561,7 @@ pub fn build_order(
         total_nodes: total,
         object_type,
         force_first_child,
+        code_lines,
     })
 }
 

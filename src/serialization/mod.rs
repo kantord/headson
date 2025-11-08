@@ -133,6 +133,17 @@ impl<'a> RenderScope<'a> {
     }
 
     fn compute_code_highlights(&self, array_id: usize) -> Vec<String> {
+        let root = self.code_root_array_id(array_id);
+        if let Some(full) = self.order.code_lines.get(&root) {
+            let mut highlighter =
+                crate::serialization::highlight::CodeHighlighter::new(
+                    self.source_hint_for(root),
+                );
+            return full
+                .iter()
+                .map(|line| highlighter.highlight_line(line))
+                .collect();
+        }
         let mut lines: Vec<Option<String>> = Vec::new();
         self.collect_code_lines(array_id, &mut lines);
         if lines.is_empty() {

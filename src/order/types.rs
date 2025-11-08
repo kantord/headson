@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 #[derive(Copy, Clone, Debug)]
 pub struct PriorityConfig {
     pub max_string_graphemes: usize,
@@ -147,6 +150,7 @@ pub struct PriorityOrder {
     pub total_nodes: usize,
     pub object_type: Vec<ObjectType>,
     pub force_first_child: Vec<bool>,
+    pub code_lines: HashMap<usize, Arc<Vec<String>>>,
 }
 
 pub const ROOT_PQ_ID: usize = 0;

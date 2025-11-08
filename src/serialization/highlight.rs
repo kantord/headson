@@ -56,6 +56,45 @@ fn syntax_for_hint(hint: Option<&str>) -> &'static SyntaxReference {
         if let Some(syntax) = SYNTAXES.find_syntax_by_extension(ext) {
             return syntax;
         }
+        if let Some(alias) = syntax_alias_for_extension(ext) {
+            if let Some(syntax) = SYNTAXES.find_syntax_by_name(alias) {
+                return syntax;
+            }
+        }
     }
     SYNTAXES.find_syntax_plain_text()
+}
+
+fn syntax_alias_for_extension(ext: &str) -> Option<&'static str> {
+    if ext.eq_ignore_ascii_case("ts") || ext.eq_ignore_ascii_case("tsx") {
+        return Some("JavaScript");
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_typescript_syntax_from_extension() {
+        let syntax = syntax_for_hint(Some("example.ts"));
+        assert!(
+            syntax.name != "Plain Text",
+            "expected non-plain syntax for .ts, got {}",
+            syntax.name
+        );
+    }
+
+    #[test]
+    fn syntax_set_contains_typescript_extension() {
+        let has_ts = SYNTAXES.syntaxes().iter().any(|syntax| {
+            syntax.name.contains("JavaScript")
+                && syntax
+                    .file_extensions
+                    .iter()
+                    .any(|ext| ext.eq_ignore_ascii_case("js"))
+        });
+        assert!(has_ts, "SyntaxSet is missing JavaScript fallback");
+    }
 }
