@@ -66,10 +66,40 @@ fn run_minimal_drop_huge_budget() -> String {
     out
 }
 
+fn run_multi_describe_line_budget() -> String {
+    let assert = cargo_bin_cmd!("headson")
+        .args([
+            "--no-color",
+            "-n",
+            "1000000",
+            "-f",
+            "auto",
+            "tests/fixtures/code/multi_describe.test.js",
+        ])
+        .assert()
+        .success();
+    let mut out =
+        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    while out.ends_with('\n') {
+        out.pop();
+    }
+    out.push('\n');
+    out
+}
+
 #[test]
 fn code_auto_sample_snapshot() {
     let out = run_sample_py_auto();
     assert_snapshot!("code_auto_sample_snapshot", out);
+}
+
+#[test]
+fn code_multi_describe_reports_all_cases() {
+    let out = run_multi_describe_line_budget();
+    assert!(
+        out.contains("case 5"),
+        "expected later test cases to be present, got:\n{out}"
+    );
 }
 
 #[test]

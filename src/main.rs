@@ -534,9 +534,14 @@ fn get_priority_config(
     let line_only = (cli.lines.is_some() || cli.global_lines.is_some())
         && cli.bytes.is_none()
         && cli.global_bytes.is_none();
+    let array_max_items = if line_only {
+        usize::MAX
+    } else {
+        (per_file_budget / 2).max(1)
+    };
     headson::PriorityConfig {
         max_string_graphemes: cli.string_cap,
-        array_max_items: (per_file_budget / 2).max(1),
+        array_max_items,
         prefer_tail_arrays: cli.tail,
         array_bias: headson::ArrayBias::HeadMidTail,
         array_sampler: if cli.tail {
