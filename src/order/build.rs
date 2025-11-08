@@ -166,10 +166,13 @@ impl<'a> Scope<'a> {
                 ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT
             }
             super::types::ArrayBias::HeadMidTail => {
-                let mid = kept.saturating_sub(1) / 2;
+                let mid_hi = kept.saturating_sub(1) / 2;
+                let mid_lo = kept / 2;
                 let d_head = i as isize;
                 let d_tail = kept.saturating_sub(1) as isize - i as isize;
-                let d_mid = (i as isize - mid as isize).abs();
+                let d_mid_hi = (i as isize - mid_hi as isize).abs();
+                let d_mid_lo = (i as isize - mid_lo as isize).abs();
+                let d_mid = d_mid_hi.min(d_mid_lo);
                 let d = d_head.min(d_tail).min(d_mid).unsigned_abs() as u128;
                 d * d * d * ARRAY_INDEX_CUBIC_WEIGHT
             }
@@ -224,6 +227,9 @@ impl<'a> Scope<'a> {
                 entry.depth,
             );
             let mut score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
+            if self.arena.nodes[child_arena_id].prefers_parent_line {
+                score = score.saturating_sub(CODE_PARENT_LINE_BONUS);
+            }
             let child_node = &self.arena.nodes[child_arena_id];
             if matches!(
                 child_kind,

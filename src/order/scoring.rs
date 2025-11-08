@@ -28,3 +28,7 @@ pub(crate) const STRING_INDEX_QUADRATIC_WEIGHT: u128 = 1;
 /// Extra penalty applied to blank atomic lines in code contexts so they trail
 /// real lines but can still appear when budgets allow.
 pub(crate) const CODE_EMPTY_LINE_PENALTY: u128 = ARRAY_INDEX_CUBIC_WEIGHT * 4;
+
+/// Bonus applied to top-level code lines that introduce nested blocks so they
+/// surface before plain leaf lines under tight budgets.
+pub(crate) const CODE_PARENT_LINE_BONUS: u128 = ARRAY_CHILD_BASE_INCREMENT * 4;

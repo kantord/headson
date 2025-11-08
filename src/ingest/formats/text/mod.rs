@@ -43,20 +43,26 @@ impl TextArenaBuilder {
         id
     }
 
-    fn push_string(&mut self, s: String) -> usize {
+    fn push_string(&mut self, s: String, prefer_parent_line: bool) -> usize {
         let id = self.push_default();
         let n = &mut self.arena.nodes[id];
         n.kind = NodeKind::String;
         n.string_value = Some(s);
+        n.prefers_parent_line = prefer_parent_line;
         id
     }
 
-    fn push_string_atomic(&mut self, s: String) -> usize {
+    fn push_string_atomic(
+        &mut self,
+        s: String,
+        prefer_parent_line: bool,
+    ) -> usize {
         let id = self.push_default();
         let n = &mut self.arena.nodes[id];
         // Model atomic strings as atomic token leaves; display kind later maps to String.
         n.kind = NodeKind::Number;
         n.atomic_token = Some(s);
+        n.prefers_parent_line = prefer_parent_line;
         id
     }
 
@@ -233,10 +239,11 @@ pub fn build_text_tree_arena_from_bytes_with_mode(
         let n = &tnodes[id];
         let mut kids: Vec<usize> = Vec::new();
         let mut origs: Vec<usize> = Vec::new();
+        let prefer_line = atomic && !n.children.is_empty();
         if atomic {
-            kids.push(b.push_string_atomic(n.text.clone()));
+            kids.push(b.push_string_atomic(n.text.clone(), prefer_line));
         } else {
-            kids.push(b.push_string(n.text.clone()));
+            kids.push(b.push_string(n.text.clone(), prefer_line));
         }
         origs.push(id);
         for &ch in &n.children {
