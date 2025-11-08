@@ -43,6 +43,22 @@ fn run_sample_py_colored() -> String {
     out
 }
 
+fn run_multi_code_files_colored() -> String {
+    let assert = cargo_bin_cmd!("headson")
+        .args([
+            "--color",
+            "-c",
+            "200",
+            "-f",
+            "auto",
+            "tests/fixtures/code/sample.py",
+            "tests/fixtures/code/sample.ts",
+        ])
+        .assert()
+        .success();
+    String::from_utf8_lossy(&assert.get_output().stdout).to_string()
+}
+
 fn sanitize_escapes(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for ch in s.chars() {
@@ -101,18 +117,41 @@ fn code_auto_sample_stripped_matches_plain_snapshot() {
     assert_snapshot!("code_auto_sample_colorized_stripped_snapshot", stripped);
 }
 
-#[test]
-fn code_line_numbers_remain_plain() {
-    let colored = run_sample_py_colored();
-    for line in colored.lines() {
-        if let Some(colon_idx) = line.find(':') {
-            let prefix = &line[..colon_idx];
+fn line_number_prefix(line: &str, skip_headers: bool) -> Option<&str> {
+    if skip_headers {
+        let trimmed = line.trim_start();
+        if trimmed.is_empty() || trimmed.starts_with("==>") {
+            return None;
+        }
+    }
+    let (prefix, _) = line.split_once(':')?;
+    if prefix.trim().is_empty() {
+        return None;
+    }
+    Some(prefix)
+}
+
+fn assert_line_numbers_plain(output: &str, skip_headers: bool) {
+    for line in output.lines() {
+        if let Some(prefix) = line_number_prefix(line, skip_headers) {
             assert!(
                 !prefix.contains("\u{001b}["),
                 "line number prefix contains ANSI color: {line:?}"
             );
         }
     }
+}
+
+#[test]
+fn code_line_numbers_remain_plain() {
+    let colored = run_sample_py_colored();
+    assert_line_numbers_plain(&colored, false);
+}
+
+#[test]
+fn fileset_code_line_numbers_remain_plain() {
+    let colored = run_multi_code_files_colored();
+    assert_line_numbers_plain(&colored, true);
 }
 
 #[test]

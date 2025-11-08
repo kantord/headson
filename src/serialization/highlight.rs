@@ -39,7 +39,9 @@ impl CodeHighlighter<'static> {
             .highlight_line(line, &SYNTAXES)
             .unwrap_or_else(|_| vec![(Style::default(), line)]);
         // Use standard 8/16 ANSI colors so user terminal themes stay in control.
-        as_24_bit_terminal_escaped(&ranges, false)
+        let mut s = as_24_bit_terminal_escaped(&ranges, false);
+        s.push_str("\u{001b}[0m");
+        s
     }
 }
 
