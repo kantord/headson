@@ -17,15 +17,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install VHS dependencies
+      - name: Install system dependencies
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg ttyd fonts-jetbrains-mono curl ca-certificates tar
-          VHS_URL="https://github.com/charmbracelet/vhs/releases/latest/download/vhs_Linux_x86_64.tar.gz"
-          curl -sSL "$VHS_URL" -o /tmp/vhs.tar.gz
-          tar -xzf /tmp/vhs.tar.gz vhs
-          sudo install -m 0755 vhs /usr/local/bin/vhs
+          sudo apt-get install -y --no-install-recommends ffmpeg ttyd fonts-jetbrains-mono
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install VHS
+        run: |
+          set -euo pipefail
+          go install github.com/charmbracelet/vhs@v0.6.0
+          echo "${HOME}/go/bin" >> "$GITHUB_PATH"
 
       - name: Replay demo tape (no artifacts)
         run: vhs demo.tape
@@ -42,15 +49,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install VHS dependencies
+      - name: Install system dependencies
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg ttyd fonts-jetbrains-mono curl ca-certificates tar
-          VHS_URL="https://github.com/charmbracelet/vhs/releases/latest/download/vhs_Linux_x86_64.tar.gz"
-          curl -sSL "$VHS_URL" -o /tmp/vhs.tar.gz
-          tar -xzf /tmp/vhs.tar.gz vhs
-          sudo install -m 0755 vhs /usr/local/bin/vhs
+          sudo apt-get install -y --no-install-recommends ffmpeg ttyd fonts-jetbrains-mono
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install VHS
+        run: |
+          set -euo pipefail
+          go install github.com/charmbracelet/vhs@v0.6.0
+          echo "${HOME}/go/bin" >> "$GITHUB_PATH"
 
       - name: Render demo tape
         run: vhs demo.tape
