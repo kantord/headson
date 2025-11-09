@@ -187,18 +187,20 @@ fn find_largest_render_under_budgets(
     if total == 0 {
         return String::new();
     }
-    let mut measure_cfg = config.clone();
-    measure_cfg.color_enabled = false;
     let root_is_fileset = order_build
         .object_type
         .get(crate::order::ROOT_PQ_ID)
         .is_some_and(|t| *t == crate::order::ObjectType::Fileset);
-    let (k, mut inclusion_flags, render_set_id) = select_best_k(
-        order_build,
-        &measure_cfg,
-        budgets,
-        config.show_fileset_headers && root_is_fileset,
-    );
+    let mut measure_cfg = config.clone();
+    measure_cfg.color_enabled = false;
+    if budgets.line_budget.is_some()
+        && config.show_fileset_headers
+        && root_is_fileset
+    {
+        measure_cfg.show_fileset_headers = false;
+    }
+    let (k, mut inclusion_flags, render_set_id) =
+        select_best_k(order_build, &measure_cfg, budgets);
 
     // Prepare final inclusion set once and optionally build debug JSON.
     crate::serialization::prepare_render_set_top_k_and_ancestors(
@@ -265,7 +267,6 @@ fn select_best_k(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
     budgets: Budgets,
-    headers_visible: bool,
 ) -> (usize, Vec<u32>, u32) {
     let total = order_build.total_nodes;
     // Each included node contributes at least some output; cap hi by budget.
@@ -282,14 +283,6 @@ fn select_best_k(
     let mut render_set_id: u32 = 1;
     let mut best_k: Option<usize> = None;
     let measure_chars = budgets.char_budget.is_some();
-    let headerless_measure_cfg =
-        if budgets.line_budget.is_some() && headers_visible {
-            let mut cfg = measure_cfg.clone();
-            cfg.show_fileset_headers = false;
-            Some(cfg)
-        } else {
-            None
-        };
     let _ = crate::utils::search::binary_search_max(lo, hi, |mid| {
         let current_render_id = render_set_id;
         let s = crate::serialization::render_top_k(
@@ -303,25 +296,8 @@ fn select_best_k(
             crate::utils::measure::count_output_stats(&s, measure_chars);
         let fits_bytes = budgets.byte_budget.is_none_or(|c| stats.bytes <= c);
         let fits_chars = budgets.char_budget.is_none_or(|c| stats.chars <= c);
-        let fits_lines = if let Some(line_cap) = budgets.line_budget {
-            if let Some(cfg_no_headers) = headerless_measure_cfg.as_ref() {
-                let headerless = crate::serialization::render_from_render_set(
-                    order_build,
-                    &inclusion_flags,
-                    current_render_id,
-                    cfg_no_headers,
-                );
-                let line_stats = crate::utils::measure::count_output_stats(
-                    &headerless,
-                    false,
-                );
-                line_stats.lines <= line_cap
-            } else {
-                stats.lines <= line_cap
-            }
-        } else {
-            true
-        };
+        let fits_lines =
+            budgets.line_budget.is_none_or(|cap| stats.lines <= cap);
         render_set_id = render_set_id.wrapping_add(1).max(1);
         if fits_bytes && fits_chars && fits_lines {
             best_k = Some(mid);
