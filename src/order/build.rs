@@ -1,12 +1,107 @@
 use anyhow::Result;
 use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::sync::Arc;
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::scoring::*;
 use super::types::*;
 use crate::utils::tree_arena::JsonTreeArena;
+
+fn should_interleave_fileset(arena: &JsonTreeArena) -> bool {
+    arena.is_fileset && !arena.code_lines.is_empty()
+}
+
+fn fill_fileset_slot(
+    arena: &JsonTreeArena,
+    slots: &mut [Option<usize>],
+    start: usize,
+    slot: usize,
+) {
+    let mut stack = vec![start];
+    while let Some(node_id) = stack.pop() {
+        if slots[node_id].is_some() {
+            continue;
+        }
+        slots[node_id] = Some(slot);
+        let node = &arena.nodes[node_id];
+        for idx in 0..node.children_len {
+            let next = arena.children[node.children_start + idx];
+            stack.push(next);
+        }
+    }
+}
+
+fn compute_fileset_slots(arena: &JsonTreeArena) -> Option<Vec<Option<usize>>> {
+    if !arena.is_fileset {
+        return None;
+    }
+    let root = arena.root_id;
+    let root_node = &arena.nodes[root];
+    let mut slots: Vec<Option<usize>> = vec![None; arena.nodes.len()];
+    for slot in 0..root_node.children_len {
+        let child_id = arena.children[root_node.children_start + slot];
+        fill_fileset_slot(arena, &mut slots, child_id, slot);
+    }
+    Some(slots)
+}
+
+fn partition_slots(
+    by_priority: &[NodeId],
+    node_slots: &[Option<usize>],
+    file_count: usize,
+) -> (Vec<NodeId>, Vec<VecDeque<NodeId>>) {
+    let mut buckets: Vec<VecDeque<NodeId>> = vec![VecDeque::new(); file_count];
+    let mut prefix: Vec<NodeId> = Vec::new();
+    for &node in by_priority {
+        if let Some(slot) = node_slots.get(node.0).copied().flatten() {
+            if let Some(bucket) = buckets.get_mut(slot) {
+                bucket.push_back(node);
+            } else {
+                prefix.push(node);
+            }
+        } else {
+            prefix.push(node);
+        }
+    }
+    (prefix, buckets)
+}
+
+fn drain_round_robin(
+    mut prefix: Vec<NodeId>,
+    mut buckets: Vec<VecDeque<NodeId>>,
+    capacity: usize,
+) -> Vec<NodeId> {
+    let mut new_order: Vec<NodeId> = Vec::with_capacity(capacity);
+    new_order.append(&mut prefix);
+    loop {
+        let mut pushed = false;
+        for bucket in buckets.iter_mut() {
+            if let Some(node) = bucket.pop_front() {
+                new_order.push(node);
+                pushed = true;
+            }
+        }
+        if !pushed {
+            break;
+        }
+    }
+    new_order
+}
+
+fn interleave_fileset_priority(
+    by_priority: &mut Vec<NodeId>,
+    node_slots: &[Option<usize>],
+    file_count: usize,
+) {
+    if file_count == 0 {
+        return;
+    }
+    let (prefix, buckets) =
+        partition_slots(by_priority, node_slots, file_count);
+    let new_order = drain_round_robin(prefix, buckets, by_priority.len());
+    *by_priority = new_order;
+}
 
 #[derive(Clone)]
 struct Entry {
@@ -59,6 +154,8 @@ struct Scope<'a> {
     index_in_parent_array: &'a mut Vec<Option<usize>>,
     force_first_child: &'a mut Vec<bool>,
     arena_to_pq: &'a mut Vec<Option<usize>>,
+    node_slots: &'a mut Vec<Option<usize>>,
+    arena_slots: Option<&'a [Option<usize>]>,
 }
 
 impl<'a> Scope<'a> {
@@ -92,6 +189,11 @@ impl<'a> Scope<'a> {
             }
             self.arena_to_pq[arena_idx] = Some(child_priority_index);
         }
+        let slot = common.arena_index.and_then(|idx| {
+            self.arena_slots
+                .and_then(|slots| slots.get(idx).copied().flatten())
+        });
+        self.node_slots.push(slot);
         self.heap.push(Reverse(Entry {
             score: common.score,
             priority_index: child_priority_index,
@@ -469,6 +571,8 @@ pub fn build_order(
     let mut index_in_parent_array: Vec<Option<usize>> = Vec::new();
     let mut force_first_child: Vec<bool> = Vec::new();
     let mut arena_to_pq: Vec<Option<usize>> = vec![None; arena.nodes.len()];
+    let fileset_slots = compute_fileset_slots(arena);
+    let mut node_slots: Vec<Option<usize>> = Vec::new();
 
     // Seed root from arena
     let root_ar = arena.root_id;
@@ -516,6 +620,7 @@ pub fn build_order(
         arena_to_pq.resize(root_ar + 1, None);
     }
     arena_to_pq[root_ar] = Some(root_priority_index);
+    node_slots.push(None);
     heap.push(Reverse(Entry {
         score: ROOT_BASE_SCORE,
         priority_index: root_priority_index,
@@ -538,11 +643,18 @@ pub fn build_order(
             index_in_parent_array: &mut index_in_parent_array,
             force_first_child: &mut force_first_child,
             arena_to_pq: &mut arena_to_pq,
+            node_slots: &mut node_slots,
+            arena_slots: fileset_slots.as_deref(),
         };
         scope.process_entry(&entry, &mut order);
         if next_pq_id >= SAFETY_CAP {
             break;
         }
+    }
+
+    if should_interleave_fileset(arena) {
+        let file_count = arena.nodes[arena.root_id].children_len;
+        interleave_fileset_priority(&mut order, &node_slots, file_count);
     }
 
     let total = next_pq_id;

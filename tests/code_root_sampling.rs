@@ -1,6 +1,12 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 use insta::assert_snapshot;
 
+const CODE_FILESET_PATHS: &[&str] = &[
+    "tests/fixtures/code/big_sample.py",
+    "tests/fixtures/code/sample.py",
+    "tests/fixtures/code/sample.ts",
+];
+
 fn run_sample_py_auto() -> String {
     let assert = cargo_bin_cmd!("headson")
         .args([
@@ -124,21 +130,22 @@ fn run_multi_code_files_colored() -> String {
     String::from_utf8_lossy(&assert.get_output().stdout).to_string()
 }
 
-fn run_large_code_fileset_small_budget() -> String {
-    let assert = cargo_bin_cmd!("headson")
-        .args([
-            "--no-color",
-            "-c",
-            "120",
-            "-f",
-            "auto",
-            "tests/fixtures/code/big_sample.py",
-            "tests/fixtures/code/sample.py",
-            "tests/fixtures/code/sample.ts",
-        ])
-        .assert()
-        .success();
+fn run_code_fileset_with_budget(budget: usize) -> String {
+    let mut cmd = cargo_bin_cmd!("headson");
+    cmd.arg("--no-color")
+        .arg("-c")
+        .arg(budget.to_string())
+        .arg("-f")
+        .arg("auto");
+    for path in CODE_FILESET_PATHS {
+        cmd.arg(path);
+    }
+    let assert = cmd.assert().success();
     String::from_utf8_lossy(&assert.get_output().stdout).to_string()
+}
+
+fn run_large_code_fileset_small_budget() -> String {
+    run_code_fileset_with_budget(120)
 }
 
 fn parse_section_header(line: &str) -> Option<&str> {
@@ -301,6 +308,18 @@ fn fileset_code_small_budget_keeps_each_file_nonempty() {
     assert!(
         missing.is_empty(),
         "expected every fileset section to include at least one line, missing: {missing:?}\n{out}"
+    );
+}
+
+#[test]
+fn code_fileset_respects_total_byte_budget() {
+    let per_file_budget = 10;
+    let out = run_code_fileset_with_budget(per_file_budget);
+    let total_cap = per_file_budget * CODE_FILESET_PATHS.len();
+    let trimmed_len = out.trim_end_matches('\n').len();
+    assert!(
+        trimmed_len <= total_cap,
+        "expected total output <= {total_cap} bytes, got {trimmed_len}\n{out}"
     );
 }
 
