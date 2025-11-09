@@ -1,6 +1,7 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 use insta::assert_snapshot;
 
+/// Shared code fixture set for multi-file fairness tests.
 const CODE_FILESET_PATHS: &[&str] = &[
     "tests/fixtures/code/big_sample.py",
     "tests/fixtures/code/sample.py",

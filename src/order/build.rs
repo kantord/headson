@@ -8,10 +8,6 @@ use super::scoring::*;
 use super::types::*;
 use crate::utils::tree_arena::JsonTreeArena;
 
-fn should_interleave_fileset(arena: &JsonTreeArena) -> bool {
-    arena.is_fileset && !arena.code_lines.is_empty()
-}
-
 fn fill_fileset_slot(
     arena: &JsonTreeArena,
     slots: &mut [Option<usize>],
@@ -46,7 +42,7 @@ fn compute_fileset_slots(arena: &JsonTreeArena) -> Option<Vec<Option<usize>>> {
     Some(slots)
 }
 
-fn partition_slots(
+fn split_priority_by_slot(
     by_priority: &[NodeId],
     node_slots: &[Option<usize>],
     file_count: usize,
@@ -67,7 +63,7 @@ fn partition_slots(
     (prefix, buckets)
 }
 
-fn drain_round_robin(
+fn collect_round_robin(
     mut prefix: Vec<NodeId>,
     mut buckets: Vec<VecDeque<NodeId>>,
     capacity: usize,
@@ -89,6 +85,8 @@ fn drain_round_robin(
     new_order
 }
 
+/// Reorder `by_priority` so each fileset contributes one node before any file
+/// gets a second turn. This keeps tight budgets from starving later files.
 fn interleave_fileset_priority(
     by_priority: &mut Vec<NodeId>,
     node_slots: &[Option<usize>],
@@ -98,8 +96,8 @@ fn interleave_fileset_priority(
         return;
     }
     let (prefix, buckets) =
-        partition_slots(by_priority, node_slots, file_count);
-    let new_order = drain_round_robin(prefix, buckets, by_priority.len());
+        split_priority_by_slot(by_priority, node_slots, file_count);
+    let new_order = collect_round_robin(prefix, buckets, by_priority.len());
     *by_priority = new_order;
 }
 
@@ -652,7 +650,7 @@ pub fn build_order(
         }
     }
 
-    if should_interleave_fileset(arena) {
+    if arena.is_fileset {
         let file_count = arena.nodes[arena.root_id].children_len;
         interleave_fileset_priority(&mut order, &node_slots, file_count);
     }
