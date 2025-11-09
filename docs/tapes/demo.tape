@@ -9,6 +9,8 @@ Output demo.gif
 
 Require curl
 Require hson
+Type "set -euo pipefail" Sleep 200ms Enter
+Sleep 400ms
 
 # Network JSON stream → default Pseudo style
 Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | hson" Sleep 400ms Enter
