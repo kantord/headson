@@ -5,7 +5,7 @@ use insta::assert_snapshot;
 
 fn run_case_with_tail(path: &Path, template: &str, n: u32) -> String {
     let input = fs::read_to_string(path).expect("read fixture");
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let n_s = n.to_string();
     let mut args = vec!["--no-color", "-c", &n_s, "--tail"];
     let lower = template.to_ascii_lowercase();

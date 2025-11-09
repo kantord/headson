@@ -2,7 +2,7 @@
 mod util;
 
 fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let mut full_args = vec!["--no-color", "-f", "auto"];
     full_args.extend_from_slice(args);
     full_args.extend_from_slice(paths);
@@ -16,7 +16,7 @@ fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
 }
 
 fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let limit_s = limit.to_string();
     let mut args =
         vec!["--no-color", "-f", "auto", "-t", "detailed", "-C", &limit_s];
@@ -54,7 +54,7 @@ fn find_js_summary_output(
 }
 
 fn run_pseudo_with_limit(paths: &[&str], limit: usize) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let limit_s = limit.to_string();
     let args =
         vec!["--no-color", "-f", "auto", "-t", "default", "-C", &limit_s];
@@ -140,7 +140,7 @@ fn budget_and_global_limit_can_be_used_together() {
     let path = "tests/fixtures/explicit/object_small.json";
     // When both are set, the effective global limit is min(c, C).
     // Here min(200, 100) = 100; using both should match using only -C 100.
-    let mut cmd_both = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd_both = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let out_both = cmd_both
         .args(["--no-color", "-f", "json", "-c", "200", "-C", "100", path])
         .assert()
@@ -148,7 +148,7 @@ fn budget_and_global_limit_can_be_used_together() {
     let stdout_both =
         String::from_utf8_lossy(&out_both.get_output().stdout).into_owned();
 
-    let mut cmd_global_only = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd_global_only = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let out_global_only = cmd_global_only
         .args(["--no-color", "-f", "json", "-C", "100", path])
         .assert()

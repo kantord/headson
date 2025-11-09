@@ -1,7 +1,7 @@
 use insta::assert_snapshot;
 
 fn run(args: &[&str]) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd.arg("--no-color").args(args).assert().success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
 }

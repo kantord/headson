@@ -1,6 +1,6 @@
 fn run_json(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let mut args = vec!["--no-color", "-c", &budget_s, "-f", "auto"];
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert().success();

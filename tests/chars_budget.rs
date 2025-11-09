@@ -1,7 +1,7 @@
 use assert_cmd::assert::Assert;
 
 fn run_cli(input: &str, args: &[&str]) -> Assert {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     cmd.arg("--no-color").args(args).write_stdin(input).assert()
 }
 
@@ -174,7 +174,7 @@ fn fileset_char_budget_scales_with_inputs() {
     fs::write(&a, b"[1,2,3,4,5,6,7,8,9,10]").unwrap();
     fs::write(&b, b"[1,2,3,4,5,6,7,8,9,10]").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
         .args([
             "--no-color",

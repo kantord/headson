@@ -1,7 +1,7 @@
 use insta::assert_snapshot;
 
 fn run_args(args: &[&str]) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd.arg("--no-color").args(args).assert().success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
 }
@@ -25,7 +25,7 @@ fn run_fileset_json_with_budgets_raw(
     per_file: usize,
     global: usize,
 ) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let mut args: Vec<String> = vec![
         "--no-color".into(),
         "-f".into(),

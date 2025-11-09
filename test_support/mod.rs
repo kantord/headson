@@ -2,7 +2,7 @@ use assert_cmd::assert::Assert;
 
 #[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
 pub fn run_stdout(input: &str, args: &[&str]) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
         .arg("--no-color")
         .args(args)
@@ -41,7 +41,7 @@ pub fn run_template_budget_assert(
     extra: &[&str],
 ) -> Assert {
     let budget_s = budget.to_string();
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let mut args: Vec<&str> = vec!["-c", &budget_s];
     let lower = template.to_ascii_lowercase();
     match lower.as_str() {
@@ -57,7 +57,7 @@ pub fn run_template_budget_assert(
 
 #[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
 pub fn run_capture(input: &[u8], args: &[&str]) -> (bool, Vec<u8>, Vec<u8>) {
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .arg("--no-color")
         .args(args)
         .write_stdin(input)

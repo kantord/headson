@@ -1,6 +1,6 @@
 #[test]
 fn head_and_tail_flags_conflict() {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // Pass both flags; clap should error with a conflict.
     let assert = cmd
         .args(["--no-color", "--head", "--tail", "-n", "20", "-f", "json"]) // no inputs (stdin not used)
@@ -17,7 +17,7 @@ fn head_and_tail_flags_conflict() {
 
 #[test]
 fn compact_and_no_newline_conflict() {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // --compact conflicts with --no-newline via clap configuration.
     // Provide a small bytes budget to avoid other defaults interfering.
     let assert = cmd
@@ -47,7 +47,7 @@ fn compact_and_no_newline_conflict() {
 #[test]
 fn lines_and_no_newline_conflict() {
     // --no-newline conflicts with --lines
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
         .args(["--no-color", "--no-newline", "-n", "3", "-f", "json"])
         .assert();
@@ -67,7 +67,7 @@ fn lines_and_no_newline_conflict() {
 #[test]
 fn global_lines_and_no_newline_conflict() {
     // --no-newline conflicts with --global-lines
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
         .args(["--no-color", "--no-newline", "-N", "5", "-f", "json"])
         .assert();

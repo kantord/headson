@@ -39,6 +39,10 @@ default = []
 [lib]
 doctest = false
 
+[[bin]]
+name = "hson"
+path = "src/main.rs"
+
 [dev-dependencies]
 insta = "1.40.0"
 assert_cmd = "2"

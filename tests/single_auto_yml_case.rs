@@ -9,7 +9,7 @@ fn single_file_auto_handles_yml_and_uppercase_extensions() {
     fs::write(&p2, b"x: 2\n").unwrap();
 
     for p in [&p1, &p2] {
-        let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+        let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
         let assert = cmd
             .args([
                 "--no-color",

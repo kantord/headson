@@ -16,7 +16,7 @@ type IgnoreNotices = Vec<String>;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "headson",
+    name = "hson",
     version,
     about = "Get a small but useful preview of JSON or YAML"
 )]

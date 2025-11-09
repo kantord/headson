@@ -3,7 +3,7 @@
 #[test]
 fn text_stdin_snapshot() {
     let input = b"a\r\nb\r\nc\r\n".to_vec();
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args(["--no-color", "-i", "text", "-f", "text"])
         .write_stdin(input)
         .assert()
@@ -24,7 +24,7 @@ fn fileset_text_files_snapshot() {
     std::fs::write(dir.path().join("a.txt"), b"one\ntwo\n").unwrap();
     std::fs::write(dir.path().join("b.log"), b"alpha\nbeta\n").unwrap();
 
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .current_dir(dir.path())
         .args(["--no-color", "-c", "10000", "-f", "auto", "a.txt", "b.log"])
         .assert()

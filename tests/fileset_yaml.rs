@@ -1,6 +1,6 @@
 fn run_yaml(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // newline mode
     let mut args = vec!["--no-color", "-c", &budget_s, "-f", "auto"];
     args.extend_from_slice(paths);
@@ -33,7 +33,7 @@ fn yaml_compact_falls_back_to_json_style() {
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let budget = 500usize;
     let budget_s = budget.to_string();
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // Compact => no newlines; YAML template renders via JSON style
     let assert = cmd
         .args([
@@ -63,7 +63,7 @@ fn yaml_fileset_compact_snapshot() {
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let budget = 500usize;
     let budget_s = budget.to_string();
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
         .args([
             "--no-color",

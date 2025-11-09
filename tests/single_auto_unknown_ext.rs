@@ -6,7 +6,7 @@ fn single_file_auto_unknown_ext_defaults_to_text() {
     let p = dir.path().join("data.txt");
     fs::write(&p, b"alpha\nbeta\ngamma\n").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
         .args([
             "--no-color",

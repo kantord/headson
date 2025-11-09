@@ -8,7 +8,7 @@ fn auto_template_uses_per_file_format_in_fileset() {
     fs::write(&p_json, b"{\n  \"a\": 1\n}\n").unwrap();
     fs::write(&p_yaml, b"k: 2\n").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
         .args([
             "--no-color",

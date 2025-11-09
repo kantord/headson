@@ -1,6 +1,6 @@
 fn run_js(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let mut args = vec![
         "--no-color",
         "-c",
@@ -44,7 +44,7 @@ fn js_fileset_compact_shows_inline_omitted_summary() {
     let p3 = "tests/fixtures/explicit/string_escaping.json";
     let budget = 50usize;
     let budget_s = budget.to_string();
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // Compact mode => no newlines, but object-style rendering includes inline summary
     let assert = cmd
         .args([

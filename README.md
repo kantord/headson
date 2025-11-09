@@ -6,7 +6,7 @@
   <br/>
 </p>
 
-`head`/`tail` for JSON, YAML - but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict byte budget. (Just like `head`/`tail`, `headson` can also work with unstructured text files.)
+`head`/`tail` for JSON, YAML - but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict byte budget. (Just like `head`/`tail`, `hson` can also work with unstructured text files.)
 
 Available as:
 - CLI (see [Usage](#usage))
@@ -21,10 +21,12 @@ Using Cargo:
 
     cargo install headson
 
+> Note: the CLI installs as `hson`. All examples below use `hson ...`.
+
 From source:
 
     cargo build --release
-    target/release/headson --help
+    target/release/hson --help
 
 
 ## Features
@@ -41,15 +43,15 @@ From source:
 
 ## Fits into command line workflows
 
-If you’re comfortable with tools like `head` and `tail`, use `headson` when you want a quick, structured peek into a JSON file without dumping the entire thing.
+If you’re comfortable with tools like `head` and `tail`, use `hson` when you want a quick, structured peek into a JSON file without dumping the entire thing.
 
 - `head`/`tail` operate on bytes/lines - their output is not optimized for tree structures
 - `jq` you need to craft filters to preview large JSON files
-- `headson` is like head/tail for trees: zero config but it keeps structure and represents content as much as possible 
+- `hson` is like head/tail for trees: zero config but it keeps structure and represents content as much as possible 
 
 ## Usage
 
-    headson [FLAGS] [INPUT...]
+    hson [FLAGS] [INPUT...]
 
 - INPUT (optional, repeatable): file path(s). If omitted, reads from stdin. Multiple input files are supported.
 - Prints the preview to stdout. On parse errors, exits non‑zero and prints an error to stderr.
@@ -107,29 +109,29 @@ Quick one‑liners:
 
 - Peek a big JSON stream (keeps structure):
 
-      zstdcat huge.json.zst | headson -c 800 -f json -t default
+      zstdcat huge.json.zst | hson -c 800 -f json -t default
 
 - Many files with a fixed overall size:
 
-      headson -C 1200 -f json -t strict logs/*.json
+      hson -C 1200 -f json -t strict logs/*.json
 
 - Glance at a file, JavaScript‑style comments for omissions:
 
-      headson -c 400 -f json -t detailed data.json
+      hson -c 400 -f json -t detailed data.json
 
 - YAML with detailed comments:
 
-      headson -c 400 -f yaml -t detailed config.yaml
+      hson -c 400 -f yaml -t detailed config.yaml
 
 ### Text mode
 
 - Single file (auto):
 
-      headson -c 200 notes.txt
+      hson -c 200 notes.txt
 
 - Force Text ingest/output (useful when mixing with other extensions):
 
-      headson -c 200 -i text -f text notes.txt
+      hson -c 200 -i text -f text notes.txt
 
 - Styles on Text:
   - default: omission as a standalone `…` line.
@@ -140,11 +142,11 @@ Quick one‑liners:
 
 Show help:
 
-    headson --help
+    hson --help
 
 Note: flags align with head/tail conventions (`-c/--bytes`, `-C/--global-bytes`).
 
-## Examples: head vs headson
+## Examples: head vs hson
 
 Input:
 
@@ -159,10 +161,10 @@ jq -c . users.json | head -c 80
 # {"users":[{"id":1,"name":"Ana","roles":["admin","dev"]},{"id":2,"name":"Bo"}],"me
 ```
 
-Structured preview with headson (JSON family, default style → Pseudo):
+Structured preview with hson (JSON family, default style → Pseudo):
 
 ```bash
-headson -c 120 -f json -t default users.json
+hson -c 120 -f json -t default users.json
 # {
 #   users: [
 #     { id: 1, name: "Ana", roles: [ "admin", … ] },
@@ -175,7 +177,7 @@ headson -c 120 -f json -t default users.json
 Machine‑readable preview (JSON family, strict style → strict JSON):
 
 ```bash
-headson -c 120 -f json -t strict users.json
+hson -c 120 -f json -t strict users.json
 # {"users":[{"id":1,"name":"Ana","roles":["admin"]}],"meta":{"count":2}}
 ```
 

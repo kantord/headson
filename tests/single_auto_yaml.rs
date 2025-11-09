@@ -6,7 +6,7 @@ fn single_file_auto_uses_yaml_ingest_and_output() {
     let p = dir.path().join("data.yaml");
     fs::write(&p, b"k: 2\n").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
         .args([
             "--no-color",

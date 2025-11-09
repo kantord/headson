@@ -4,7 +4,7 @@ fn cpp_text_fallback_snapshot() {
     // text fallback (e.g., indent-aware rendering) will reflect in the snapshot.
     let fixture = std::path::Path::new("tests/fixtures/code/sample.cpp");
 
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args([
             "--no-color", // stabilize output
             "-c",
@@ -30,7 +30,7 @@ fn cpp_text_fallback_snapshot() {
 #[test]
 fn cpp_text_fallback_snapshot_json() {
     let fixture = std::path::Path::new("tests/fixtures/code/sample.cpp");
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "-c",
@@ -57,7 +57,7 @@ fn cpp_text_fallback_snapshot_json() {
 #[test]
 fn code_format_override_text_template() {
     let fixture = std::path::Path::new("tests/fixtures/code/sample.py");
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "-c",
@@ -85,7 +85,7 @@ fn code_format_override_text_template() {
 fn code_format_override_json_via_stdin() {
     let data = std::fs::read_to_string("tests/fixtures/code/sample.py")
         .expect("read fixture");
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args(["--no-color", "-c", "120", "-i", "text", "-f", "json"])
         .write_stdin(data)
         .assert()

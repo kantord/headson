@@ -4,7 +4,7 @@ use std::path::Path;
 use test_each_file::test_each_path;
 
 fn run_cli(input: &[u8]) -> (bool, Vec<u8>, Vec<u8>) {
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args(["--no-color", "-c", "10000", "-f", "json"]) // ensure valid JSON output
         .write_stdin(input)
         .assert();

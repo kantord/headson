@@ -8,7 +8,7 @@ fn fileset_auto_uses_yaml_ingest_when_uppercase_yaml_present() {
     fs::write(&p_json, b"{\n  \"a\": 1\n}\n").unwrap();
     fs::write(&p_yaml, b"k: 2\n").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // No -i yaml; rely on Auto ingest selection
     let assert = cmd
         .args([

@@ -8,7 +8,7 @@ fn fileset_rejects_custom_format() {
     fs::write(&p_a, "hello").expect("write a");
     fs::write(&p_b, "world").expect("write b");
 
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "-f",

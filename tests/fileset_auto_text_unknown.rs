@@ -12,7 +12,7 @@ fn fileset_auto_unknown_extensions_use_text_template() {
     fs::write(&p1, b"one\ntwo\n").unwrap();
     fs::write(&p2, b"alpha\nbeta\n").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
         .args([
             "--no-color",

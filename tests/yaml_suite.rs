@@ -6,7 +6,7 @@ use test_each_file::test_each_path;
 use yaml_rust2::{Yaml, YamlLoader};
 
 fn run_cli_yaml(input: &[u8]) -> (bool, String, String) {
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "-c",

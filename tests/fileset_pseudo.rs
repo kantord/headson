@@ -1,6 +1,6 @@
 fn run_pseudo(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let mut args =
         vec!["--no-color", "-c", &budget_s, "-f", "auto", "-t", "default"]; // newline mode
     args.extend_from_slice(paths);
@@ -36,7 +36,7 @@ fn pseudo_fileset_compact_shows_ellipsis_for_omitted() {
     let p3 = "tests/fixtures/explicit/string_escaping.json";
     let budget = 50usize;
     let budget_s = budget.to_string();
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // Compact mode => object-style rendering; expect ellipsis for omitted content
     let assert = cmd
         .args([

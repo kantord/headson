@@ -1,7 +1,7 @@
 use insta::assert_snapshot;
 
 fn run_color(input: &str, template: &str) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let mut args = vec!["--color", "-c", "1000"];
     let lower = template.to_ascii_lowercase();
     match lower.as_str() {

@@ -32,7 +32,7 @@ fn file_yaml_basic_end_to_end() {
     let tmp = tempfile::tempdir().expect("tmp");
     let p = tmp.path().join("data.yaml");
     fs::write(&p, b"a: 1\narr: [x, y, z]\n").expect("write yaml");
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
         .args([
             "--no-color",

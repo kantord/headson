@@ -4,7 +4,7 @@ use test_each_file::test_each_path;
 
 #[allow(dead_code, reason = "legacy helper kept during --debug migration")]
 fn run_cli_auto_text_with_style(path: &Path, style: &str) -> String {
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "-c",
@@ -29,7 +29,7 @@ fn run_cli_auto_text_with_style(path: &Path, style: &str) -> String {
 }
 
 fn run_cli_auto_text_with_debug(path: &Path, style: &str) -> (String, String) {
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "--debug",

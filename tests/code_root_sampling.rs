@@ -9,7 +9,7 @@ const CODE_FILESET_PATHS: &[&str] = &[
 ];
 
 fn run_sample_py_auto() -> String {
-    let assert = cargo_bin_cmd!("headson")
+    let assert = cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "-c",
@@ -30,7 +30,7 @@ fn run_sample_py_auto() -> String {
 }
 
 fn run_sample_py_colored() -> String {
-    let assert = cargo_bin_cmd!("headson")
+    let assert = cargo_bin_cmd!("hson")
         .args([
             "--color",
             "-c",
@@ -51,7 +51,7 @@ fn run_sample_py_colored() -> String {
 }
 
 fn run_large_code_huge_budget() -> String {
-    let assert = cargo_bin_cmd!("headson")
+    let assert = cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "-c",
@@ -74,7 +74,7 @@ fn run_large_code_huge_budget() -> String {
 }
 
 fn run_minimal_drop_huge_budget() -> String {
-    let assert = cargo_bin_cmd!("headson")
+    let assert = cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "-n",
@@ -95,7 +95,7 @@ fn run_minimal_drop_huge_budget() -> String {
 }
 
 fn run_multi_describe_line_budget() -> String {
-    let assert = cargo_bin_cmd!("headson")
+    let assert = cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "-n",
@@ -116,7 +116,7 @@ fn run_multi_describe_line_budget() -> String {
 }
 
 fn run_multi_code_files_colored() -> String {
-    let assert = cargo_bin_cmd!("headson")
+    let assert = cargo_bin_cmd!("hson")
         .args([
             "--color",
             "-c",
@@ -132,7 +132,7 @@ fn run_multi_code_files_colored() -> String {
 }
 
 fn run_code_fileset_with_budget(budget: usize) -> String {
-    let mut cmd = cargo_bin_cmd!("headson");
+    let mut cmd = cargo_bin_cmd!("hson");
     cmd.arg("--no-color")
         .arg("-c")
         .arg(budget.to_string())
@@ -347,7 +347,7 @@ fn code_minimal_huge_budget_snapshot() {
 
 #[test]
 fn code_prefers_top_level_headers() {
-    let assert = cargo_bin_cmd!("headson")
+    let assert = cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "-c",

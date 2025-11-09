@@ -66,7 +66,7 @@ const FIXTURES: &[FixtureExpectation] = &[
 ];
 
 fn run_colored_output(path: &str) -> String {
-    let output = cargo_bin_cmd!("headson")
+    let output = cargo_bin_cmd!("hson")
         .args(["--color", "-c", "400", "-f", "auto", path])
         .assert()
         .success()

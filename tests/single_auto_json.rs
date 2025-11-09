@@ -6,7 +6,7 @@ fn single_file_auto_uses_json_ingest_and_output() {
     let p = dir.path().join("data.json");
     fs::write(&p, b"{\n  \"a\": 1\n}\n").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
         .args([
             "--no-color",

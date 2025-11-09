@@ -5,7 +5,7 @@ fn text_tail_places_marker_at_start() {
         .map(|i| format!("line{i}"))
         .collect::<Vec<_>>()
         .join("\n");
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "--tail",

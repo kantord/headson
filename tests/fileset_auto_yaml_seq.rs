@@ -11,7 +11,7 @@ fn auto_fileset_renders_yaml_sequence_of_mappings_properly() {
     assert!(fs::metadata(p_json).is_ok());
     assert!(fs::metadata(p_yaml).is_ok());
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
         .args(["--no-color", "-c", "10000", "-f", "auto", p_json, p_yaml])
         .assert()

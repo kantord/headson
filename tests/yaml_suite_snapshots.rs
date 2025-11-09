@@ -5,7 +5,7 @@ use test_each_file::test_each_path;
 
 fn run_cli_yaml_with_budget(input: &[u8], budget: usize) -> String {
     let budget_s = budget.to_string();
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "-c",

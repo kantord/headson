@@ -8,7 +8,7 @@ fn auto_mode_picks_yaml_ingest_for_mixed_files() {
     fs::write(&p_json, b"{\n  \"a\": 1\n}\n").unwrap();
     fs::write(&p_yaml, b"k: 2\n").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("headson");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // Do not pass -i yaml; rely on Auto ingest selection for fileset
     let assert = cmd
         .args([

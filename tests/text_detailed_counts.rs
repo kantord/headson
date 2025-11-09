@@ -5,7 +5,7 @@ fn text_detailed_shows_omitted_count() {
         .map(|i| format!("line{i}"))
         .collect::<Vec<_>>()
         .join("\n");
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("headson")
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args([
             "--no-color",
             "-i",
