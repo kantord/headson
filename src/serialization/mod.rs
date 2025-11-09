@@ -764,6 +764,127 @@ fn enforce_force_first_child(
     }
 }
 
+fn compute_fileset_slots(order: &PriorityOrder) -> Option<Vec<Option<usize>>> {
+    if order.object_type.get(ROOT_PQ_ID) != Some(&ObjectType::Fileset) {
+        return None;
+    }
+    let root_children = order.children.get(ROOT_PQ_ID)?;
+    let mut slots: Vec<Option<usize>> = vec![None; order.total_nodes];
+    fn assign_slot(
+        order: &PriorityOrder,
+        slots: &mut [Option<usize>],
+        node: usize,
+        slot: usize,
+    ) {
+        if slots[node].is_some() {
+            return;
+        }
+        slots[node] = Some(slot);
+        if let Some(children) = order.children.get(node) {
+            for child in children {
+                assign_slot(order, slots, child.0, slot);
+            }
+        }
+    }
+    for (slot, child) in root_children.iter().enumerate() {
+        assign_slot(order, &mut slots, child.0, slot);
+    }
+    Some(slots)
+}
+
+fn is_render_leaf(node: &RankedNode) -> bool {
+    matches!(
+        node,
+        RankedNode::SplittableLeaf { .. } | RankedNode::AtomicLeaf { .. }
+    )
+}
+
+// Under very small budgets, the global top-K order can end up including nodes
+// from only a subset of files in a code fileset. That makes the rendered
+// sections confusing (empty headers) even though every file has useful lines.
+// After picking the top-K nodes, opportunistically add one renderable leaf per
+// file so each section shows at least one line. This is intentionally limited
+// to code/text files via the code_lines heuristic so JSON/YAML filesets keep
+// their existing "more files" summary behavior.
+fn enforce_fileset_fairness(
+    order_build: &PriorityOrder,
+    inclusion_flags: &mut [u32],
+    render_id: u32,
+) {
+    if order_build.code_lines.is_empty() {
+        // Only enforce this fairness tweak for code/text filesets where we want
+        // at least one line per file. Structured JSON/YAML files rely on the
+        // summary behavior under tight budgets.
+        return;
+    }
+    let Some(slots) = compute_fileset_slots(order_build) else {
+        return;
+    };
+    let file_count = order_build
+        .children
+        .get(ROOT_PQ_ID)
+        .map(Vec::len)
+        .unwrap_or(0);
+    if file_count == 0 {
+        return;
+    }
+    let mut covered =
+        fileset_leaf_coverage(order_build, inclusion_flags, render_id, &slots);
+    if covered.iter().all(|&flag| flag) {
+        return;
+    }
+    for (slot, flag) in covered.iter_mut().enumerate() {
+        if *flag {
+            continue;
+        }
+        if let Some(node) = pick_first_render_leaf(order_build, &slots, slot) {
+            crate::utils::graph::mark_node_and_ancestors(
+                order_build,
+                node,
+                inclusion_flags,
+                render_id,
+            );
+            *flag = true;
+        }
+    }
+}
+
+fn fileset_leaf_coverage(
+    order_build: &PriorityOrder,
+    inclusion_flags: &[u32],
+    render_id: u32,
+    slots: &[Option<usize>],
+) -> Vec<bool> {
+    let mut covered =
+        vec![false; order_build.children.get(ROOT_PQ_ID).map_or(0, Vec::len)];
+    for (idx, &flag) in inclusion_flags.iter().enumerate() {
+        if flag == render_id && is_render_leaf(&order_build.nodes[idx]) {
+            if let Some(slot) = slots.get(idx).and_then(|s| *s) {
+                if let Some(entry) = covered.get_mut(slot) {
+                    *entry = true;
+                }
+            }
+        }
+    }
+    covered
+}
+
+fn pick_first_render_leaf(
+    order_build: &PriorityOrder,
+    slots: &[Option<usize>],
+    slot: usize,
+) -> Option<NodeId> {
+    order_build.by_priority.iter().find_map(|node| {
+        if slots.get(node.0).copied().flatten() == Some(slot)
+            && is_render_leaf(&order_build.nodes[node.0])
+        {
+            Some(*node)
+        } else {
+            None
+        }
+    })
+}
+
 pub fn prepare_render_set_top_k_and_ancestors(
     order_build: &PriorityOrder,
     top_k: usize,
@@ -781,6 +902,7 @@ pub fn prepare_render_set_top_k_and_ancestors(
         render_id,
     );
     enforce_force_first_child(order_build, inclusion_flags, render_id);
+    enforce_fileset_fairness(order_build, inclusion_flags, render_id);
 }
 
 /// Render using a previously prepared render set (inclusion flags matching `render_id`).

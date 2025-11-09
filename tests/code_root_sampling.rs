@@ -124,6 +124,77 @@ fn run_multi_code_files_colored() -> String {
     String::from_utf8_lossy(&assert.get_output().stdout).to_string()
 }
 
+fn run_large_code_fileset_small_budget() -> String {
+    let assert = cargo_bin_cmd!("headson")
+        .args([
+            "--no-color",
+            "-c",
+            "120",
+            "-f",
+            "auto",
+            "tests/fixtures/code/big_sample.py",
+            "tests/fixtures/code/sample.py",
+            "tests/fixtures/code/sample.ts",
+        ])
+        .assert()
+        .success();
+    String::from_utf8_lossy(&assert.get_output().stdout).to_string()
+}
+
+fn parse_section_header(line: &str) -> Option<&str> {
+    (line.starts_with("==>") && line.ends_with("<==")).then(|| {
+        line.trim()
+            .trim_start_matches("==>")
+            .trim_end_matches("<==")
+            .trim()
+    })
+}
+
+fn is_numbered_line(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    trimmed
+        .chars()
+        .next()
+        .map(|ch| ch.is_ascii_digit())
+        .unwrap_or(false)
+        && trimmed.contains(':')
+}
+
+fn push_finished_section(
+    current: &mut Option<(String, usize)>,
+    counts: &mut Vec<(String, usize)>,
+) {
+    if let Some(section) = current.take() {
+        counts.push(section);
+    }
+}
+
+fn handle_section_line(
+    line: &str,
+    current: &mut Option<(String, usize)>,
+    counts: &mut Vec<(String, usize)>,
+) {
+    if let Some(name) = parse_section_header(line) {
+        push_finished_section(current, counts);
+        *current = Some((name.to_string(), 0));
+    } else if let Some((_, count)) = current.as_mut() {
+        if is_numbered_line(line) {
+            *count += 1;
+        }
+    }
+}
+
+fn fileset_section_line_counts(output: &str) -> Vec<(String, usize)> {
+    let mut counts = Vec::new();
+    let mut current: Option<(String, usize)> = None;
+
+    for line in output.lines() {
+        handle_section_line(line, &mut current, &mut counts);
+    }
+    push_finished_section(&mut current, &mut counts);
+    counts
+}
+
 fn sanitize_escapes(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for ch in s.chars() {
@@ -217,6 +288,20 @@ fn code_line_numbers_remain_plain() {
 fn fileset_code_line_numbers_remain_plain() {
     let colored = run_multi_code_files_colored();
     assert_line_numbers_plain(&colored, true);
+}
+
+#[test]
+fn fileset_code_small_budget_keeps_each_file_nonempty() {
+    let out = run_large_code_fileset_small_budget();
+    let counts = fileset_section_line_counts(&out);
+    let missing: Vec<String> = counts
+        .into_iter()
+        .filter_map(|(name, count)| if count == 0 { Some(name) } else { None })
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "expected every fileset section to include at least one line, missing: {missing:?}\n{out}"
+    );
 }
 
 #[test]
