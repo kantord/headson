@@ -187,52 +187,18 @@ fn find_largest_render_under_budgets(
     if total == 0 {
         return String::new();
     }
-    // Each included node contributes at least some output; cap hi by budget.
-    let lo = 1usize;
-    // For the upper bound, when a byte budget is present, we can safely cap by it;
-    // otherwise, cap by total.
-    let hi = match budgets.byte_budget {
-        Some(c) => total.min(c.max(1)),
-        None => total,
-    };
-    // Reuse render-inclusion flags across render attempts to avoid clearing the vector.
-    // A node participates in the current render attempt when inclusion_flags[id] == render_set_id.
-    let mut inclusion_flags: Vec<u32> = vec![0; total];
-    // Each render attempt bumps this non-zero identifier to create a fresh inclusion set.
-    let mut render_set_id: u32 = 1;
-    // Measure length without color so ANSI escapes do not count toward the
-    // byte budget. Then render once more with the requested color setting.
-    let mut best_k: Option<usize> = None;
     let mut measure_cfg = config.clone();
     measure_cfg.color_enabled = false;
-
-    let _ = crate::utils::search::binary_search_max(lo, hi, |mid| {
-        let s = crate::serialization::render_top_k(
-            order_build,
-            mid,
-            &mut inclusion_flags,
-            render_set_id,
-            &measure_cfg,
-        );
-        render_set_id = render_set_id.wrapping_add(1).max(1);
-        // Measure output using a unified stats helper and enforce
-        // all provided caps (chars and/or lines).
-        let stats = crate::utils::measure::count_output_stats(
-            &s,
-            budgets.char_budget.is_some(),
-        );
-        let fits_bytes = budgets.byte_budget.is_none_or(|c| stats.bytes <= c);
-        let fits_chars = budgets.char_budget.is_none_or(|c| stats.chars <= c);
-        let fits_lines = budgets.line_budget.is_none_or(|l| stats.lines <= l);
-        if fits_bytes && fits_chars && fits_lines {
-            best_k = Some(mid);
-            true
-        } else {
-            false
-        }
-    });
-
-    let k = best_k.unwrap_or(1);
+    let root_is_fileset = order_build
+        .object_type
+        .get(crate::order::ROOT_PQ_ID)
+        .is_some_and(|t| *t == crate::order::ObjectType::Fileset);
+    let (k, mut inclusion_flags, render_set_id) = select_best_k(
+        order_build,
+        &measure_cfg,
+        budgets,
+        config.show_fileset_headers && root_is_fileset,
+    );
 
     // Prepare final inclusion set once and optionally build debug JSON.
     crate::serialization::prepare_render_set_top_k_and_ancestors(
@@ -293,6 +259,79 @@ fn find_largest_render_under_budgets(
         render_set_id,
         config,
     )
+}
+
+fn select_best_k(
+    order_build: &PriorityOrder,
+    measure_cfg: &RenderConfig,
+    budgets: Budgets,
+    headers_visible: bool,
+) -> (usize, Vec<u32>, u32) {
+    let total = order_build.total_nodes;
+    // Each included node contributes at least some output; cap hi by budget.
+    let lo = 1usize;
+    // For the upper bound, when a byte budget is present, we can safely cap by it;
+    // otherwise, cap by total.
+    let hi = match budgets.byte_budget {
+        Some(c) => total.min(c.max(1)),
+        None => total,
+    };
+    // Reuse render-inclusion flags across render attempts to avoid clearing the vector.
+    let mut inclusion_flags: Vec<u32> = vec![0; total];
+    // Each render attempt bumps this non-zero identifier to create a fresh inclusion set.
+    let mut render_set_id: u32 = 1;
+    let mut best_k: Option<usize> = None;
+    let measure_chars = budgets.char_budget.is_some();
+    let headerless_measure_cfg =
+        if budgets.line_budget.is_some() && headers_visible {
+            let mut cfg = measure_cfg.clone();
+            cfg.show_fileset_headers = false;
+            Some(cfg)
+        } else {
+            None
+        };
+    let _ = crate::utils::search::binary_search_max(lo, hi, |mid| {
+        let current_render_id = render_set_id;
+        let s = crate::serialization::render_top_k(
+            order_build,
+            mid,
+            &mut inclusion_flags,
+            current_render_id,
+            measure_cfg,
+        );
+        let stats =
+            crate::utils::measure::count_output_stats(&s, measure_chars);
+        let fits_bytes = budgets.byte_budget.is_none_or(|c| stats.bytes <= c);
+        let fits_chars = budgets.char_budget.is_none_or(|c| stats.chars <= c);
+        let fits_lines = if let Some(line_cap) = budgets.line_budget {
+            if let Some(cfg_no_headers) = headerless_measure_cfg.as_ref() {
+                let headerless = crate::serialization::render_from_render_set(
+                    order_build,
+                    &inclusion_flags,
+                    current_render_id,
+                    cfg_no_headers,
+                );
+                let line_stats = crate::utils::measure::count_output_stats(
+                    &headerless,
+                    false,
+                );
+                line_stats.lines <= line_cap
+            } else {
+                stats.lines <= line_cap
+            }
+        } else {
+            true
+        };
+        render_set_id = render_set_id.wrapping_add(1).max(1);
+        if fits_bytes && fits_chars && fits_lines {
+            best_k = Some(mid);
+            true
+        } else {
+            false
+        }
+    });
+    let k = best_k.unwrap_or(1);
+    (k, inclusion_flags, render_set_id)
 }
 
 // (removed) render_final helper was inlined to centralize optional debug dump

@@ -1,0 +1,11 @@
+---
+source: tests/code_text_fallback_param.rs
+expression: out_default
+---
+1: def delta():
+2:     print("delta")
+3: def epsilon():
+4:     print("epsilon")
+5: def zeta():
+6:     print("zeta")
+7:

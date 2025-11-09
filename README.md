@@ -69,6 +69,7 @@ Common flags:
 - `-i, --input-format <json|yaml|text>`: ingestion format (default: `json`). For filesets in `auto` format, ingestion is chosen by extensions.
 - `-m, --compact`: no indentation, no spaces, no newlines
 - `--no-newline`: single line output
+- `--no-header`: suppress fileset section headers (useful when embedding output in scripts)
 - `--no-space`: no space after `:` in objects
 - `--indent <STR>`: indentation unit (default: two spaces)
 - `--string-cap <N>`: max graphemes to consider per string (default: 500)
@@ -78,7 +79,7 @@ Common flags:
 Notes:
 
 - Multiple inputs:
-  - With newlines enabled, file sections are rendered with human‑readable headers. In compact/single‑line modes, headers are omitted.
+  - With newlines enabled, file sections are rendered with human‑readable headers (pass `--no-header` to suppress them). In compact/single‑line modes, headers are omitted.
 - In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
   - Unknown extensions are treated as Text (raw lines) — safe for logs and `.txt` files.
   - `--global-bytes` may truncate or omit entire files to respect the total budget.
@@ -100,6 +101,7 @@ Notes:
   - Caps the number of lines in the output.
   - Incompatible with `--no-newline`.
   - Multiple inputs: defaults to `<LINES> * number_of_inputs`; `--global-lines` caps the total.
+  - Fileset headers, blank separators, and summary lines do not count toward the line cap; only actual content lines are considered.
 
 - Interactions and precedence
   - All active budgets are enforced simultaneously. The render must satisfy all of: bytes (if set), chars (if set), and lines (if set). The strictest cap wins.

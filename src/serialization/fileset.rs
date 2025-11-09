@@ -1,6 +1,6 @@
 use super::RenderScope;
 use crate::format::Format;
-use crate::order::{ObjectType, ROOT_PQ_ID};
+use crate::order::{NodeId, ObjectType, ROOT_PQ_ID};
 use crate::serialization::types::OutputTemplate;
 
 impl<'a> RenderScope<'a> {
@@ -19,35 +19,19 @@ impl<'a> RenderScope<'a> {
     }
 
     fn render_fileset_sections(&mut self, depth: usize) -> String {
-        let mut out = String::new();
         let Some(children_ids) = self.order.children.get(ROOT_PQ_ID) else {
-            return out;
+            return String::new();
         };
-        let mut kept = 0usize;
-        for &child_id in children_ids.iter() {
-            if self.inclusion_flags[child_id.0] != self.render_set_id {
-                continue;
-            }
-            if kept > 0 {
-                self.fileset_push_section_gap(&mut out);
-            }
-            kept += 1;
-            let raw_key =
-                self.order.nodes[child_id.0].key_in_object().unwrap_or("");
-            out.push_str(&self.fileset_header_line(depth, raw_key));
-            let rendered =
-                self.fileset_render_child(child_id.0, depth, raw_key);
-            out.push_str(&rendered);
-        }
-        let total = self
-            .order
-            .metrics
-            .get(ROOT_PQ_ID)
-            .and_then(|m| m.object_len)
-            .unwrap_or(children_ids.len());
-        if total > kept && !self.config.newline.is_empty() {
-            self.fileset_push_section_gap(&mut out);
-            out.push_str(&self.fileset_summary_line(depth, total - kept));
+        let show_headers = self.should_render_fileset_headers();
+        let mut out = String::new();
+        let kept = self.render_fileset_children(
+            children_ids,
+            depth,
+            show_headers,
+            &mut out,
+        );
+        if show_headers {
+            self.render_fileset_summary(children_ids, depth, kept, &mut out);
         }
         out
     }
@@ -56,6 +40,57 @@ impl<'a> RenderScope<'a> {
         let nl = &self.config.newline;
         out.push_str(nl);
         out.push_str(nl);
+    }
+
+    fn should_render_fileset_headers(&self) -> bool {
+        self.config.show_fileset_headers && !self.config.newline.is_empty()
+    }
+
+    fn render_fileset_children(
+        &mut self,
+        children_ids: &[NodeId],
+        depth: usize,
+        show_headers: bool,
+        out: &mut String,
+    ) -> usize {
+        let mut kept = 0usize;
+        for &child_id in children_ids {
+            if self.inclusion_flags[child_id.0] != self.render_set_id {
+                continue;
+            }
+            if kept > 0 && show_headers {
+                self.fileset_push_section_gap(out);
+            }
+            kept += 1;
+            let raw_key =
+                self.order.nodes[child_id.0].key_in_object().unwrap_or("");
+            if show_headers {
+                out.push_str(&self.fileset_header_line(depth, raw_key));
+            }
+            let rendered =
+                self.fileset_render_child(child_id.0, depth, raw_key);
+            out.push_str(&rendered);
+        }
+        kept
+    }
+
+    fn render_fileset_summary(
+        &self,
+        children_ids: &[NodeId],
+        depth: usize,
+        kept: usize,
+        out: &mut String,
+    ) {
+        let total = self
+            .order
+            .metrics
+            .get(ROOT_PQ_ID)
+            .and_then(|m| m.object_len)
+            .unwrap_or(children_ids.len());
+        if total > kept && !self.config.newline.is_empty() {
+            self.fileset_push_section_gap(out);
+            out.push_str(&self.fileset_summary_line(depth, total - kept));
+        }
     }
 
     fn fileset_header_line(&self, depth: usize, key: &str) -> String {

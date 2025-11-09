@@ -20,6 +20,15 @@ fn count_lines_normalized(s: &str) -> usize {
     }
 }
 
+fn count_non_header_lines(s: &str) -> usize {
+    s.lines()
+        .filter(|line| {
+            let trimmed = line.trim();
+            !trimmed.is_empty() && !trimmed.starts_with("==>")
+        })
+        .count()
+}
+
 #[test]
 fn json_strict_lines_cap() {
     let p = "tests/fixtures/explicit/object_small.json";
@@ -118,8 +127,11 @@ fn fileset_global_lines() {
         a.to_str().unwrap(),
         b.to_str().unwrap(),
     ]);
-    let lines = count_lines_normalized(&out);
-    assert!(lines <= 3, "global lines cap failed: {out:?}");
+    let non_header = count_non_header_lines(&out);
+    assert!(
+        non_header <= 3,
+        "global lines cap failed (content lines exceed cap): {out:?}"
+    );
     // Should contain at least one fileset header.
     assert!(out.contains("==> "));
 }

@@ -1,5 +1,7 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 use insta::assert_snapshot;
+use std::collections::HashMap;
+use std::fs;
 
 /// Shared code fixture set for multi-file fairness tests.
 const CODE_FILESET_PATHS: &[&str] = &[
@@ -366,5 +368,74 @@ fn code_prefers_top_level_headers() {
     assert!(
         out.contains("def compute"),
         "expected top-level def compute to appear:\n{out}"
+    );
+}
+
+#[test]
+fn fileset_line_budget_should_not_drop_code_lines_for_headers() {
+    let files = [
+        "tests/fixtures/code/line_budget_alpha.py",
+        "tests/fixtures/code/line_budget_beta.py",
+    ];
+    let expected: HashMap<String, usize> = files
+        .iter()
+        .map(|path| {
+            let contents =
+                fs::read_to_string(path).expect("fixture should exist");
+            (path.to_string(), contents.lines().count())
+        })
+        .collect();
+    let per_file_budget = expected
+        .values()
+        .copied()
+        .max()
+        .expect("fixtures should contain at least one line");
+    let mut cmd = cargo_bin_cmd!("hson");
+    cmd.arg("--no-color")
+        .arg("-n")
+        .arg(per_file_budget.to_string());
+    for path in &files {
+        cmd.arg(path);
+    }
+    let assert = cmd.assert().success();
+    let out = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let observed: HashMap<String, usize> =
+        fileset_section_line_counts(&out).into_iter().collect();
+    for (path, expected_lines) in expected {
+        let Some(actual) = observed.get(&path) else {
+            panic!("missing fileset section for {path}\n{out}");
+        };
+        assert_eq!(
+            *actual, expected_lines,
+            "expected {path} to render {expected_lines} numbered lines with -n{per_file_budget}, got {actual}\n{out}"
+        );
+    }
+}
+
+#[test]
+fn fileset_no_header_flag_hides_section_headers() {
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--no-header",
+            "-n",
+            "20",
+            "tests/fixtures/code/sample.py",
+            "tests/fixtures/code/sample.ts",
+        ])
+        .assert()
+        .success();
+    let out = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    assert!(
+        !out.contains("==>"),
+        "expected --no-header output to omit fileset headers:\n{out}"
+    );
+    assert!(
+        out.contains("def greet(name: str):"),
+        "python content missing from --no-header output:\n{out}"
+    );
+    assert!(
+        out.contains("function greet(name: string) {"),
+        "ts content missing from --no-header output:\n{out}"
     );
 }

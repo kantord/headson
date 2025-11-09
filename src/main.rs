@@ -65,6 +65,12 @@ struct Cli {
     )]
     no_newline: bool,
     #[arg(
+        long = "no-header",
+        default_value_t = false,
+        help = "Suppress fileset section headers in the output"
+    )]
+    no_header: bool,
+    #[arg(
         short = 'm',
         long = "compact",
         default_value_t = false,
@@ -525,6 +531,7 @@ fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         string_free_prefix_graphemes: None,
         debug: cli.debug,
         primary_source_name: None,
+        show_fileset_headers: !cli.no_header,
     }
 }
 

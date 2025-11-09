@@ -1,0 +1,10 @@
+---
+source: tests/code_text_fallback_param.rs
+expression: out_default
+---
+1: def alpha():
+2:     print("alpha")
+3: def beta():
+4:     print("beta")
+5: def gamma():
+6:     print("gamma")

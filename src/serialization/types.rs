@@ -43,6 +43,8 @@ pub struct RenderConfig {
     // a single logical input outside of filesets. Used by code-specific
     // features such as syntax highlighting.
     pub primary_source_name: Option<String>,
+    // When false, suppress fileset section headers and summary lines.
+    pub show_fileset_headers: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

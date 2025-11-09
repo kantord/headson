@@ -494,6 +494,7 @@ mod tests {
             string_free_prefix_graphemes: None,
             debug: false,
             primary_source_name: None,
+            show_fileset_headers: true,
         };
         let prio = PriorityConfig::new(100, 100);
         (cfg, prio)
