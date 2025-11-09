@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1](https://github.com/kantord/headson/compare/v0.7.0...v0.7.1) - 2025-11-09
+
+### Added
+
+- add --no-header flag ([#168](https://github.com/kantord/headson/pull/168))
+
+### Other
+
+- improve demo gif ([#166](https://github.com/kantord/headson/pull/166))
+
 ## [0.7.0](https://github.com/kantord/headson/compare/v0.6.8...v0.7.0) - 2025-11-09
 
 ### Added
