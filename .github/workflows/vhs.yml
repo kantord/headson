@@ -1,14 +1,31 @@
-name: Update Demo GIF
+name: Demo Tape
 
 on:
   push:
     branches:
       - main
+  pull_request:
   workflow_dispatch:
 
 jobs:
-  demo-gif:
+  demo-gif-test:
+    name: Tape smoke test
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Replay demo tape (no artifacts)
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: docs/tapes/demo.tape
+
+  demo-gif:
+    name: Update demo GIF
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     permissions:
       contents: write
     steps:
