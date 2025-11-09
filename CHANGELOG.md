@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0](https://github.com/kantord/headson/compare/v0.6.8...v0.7.0) - 2025-11-09
+
+### Added
+
+- [**breaking**] rename CLI binary to hson ([#164](https://github.com/kantord/headson/pull/164))
+
+### Fixed
+
+- ensure tight code filesets show every file ([#162](https://github.com/kantord/headson/pull/162))
+
 ## [0.6.8](https://github.com/kantord/headson/compare/v0.6.7...v0.6.8) - 2025-11-08
 
 ### Added
