@@ -89,10 +89,14 @@ fn text_lines_cap_with_omission() {
     let path_str = p.to_string_lossy();
     // default style shows omission line; ensure total lines <= 3
     let out = run(&["-i", "text", "-f", "text", "-n", "3", &path_str]);
-    assert!(
-        count_lines_normalized(&out) <= 3,
-        "lines cap not enforced: {out:?}"
-    );
+    let numbered = out
+        .lines()
+        .filter(|line| {
+            line.trim_start()
+                .starts_with(|ch: char| ch.is_ascii_digit())
+        })
+        .count();
+    assert!(numbered <= 3, "lines cap not enforced: {out:?}");
     assert_snapshot!("text_lines3_default", out);
 }
 

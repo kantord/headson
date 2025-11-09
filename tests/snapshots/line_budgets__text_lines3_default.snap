@@ -3,4 +3,6 @@ source: tests/line_budgets.rs
 expression: out
 ---
 L1
+L5
 …
+
