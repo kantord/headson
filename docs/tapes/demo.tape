@@ -2,8 +2,7 @@ Set FontSize 26
 Set Width 1560
 Set Height 1400
 Set TypingSpeed 25ms
-# Fail fast if any command errors
-Set Shell "bash --noprofile --norc -eu -o pipefail"
+Set Shell "bash"
 Env CLICOLOR_FORCE "1"
 
 Output demo.gif
