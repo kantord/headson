@@ -10,26 +10,30 @@ on:
 jobs:
   demo-gif-test:
     name: Tape smoke test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install ffmpeg dependency
+      - name: Install VHS dependencies
         run: |
+          set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y --no-install-recommends ffmpeg ttyd fonts-jetbrains-mono curl ca-certificates tar
+          VHS_URL="https://github.com/charmbracelet/vhs/releases/latest/download/vhs_Linux_x86_64.tar.gz"
+          curl -sSL "$VHS_URL" -o /tmp/vhs.tar.gz
+          tar -xzf /tmp/vhs.tar.gz vhs
+          sudo install -m 0755 vhs /usr/local/bin/vhs
 
       - name: Replay demo tape (no artifacts)
-        uses: charmbracelet/vhs-action@v2
-        with:
-          path: docs/tapes/demo.tape
+        run: vhs demo.tape
+        working-directory: docs/tapes
 
   demo-gif:
     name: Update demo GIF
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: github.event_name != 'pull_request'
     permissions:
       contents: write
@@ -38,24 +42,28 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install ffmpeg dependency
+      - name: Install VHS dependencies
         run: |
+          set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y --no-install-recommends ffmpeg ttyd fonts-jetbrains-mono curl ca-certificates tar
+          VHS_URL="https://github.com/charmbracelet/vhs/releases/latest/download/vhs_Linux_x86_64.tar.gz"
+          curl -sSL "$VHS_URL" -o /tmp/vhs.tar.gz
+          tar -xzf /tmp/vhs.tar.gz vhs
+          sudo install -m 0755 vhs /usr/local/bin/vhs
 
       - name: Render demo tape
-        uses: charmbracelet/vhs-action@v2
-        with:
-          path: docs/tapes/demo.tape
+        run: vhs demo.tape
+        working-directory: docs/tapes
 
       - name: Move GIF into assets directory
         run: |
           set -euo pipefail
           mkdir -p docs/assets/tapes
-          if [ -f demo.gif ]; then
-            mv demo.gif docs/assets/tapes/demo.gif
-          elif [ -f docs/tapes/demo.gif ]; then
+          if [ -f docs/tapes/demo.gif ]; then
             mv docs/tapes/demo.gif docs/assets/tapes/demo.gif
+          elif [ -f demo.gif ]; then
+            mv demo.gif docs/assets/tapes/demo.gif
           else
             echo "Error: demo.gif not found after VHS run" >&2
             exit 1
