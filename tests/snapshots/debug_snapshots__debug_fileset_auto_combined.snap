@@ -1,6 +1,5 @@
 ---
 source: tests/debug_snapshots.rs
-assertion_line: 94
 expression: snap
 ---
 STDOUT:
@@ -28,7 +27,7 @@ DEBUG (normalized):
   "output_stats": {
     "bytes": 49,
     "chars": 0,
-    "lines": 8
+    "lines": 7
   },
   "renderer": {
     "array_sampler": "default",

@@ -10,8 +10,16 @@ fn count_lines_from_bytes(b: &[u8]) -> usize {
     if b.is_empty() {
         return 0;
     }
-    let mut i = 0usize;
+    let mut lines = count_line_breaks(b).saturating_add(1);
+    if ends_with_break(b) && lines > 0 {
+        lines -= 1;
+    }
+    lines
+}
+
+fn count_line_breaks(b: &[u8]) -> usize {
     let mut breaks = 0usize;
+    let mut i = 0usize;
     while i < b.len() {
         match b[i] {
             b'\n' => {
@@ -21,7 +29,7 @@ fn count_lines_from_bytes(b: &[u8]) -> usize {
             b'\r' => {
                 breaks += 1;
                 if i + 1 < b.len() && b[i + 1] == b'\n' {
-                    i += 2; // treat CRLF as a single break
+                    i += 2;
                 } else {
                     i += 1;
                 }
@@ -29,7 +37,11 @@ fn count_lines_from_bytes(b: &[u8]) -> usize {
             _ => i += 1,
         }
     }
-    breaks + 1
+    breaks
+}
+
+fn ends_with_break(b: &[u8]) -> bool {
+    b.ends_with(b"\n") || (b.ends_with(b"\r") && !b.ends_with(b"\r\n"))
 }
 
 /// Count bytes and logical lines in a string, normalizing CRLF/CR/LF.

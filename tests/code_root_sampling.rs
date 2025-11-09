@@ -205,6 +205,18 @@ fn fileset_section_line_counts(output: &str) -> Vec<(String, usize)> {
     counts
 }
 
+fn count_numbered_lines(output: &str) -> usize {
+    output
+        .lines()
+        .filter(|line| {
+            let trimmed = line.trim_start();
+            !trimmed.starts_with("==>")
+                && trimmed.chars().next().is_some_and(|c| c.is_ascii_digit())
+                && trimmed.contains(':')
+        })
+        .count()
+}
+
 fn sanitize_escapes(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for ch in s.chars() {
@@ -437,5 +449,31 @@ fn fileset_no_header_flag_hides_section_headers() {
     assert!(
         out.contains("function greet(name: string) {"),
         "ts content missing from --no-header output:\n{out}"
+    );
+}
+
+#[test]
+fn fileset_line_budget_global_line_count_matches_expectation() {
+    let files = [
+        "tests/fixtures/code/sample.py",
+        "tests/fixtures/code/sample.ts",
+        "tests/fixtures/code/sample.go",
+        "tests/fixtures/code/sample.cpp",
+    ];
+    let per_file_lines = 3;
+    let mut cmd = cargo_bin_cmd!("hson");
+    cmd.arg("--no-color")
+        .arg("-n")
+        .arg(per_file_lines.to_string());
+    for path in &files {
+        cmd.arg(path);
+    }
+    let assert = cmd.assert().success();
+    let out = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let numbered = count_numbered_lines(&out);
+    assert_eq!(
+        numbered,
+        per_file_lines * files.len(),
+        "expected total numbered lines to match files * per-file cap\n{out}"
     );
 }
