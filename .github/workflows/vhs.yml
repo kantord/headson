@@ -1,0 +1,49 @@
+name: Update Demo GIF
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  demo-gif:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Render demo tape
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: docs/tapes/demo.tape
+
+      - name: Move GIF into assets directory
+        run: |
+          set -euo pipefail
+          mkdir -p docs/assets/tapes
+          if [ -f demo.gif ]; then
+            mv demo.gif docs/assets/tapes/demo.gif
+          elif [ -f docs/tapes/demo.gif ]; then
+            mv docs/tapes/demo.gif docs/assets/tapes/demo.gif
+          else
+            echo "Error: demo.gif not found after VHS run" >&2
+            exit 1
+          fi
+
+      - name: Commit updated GIF (main only)
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- docs/assets/tapes/demo.gif; then
+            echo "GIF unchanged; nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/assets/tapes/demo.gif
+          git commit -m "docs: update demo gif"
+          git push
