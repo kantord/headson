@@ -1,98 +1,23 @@
-name: Demo Tape
+name: Demo Tape Check
 
 on:
   push:
     branches:
-      - main
+      - "**"
   pull_request:
   workflow_dispatch:
 
 jobs:
-  demo-gif-test:
-    name: Tape smoke test
-    runs-on: ubuntu-22.04
-    if: github.event_name == 'pull_request'
+  demo-tape:
+    name: Replay demo.tape
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/charmbracelet/vhs:latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install system dependencies
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg ttyd fonts-jetbrains-mono
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-
-      - name: Install VHS
-        run: |
-          set -euo pipefail
-          go install github.com/charmbracelet/vhs@v0.6.0
-          echo "${HOME}/go/bin" >> "$GITHUB_PATH"
-
-      - name: Replay demo tape (no artifacts)
-        run: vhs demo.tape
+      - name: Run VHS tape
         working-directory: docs/tapes
-
-  demo-gif:
-    name: Update demo GIF
-    runs-on: ubuntu-22.04
-    if: github.event_name != 'pull_request'
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install system dependencies
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg ttyd fonts-jetbrains-mono
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-
-      - name: Install VHS
-        run: |
-          set -euo pipefail
-          go install github.com/charmbracelet/vhs@v0.6.0
-          echo "${HOME}/go/bin" >> "$GITHUB_PATH"
-
-      - name: Render demo tape
         run: vhs demo.tape
-        working-directory: docs/tapes
-
-      - name: Move GIF into assets directory
-        run: |
-          set -euo pipefail
-          mkdir -p docs/assets/tapes
-          if [ -f docs/tapes/demo.gif ]; then
-            mv docs/tapes/demo.gif docs/assets/tapes/demo.gif
-          elif [ -f demo.gif ]; then
-            mv demo.gif docs/assets/tapes/demo.gif
-          else
-            echo "Error: demo.gif not found after VHS run" >&2
-            exit 1
-          fi
-
-      - name: Commit updated GIF (main only)
-        if: github.event_name == 'push'
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- docs/assets/tapes/demo.gif; then
-            echo "GIF unchanged; nothing to commit"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/assets/tapes/demo.gif
-          git commit -m "docs: update demo gif"
-          git push
