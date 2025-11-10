@@ -28,6 +28,8 @@ pub(crate) struct DumpDbg<'a> {
     output_stats: OutputStatsDbg,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     constrained_by: Vec<&'a str>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    priority: Vec<PriorityNodeDbg>,
 }
 
 #[derive(Serialize)]
@@ -116,6 +118,17 @@ struct NodeDbg {
 struct GapDbg {
     before_child_index: usize,
     omitted_count: usize,
+}
+
+#[derive(Serialize)]
+struct PriorityNodeDbg {
+    rank: usize,
+    id: usize,
+    score: u128,
+    included: bool,
+    kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    key_in_object: Option<String>,
 }
 
 fn template_str_for_root(
@@ -348,6 +361,42 @@ fn build_node(ctx: &mut BuildCtx<'_>, id: usize) -> NodeDbg {
     }
 }
 
+fn build_priority_dump(
+    order: &PriorityOrder,
+    inclusion_flags: &[u32],
+    render_id: u32,
+    treat_atomic_as_string: bool,
+) -> Vec<PriorityNodeDbg> {
+    order
+        .by_priority
+        .iter()
+        .enumerate()
+        .map(|(rank, node_id)| {
+            let pid = node_id.0;
+            let node = &order.nodes[pid];
+            let included = inclusion_flags
+                .get(pid)
+                .is_some_and(|flag| *flag == render_id);
+            let atomic_token = match node {
+                RankedNode::AtomicLeaf { token, .. } => Some(token.as_str()),
+                _ => None,
+            };
+            let kind = kind_str(node, atomic_token, treat_atomic_as_string);
+            let key =
+                node.key_in_object().map(std::string::ToString::to_string);
+            let score = order.scores.get(pid).copied().unwrap_or_default();
+            PriorityNodeDbg {
+                rank,
+                id: pid,
+                score,
+                included,
+                kind,
+                key_in_object: key,
+            }
+        })
+        .collect()
+}
+
 #[allow(
     clippy::unwrap_used,
     reason = "Debug mode should panic on serialization errors to surface bugs"
@@ -385,6 +434,12 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
         treat_atomic_as_string,
     };
     let root = build_node(&mut ctx, ROOT_PQ_ID);
+    let priority_dump = build_priority_dump(
+        order,
+        inclusion_flags,
+        render_id,
+        treat_atomic_as_string,
+    );
     let dump = DumpDbg {
         root,
         counts: CountsDbg {
@@ -411,6 +466,7 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
         },
         output_stats,
         constrained_by,
+        priority: priority_dump,
     };
     serde_json::to_string_pretty(&dump).unwrap()
 }

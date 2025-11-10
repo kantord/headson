@@ -32,3 +32,15 @@ pub(crate) const CODE_EMPTY_LINE_PENALTY: u128 = ARRAY_INDEX_CUBIC_WEIGHT * 4;
 /// Bonus applied to top-level code lines that introduce nested blocks so they
 /// surface before plain leaf lines under tight budgets.
 pub(crate) const CODE_PARENT_LINE_BONUS: u128 = ARRAY_CHILD_BASE_INCREMENT * 4;
+
+/// Trimmed length below this threshold is considered "very short" for code lines.
+pub(crate) const CODE_SHORT_LINE_THRESHOLD: usize = 5;
+/// Trimmed length above this threshold is considered "very long" for code lines.
+pub(crate) const CODE_LONG_LINE_THRESHOLD: usize = 180;
+/// Mild penalty applied to extremely short/long code lines to deemphasize them.
+pub(crate) const CODE_EXTREME_LINE_PENALTY: u128 = 5;
+/// Strong penalty for brace-only lines so they yield to more informative content.
+pub(crate) const CODE_BRACE_ONLY_PENALTY: u128 = ARRAY_INDEX_CUBIC_WEIGHT;
+/// Penalty for shallow code arrays (e.g., standalone braces) under tight line budgets.
+pub(crate) const CODE_SHALLOW_ARRAY_PENALTY: u128 =
+    ARRAY_INDEX_CUBIC_WEIGHT / 2;

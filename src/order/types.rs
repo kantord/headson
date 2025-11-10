@@ -139,6 +139,7 @@ pub struct NodeMetrics {
 pub struct PriorityOrder {
     pub metrics: Vec<NodeMetrics>,
     pub nodes: Vec<RankedNode>,
+    pub scores: Vec<u128>,
     // All ids in this structure are PQ ids (0..total_nodes).
     // They correspond to `NodeId.0` in `RankedNode` for convenience when indexing.
     pub parent: Vec<Option<NodeId>>, // parent[id] = parent id (PQ id)

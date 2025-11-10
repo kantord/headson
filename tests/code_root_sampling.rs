@@ -205,6 +205,24 @@ fn fileset_section_line_counts(output: &str) -> Vec<(String, usize)> {
     counts
 }
 
+fn fileset_section_lines<'a>(output: &'a str, section: &str) -> Vec<&'a str> {
+    let mut lines = Vec::new();
+    let mut in_section = false;
+    for line in output.lines() {
+        if let Some(name) = parse_section_header(line) {
+            if in_section {
+                break;
+            }
+            in_section = name == section;
+            continue;
+        }
+        if in_section && !line.trim().is_empty() {
+            lines.push(line);
+        }
+    }
+    lines
+}
+
 fn count_numbered_lines(output: &str) -> usize {
     output
         .lines()
@@ -422,6 +440,33 @@ fn fileset_line_budget_should_not_drop_code_lines_for_headers() {
             "expected {path} to render {expected_lines} numbered lines with -n{per_file_budget}, got {actual}\n{out}"
         );
     }
+}
+
+#[test]
+fn fileset_line_budget_keeps_go_functions_in_filesets() {
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "-n",
+            "3",
+            "tests/fixtures/code/sample.go",
+            "tests/fixtures/code/sample.py",
+        ])
+        .assert()
+        .success();
+    let out = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let go_lines =
+        fileset_section_lines(&out, "tests/fixtures/code/sample.go");
+    assert!(
+        go_lines
+            .iter()
+            .any(|line| line.contains("func compute(n int) int")),
+        "expected sample.go section to retain func compute header\n{out}"
+    );
+    assert!(
+        go_lines.iter().any(|line| line.contains("func main()")),
+        "expected sample.go section to retain func main header\n{out}"
+    );
 }
 
 #[test]

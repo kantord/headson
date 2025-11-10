@@ -3,5 +3,5 @@ source: tests/code_text_fallback_param.rs
 expression: out_default
 ---
   1: # Minimal reproduction for huge-budget omission
-148: def block_21():
+239: def block_34():
 484: def block_69():

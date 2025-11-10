@@ -5,5 +5,4 @@ expression: out_default
  1: public class Sample {
  6:     static int compute(int n) {
 15:         return total;
-27:     }
 28: }
