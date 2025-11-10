@@ -29,6 +29,47 @@ DEBUG (normalized):
     "chars": 0,
     "lines": 7
   },
+  "priority": [
+    {
+      "id": 0,
+      "included": true,
+      "kind": "object",
+      "rank": 0,
+      "score": 1
+    },
+    {
+      "id": 0,
+      "included": true,
+      "key_in_object": "a.json",
+      "kind": "object",
+      "rank": 1,
+      "score": 2
+    },
+    {
+      "id": 0,
+      "included": true,
+      "key_in_object": "b.yaml",
+      "kind": "object",
+      "rank": 2,
+      "score": 2
+    },
+    {
+      "id": 0,
+      "included": true,
+      "key_in_object": "a",
+      "kind": "string",
+      "rank": 3,
+      "score": 3
+    },
+    {
+      "id": 0,
+      "included": true,
+      "key_in_object": "k",
+      "kind": "string",
+      "rank": 4,
+      "score": 3
+    }
+  ],
   "renderer": {
     "array_sampler": "default",
     "prefer_tail_arrays": false,

@@ -152,22 +152,39 @@ impl TextArenaBuilder {
     ) -> usize {
         let id = self.push_default();
         if total <= ARRAY_NO_SAMPLING_THRESHOLD {
-            let children_start = self.arena.children.len();
-            let mut pushed = 0usize;
-            for line in lines {
-                let child = self.push_string(line.clone(), false);
-                self.arena.children.push(child);
-                pushed += 1;
-            }
-            let n = &mut self.arena.nodes[id];
-            n.kind = NodeKind::Array;
-            n.children_start = children_start;
-            n.children_len = pushed;
-            n.array_len = Some(total);
-            n.arr_indices_start = 0;
-            n.arr_indices_len = 0;
+            self.push_full_line_array(id, lines, total);
             return id;
         }
+        self.push_sampled_line_array(id, lines, total);
+        id
+    }
+
+    fn push_full_line_array(
+        &mut self,
+        id: usize,
+        lines: &[String],
+        total: usize,
+    ) {
+        let children_start = self.arena.children.len();
+        for line in lines {
+            let child = self.push_string(line.clone(), false);
+            self.arena.children.push(child);
+        }
+        let n = &mut self.arena.nodes[id];
+        n.kind = NodeKind::Array;
+        n.children_start = children_start;
+        n.children_len = total;
+        n.array_len = Some(total);
+        n.arr_indices_start = 0;
+        n.arr_indices_len = 0;
+    }
+
+    fn push_sampled_line_array(
+        &mut self,
+        id: usize,
+        lines: &[String],
+        total: usize,
+    ) {
         let idxs = choose_indices(self.sampler, total, self.array_cap);
         let kept = idxs.len().min(self.array_cap);
         let children_start = self.arena.children.len();
@@ -198,7 +215,6 @@ impl TextArenaBuilder {
             n.arr_indices_start = start;
             n.arr_indices_len = len.min(pushed);
         }
-        id
     }
 }
 

@@ -6,7 +6,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use super::scoring::*;
 use super::types::*;
-use crate::utils::tree_arena::JsonTreeArena;
+use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
 fn fill_fileset_slot(
     arena: &JsonTreeArena,
@@ -158,6 +158,67 @@ struct Scope<'a> {
 }
 
 impl<'a> Scope<'a> {
+    fn parent_is_fileset_child(&self, parent_id: usize) -> bool {
+        self.parent
+            .get(parent_id)
+            .and_then(|p| *p)
+            .and_then(|pid| self.object_type.get(pid.0))
+            .is_some_and(|ot| *ot == ObjectType::Fileset)
+    }
+
+    fn zero_bias_for_code_parent(
+        &self,
+        parent_is_code_array: bool,
+        entry: &Entry,
+    ) -> bool {
+        parent_is_code_array
+            && self.config.line_budget_only
+            && (entry.depth == 0
+                || self.parent_is_fileset_child(entry.priority_index))
+    }
+
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Code-scoring heuristics are easier to follow inline despite branching."
+    )]
+    fn adjust_code_child_score(
+        &self,
+        mut score: u128,
+        parent_is_code_array: bool,
+        child_kind: NodeKind,
+        child_node: &JsonTreeNode,
+        child_arena_id: usize,
+    ) -> Option<u128> {
+        if !parent_is_code_array {
+            return Some(score);
+        }
+        if self.config.line_budget_only
+            && child_kind == NodeKind::Array
+            && code_array_is_brace_only(self.arena, child_arena_id)
+        {
+            return None;
+        }
+        if matches!(
+            child_kind,
+            NodeKind::Null | NodeKind::Bool | NodeKind::Number
+        ) {
+            if let Some(token) = child_node.atomic_token.as_ref() {
+                if code_line_length_extreme(token) {
+                    score = score.saturating_add(CODE_EXTREME_LINE_PENALTY);
+                }
+                if code_line_is_brace_only(token) {
+                    score = score.saturating_add(CODE_BRACE_ONLY_PENALTY);
+                }
+            }
+        } else if child_kind == NodeKind::Array
+            && self.config.line_budget_only
+            && child_node.children_len <= 2
+        {
+            score = score.saturating_add(CODE_SHALLOW_ARRAY_PENALTY);
+        }
+        Some(score)
+    }
+
     fn push_child_common(
         &mut self,
         entry: &Entry,
@@ -313,7 +374,7 @@ impl<'a> Scope<'a> {
 
     #[allow(
         clippy::cognitive_complexity,
-        reason = "Array child expansion mixes scoring, arena index mapping, and PQ wiring; splitting would obscure the flow"
+        reason = "Array expansion mixes scoring, arena mapping, and PQ wiring; splitting would obscure the flow."
     )]
     fn expand_array_children(&mut self, entry: &Entry, arena_id: usize) {
         let parent_is_code_array =
@@ -323,32 +384,15 @@ impl<'a> Scope<'a> {
         for i in 0..kept {
             let child_arena_id = self.arena.children[node.children_start + i];
             let child_kind = self.arena.nodes[child_arena_id].kind;
-            if parent_is_code_array
-                && self.config.line_budget_only
-                && child_kind == NodeKind::Array
-                && code_array_is_brace_only(self.arena, child_arena_id)
-            {
-                continue;
-            }
-            let child_priority_index = *self.next_pq_id;
-            *self.next_pq_id += 1;
-            // Original index in source array if tracked; fall back to kept index.
             let orig_index = if node.arr_indices_len > 0 {
                 let start = node.arr_indices_start;
                 self.arena.arr_indices[start + i]
             } else {
                 i
             };
-            let parent_is_fileset_child = self
-                .parent
-                .get(entry.priority_index)
-                .and_then(|p| *p)
-                .and_then(|pid| self.object_type.get(pid.0))
-                .is_some_and(|ot| *ot == ObjectType::Fileset);
-            let zero_bias = parent_is_code_array
-                && self.config.line_budget_only
-                && (entry.depth == 0 || parent_is_fileset_child);
-            let extra: u128 = if zero_bias {
+            let extra = if self
+                .zero_bias_for_code_parent(parent_is_code_array, entry)
+            {
                 0
             } else {
                 self.array_extra_for_index(
@@ -374,32 +418,17 @@ impl<'a> Scope<'a> {
             {
                 score = score.saturating_add(CODE_EMPTY_LINE_PENALTY);
             }
-            if parent_is_code_array {
-                if matches!(
-                    child_kind,
-                    NodeKind::Null | NodeKind::Bool | NodeKind::Number
-                ) {
-                    if let Some(token) = child_node.atomic_token.as_ref() {
-                        if code_line_length_extreme(token) {
-                            score = score
-                                .saturating_add(CODE_EXTREME_LINE_PENALTY);
-                        }
-                        if code_line_is_brace_only(token) {
-                            score =
-                                score.saturating_add(CODE_BRACE_ONLY_PENALTY);
-                        }
-                    }
-                } else if child_kind == NodeKind::Array
-                    && code_array_is_brace_only(self.arena, child_arena_id)
-                {
-                    score = score.saturating_add(CODE_BRACE_ONLY_PENALTY);
-                } else if child_kind == NodeKind::Array
-                    && self.config.line_budget_only
-                    && self.arena.nodes[child_arena_id].children_len <= 2
-                {
-                    score = score.saturating_add(CODE_SHALLOW_ARRAY_PENALTY);
-                }
-            }
+            let Some(score) = self.adjust_code_child_score(
+                score,
+                parent_is_code_array,
+                child_kind,
+                child_node,
+                child_arena_id,
+            ) else {
+                continue;
+            };
+            let child_priority_index = *self.next_pq_id;
+            *self.next_pq_id += 1;
             let atomic = child_node.atomic_token.clone();
             self.push_child_common(
                 entry,
@@ -601,7 +630,7 @@ impl<'a> Scope<'a> {
 
 fn code_line_length_extreme(token: &str) -> bool {
     let length = token.trim().chars().count();
-    length < CODE_SHORT_LINE_THRESHOLD || length > CODE_LONG_LINE_THRESHOLD
+    !(CODE_SHORT_LINE_THRESHOLD..=CODE_LONG_LINE_THRESHOLD).contains(&length)
 }
 
 fn code_line_is_brace_only(token: &str) -> bool {
@@ -851,7 +880,8 @@ mod tests {
         assert!(!super::code_line_length_extreme("hello"));
         let long_line = "x".repeat(CODE_LONG_LINE_THRESHOLD + 1);
         assert!(super::code_line_length_extreme(&long_line));
-        let exact_short = " ".repeat(2) + "12345";
+        let mut exact_short = " ".repeat(2);
+        exact_short.push_str("12345");
         assert!(!super::code_line_length_extreme(&exact_short));
     }
 
@@ -873,11 +903,14 @@ mod tests {
         };
         arena.nodes.push(brace_child);
         let child_id = 0usize;
-        let mut parent = JsonTreeNode::default();
-        parent.kind = NodeKind::Array;
-        parent.children_start = 0;
-        parent.children_len = 1;
+        let children_start = arena.children.len();
         arena.children.push(child_id);
+        let parent = JsonTreeNode {
+            kind: NodeKind::Array,
+            children_start,
+            children_len: 1,
+            ..JsonTreeNode::default()
+        };
         arena.nodes.push(parent);
         let array_id = 1usize;
         assert!(super::code_array_is_brace_only(&arena, array_id));
