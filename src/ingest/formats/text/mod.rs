@@ -19,7 +19,7 @@ fn normalize_newlines(s: &str) -> Cow<'_, str> {
     }
 }
 
-const ARRAY_NO_SAMPLING_THRESHOLD: usize = 200;
+const ARRAY_NO_SAMPLING_THRESHOLD: usize = 20_000;
 
 struct TextArenaBuilder {
     arena: JsonTreeArena,
@@ -525,6 +525,7 @@ pub fn parse_text_many(
 
 #[cfg(test)]
 mod tests {
+    use super::ARRAY_NO_SAMPLING_THRESHOLD;
     use crate::{
         PriorityConfig, RenderConfig, headson_text,
         serialization::types::{OutputTemplate, Style},
@@ -572,8 +573,8 @@ mod tests {
 
     #[test]
     fn tail_sampler_keeps_last_n_indices_text() {
-        // Build 400 lines; with array_max_items=5 and tail sampler we should keep last 5
-        let total = 400;
+        // Build more lines than the sampling threshold so tail sampler is exercised.
+        let total = ARRAY_NO_SAMPLING_THRESHOLD + 10;
         let lines = (0..total)
             .map(|i| i.to_string())
             .collect::<Vec<_>>()

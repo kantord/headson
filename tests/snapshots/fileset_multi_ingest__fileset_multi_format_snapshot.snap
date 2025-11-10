@@ -1,6 +1,5 @@
 ---
 source: tests/fileset_multi_ingest.rs
-assertion_line: 86
 expression: out
 ---
 ==> config.json <==
@@ -18,6 +17,7 @@ expression: out
 ==> script.sh <==
 1: #!/usr/bin/env bash
 2: set -euo pipefail
+3: echo "deploy"
 
 
 ==> settings.yaml <==

@@ -3,6 +3,6 @@ source: tests/code_text_fallback_param.rs
 expression: out_default
 ---
   1: # big sample file for snapshot testing
-140: def func_29():
-144: def func_30():
-506: def func_104():
+486: def func_100():
+488:     for j in range(3):
+976: def func_200():
