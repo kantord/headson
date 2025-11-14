@@ -25,3 +25,9 @@ Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | hson -n 5" Sleep 
 Sleep 6s
 Type "curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | hson -n 50" Sleep 400ms Enter
 Sleep 6s
+Type "# It also understands source files." Sleep 200ms Enter
+Type "hson code_sample.py -n5" Sleep 400ms Enter
+Sleep 6s
+Type "# Mix languages and headson keeps each file balanced." Sleep 200ms Enter
+Type "hson code_sample.py code_sample.ts -n3" Sleep 400ms Enter
+Sleep 6s
