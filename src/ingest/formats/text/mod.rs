@@ -3,7 +3,10 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use crate::order::NodeKind;
-use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
+use crate::utils::{
+    text::truncate_at_n_graphemes,
+    tree_arena::{JsonTreeArena, JsonTreeNode},
+};
 use crate::{ArrayBias, PriorityConfig};
 
 use crate::ingest::sampling::{ArraySamplerKind, choose_indices};
@@ -20,6 +23,7 @@ fn normalize_newlines(s: &str) -> Cow<'_, str> {
 }
 
 const ARRAY_NO_SAMPLING_THRESHOLD: usize = 20_000;
+const CODE_LINE_HARD_CAP: usize = 150;
 
 struct TextArenaBuilder {
     arena: JsonTreeArena,
@@ -443,7 +447,7 @@ fn build_code_tree_arena(
     let norm = normalize_newlines(&lossy);
     let owned_lines: Vec<String> = norm
         .split_terminator('\n')
-        .map(std::string::ToString::to_string)
+        .map(|line| truncate_at_n_graphemes(line, CODE_LINE_HARD_CAP))
         .collect();
     let raw_lines: Vec<&str> =
         owned_lines.iter().map(String::as_str).collect();
@@ -530,6 +534,7 @@ mod tests {
         PriorityConfig, RenderConfig, headson_text,
         serialization::types::{OutputTemplate, Style},
     };
+    use unicode_segmentation::UnicodeSegmentation;
 
     fn cfg_text() -> (RenderConfig, PriorityConfig) {
         let cfg = RenderConfig {
@@ -599,6 +604,55 @@ mod tests {
             orig_indices,
             ((total - 5)..total).collect::<Vec<_>>(),
             "tail sampler should keep last 5 indices"
+        );
+    }
+
+    #[test]
+    fn code_mode_truncates_long_lines() {
+        let (_, prio) = cfg_text();
+        let long_line = format!("fn main() {{ {} }}", "a".repeat(200));
+        let arena = super::build_text_tree_arena_from_bytes_with_mode(
+            format!("{long_line}\n").into_bytes(),
+            &prio,
+            true,
+        )
+        .expect("arena");
+        let code_lines = arena
+            .code_lines
+            .get(&arena.root_id)
+            .expect("code lines present");
+        assert_eq!(code_lines.len(), 1);
+        let line = &code_lines[0];
+        assert!(
+            line.ends_with('…'),
+            "long code line should be truncated with ellipsis"
+        );
+        let graphemes =
+            UnicodeSegmentation::graphemes(line.as_str(), true).count();
+        assert_eq!(
+            graphemes,
+            super::CODE_LINE_HARD_CAP + 1,
+            "line should cap at {} graphemes plus ellipsis",
+            super::CODE_LINE_HARD_CAP
+        );
+    }
+
+    #[test]
+    fn plain_text_ingest_keeps_full_lines() {
+        let (_, prio) = cfg_text();
+        let long_line = format!("text {}", "b".repeat(200));
+        let arena = super::build_text_tree_arena_from_bytes(
+            format!("{long_line}\n").into_bytes(),
+            &prio,
+        )
+        .expect("arena");
+        let root = &arena.nodes[arena.root_id];
+        let first_child = arena.children[root.children_start];
+        let node = &arena.nodes[first_child];
+        assert_eq!(
+            node.string_value.as_deref(),
+            Some(long_line.as_str()),
+            "plain text ingest should not truncate lines"
         );
     }
 }

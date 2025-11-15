@@ -2,6 +2,7 @@ use assert_cmd::cargo::cargo_bin_cmd;
 use insta::assert_snapshot;
 use std::collections::HashMap;
 use std::fs;
+use unicode_segmentation::UnicodeSegmentation;
 
 /// Shared code fixture set for multi-file fairness tests.
 const CODE_FILESET_PATHS: &[&str] = &[
@@ -520,5 +521,37 @@ fn fileset_line_budget_global_line_count_matches_expectation() {
         numbered,
         per_file_lines * files.len(),
         "expected total numbered lines to match files * per-file cap\n{out}"
+    );
+}
+
+#[test]
+fn code_lines_are_hard_truncated_end_to_end() {
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "-f",
+            "auto",
+            "tests/fixtures/code/long_line.rs",
+        ])
+        .assert()
+        .success();
+    let stdout =
+        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let line = stdout
+        .lines()
+        .find(|l| l.contains("let message"))
+        .expect("line present");
+    let trimmed = line
+        .split_once(':')
+        .map(|(_, rest)| rest.trim_start())
+        .unwrap_or(line);
+    assert!(
+        trimmed.ends_with('…'),
+        "expected ellipsis suffix for long code line, got: {trimmed}"
+    );
+    let graphemes = UnicodeSegmentation::graphemes(trimmed, true).count();
+    assert!(
+        graphemes <= 151,
+        "expected hard cap at ~150 graphemes (+ ellipsis); got {graphemes}"
     );
 }
