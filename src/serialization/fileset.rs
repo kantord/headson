@@ -19,7 +19,12 @@ impl<'a> RenderScope<'a> {
     }
 
     fn render_fileset_sections(&mut self, depth: usize) -> String {
-        let Some(children_ids) = self.order.children.get(ROOT_PQ_ID) else {
+        let Some(children_ids) = self
+            .order
+            .fileset_children
+            .as_deref()
+            .or_else(|| self.order.children.get(ROOT_PQ_ID).map(|v| &**v))
+        else {
             return String::new();
         };
         let show_headers = self.should_render_fileset_headers();

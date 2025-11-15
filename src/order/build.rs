@@ -780,6 +780,20 @@ pub fn build_order(
         interleave_fileset_priority(&mut order, &node_slots, file_count);
     }
 
+    let fileset_children = if arena.is_fileset {
+        let root = &arena.nodes[arena.root_id];
+        let mut ids: Vec<NodeId> = Vec::with_capacity(root.children_len);
+        for idx in 0..root.children_len {
+            let child_arena_id = arena.children[root.children_start + idx];
+            if let Some(Some(pq_id)) = arena_to_pq.get(child_arena_id) {
+                ids.push(NodeId(*pq_id));
+            }
+        }
+        Some(ids)
+    } else {
+        None
+    };
+
     let total = next_pq_id;
     let mut code_lines: HashMap<usize, Arc<Vec<String>>> = HashMap::new();
     for (arena_idx, lines) in &arena.code_lines {
@@ -799,6 +813,7 @@ pub fn build_order(
         object_type,
         force_first_child,
         code_lines,
+        fileset_children,
     })
 }
 

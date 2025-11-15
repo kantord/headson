@@ -152,6 +152,9 @@ pub struct PriorityOrder {
     pub object_type: Vec<ObjectType>,
     pub force_first_child: Vec<bool>,
     pub code_lines: HashMap<usize, Arc<Vec<String>>>,
+    // For filesets, preserve the ingest order of top-level children so rendering
+    // can respect pre-sorting heuristics (e.g., frecency).
+    pub fileset_children: Option<Vec<NodeId>>,
 }
 
 pub const ROOT_PQ_ID: usize = 0;

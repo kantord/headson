@@ -14,12 +14,6 @@ expression: out
   }
 }
 
-==> script.sh <==
-1: #!/usr/bin/env bash
-2: set -euo pipefail
-3: echo "deploy"
-
-
 ==> settings.yaml <==
 environments:
   prod:
@@ -28,3 +22,9 @@ environments:
   staging:
     region: us-east-1
     replicas: 1
+
+
+==> script.sh <==
+1: #!/usr/bin/env bash
+2: set -euo pipefail
+3: echo "deploy"
