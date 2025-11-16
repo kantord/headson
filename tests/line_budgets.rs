@@ -2,7 +2,14 @@ use insta::assert_snapshot;
 
 fn run(args: &[&str]) -> String {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd.arg("--no-color").args(args).assert().success();
+    let assert = cmd
+        .args(
+            std::iter::once("--no-color")
+                .chain(std::iter::once("--no-sort"))
+                .chain(args.iter().copied()),
+        )
+        .assert()
+        .success();
     String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
 }
 

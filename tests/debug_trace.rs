@@ -67,6 +67,7 @@ fn debug_fileset_two_inputs() {
         .args([
             "--no-color",
             "--debug", // capture stderr dump
+            "--no-sort",
             "-c",
             "10000",
             "-f",
