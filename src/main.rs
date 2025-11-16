@@ -821,12 +821,30 @@ mod tests {
     use git2::{Repository, Signature, Time};
     use std::collections::HashMap;
     use std::fs;
+    use std::path::PathBuf;
     use tempfile::tempdir;
+
+    fn rel_to_workdir(path: &std::path::Path, repo: &Repository) -> PathBuf {
+        let workdir = repo.workdir().expect("workdir");
+        let workdir_canon = workdir
+            .canonicalize()
+            .unwrap_or_else(|_| workdir.to_path_buf());
+        let path_canon =
+            path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        path.strip_prefix(workdir)
+            .or_else(|_| path_canon.strip_prefix(&workdir_canon))
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| {
+                path.file_name()
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| path.to_path_buf())
+            })
+    }
 
     fn commit_single_file(repo: &Repository, path: &std::path::Path) {
         let mut idx = repo.index().expect("index");
-        idx.add_path(path.strip_prefix(repo.workdir().unwrap()).unwrap())
-            .expect("add path");
+        let rel = rel_to_workdir(path, repo);
+        idx.add_path(rel.as_path()).expect("add path");
         idx.write().expect("write index");
         let tree_id = idx.write_tree().expect("write tree");
         let tree = repo.find_tree(tree_id).expect("tree");
