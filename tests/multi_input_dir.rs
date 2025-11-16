@@ -4,7 +4,8 @@ use tempfile::tempdir;
 fn run_with_paths_json(paths: &[&str]) -> (bool, String, String) {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // large budget to avoid truncation
-    let mut args = vec!["--no-color", "-c", "100000", "-f", "auto"];
+    let mut args =
+        vec!["--no-color", "--no-sort", "-c", "100000", "-f", "auto"];
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert();
     let ok = assert.get_output().status.success();

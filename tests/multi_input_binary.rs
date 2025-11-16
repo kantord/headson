@@ -8,7 +8,8 @@ fn run_with_paths_json(
 ) -> (bool, String, String) {
     let budget_s = budget.to_string();
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let mut args = vec!["--no-color", "-c", &budget_s, "-f", "auto"];
+    let mut args =
+        vec!["--no-color", "--no-sort", "-c", &budget_s, "-f", "auto"];
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert();
     let ok = assert.get_output().status.success();
