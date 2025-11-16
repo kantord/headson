@@ -80,6 +80,12 @@ struct Cli {
     )]
     no_header: bool,
     #[arg(
+        long = "no-sort",
+        default_value_t = false,
+        help = "Keep input order for filesets (skip frecency/mtime sorting)."
+    )]
+    no_sort: bool,
+    #[arg(
         short = 'm',
         long = "compact",
         default_value_t = false,
@@ -333,7 +339,7 @@ fn run_from_paths(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
 ) -> Result<(String, IgnoreNotices)> {
-    let sorted_inputs = if cli.inputs.len() > 1 {
+    let sorted_inputs = if cli.inputs.len() > 1 && !cli.no_sort {
         sort_paths_for_fileset(&cli.inputs)
     } else {
         cli.inputs.clone()
@@ -744,6 +750,9 @@ fn compare_path_order(a: &PathOrderEntry, b: &PathOrderEntry) -> Ordering {
 }
 
 fn build_frecency_context(cwd: &Path) -> Option<FrecencyContext> {
+    if std::env::var_os("HEADSON_SKIP_FRECEN").is_some() {
+        return None;
+    }
     let repo = Repository::discover(cwd).ok()?;
     let workdir = repo.workdir()?;
     let canonical_root = workdir

@@ -423,6 +423,7 @@ fn fileset_line_budget_should_not_drop_code_lines_for_headers() {
         .expect("fixtures should contain at least one line");
     let mut cmd = cargo_bin_cmd!("hson");
     cmd.arg("--no-color")
+        .arg("--no-sort")
         .arg("-n")
         .arg(per_file_budget.to_string());
     for path in &files {
@@ -448,6 +449,7 @@ fn fileset_line_budget_keeps_go_functions_in_filesets() {
     let assert = cargo_bin_cmd!("hson")
         .args([
             "--no-color",
+            "--no-sort",
             "-n",
             "3",
             "tests/fixtures/code/sample.go",
@@ -509,6 +511,7 @@ fn fileset_line_budget_global_line_count_matches_expectation() {
     let per_file_lines = 3;
     let mut cmd = cargo_bin_cmd!("hson");
     cmd.arg("--no-color")
+        .arg("--no-sort")
         .arg("-n")
         .arg(per_file_lines.to_string());
     for path in &files {
