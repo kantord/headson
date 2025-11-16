@@ -16,6 +16,7 @@ fn fileset_auto_unknown_extensions_use_text_template() {
     let assert = cmd
         .args([
             "--no-color",
+            "--no-sort",
             "-c",
             "10000",
             "-f",

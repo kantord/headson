@@ -13,6 +13,7 @@ fn fileset_auto_uses_yaml_ingest_when_uppercase_yaml_present() {
     let assert = cmd
         .args([
             "--no-color",
+            "--no-sort",
             "-c",
             "10000",
             "-f",

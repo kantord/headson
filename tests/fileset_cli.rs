@@ -11,6 +11,7 @@ fn fileset_rejects_custom_format() {
     let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
         .args([
             "--no-color",
+            "--no-sort",
             "-f",
             "text",
             "-c",

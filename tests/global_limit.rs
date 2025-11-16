@@ -3,7 +3,7 @@ mod util;
 
 fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let mut full_args = vec!["--no-color", "-f", "auto"];
+    let mut full_args = vec!["--no-color", "--no-sort", "-f", "auto"];
     full_args.extend_from_slice(args);
     full_args.extend_from_slice(paths);
     let assert = cmd.args(full_args).assert();
@@ -18,8 +18,16 @@ fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
 fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let limit_s = limit.to_string();
-    let mut args =
-        vec!["--no-color", "-f", "auto", "-t", "detailed", "-C", &limit_s];
+    let mut args = vec![
+        "--no-color",
+        "--no-sort",
+        "-f",
+        "auto",
+        "-t",
+        "detailed",
+        "-C",
+        &limit_s,
+    ];
     args.extend_from_slice(extra);
     args.extend_from_slice(paths);
     let assert = cmd.args(args).assert();
