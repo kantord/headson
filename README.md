@@ -80,12 +80,20 @@ Notes:
 
 - Multiple inputs:
   - With newlines enabled, file sections are rendered with human‑readable headers (pass `--no-header` to suppress them). In compact/single‑line modes, headers are omitted.
+  - Order: inputs are sorted by git frecency (via frecenfile) when available, then by mtime; pass `--no-sort` to keep the original input order without repo scanning.
 - In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
   - Unknown extensions are treated as Text (raw lines) — safe for logs and `.txt` files.
   - `--global-bytes` may truncate or omit entire files to respect the total budget.
   - The tool finds the largest preview that fits the budget; even if extremely tight, you still get a minimal, valid preview.
   - Directories and binary files are ignored; a notice is printed to stderr for each. Stdin reads the stream as‑is.
   - Head vs Tail sampling: these options bias which part of arrays are kept before rendering. Display styles may still insert internal gap markers to honor very small budgets; strict JSON stays unannotated.
+
+### Working with multiple files
+
+- Budgets: per-file caps (`--bytes`/`--chars`/`--lines`) apply to each input; global caps (`--global-*`) constrain the combined output. Default byte budget scales by input count when no globals are set.
+- Sorting: inputs are pre-sorted by git frecency (frecenfile) with last-modified-time fallback so recently touched files appear first. Pass `--no-sort` to preserve the order you provided and skip repo scanning.
+- Headers: fileset sections get `==>` headers when newlines are enabled; hide them with `--no-header`. Compact and single-line modes omit headers automatically.
+- Formats: in `--format auto`, each file picks JSON/YAML/Text based on extension; unknowns fall back to Text so mixed filesets “just work.”
 
 ## Budget Modes
 
