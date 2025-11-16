@@ -1,10 +1,27 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use assert_cmd::cargo::cargo_bin_cmd;
 use filetime::{FileTime, set_file_mtime};
 use git2::{Repository, Signature, Time};
 use tempfile::tempdir;
+
+fn rel_to_workdir(path: &Path, repo: &Repository) -> PathBuf {
+    let workdir = repo.workdir().expect("workdir");
+    let workdir_canon = workdir
+        .canonicalize()
+        .unwrap_or_else(|_| workdir.to_path_buf());
+    let path_canon =
+        path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    path.strip_prefix(workdir)
+        .or_else(|_| path_canon.strip_prefix(&workdir_canon))
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            path.file_name()
+                .map(PathBuf::from)
+                .unwrap_or_else(|| path.to_path_buf())
+        })
+}
 
 /// Build a tiny git repo with commits at controlled timestamps (seconds since epoch).
 fn init_repo_with_commits(
@@ -32,8 +49,8 @@ fn stage_and_commit(
     timestamp: i64,
 ) -> Result<git2::Oid, git2::Error> {
     let mut index = repo.index()?;
-    let rel = file.strip_prefix(repo.workdir().unwrap()).unwrap();
-    index.add_path(rel)?;
+    let rel = rel_to_workdir(file, repo);
+    index.add_path(rel.as_path())?;
     index.write()?;
     let tree_id = index.write_tree()?;
     let tree = repo.find_tree(tree_id)?;
