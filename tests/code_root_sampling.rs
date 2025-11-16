@@ -479,6 +479,7 @@ fn fileset_no_header_flag_hides_section_headers() {
         .args([
             "--no-color",
             "--no-header",
+            "--no-sort",
             "-n",
             "20",
             "tests/fixtures/code/sample.py",
