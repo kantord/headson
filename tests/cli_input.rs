@@ -124,6 +124,7 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
     let assert1 = cmd1
         .args([
             "--no-color",
+            "--no-sort",
             "-c",
             "100",
             "-f",
@@ -143,6 +144,7 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
     let assert2 = cmd2
         .args([
             "--no-color",
+            "--no-sort",
             "-c",
             "100",
             "-f",
@@ -177,7 +179,16 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
     // Per-file budget (-c) scenario
     let mut cmd_pf = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert_pf = cmd_pf
-        .args(["--no-color", "-c", "40", "-f", "auto", "a.json", "b.json"])
+        .args([
+            "--no-color",
+            "--no-sort",
+            "-c",
+            "40",
+            "-f",
+            "auto",
+            "a.json",
+            "b.json",
+        ])
         .current_dir(tmp.path())
         .assert()
         .success();
@@ -189,6 +200,7 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
     let assert_g = cmd_g
         .args([
             "--no-color",
+            "--no-sort",
             "--global-bytes",
             "40",
             "-f",
