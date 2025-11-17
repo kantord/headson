@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.4](https://github.com/kantord/headson/compare/v0.7.3...v0.7.4) - 2025-11-17
+
+### Other
+
+- move logic into run.ts ([#185](https://github.com/kantord/headson/pull/185))
+
 ## [0.7.3](https://github.com/kantord/headson/compare/v0.7.2...v0.7.3) - 2025-11-17
 
 ### Added
