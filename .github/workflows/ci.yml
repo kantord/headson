@@ -116,7 +116,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Install uv
-        uses: astral-sh/setup-uv@29902c39cefa7b5d0a983be5288b553fc1524ad8 # v7
+        uses: astral-sh/setup-uv@5a7eac68fb9809dea845d802897dc5c723910fa3 # v7
         with:
           python-version: ${{ matrix.python-version }}
 
