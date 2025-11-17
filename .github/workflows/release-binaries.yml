@@ -32,7 +32,7 @@ jobs:
           toolchain: stable
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@efafe12f2ee7d8713bf9e14b5ded913c1cf81ab4 # v1.7.1
+        uses: cargo-bins/cargo-binstall@0d7080e6a9e1ca43a37026b52683e367c416c87f # v1.7.1
 
       - name: Install cargo-dist
         run: cargo binstall cargo-dist --force --locked --no-symlinks
