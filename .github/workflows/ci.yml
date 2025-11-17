@@ -15,6 +15,8 @@ jobs:
 
       - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@0f44b27771c32bda9f458f75a1e241b09791b331 # stable
+        with:
+          toolchain: stable
 
       - name: Run cargo-audit
         uses: rustsec/audit-check@e9159ac5f7d7d873ce074ca134da2f445c0a4a61 # v1
@@ -34,6 +36,8 @@ jobs:
 
       - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@0f44b27771c32bda9f458f75a1e241b09791b331 # stable
+        with:
+          toolchain: stable
 
       - name: Build all targets
         env:
@@ -66,6 +70,7 @@ jobs:
       - name: Install Rust (stable) with clippy
         uses: dtolnay/rust-toolchain@0f44b27771c32bda9f458f75a1e241b09791b331 # stable
         with:
+          toolchain: stable
           components: clippy
 
       - name: Install Python
@@ -106,6 +111,7 @@ jobs:
       - name: Install Rust (stable) with rustfmt
         uses: dtolnay/rust-toolchain@0f44b27771c32bda9f458f75a1e241b09791b331 # stable
         with:
+          toolchain: stable
           components: rustfmt
 
       - name: Verify rustfmt (79 cols)
