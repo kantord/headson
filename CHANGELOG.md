@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3](https://github.com/kantord/headson/compare/v0.7.2...v0.7.3) - 2025-11-17
+
+### Added
+
+- sort files based on git history or edit time ([#181](https://github.com/kantord/headson/pull/181))
+- for code files, truncate very long lines ([#179](https://github.com/kantord/headson/pull/179))
+
+### Other
+
+- move cli arg logic to a separate file ([#184](https://github.com/kantord/headson/pull/184))
+- move budget related logic to a separate file ([#183](https://github.com/kantord/headson/pull/183))
+- improve tape ([#174](https://github.com/kantord/headson/pull/174))
+
 ## [0.7.2](https://github.com/kantord/headson/compare/v0.7.1...v0.7.2) - 2025-11-10
 
 ### Added
