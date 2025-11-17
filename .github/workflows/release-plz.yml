@@ -122,7 +122,7 @@ jobs:
         uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1
         with:
           command: build
-          args: --release --locked -m python/Cargo.toml -i 3.10 3.11 3.12
+          args: --release --locked -m python/Cargo.toml -i 3.10 3.11 3.12 3.13 3.14
           before-script-linux: |
             sudo DEBIAN_FRONTEND=noninteractive apt-get update
             sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pkg-config libssl-dev
@@ -137,5 +137,5 @@ jobs:
         uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1
         with:
           command: publish
-          # Pin interpreters to avoid building against unsupported Python (e.g., 3.14)
-          args: --skip-existing -i 3.10 3.11 3.12
+          # Pin interpreters to avoid building against unsupported Python
+          args: --skip-existing -i 3.10 3.11 3.12 3.13 3.14
