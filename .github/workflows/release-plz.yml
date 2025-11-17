@@ -50,6 +50,8 @@ jobs:
     steps:
       - *checkout
       - *install-rust
+      - name: Refresh python lockfile
+        run: cargo update --manifest-path python/Cargo.toml
       - name: Run release-plz
         uses: release-plz/action@d529f731ae3e89610ada96eda34e5c6ba3b12214 # v0.5
         with:
