@@ -119,6 +119,7 @@ jobs:
         with:
           command: build
           args: --release --locked -i 3.10 3.11 3.12
+          before-script-linux: yum install -y openssl-devel
 
       - name: Build sdist
         uses: PyO3/maturin-action@v1
