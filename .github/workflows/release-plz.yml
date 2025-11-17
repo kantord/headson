@@ -28,7 +28,7 @@ jobs:
         uses: dtolnay/rust-toolchain@6d9817901c499d6b02debbb57edb38d33daa680b # stable
       - id: release
         name: Run release-plz
-        uses: release-plz/action@992a2096d331cb2c54369732bcefacc8ad05ac08 # v0.5
+        uses: release-plz/action@d529f731ae3e89610ada96eda34e5c6ba3b12214 # v0.5
         with:
           command: release
         env:
@@ -49,7 +49,7 @@ jobs:
       - *checkout
       - *install-rust
       - name: Run release-plz
-        uses: release-plz/action@992a2096d331cb2c54369732bcefacc8ad05ac08 # v0.5
+        uses: release-plz/action@d529f731ae3e89610ada96eda34e5c6ba3b12214 # v0.5
         with:
           command: release-pr
         env:
