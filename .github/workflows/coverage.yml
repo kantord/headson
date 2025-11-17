@@ -35,6 +35,7 @@ jobs:
           cargo llvm-cov --all-features --workspace --no-run --html
 
       - name: Upload to Codecov
+        if: ${{ github.event.pull_request.head.repo.fork == false || github.event_name == 'push' }}
         uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
