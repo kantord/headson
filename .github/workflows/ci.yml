@@ -73,6 +73,14 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@29902c39cefa7b5d0a983be5288b553fc1524ad8 # v7
+        with:
+          python-version: '3.x'
+
+      - name: Sync Python deps for hooks
+        run: uv sync --group dev --locked
+
       - name: Install pre-commit
         run: pip install pre-commit
 

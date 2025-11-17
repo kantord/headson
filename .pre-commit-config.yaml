@@ -1,15 +1,16 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+  - repo: local
     hooks:
       - id: ruff-format
         name: ruff (format)
-        args: ["--config", "pyproject.toml"]
+        entry: uv run --no-sync ruff format --config pyproject.toml
+        language: system
+        types: [python]
       - id: ruff
         name: ruff (lint)
-        args: ["--fix", "--config", "pyproject.toml"]
-  - repo: local
-    hooks:
+        entry: uv run --no-sync ruff check --fix --config pyproject.toml
+        language: system
+        types: [python]
       - id: clippy
         name: clippy (workspace, all targets, features)
         entry: cargo clippy --workspace --all-targets --all-features
