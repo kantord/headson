@@ -168,4 +168,4 @@ jobs:
         run: pip install maturin
 
       - name: Build wheels (no publish)
-        run: maturin build -r --locked -m python/Cargo.toml
+        run: maturin build -r -m python/Cargo.toml
