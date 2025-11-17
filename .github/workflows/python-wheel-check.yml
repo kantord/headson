@@ -18,4 +18,6 @@ jobs:
         with:
           command: build
           args: --release --locked -m python/Cargo.toml -i 3.10 3.11 3.12
-          before-script-linux: apt-get update && apt-get install -y --no-install-recommends pkg-config libssl-dev
+          before-script-linux: |
+            sudo DEBIAN_FRONTEND=noninteractive apt-get update
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pkg-config libssl-dev
