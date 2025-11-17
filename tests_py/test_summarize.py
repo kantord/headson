@@ -72,9 +72,9 @@ def test_tail_affects_arrays_pseudo():
         (line.strip() for line in lines[idx + 1 :] if line.strip()),
         "",
     )
-    assert following.startswith(
-        "…"
-    ), f"expected ellipsis after opener in tail mode, got: {out_tail!r}"
+    assert following.startswith("…"), (
+        f"expected ellipsis after opener in tail mode, got: {out_tail!r}"
+    )
 
 
 def test_tail_affects_arrays_js():
@@ -93,9 +93,9 @@ def test_tail_affects_arrays_js():
             (line.strip() for line in lines[idx + 1 :] if line.strip()),
             "",
         )
-        assert following.startswith(
-            "/*"
-        ), f"expected omission comment after opener in tail mode, got: {out_tail!r}"
+        assert following.startswith("/*"), (
+            f"expected omission comment after opener in tail mode, got: {out_tail!r}"
+        )
     except StopIteration:
         # Single-line form like: '[ /* N more items */ ]'
         stripped = out_tail.strip()
@@ -138,9 +138,9 @@ def test_head_affects_arrays_pseudo():
         (line.strip() for line in reversed(lines[:idx]) if line.strip()),
         "",
     )
-    assert preceding.startswith(
-        "…"
-    ), f"expected ellipsis before closer in head mode, got: {out_head!r}"
+    assert preceding.startswith("…"), (
+        f"expected ellipsis before closer in head mode, got: {out_head!r}"
+    )
 
 
 def test_head_affects_arrays_js():
@@ -165,9 +165,9 @@ def test_head_affects_arrays_js():
             (line.strip() for line in reversed(lines[:closer_index]) if line.strip()),
             "",
         )
-        assert preceding.startswith(
-            "/*"
-        ), f"expected omission comment before closer in head mode, got: {out_head!r}"
+        assert preceding.startswith("/*"), (
+            f"expected omission comment before closer in head mode, got: {out_head!r}"
+        )
     except StopIteration:
         # Single-line form like: '[ /* N more items */ ]'
         stripped = out_head.strip()

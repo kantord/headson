@@ -50,6 +50,6 @@ def test_yaml_detailed_shows_counts():
         input_format="yaml",
         byte_budget=60,
     )
-    assert (
-        "more items" in out or "more properties" in out
-    ), f"expected numeric counts comment in detailed YAML: {out!r}"
+    assert "more items" in out or "more properties" in out, (
+        f"expected numeric counts comment in detailed YAML: {out!r}"
+    )
