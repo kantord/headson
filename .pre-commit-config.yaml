@@ -6,11 +6,13 @@ repos:
         entry: uv run --no-sync ruff format --config pyproject.toml
         language: system
         types: [python]
+        exclude: ^tests/fixtures/
       - id: ruff
         name: ruff (lint)
         entry: uv run --no-sync ruff check --fix --config pyproject.toml
         language: system
         types: [python]
+        exclude: ^tests/fixtures/
       - id: clippy
         name: clippy (workspace, all targets, features)
         entry: cargo clippy --workspace --all-targets --all-features
