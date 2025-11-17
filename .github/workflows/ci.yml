@@ -143,17 +143,3 @@ jobs:
 
       - name: Run pytest
         run: uv run --no-sync pytest -q
-
-  python-wheel-build:
-    name: Python wheels (build-only)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Build wheels (no publish)
-        uses: PyO3/maturin-action@v1
-        with:
-          command: build
-          args: --release --locked -m python/Cargo.toml -i 3.12
-          before-script-linux: yum install -y openssl-devel

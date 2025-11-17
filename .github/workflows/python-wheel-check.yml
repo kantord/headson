@@ -1,0 +1,21 @@
+name: Python Wheel Check
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build-wheels:
+    name: Build wheels (no publish)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release --locked -m python/Cargo.toml -i 3.10 3.11 3.12
+          before-script-linux: apt-get update && apt-get install -y --no-install-recommends pkg-config libssl-dev
