@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.5](https://github.com/kantord/headson/compare/v0.7.4...v0.7.5) - 2025-11-17
+
+### Other
+
+- set up binary builds for releases ([#201](https://github.com/kantord/headson/pull/201))
+
 ## [0.7.4](https://github.com/kantord/headson/compare/v0.7.3...v0.7.4) - 2025-11-17
 
 ### Other
