@@ -98,10 +98,11 @@ fn compute_global_cap(
     }
 }
 
-pub fn apply_line_only_render_tweaks(
-    cfg: &mut RenderConfig,
+// Return a rendering config adjusted for line-only mode (pure; does not mutate caller state).
+pub fn render_config_with_line_tweaks(
+    mut cfg: RenderConfig,
     effective: &EffectiveBudgets,
-) {
+) -> RenderConfig {
     if effective.budgets.byte_budget.is_none()
         && effective.budgets.char_budget.is_none()
         && effective.budgets.line_budget.is_some()
@@ -109,6 +110,7 @@ pub fn apply_line_only_render_tweaks(
         cfg.string_free_prefix_graphemes =
             Some(LINE_ONLY_FREE_PREFIX_GRAPHEMES);
     }
+    cfg
 }
 
 pub fn build_priority_config(

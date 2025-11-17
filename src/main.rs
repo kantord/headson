@@ -226,7 +226,7 @@ fn run_from_stdin(
     let mut cfg = render_cfg.clone();
     // Resolve effective output template for stdin:
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
-    budget::apply_line_only_render_tweaks(&mut cfg, &effective);
+    cfg = budget::render_config_with_line_tweaks(cfg, &effective);
     let budgets = effective.budgets;
     let out = match cli.input_format {
         InputFormat::Json => {
@@ -285,7 +285,7 @@ fn run_from_paths(
         let mut cfg = render_cfg.clone();
         // Filesets always render with per-file auto templates.
         cfg.template = headson::OutputTemplate::Auto;
-        budget::apply_line_only_render_tweaks(&mut cfg, &effective);
+        cfg = budget::render_config_with_line_tweaks(cfg, &effective);
         let budgets = effective.budgets;
         let files: Vec<headson::FilesetInput> = entries
             .into_iter()
@@ -324,7 +324,7 @@ fn run_from_paths(
     cfg.template =
         resolve_effective_template_for_single(cli.format, cfg.style, &lower);
     cfg.primary_source_name = Some(name);
-    budget::apply_line_only_render_tweaks(&mut cfg, &effective);
+    cfg = budget::render_config_with_line_tweaks(cfg, &effective);
     let budgets = effective.budgets;
     let out = match chosen_input {
         InputFormat::Json => {
