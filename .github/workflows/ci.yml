@@ -143,3 +143,29 @@ jobs:
 
       - name: Run pytest
         run: uv run --no-sync pytest -q
+
+  python-wheel-build:
+    name: Python wheels (build-only)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pkg-config libssl-dev
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install maturin
+        run: pip install maturin
+
+      - name: Build wheels (no publish)
+        run: maturin build -r --locked --no-sdist -m python/Cargo.toml
