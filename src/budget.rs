@@ -2,13 +2,20 @@ use headson::{ArrayBias, ArraySamplerStrategy, PriorityConfig, RenderConfig};
 
 use crate::Cli;
 
+// CLI-facing budget helpers: compute effective caps and priority tuning derived from flag inputs.
+// Default per-input byte cap when no explicit budgets are provided anywhere.
 pub const DEFAULT_BYTES_PER_INPUT: usize = 500;
+// When only line budgets are active, allow this many graphemes before trimming strings.
 pub const LINE_ONLY_FREE_PREFIX_GRAPHEMES: usize = 40;
 
 #[derive(Debug, Copy, Clone)]
 pub struct EffectiveBudgets {
+    // Final budgets passed to the renderer/search.
     pub budgets: headson::Budgets,
+    // Per-file budget used to size priority heuristics (e.g., array_max_items in PriorityConfig).
     pub per_file_for_priority: usize,
+    // Whether only line caps are active (no bytes); used to lift array limits and string trimming
+    // during ordering and render prep so structure survives in line-only mode.
     pub line_only: bool,
 }
 
@@ -30,7 +37,7 @@ pub fn compute_effective(cli: &Cli, input_count: usize) -> EffectiveBudgets {
     };
 
     let chosen_global =
-        choose_global_cap(any_bytes, effective_bytes, effective_chars);
+        compute_global_cap(any_bytes, effective_bytes, effective_chars);
     let per_file_for_priority = (chosen_global / input_count.max(1)).max(1);
 
     EffectiveBudgets {
@@ -77,7 +84,7 @@ fn compute_byte_budget(
     }
 }
 
-fn choose_global_cap(
+fn compute_global_cap(
     any_bytes: bool,
     effective_bytes: usize,
     effective_chars: Option<usize>,
