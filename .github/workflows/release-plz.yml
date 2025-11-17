@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
       - &install-rust
         name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@6d9817901c499d6b02debbb57edb38d33daa680b # stable
+        uses: dtolnay/rust-toolchain@0f44b27771c32bda9f458f75a1e241b09791b331 # stable
       - id: release
         name: Run release-plz
         uses: release-plz/action@d529f731ae3e89610ada96eda34e5c6ba3b12214 # v0.5
@@ -106,7 +106,7 @@ jobs:
             exit 1
           fi
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@6d9817901c499d6b02debbb57edb38d33daa680b # stable
+        uses: dtolnay/rust-toolchain@0f44b27771c32bda9f458f75a1e241b09791b331 # stable
       - name: Update Python lockfile
         shell: bash
         run: |

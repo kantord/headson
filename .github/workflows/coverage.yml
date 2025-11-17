@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@6d9817901c499d6b02debbb57edb38d33daa680b # stable
+        uses: dtolnay/rust-toolchain@0f44b27771c32bda9f458f75a1e241b09791b331 # stable
         with:
           components: llvm-tools-preview
 
