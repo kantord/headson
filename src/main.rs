@@ -2,12 +2,13 @@
     clippy::multiple_crate_versions,
     reason = "Dependency graph pulls distinct versions (e.g., yaml-rust2)."
 )]
-mod budget;
+mod cli;
 mod sorting;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
+use crate::cli::budget;
 use anyhow::{Context, Result, bail};
 use clap::{ArgAction, Parser, ValueEnum};
 use content_inspector::{ContentType, inspect};
@@ -226,7 +227,7 @@ fn run_from_stdin(
     let mut cfg = render_cfg.clone();
     // Resolve effective output template for stdin:
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
-    cfg = budget::render_config_with_line_tweaks(cfg, &effective);
+    cfg = budget::render_config_for_budgets(cfg, &effective);
     let budgets = effective.budgets;
     let out = match cli.input_format {
         InputFormat::Json => {
@@ -285,7 +286,7 @@ fn run_from_paths(
         let mut cfg = render_cfg.clone();
         // Filesets always render with per-file auto templates.
         cfg.template = headson::OutputTemplate::Auto;
-        cfg = budget::render_config_with_line_tweaks(cfg, &effective);
+        cfg = budget::render_config_for_budgets(cfg, &effective);
         let budgets = effective.budgets;
         let files: Vec<headson::FilesetInput> = entries
             .into_iter()
@@ -324,7 +325,7 @@ fn run_from_paths(
     cfg.template =
         resolve_effective_template_for_single(cli.format, cfg.style, &lower);
     cfg.primary_source_name = Some(name);
-    cfg = budget::render_config_with_line_tweaks(cfg, &effective);
+    cfg = budget::render_config_for_budgets(cfg, &effective);
     let budgets = effective.budgets;
     let out = match chosen_input {
         InputFormat::Json => {

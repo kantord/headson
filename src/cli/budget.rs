@@ -98,8 +98,9 @@ fn compute_global_cap(
     }
 }
 
-// Return a rendering config adjusted for line-only mode (pure; does not mutate caller state).
-pub fn render_config_with_line_tweaks(
+// Return a rendering config adjusted for active budget modes (pure; does not mutate caller state).
+// In practice this only lifts string trimming when running line-only (lines set, no bytes).
+pub fn render_config_for_budgets(
     mut cfg: RenderConfig,
     effective: &EffectiveBudgets,
 ) -> RenderConfig {
