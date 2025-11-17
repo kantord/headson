@@ -28,6 +28,8 @@ const CODE_EXTS: &[&str] = &[
     "r", "jl", // Fortran
     "f", "for", "f77", "f90", "f95", "f03", "f08", // Assembly
     "asm", "s",
+    // Docs with code blocks; keep them in code mode for highlighting/layout
+    "md", "markdown", "mdown", "mkdn", "mkd", "mdwn", "mdtext",
 ];
 
 pub fn is_code_like_name(name: &str) -> bool {
@@ -37,5 +39,22 @@ pub fn is_code_like_name(name: &str) -> bool {
     match lower_ext.as_deref() {
         Some(ext) => CODE_EXTS.contains(&ext),
         None => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_code_like_name;
+
+    #[test]
+    fn recognizes_markdown_as_code_like() {
+        assert!(is_code_like_name("README.md"));
+        assert!(is_code_like_name("notes.MARKDOWN"));
+    }
+
+    #[test]
+    fn non_code_like_text_stays_false() {
+        assert!(!is_code_like_name("notes.txt"));
+        assert!(!is_code_like_name("no_extension"));
     }
 }
