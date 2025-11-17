@@ -1,0 +1,130 @@
+use headson::{ArrayBias, ArraySamplerStrategy, PriorityConfig, RenderConfig};
+
+use crate::Cli;
+
+pub const DEFAULT_BYTES_PER_INPUT: usize = 500;
+pub const LINE_ONLY_FREE_PREFIX_GRAPHEMES: usize = 40;
+
+#[derive(Debug, Copy, Clone)]
+pub struct EffectiveBudgets {
+    pub budgets: headson::Budgets,
+    pub per_file_for_priority: usize,
+    pub line_only: bool,
+}
+
+pub fn compute_effective(cli: &Cli, input_count: usize) -> EffectiveBudgets {
+    let any_bytes = cli.bytes.is_some() || cli.global_bytes.is_some();
+    let any_lines = cli.lines.is_some() || cli.global_lines.is_some();
+    let any_chars = cli.chars.is_some();
+
+    let effective_bytes = effective_bytes(cli, input_count);
+    let effective_chars = effective_chars(cli, input_count);
+    let effective_lines = effective_lines(cli, input_count);
+    let byte_budget =
+        compute_byte_budget(any_bytes, any_lines, any_chars, effective_bytes);
+
+    let budgets = headson::Budgets {
+        byte_budget,
+        char_budget: if any_chars { effective_chars } else { None },
+        line_budget: effective_lines,
+    };
+
+    let chosen_global =
+        choose_global_cap(any_bytes, effective_bytes, effective_chars);
+    let per_file_for_priority = (chosen_global / input_count.max(1)).max(1);
+
+    EffectiveBudgets {
+        budgets,
+        per_file_for_priority,
+        line_only: any_lines && !any_bytes,
+    }
+}
+
+fn effective_bytes(cli: &Cli, input_count: usize) -> usize {
+    match (cli.global_bytes, cli.bytes) {
+        (Some(g), Some(n)) => g.min(n.saturating_mul(input_count)),
+        (Some(g), None) => g,
+        (None, Some(n)) => n.saturating_mul(input_count),
+        (None, None) => DEFAULT_BYTES_PER_INPUT.saturating_mul(input_count),
+    }
+}
+
+fn effective_chars(cli: &Cli, input_count: usize) -> Option<usize> {
+    cli.chars.map(|n| n.saturating_mul(input_count))
+}
+
+fn effective_lines(cli: &Cli, input_count: usize) -> Option<usize> {
+    match (cli.global_lines, cli.lines) {
+        (Some(g), Some(n)) => Some(g.min(n.saturating_mul(input_count))),
+        (Some(g), None) => Some(g),
+        (None, Some(n)) => Some(n.saturating_mul(input_count)),
+        (None, None) => None,
+    }
+}
+
+fn compute_byte_budget(
+    any_bytes: bool,
+    any_lines: bool,
+    any_chars: bool,
+    effective_bytes: usize,
+) -> Option<usize> {
+    if any_bytes {
+        Some(effective_bytes)
+    } else if any_lines || any_chars {
+        None
+    } else {
+        Some(effective_bytes)
+    }
+}
+
+fn choose_global_cap(
+    any_bytes: bool,
+    effective_bytes: usize,
+    effective_chars: Option<usize>,
+) -> usize {
+    if any_bytes {
+        effective_bytes
+    } else if let Some(c) = effective_chars {
+        c
+    } else {
+        effective_bytes
+    }
+}
+
+pub fn apply_line_only_render_tweaks(
+    cfg: &mut RenderConfig,
+    effective: &EffectiveBudgets,
+) {
+    if effective.budgets.byte_budget.is_none()
+        && effective.budgets.char_budget.is_none()
+        && effective.budgets.line_budget.is_some()
+    {
+        cfg.string_free_prefix_graphemes =
+            Some(LINE_ONLY_FREE_PREFIX_GRAPHEMES);
+    }
+}
+
+pub fn build_priority_config(
+    cli: &Cli,
+    effective: &EffectiveBudgets,
+) -> PriorityConfig {
+    let array_max_items = if effective.line_only {
+        usize::MAX
+    } else {
+        (effective.per_file_for_priority / 2).max(1)
+    };
+    PriorityConfig {
+        max_string_graphemes: cli.string_cap,
+        array_max_items,
+        prefer_tail_arrays: cli.tail,
+        array_bias: ArrayBias::HeadMidTail,
+        array_sampler: if cli.tail {
+            ArraySamplerStrategy::Tail
+        } else if cli.head {
+            ArraySamplerStrategy::Head
+        } else {
+            ArraySamplerStrategy::Default
+        },
+        line_budget_only: effective.line_only,
+    }
+}
