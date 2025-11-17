@@ -19,16 +19,16 @@ jobs:
     steps:
       - &checkout
         name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         with:
           fetch-depth: 0
           persist-credentials: false
       - &install-rust
         name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@6d9817901c499d6b02debbb57edb38d33daa680b # stable
       - id: release
         name: Run release-plz
-        uses: release-plz/action@v0.5
+        uses: release-plz/action@992a2096d331cb2c54369732bcefacc8ad05ac08 # v0.5
         with:
           command: release
         env:
@@ -49,7 +49,7 @@ jobs:
       - *checkout
       - *install-rust
       - name: Run release-plz
-        uses: release-plz/action@v0.5
+        uses: release-plz/action@992a2096d331cb2c54369732bcefacc8ad05ac08 # v0.5
         with:
           command: release-pr
         env:
@@ -70,7 +70,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Sync Python versions from Cargo.toml
         shell: bash
@@ -106,7 +106,7 @@ jobs:
             exit 1
           fi
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@6d9817901c499d6b02debbb57edb38d33daa680b # stable
       - name: Update Python lockfile
         shell: bash
         run: |
@@ -115,7 +115,7 @@ jobs:
           cargo update --manifest-path python/Cargo.toml
 
       - name: Build wheels
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@3b5f400f9576c9934eaeed862ce6281fef121b67 # v1
         with:
           command: build
           args: --release --locked -m python/Cargo.toml -i 3.10 3.11 3.12
@@ -124,13 +124,13 @@ jobs:
             sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pkg-config libssl-dev
 
       - name: Build sdist
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@3b5f400f9576c9934eaeed862ce6281fef121b67 # v1
         with:
           command: sdist
           # no --locked for sdist (not supported by maturin)
 
       - name: Publish to PyPI
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@3b5f400f9576c9934eaeed862ce6281fef121b67 # v1
         with:
           command: publish
           # Pin interpreters to avoid building against unsupported Python (e.g., 3.14)
