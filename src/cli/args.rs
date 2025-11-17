@@ -89,39 +89,22 @@ pub struct Cli {
     )]
     pub head: bool,
     #[arg(
-        short = 't',
-        long = "template",
-        value_name = "TEMPLATE",
+        short = 'f',
+        long = "format",
         value_enum,
         default_value_t = OutputFormat::Auto,
-        help = "Output format/template for rendering."
+        help = "Output format: auto|json|yaml|text (filesets: auto is per-file)."
     )]
     pub format: OutputFormat,
     #[arg(
-        long = "style",
-        value_name = "STYLE",
+        short = 't',
+        long = "template",
         value_enum,
         default_value_t = StyleArg::Default,
-        help = "Output text style: default|strict|detailed"
+        help = "Output style: strict|default|detailed."
     )]
     pub style: StyleArg,
-    #[arg(
-        short = 'f',
-        long = "file",
-        value_name = "FILE",
-        alias = "input",
-        conflicts_with = "inputs",
-        help = "Input file (deprecated)."
-    )]
-    pub file: Option<PathBuf>,
-    #[arg(
-        long = "indent",
-        default_value = "  ",
-        value_name = "BYTES",
-        conflicts_with = "no_space",
-        visible_alias = "tab",
-        help = "Indentation, default two spaces. Negative? We use spaces: default: two spaces"
-    )]
+    #[arg(long = "indent", default_value = "  ")]
     pub indent: String,
     #[arg(
         long = "color",
