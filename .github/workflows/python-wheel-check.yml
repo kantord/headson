@@ -24,7 +24,7 @@ jobs:
         run: cargo metadata --locked --manifest-path python/Cargo.toml --format-version 1 >/dev/null
 
       - name: Build wheels
-        uses: PyO3/maturin-action@3b5f400f9576c9934eaeed862ce6281fef121b67 # v1
+        uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1
         with:
           command: build
           args: --release -m python/Cargo.toml -i 3.10 3.11 3.12

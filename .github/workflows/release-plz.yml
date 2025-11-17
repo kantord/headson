@@ -115,7 +115,7 @@ jobs:
           cargo update --manifest-path python/Cargo.toml
 
       - name: Build wheels
-        uses: PyO3/maturin-action@3b5f400f9576c9934eaeed862ce6281fef121b67 # v1
+        uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1
         with:
           command: build
           args: --release --locked -m python/Cargo.toml -i 3.10 3.11 3.12
@@ -124,13 +124,13 @@ jobs:
             sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pkg-config libssl-dev
 
       - name: Build sdist
-        uses: PyO3/maturin-action@3b5f400f9576c9934eaeed862ce6281fef121b67 # v1
+        uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1
         with:
           command: sdist
           # no --locked for sdist (not supported by maturin)
 
       - name: Publish to PyPI
-        uses: PyO3/maturin-action@3b5f400f9576c9934eaeed862ce6281fef121b67 # v1
+        uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1
         with:
           command: publish
           # Pin interpreters to avoid building against unsupported Python (e.g., 3.14)
