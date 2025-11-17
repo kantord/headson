@@ -13,6 +13,13 @@
     {
       "matchManagers": ["github-actions"],
       "pinDigests": true
+    },
+    {
+      "matchManagers": ["cargo"],
+      "matchPaths": ["python/Cargo.toml"],
+      "lockFileMaintenance": {
+        "enabled": true
+      }
     }
   ]
 }
