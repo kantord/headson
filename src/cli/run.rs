@@ -56,7 +56,8 @@ fn run_from_stdin(
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
     cfg = budget::render_config_for_budgets(cfg, &effective);
     let budgets = effective.budgets;
-    let out = match cli.input_format {
+    let chosen_input = cli.input_format.unwrap_or(InputFormat::Json);
+    let out = match chosen_input {
         InputFormat::Json => {
             headson::headson_with_budgets(input_bytes, &cfg, &prio, budgets)?
         }
@@ -138,7 +139,9 @@ fn run_from_paths(
     let is_yaml_ext = lower.ends_with(".yaml") || lower.ends_with(".yml");
     let chosen_input = match cli.format {
         OutputFormat::Auto => {
-            if is_yaml_ext {
+            if let Some(fmt) = cli.input_format {
+                fmt
+            } else if is_yaml_ext {
                 InputFormat::Yaml
             } else if lower.ends_with(".json") {
                 InputFormat::Json
@@ -146,7 +149,9 @@ fn run_from_paths(
                 InputFormat::Text
             }
         }
-        _ => cli.input_format,
+        OutputFormat::Json => cli.input_format.unwrap_or(InputFormat::Json),
+        OutputFormat::Yaml => cli.input_format.unwrap_or(InputFormat::Yaml),
+        OutputFormat::Text => cli.input_format.unwrap_or(InputFormat::Text),
     };
     let mut cfg = render_cfg.clone();
     cfg.template =
@@ -279,5 +284,48 @@ fn resolve_effective_template_for_single(
                 headson::OutputTemplate::Text
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::args::Cli;
+    use clap::Parser;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn explicit_input_format_overrides_auto_detection_for_single_file() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("object.json");
+        fs::write(&path, "not json\nline2\n").unwrap();
+
+        let cli =
+            Cli::parse_from(["hson", "-i", "text", path.to_str().unwrap()]);
+
+        let (out, notices) = run(&cli).expect("run succeeds with text ingest");
+        assert!(notices.is_empty());
+        assert!(
+            out.contains("not json"),
+            "should treat .json as text when -i text is passed"
+        );
+    }
+
+    #[test]
+    fn auto_detection_still_applies_when_no_input_flag() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("object.json");
+        fs::write(&path, "{\"a\":1}").unwrap();
+
+        let cli = Cli::parse_from(["hson", path.to_str().unwrap()]);
+
+        let (out, notices) =
+            run(&cli).expect("run succeeds with default ingest");
+        assert!(notices.is_empty());
+        assert!(
+            out.contains("\"a\"") || out.contains("a"),
+            "auto mode should still treat .json as json when -i is absent"
+        );
     }
 }

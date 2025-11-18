@@ -131,10 +131,9 @@ pub struct Cli {
         short = 'i',
         long = "input-format",
         value_enum,
-        default_value_t = InputFormat::Json,
-        help = "Input ingestion format: json|yaml|text."
+        help = "Input ingestion format: json|yaml|text. Default is json for stdin/filesets; auto-detected for single-file auto runs."
     )]
-    pub input_format: InputFormat,
+    pub input_format: Option<InputFormat>,
     #[arg(
         long = "debug",
         default_value_t = false,
