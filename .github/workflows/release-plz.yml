@@ -50,19 +50,6 @@ jobs:
     steps:
       - *checkout
       - *install-rust
-      - name: Refresh python lockfile
-        run: cargo update --manifest-path python/Cargo.toml
-      - name: Commit python lockfile refresh
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- python/Cargo.lock; then
-            echo "No python lockfile changes to commit."
-            exit 0
-          fi
-          git config user.name "release-plz[bot]"
-          git config user.email "release-plz[bot]@users.noreply.github.com"
-          git add python/Cargo.lock
-          git commit -m "chore: sync python lockfile for release-plz"
       - name: Run release-plz
         uses: release-plz/action@d529f731ae3e89610ada96eda34e5c6ba3b12214 # v0.5
         with:
@@ -70,6 +57,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: Refresh and commit python lockfile after version bump
+        run: |
+          set -euo pipefail
+          cargo update --manifest-path python/Cargo.toml
+          if git diff --quiet -- python/Cargo.lock python/Cargo.toml pyproject.toml; then
+            echo "No python lockfile changes to commit."
+            exit 0
+          fi
+          git config user.name "release-plz[bot]"
+          git config user.email "release-plz[bot]@users.noreply.github.com"
+          git add python/Cargo.lock python/Cargo.toml pyproject.toml
+          git commit -m "chore: sync python lockfile for release-plz"
+          git push
 
   python-wheels:
     name: Build and publish Python wheels
