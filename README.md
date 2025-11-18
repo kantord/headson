@@ -46,8 +46,8 @@ From source:
 If you’re comfortable with tools like `head` and `tail`, use `hson` when you want a quick, structured peek into a JSON file without dumping the entire thing.
 
 - `head`/`tail` operate on bytes/lines - their output is not optimized for tree structures
-- `jq` you need to craft filters to preview large JSON files
-- `hson` is like head/tail for trees: zero config but it keeps structure and represents content as much as possible 
+- `jq`: you need to craft filters to preview large JSON files
+- `hson` is like head/tail for trees: zero‑config, but it keeps structure and represents content as much as possible 
 
 ## Usage
 
