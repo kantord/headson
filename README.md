@@ -47,7 +47,7 @@ If you’re comfortable with tools like `head` and `tail`, use `hson` when you w
 
 - `head`/`tail` operate on bytes/lines - their output is not optimized for tree structures
 - `jq`: you need to craft filters to preview large JSON files
-- `hson` is like head/tail for trees: zero‑config, but it keeps structure and represents content as much as possible 
+- `hson`: head/tail for trees—zero‑config by default; force text with `-i text` when you want raw lines
 
 ## Usage
 
@@ -139,9 +139,11 @@ Quick one‑liners:
 
       hson -c 200 notes.txt
 
-- Force Text ingest/output (useful when mixing with other extensions):
+- Force Text ingest/output (useful when mixing with other extensions, or when the extension suggests JSON/YAML):
 
       hson -c 200 -i text -f text notes.txt
+      # Force text ingest even if the file looks like JSON
+      hson -i text notes.json
 
 - Styles on Text:
   - default: omission as a standalone `…` line.
