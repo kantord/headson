@@ -49,14 +49,24 @@ jobs:
       cancel-in-progress: false
     steps:
       - *checkout
+        with:
+          fetch-depth: 0
       - *install-rust
       - name: Run release-plz
+        id: release_pr
         uses: release-plz/action@d529f731ae3e89610ada96eda34e5c6ba3b12214 # v0.5
         with:
           command: release-pr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: Determine release-pr branch name
+        id: pr_branch
+        run: echo "name=release-plz-release-pr" >> "$GITHUB_OUTPUT"
+      - name: Checkout release-pr branch
+        run: |
+          git fetch origin "${{ steps.pr_branch.outputs.name }}" || true
+          git checkout "${{ steps.pr_branch.outputs.name }}"
       - name: Refresh and commit python lockfile after version bump
         run: |
           set -euo pipefail
@@ -69,7 +79,11 @@ jobs:
           git config user.email "release-plz[bot]@users.noreply.github.com"
           git add python/Cargo.lock python/Cargo.toml pyproject.toml
           git commit -m "chore: sync python lockfile for release-plz"
-          git push
+      - name: Push python lockfile refresh
+        uses: ad-m/github-push-action@c9b257f9c3a86c07ec4c1f178964914960ef0d1f # v0.8
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.pr_branch.outputs.name }}
 
   python-wheels:
     name: Build and publish Python wheels
@@ -139,6 +153,11 @@ jobs:
           before-script-linux: |
             sudo DEBIAN_FRONTEND=noninteractive apt-get update
             sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pkg-config libssl-dev
+            # Some hosted images miss libssl headers; ensure they’re present for maturin build
+            if ! pkg-config --exists openssl; then
+              echo "openssl pc file still missing" >&2
+              exit 1
+            fi
 
       - name: Build sdist
         uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1
