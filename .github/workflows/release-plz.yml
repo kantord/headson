@@ -48,10 +48,14 @@ jobs:
       group: release-plz-${{ github.ref }}
       cancel-in-progress: false
     steps:
-      - *checkout
+      - name: Checkout repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           fetch-depth: 0
-      - *install-rust
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@0f44b27771c32bda9f458f75a1e241b09791b331 # stable
+        with:
+          toolchain: stable
       - name: Run release-plz
         id: release_pr
         uses: release-plz/action@d529f731ae3e89610ada96eda34e5c6ba3b12214 # v0.5
