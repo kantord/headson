@@ -72,22 +72,27 @@ jobs:
           git fetch origin "${{ steps.pr_branch.outputs.name }}" || true
           git checkout "${{ steps.pr_branch.outputs.name }}"
       - name: Refresh and commit python lockfile after version bump
+        id: sync_py_lock
         run: |
           set -euo pipefail
           cargo update --manifest-path python/Cargo.toml
           if git diff --quiet -- python/Cargo.lock python/Cargo.toml pyproject.toml; then
             echo "No python lockfile changes to commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name "release-plz[bot]"
           git config user.email "release-plz[bot]@users.noreply.github.com"
           git add python/Cargo.lock python/Cargo.toml pyproject.toml
           git commit -m "chore: sync python lockfile for release-plz"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
       - name: Push python lockfile refresh
-        uses: ad-m/github-push-action@c9b257f9c3a86c07ec4c1f178964914960ef0d1f # v0.8
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ steps.pr_branch.outputs.name }}
+        if: steps.sync_py_lock.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:${{ steps.pr_branch.outputs.name }}
 
   python-wheels:
     name: Build and publish Python wheels
