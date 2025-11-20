@@ -129,10 +129,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
 
+      - name: Install Python
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
       - name: Install uv
         uses: astral-sh/setup-uv@5a7eac68fb9809dea845d802897dc5c723910fa3 # v7
         with:
           python-version: ${{ matrix.python-version }}
+        env:
+          UV_PYTHON_DOWNLOADS: "0"  # rely on setup-python interpreter; avoid uv downloads
 
       - name: Sync Python deps (dev)
         run: |
