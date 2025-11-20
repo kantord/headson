@@ -30,6 +30,7 @@ jobs:
         with:
           command: build
           args: --release -m python/Cargo.toml -i 3.10 3.11 3.12 3.13 3.14
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           before-script-linux: |
             sudo DEBIAN_FRONTEND=noninteractive apt-get update
             sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pkg-config libssl-dev
