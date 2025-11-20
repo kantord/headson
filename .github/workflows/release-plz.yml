@@ -68,12 +68,13 @@ jobs:
         id: pr_branch
         run: |
           set -euo pipefail
-          branch="${{ steps.release_pr.outputs.release_pr_branch || '' }}"
+          git fetch origin 'release-plz-*' --depth=1 || true
+          branch=$(git ls-remote --heads origin 'release-plz-*' | awk '{print $2}' | sed 's@refs/heads/@@' | sort | tail -n1)
           echo "name=${branch}" >> "$GITHUB_OUTPUT"
           if [ -z "${branch}" ]; then
-            echo "No release PR branch produced (nothing to release).";
+            echo "No release-plz branch found after release-pr; skipping lockfile sync."
           else
-            echo "Release PR branch: ${branch}";
+            echo "Release PR branch: ${branch}"
           fi
       - name: Checkout release-pr branch
         if: steps.pr_branch.outputs.name != ''
