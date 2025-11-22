@@ -31,6 +31,8 @@ jobs:
           command: build
           args: --release --locked -m python/Cargo.toml -i 3.10 3.11 3.12 3.13 3.14
           github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          PKG_CONFIG_PATH: /usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig
           before-script-linux: |
             set -euo pipefail
             if command -v apt-get >/dev/null 2>&1; then
