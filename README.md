@@ -20,6 +20,7 @@ Available as:
 
 Using Cargo:
 
+
     cargo install headson
 
 > Note: the CLI installs as `hson`. All examples below use `hson ...`.
