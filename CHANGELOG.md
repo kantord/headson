@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.15](https://github.com/kantord/headson/compare/headson-v0.7.14...headson-v0.7.15) - 2025-11-22
+
+### Fixed
+
+- fix binary assets ([#253](https://github.com/kantord/headson/pull/253))
+
 ## [0.7.14](https://github.com/kantord/headson/compare/headson-v0.7.13...headson-v0.7.14) - 2025-11-22
 
 ### Fixed
