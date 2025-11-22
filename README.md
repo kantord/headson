@@ -6,8 +6,7 @@
   <br/>
 </p>
 
-`head`/`tail` for JSON, YAML — but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict byte budget. (Just like `head`/`tail`, `hson` can also work with unstructured text files.)  
-Stay focused on the shape—no heavy parsing required.
+`head`/`tail` for JSON, YAML — but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict byte budget. (Just like `head`/`tail`, `hson` can also work with unstructured text files.)
 
 Available as:
 - CLI (see [Usage](#usage))
