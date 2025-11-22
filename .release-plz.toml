@@ -1,2 +1,10 @@
 [workspace]
 publish = true
+dependencies_update = true
+
+[[package]]
+name = "headson"
+
+[[package]]
+name = "headson-python"
+publish = false
