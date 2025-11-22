@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.12](https://github.com/kantord/headson/compare/headson-v0.7.11...headson-v0.7.12) - 2025-11-22
+
+### Fixed
+
+- fix python build
+
 ## [0.7.11](https://github.com/kantord/headson/compare/headson-v0.7.10...headson-v0.7.11) - 2025-11-22
 
 ### Fixed
