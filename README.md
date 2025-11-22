@@ -14,7 +14,6 @@ Available as:
 
 ![Codecov](https://img.shields.io/codecov/c/github/kantord/headson?style=flat-square) ![Crates.io Version](https://img.shields.io/crates/v/headson?style=flat-square) ![PyPI - Version](https://img.shields.io/pypi/v/headson?style=flat-square)
 
-
 ## Install
 
 Using Cargo:
