@@ -30,19 +30,19 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e # stable
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@e4f51cb9fe5ddea39ccab776aaf6f11678c110a5 # v1.16.1
+        uses: cargo-bins/cargo-binstall@v1.5.13
 
       - name: Install cargo-dist
         run: |
           set -euo pipefail
           cargo binstall cargo-dist --force --locked --no-symlinks --no-confirm \
             || cargo install cargo-dist --locked
-          cargo dist --version
+          ~/.cargo/bin/dist --version
 
       - name: Build and publish artifacts
         env:
@@ -52,6 +52,6 @@ jobs:
           PATH: /home/runner/.cargo/bin:${{ env.PATH }}
         run: |
           set -euo pipefail
-          dist build --locked --no-local-paths
-          dist sign --signer cosign --locked
-          dist upload --locked
+          ~/.cargo/bin/dist build --locked --no-local-paths
+          ~/.cargo/bin/dist sign --signer cosign --locked
+          ~/.cargo/bin/dist upload --locked
