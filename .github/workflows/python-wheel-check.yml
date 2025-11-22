@@ -34,12 +34,17 @@ jobs:
           before-script-linux: |
             set -euo pipefail
             if command -v yum >/dev/null 2>&1; then
-              yum install -y openssl-devel pkgconfig
+              (sudo yum install -y openssl-devel pkgconfig 2>/dev/null || yum install -y openssl-devel pkgconfig)
+            elif command -v apt-get >/dev/null 2>&1; then
+              if command -v sudo >/dev/null 2>&1; then
+                sudo apt-get update
+                sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libssl-dev pkg-config
+              else
+                apt-get update
+                DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libssl-dev pkg-config
+              fi
             elif command -v apk >/dev/null 2>&1; then
               apk add openssl-dev pkgconfig
-            elif command -v apt-get >/dev/null 2>&1; then
-              apt-get update
-              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libssl-dev pkg-config
             else
               echo "No supported package manager found for OpenSSL build deps" >&2
               exit 1
