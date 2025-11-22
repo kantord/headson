@@ -17,6 +17,7 @@ Available as:
 
 ## Install
 
+
 Using Cargo:
 
     cargo install headson

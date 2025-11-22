@@ -1,9 +1,12 @@
 name: Release Binaries
 
 on:
+  release:
+    types: [published]
   push:
     tags:
       - "v*"
+      - "headson-v*"
   workflow_dispatch:
 
 permissions:
