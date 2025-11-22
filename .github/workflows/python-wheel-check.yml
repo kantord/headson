@@ -30,5 +30,17 @@ jobs:
         with:
           command: build
           args: --release --locked -m python/Cargo.toml -i 3.10 3.11 3.12 3.13 3.14
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          before-script-linux: yum install -y openssl-devel pkgconfig
+          token: ${{ secrets.GITHUB_TOKEN }}
+          before-script-linux: |
+            set -euo pipefail
+            if command -v yum >/dev/null 2>&1; then
+              yum install -y openssl-devel pkgconfig
+            elif command -v apk >/dev/null 2>&1; then
+              apk add openssl-dev pkgconfig
+            elif command -v apt-get >/dev/null 2>&1; then
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libssl-dev pkg-config
+            else
+              echo "No supported package manager found for OpenSSL build deps" >&2
+              exit 1
+            fi
