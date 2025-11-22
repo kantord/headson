@@ -1,10 +1,11 @@
 use anyhow::{bail, Result};
+use headson_core::{
+    ArraySamplerStrategy, ColorMode, OutputTemplate, PriorityConfig,
+    RenderConfig, Style,
+};
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
-use headson_core::{
-    ArraySamplerStrategy, ColorMode, OutputTemplate, PriorityConfig, RenderConfig, Style,
-};
 
 fn to_style(s: &str) -> Result<Style> {
     match s.to_ascii_lowercase().as_str() {
@@ -99,6 +100,7 @@ fn to_pyerr(e: anyhow::Error) -> PyErr {
 }
 
 #[pyfunction]
+#[allow(clippy::too_many_arguments)] // Python API surface requires these knobs
 #[pyo3(signature = (text, *, format="auto", style="default", byte_budget=None, skew="balanced", input_format="json"))]
 fn summarize(
     py: Python<'_>,
@@ -110,22 +112,26 @@ fn summarize(
     input_format: &str,
 ) -> PyResult<String> {
     let sampler = parse_skew(skew).map_err(to_pyerr)?;
-    let cfg = render_config_with_sampler(format, style, sampler).map_err(to_pyerr)?;
+    let cfg = render_config_with_sampler(format, style, sampler)
+        .map_err(to_pyerr)?;
     let budget = byte_budget.unwrap_or(500);
     let per_file_for_priority = budget.max(1);
     let prio = priority_config(per_file_for_priority, sampler);
     let input = text.as_bytes().to_vec();
-    py.detach(|| {
-        match input_format.to_ascii_lowercase().as_str() {
-            "json" => headson_core::headson(input, &cfg, &prio, budget).map_err(to_pyerr),
-            "yaml" | "yml" => headson_core::headson_yaml(input, &cfg, &prio, budget)
-                .map_err(to_pyerr),
-            "text" => headson_core::headson_text(input, &cfg, &prio, budget).map_err(to_pyerr),
-            other => Err(to_pyerr(anyhow::anyhow!(
-                "unknown input_format: {} (expected 'json' | 'yaml' | 'text')",
-                other
-            ))),
+    py.detach(|| match input_format.to_ascii_lowercase().as_str() {
+        "json" => {
+            headson_core::headson(input, &cfg, &prio, budget).map_err(to_pyerr)
         }
+        "yaml" | "yml" => {
+            headson_core::headson_yaml(input, &cfg, &prio, budget)
+                .map_err(to_pyerr)
+        }
+        "text" => headson_core::headson_text(input, &cfg, &prio, budget)
+            .map_err(to_pyerr),
+        other => Err(to_pyerr(anyhow::anyhow!(
+            "unknown input_format: {} (expected 'json' | 'yaml' | 'text')",
+            other
+        ))),
     })
 }
 
