@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.9](https://github.com/kantord/headson/compare/headson-v0.7.8...headson-v0.7.9) - 2025-11-22
+
+### Fixed
+
+- trigger a release ([#218](https://github.com/kantord/headson/pull/218))
+
+### Other
+
+- use a single lockfile for python and rust release ([#240](https://github.com/kantord/headson/pull/240))
+- *(deps)* update rust crate insta to v1.44.1 ([#234](https://github.com/kantord/headson/pull/234))
+- *(deps)* update rust crate insta to v1.44.0 ([#224](https://github.com/kantord/headson/pull/224))
+- *(deps)* update rust crate clap to v4.5.53 ([#223](https://github.com/kantord/headson/pull/223))
+
 ## [0.7.8](https://github.com/kantord/headson/compare/v0.7.7...v0.7.8) - 2025-11-18
 
 ### Other
