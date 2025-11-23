@@ -303,14 +303,6 @@ pub fn parse_yaml_one(
     YamlIngest::parse_one(bytes, cfg)
 }
 
-#[allow(dead_code)]
-pub fn parse_yaml_many(
-    inputs: Vec<(String, Vec<u8>)>,
-    cfg: &PriorityConfig,
-) -> Result<JsonTreeArena> {
-    YamlIngest::parse_many(inputs, cfg)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
