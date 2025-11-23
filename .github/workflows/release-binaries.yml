@@ -5,82 +5,64 @@ on:
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
-  build:
+  upload-assets:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-musl
-          - os: macos-latest
-            target: x86_64-apple-darwin
-          - os: macos-latest
-            target: aarch64-apple-darwin
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-    env:
-      CI: true
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            use_cross: true
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            use_cross: true
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install Linux cross toolchains
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu
-
-      - name: Set up Rust (stable)
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cross (musl)
+        if: contains(matrix.target, '-musl')
+        uses: taiki-e/install-action@v2
         with:
-          toolchain: stable
+          tool: cross
 
-      - name: Add Rust targets (Linux)
-        if: runner.os == 'Linux'
-        run: rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-gnu aarch64-unknown-linux-musl
-
-      - name: Add Rust targets (macOS)
-        if: runner.os == 'macOS'
-        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
-
-      - name: Add Rust targets (Windows)
-        if: runner.os == 'Windows'
-        run: rustup target add aarch64-pc-windows-msvc
-
-      - name: Install cargo-dist (v0.30.2) on Linux/macOS
-        if: runner.os != 'Windows'
-        run: curl -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.30.2/cargo-dist-installer.sh | sh
-
-      - name: Install cargo-dist (v0.30.2) on Windows
-        if: runner.os == 'Windows'
-        run: powershell -ExecutionPolicy Bypass -Command "Invoke-RestMethod 'https://github.com/axodotdev/cargo-dist/releases/download/v0.30.2/cargo-dist-installer.ps1' | Invoke-Expression"
-
-      - name: Install cosign
-        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+      - name: Setup cross toolchain (non-musl Linux)
+        if: startsWith(matrix.os, 'ubuntu') && !contains(matrix.target, '-musl')
+        uses: taiki-e/setup-cross-toolchain-action@v1
         with:
-          cosign-release: "v3.0.2"
+          target: ${{ matrix.target }}
+          runner: none
 
-      - name: Build artifacts
-        run: cargo dist build --target ${{ matrix.target }}
+      - name: Enable static CRT on Windows
+        if: endsWith(matrix.target, 'windows-msvc')
+        run: echo "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static" >> "${GITHUB_ENV}"
 
-      - name: Sign artifacts
-        env:
-          COSIGN_EXPERIMENTAL: "1"
-        run: cargo dist sign --target ${{ matrix.target }}
-
-      - name: Upload artifacts
-        run: cargo dist upload --target ${{ matrix.target }}
+      - name: Build and upload binary
+        uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: hson
+          target: ${{ matrix.target }}
+          tar: all
+          zip: windows
+          token: ${{ secrets.GITHUB_TOKEN }}

@@ -74,6 +74,24 @@ panic = "abort"
 strip = "symbols"
 incremental = false
 
+[workspace.metadata.dist]
+cargo-dist-version = "0.30.2"
+ci = "github"
+installers = []
+artifacts = ["executable"]
+manifest-path = "Cargo.toml"
+targets = [
+  "x86_64-unknown-linux-gnu",
+  "x86_64-unknown-linux-musl",
+  "aarch64-unknown-linux-gnu",
+  "aarch64-unknown-linux-musl",
+  "x86_64-apple-darwin",
+  "aarch64-apple-darwin",
+  "x86_64-pc-windows-msvc",
+  "aarch64-pc-windows-msvc",
+]
+signing = { cosign = true }
+
 # The profile that 'dist' will build with
 [profile.dist]
 inherits = "release"
