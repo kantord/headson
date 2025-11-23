@@ -20,7 +20,17 @@ fn headson_many_text_smoke() {
         ("a.txt".to_string(), b"one\ntwo\n".to_vec()),
         ("b.log".to_string(), b"alpha\nbeta\n".to_vec()),
     ];
-    let out = headson::headson_many_text(inputs, &cfg, &prio, 10_000).unwrap();
+    let out = headson::headson_many_text_with_budgets(
+        inputs,
+        &cfg,
+        &prio,
+        headson::Budgets {
+            byte_budget: Some(10_000),
+            char_budget: None,
+            line_budget: None,
+        },
+    )
+    .unwrap();
     assert!(out.contains("a.txt"));
     assert!(out.contains("b.log"));
     assert!(out.contains("one\n"));

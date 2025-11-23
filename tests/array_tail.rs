@@ -127,8 +127,17 @@ fn array_tail_json_contains_last_k_values() {
     let mut prio = headson::PriorityConfig::new(usize::MAX, 15);
     prio.prefer_tail_arrays = true;
     prio.array_sampler = headson::ArraySamplerStrategy::Tail;
-    let out = headson::headson(input.into_bytes(), &render_cfg, &prio, 10_000)
-        .expect("render");
+    let out = headson::headson_with_budgets(
+        input.into_bytes(),
+        &render_cfg,
+        &prio,
+        headson::Budgets {
+            byte_budget: Some(10_000),
+            char_budget: None,
+            line_budget: None,
+        },
+    )
+    .expect("render");
     let v: serde_json::Value = serde_json::from_str(&out).expect("json parse");
     let arr = v.as_array().expect("root array");
     assert_eq!(arr.len(), 15, "kept exactly cap items");

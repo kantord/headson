@@ -54,10 +54,26 @@ fn colored_and_plain_outputs_should_match_after_stripping() {
     // Use a tight budget so the number of kept items is sensitive to extra bytes.
     let budget = 50usize;
 
-    let plain = headson::headson(input.to_vec(), &cfg_plain, &prio, budget)
-        .expect("plain render");
-    let colored = headson::headson(input.to_vec(), &cfg_color, &prio, budget)
-        .expect("color render");
+    let budgets = headson::Budgets {
+        byte_budget: Some(budget),
+        char_budget: None,
+        line_budget: None,
+    };
+
+    let plain = headson::headson_with_budgets(
+        input.to_vec(),
+        &cfg_plain,
+        &prio,
+        budgets,
+    )
+    .expect("plain render");
+    let colored = headson::headson_with_budgets(
+        input.to_vec(),
+        &cfg_color,
+        &prio,
+        budgets,
+    )
+    .expect("color render");
 
     let colored_stripped = strip_ansi(&colored);
 

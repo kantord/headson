@@ -531,7 +531,7 @@ pub fn parse_text_many(
 mod tests {
     use super::ARRAY_NO_SAMPLING_THRESHOLD;
     use crate::{
-        PriorityConfig, RenderConfig, headson_text,
+        Budgets, PriorityConfig, RenderConfig, headson_text_with_budgets,
         serialization::types::{OutputTemplate, Style},
     };
     use unicode_segmentation::UnicodeSegmentation;
@@ -559,7 +559,17 @@ mod tests {
     fn text_roundtrip_basic() {
         let (cfg, prio) = cfg_text();
         let input = b"a\nb\nc".to_vec();
-        let out = headson_text(input, &cfg, &prio, 100).unwrap();
+        let out = headson_text_with_budgets(
+            input,
+            &cfg,
+            &prio,
+            Budgets {
+                byte_budget: Some(100),
+                char_budget: None,
+                line_budget: None,
+            },
+        )
+        .unwrap();
         assert_eq!(out, "a\nb\nc\n");
     }
 
@@ -572,7 +582,17 @@ mod tests {
             .join("\n");
         // Budget small so only some lines fit
         cfg.style = Style::Default;
-        let out = headson_text(input.into_bytes(), &cfg, &prio, 20).unwrap();
+        let out = headson_text_with_budgets(
+            input.into_bytes(),
+            &cfg,
+            &prio,
+            Budgets {
+                byte_budget: Some(20),
+                char_budget: None,
+                line_budget: None,
+            },
+        )
+        .unwrap();
         assert!(out.contains("…\n"));
     }
 
