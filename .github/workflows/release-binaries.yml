@@ -4,54 +4,73 @@ on:
   release:
     types: [published]
   push:
-    tags:
-      - "v*"
-      - "headson-v*"
+    tags: ["headson-v*"]
   workflow_dispatch:
 
-permissions:
-  contents: write
-  id-token: write
-
 jobs:
-  dist:
-    name: Build/sign/distribute (cargo-dist)
+  build:
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        include:
-          - os: ubuntu-latest
-          - os: macos-latest
-          - os: windows-latest
-    runs-on: ${{ matrix.os }}
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      CI: true
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
+      - name: Install Linux cross toolchains
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu
+
+      - name: Set up Rust (stable)
+        uses: actions/setup-rust@v1
         with:
-          toolchain: stable
+          rust-version: stable
 
-      - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.5.13
+      - name: Add Rust targets (Linux)
+        if: runner.os == 'Linux'
+        run: rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-gnu aarch64-unknown-linux-musl
 
-      - name: Install cargo-dist
-        run: |
-          set -euo pipefail
-          cargo binstall cargo-dist --force --locked --no-symlinks --no-confirm \
-            || cargo install cargo-dist --locked
-          ~/.cargo/bin/dist --version
+      - name: Add Rust targets (macOS)
+        if: runner.os == 'macOS'
+        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
 
-      - name: Build and publish artifacts
+      - name: Add Rust targets (Windows)
+        if: runner.os == 'Windows'
+        run: rustup target add aarch64-pc-windows-msvc
+
+      - name: Install cargo-dist (v0.30.2) on Linux/macOS
+        if: runner.os != 'Windows'
+        run: curl -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.30.2/cargo-dist-installer.sh | sh
+
+      - name: Install cargo-dist (v0.30.2) on Windows
+        if: runner.os == 'Windows'
+        run: powershell -ExecutionPolicy Bypass -Command "Invoke-RestMethod 'https://github.com/axodotdev/cargo-dist/releases/download/v0.30.2/cargo-dist-installer.ps1' | Invoke-Expression"
+
+      - name: Add cargo bin to PATH
+        run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.0.0
+        with:
+          cosign-release: "v3.0.2"
+
+      - name: Build artifacts
+        run: cargo dist build
+
+      - name: Sign artifacts
         env:
-          CI: true
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CARGO_HOME: /home/runner/.cargo
-          PATH: /home/runner/.cargo/bin:${{ env.PATH }}
-        run: |
-          set -euo pipefail
-          ~/.cargo/bin/dist build --locked --no-local-paths
-          ~/.cargo/bin/dist sign --signer cosign --locked
-          ~/.cargo/bin/dist upload --locked
+          COSIGN_EXPERIMENTAL: "1"
+        run: cargo dist sign
+
+      - name: Upload artifacts
+        run: cargo dist upload
