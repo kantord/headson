@@ -32,6 +32,7 @@ impl JsonTreeBuilder {
     }
 
     // Create an object node from provided keys and child ids and return its id.
+    #[cfg(test)]
     pub(crate) fn push_object_root(
         &self,
         keys: Vec<String>,

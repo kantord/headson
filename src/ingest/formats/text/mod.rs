@@ -466,15 +466,6 @@ pub fn build_text_tree_arena_from_bytes(
 }
 
 /// Convenience functions for the Text ingest path.
-#[allow(dead_code, reason = "Public API parity with other ingest helpers")]
-pub fn parse_text_one(
-    bytes: Vec<u8>,
-    cfg: &PriorityConfig,
-) -> Result<JsonTreeArena> {
-    parse_text_one_with_mode(bytes, cfg, false)
-}
-
-/// Version of `parse_text_one` that allows explicitly toggling atomic code mode.
 pub fn parse_text_one_with_mode(
     bytes: Vec<u8>,
     cfg: &PriorityConfig,

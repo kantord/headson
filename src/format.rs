@@ -31,20 +31,6 @@ impl Format {
         }
         Format::Unknown
     }
-
-    /// Preferred output template for this format. Falls back to caller’s
-    /// template for `Unknown`.
-    #[allow(dead_code, reason = "kept for compatibility and potential reuse")]
-    pub fn to_output_template(
-        self,
-        fallback: crate::serialization::types::OutputTemplate,
-    ) -> crate::serialization::types::OutputTemplate {
-        match self {
-            Format::Json => crate::serialization::types::OutputTemplate::Json,
-            Format::Yaml => crate::serialization::types::OutputTemplate::Yaml,
-            Format::Unknown => fallback,
-        }
-    }
 }
 
 #[cfg(test)]

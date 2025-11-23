@@ -36,43 +36,6 @@ pub fn build_yaml_tree_arena_from_bytes(
     Ok(arena)
 }
 
-#[allow(dead_code, reason = "Public API parity with other ingest helpers")]
-pub fn build_yaml_tree_arena_from_many(
-    mut inputs: Vec<(String, Vec<u8>)>,
-    config: &PriorityConfig,
-) -> Result<JsonTreeArena> {
-    let mut b = YamlArenaBuilder::new(
-        config.array_max_items,
-        config.array_sampler.into(),
-    );
-    let mut keys: Vec<String> = Vec::with_capacity(inputs.len());
-    let mut children: Vec<usize> = Vec::with_capacity(inputs.len());
-    for (key, bytes) in inputs.drain(..) {
-        let s = String::from_utf8(bytes)
-            .map_err(|_| anyhow!("input is not valid UTF-8 text"))?;
-        let docs = yaml_rust2::YamlLoader::load_from_str(&s)?;
-        let child_id = if docs.len() <= 1 {
-            match docs.first() {
-                Some(doc) => b.build(doc),
-                None => b.build(&Yaml::Array(vec![])),
-            }
-        } else {
-            let mut arr_children: Vec<usize> = Vec::with_capacity(docs.len());
-            for d in &docs {
-                arr_children.push(b.build(d));
-            }
-            b.push_array(&arr_children, docs.len(), (0..docs.len()).collect())
-        };
-        keys.push(key);
-        children.push(child_id);
-    }
-    let root_id = b.push_object_root(keys, children);
-    let mut arena = b.finish();
-    arena.root_id = root_id;
-    arena.is_fileset = true;
-    Ok(arena)
-}
-
 struct YamlArenaBuilder {
     arena: JsonTreeArena,
     array_cap: usize,

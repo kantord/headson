@@ -34,10 +34,7 @@ pub fn build_json_tree_arena_from_bytes(
     Ok(arena)
 }
 
-#[allow(
-    dead_code,
-    reason = "Retained for potential future JSON fileset usage"
-)]
+#[cfg(test)]
 pub fn build_json_tree_arena_from_many(
     mut inputs: Vec<(String, Vec<u8>)>,
     config: &PriorityConfig,

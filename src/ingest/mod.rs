@@ -14,9 +14,7 @@ pub mod sampling;
     unused_imports,
     reason = "Re-exported helpers need to stay public even when unused internally"
 )]
-pub use formats::{
-    parse_json_one, parse_text_one, parse_text_one_with_mode, parse_yaml_one,
-};
+pub use formats::{parse_json_one, parse_text_one_with_mode, parse_yaml_one};
 
 /// Dispatch the appropriate ingest path for any supported input kind.
 pub fn ingest_into_arena(
