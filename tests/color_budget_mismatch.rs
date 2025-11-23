@@ -60,20 +60,10 @@ fn colored_and_plain_outputs_should_match_after_stripping() {
         line_budget: None,
     };
 
-    let plain = headson::headson_with_budgets(
-        input.to_vec(),
-        &cfg_plain,
-        &prio,
-        budgets,
-    )
-    .expect("plain render");
-    let colored = headson::headson_with_budgets(
-        input.to_vec(),
-        &cfg_color,
-        &prio,
-        budgets,
-    )
-    .expect("color render");
+    let plain = headson::headson(input.to_vec(), &cfg_plain, &prio, budgets)
+        .expect("plain render");
+    let colored = headson::headson(input.to_vec(), &cfg_color, &prio, budgets)
+        .expect("color render");
 
     let colored_stripped = strip_ansi(&colored);
 

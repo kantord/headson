@@ -531,7 +531,7 @@ pub fn parse_text_many(
 mod tests {
     use super::ARRAY_NO_SAMPLING_THRESHOLD;
     use crate::{
-        Budgets, PriorityConfig, RenderConfig, headson_text_with_budgets,
+        Budgets, PriorityConfig, RenderConfig, headson_text,
         serialization::types::{OutputTemplate, Style},
     };
     use unicode_segmentation::UnicodeSegmentation;
@@ -559,7 +559,7 @@ mod tests {
     fn text_roundtrip_basic() {
         let (cfg, prio) = cfg_text();
         let input = b"a\nb\nc".to_vec();
-        let out = headson_text_with_budgets(
+        let out = headson_text(
             input,
             &cfg,
             &prio,
@@ -582,7 +582,7 @@ mod tests {
             .join("\n");
         // Budget small so only some lines fit
         cfg.style = Style::Default;
-        let out = headson_text_with_budgets(
+        let out = headson_text(
             input.into_bytes(),
             &cfg,
             &prio,

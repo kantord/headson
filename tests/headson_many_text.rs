@@ -20,7 +20,7 @@ fn headson_many_text_smoke() {
         ("a.txt".to_string(), b"one\ntwo\n".to_vec()),
         ("b.log".to_string(), b"alpha\nbeta\n".to_vec()),
     ];
-    let out = headson::headson_many_text_with_budgets(
+    let out = headson::headson_many_text(
         inputs,
         &cfg,
         &prio,

@@ -55,16 +55,11 @@ fn yaml_coloring_applies_and_strips_to_plain() {
         char_budget: None,
         line_budget: None,
     };
-    let plain = headson::headson_yaml_with_budgets(
-        input.clone(),
-        &cfg_plain,
-        &prio,
-        budgets,
-    )
-    .expect("plain yaml");
-    let colored =
-        headson::headson_yaml_with_budgets(input, &cfg_color, &prio, budgets)
-            .expect("colored yaml");
+    let plain =
+        headson::headson_yaml(input.clone(), &cfg_plain, &prio, budgets)
+            .expect("plain yaml");
+    let colored = headson::headson_yaml(input, &cfg_color, &prio, budgets)
+        .expect("colored yaml");
 
     // Contains ANSI SGR and specific roles (blue for keys, green for strings).
     assert!(

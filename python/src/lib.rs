@@ -124,18 +124,14 @@ fn summarize(
         line_budget: None,
     };
     py.detach(|| match input_format.to_ascii_lowercase().as_str() {
-        "json" => {
-            headson_core::headson_with_budgets(input, &cfg, &prio, budgets)
+        "json" => headson_core::headson(input, &cfg, &prio, budgets)
+            .map_err(to_pyerr),
+        "yaml" | "yml" => {
+            headson_core::headson_yaml(input, &cfg, &prio, budgets)
                 .map_err(to_pyerr)
         }
-        "yaml" | "yml" => headson_core::headson_yaml_with_budgets(
-            input, &cfg, &prio, budgets,
-        )
-        .map_err(to_pyerr),
-        "text" => headson_core::headson_text_with_budgets(
-            input, &cfg, &prio, budgets,
-        )
-        .map_err(to_pyerr),
+        "text" => headson_core::headson_text(input, &cfg, &prio, budgets)
+            .map_err(to_pyerr),
         other => Err(to_pyerr(anyhow::anyhow!(
             "unknown input_format: {} (expected 'json' | 'yaml' | 'text')",
             other

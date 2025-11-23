@@ -72,7 +72,7 @@ environments:
         },
     ];
 
-    let out = headson::headson_fileset_multi_with_budgets(
+    let out = headson::headson_fileset_multi(
         inputs,
         &render_config(),
         &priority_config(),

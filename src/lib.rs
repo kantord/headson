@@ -183,7 +183,7 @@ fn select_best_k(
 // (removed) render_final helper was inlined to centralize optional debug dump
 
 // Optional new public API that accepts both budgets explicitly.
-pub fn headson_with_budgets(
+pub fn headson(
     input: Vec<u8>,
     config: &RenderConfig,
     priority_cfg: &PriorityConfig,
@@ -198,7 +198,7 @@ pub fn headson_with_budgets(
     ))
 }
 
-pub fn headson_many_with_budgets(
+pub fn headson_many(
     inputs: Vec<(String, Vec<u8>)>,
     config: &RenderConfig,
     priority_cfg: &PriorityConfig,
@@ -213,7 +213,7 @@ pub fn headson_many_with_budgets(
     ))
 }
 
-pub fn headson_yaml_with_budgets(
+pub fn headson_yaml(
     input: Vec<u8>,
     config: &RenderConfig,
     priority_cfg: &PriorityConfig,
@@ -228,7 +228,7 @@ pub fn headson_yaml_with_budgets(
     ))
 }
 
-pub fn headson_many_yaml_with_budgets(
+pub fn headson_many_yaml(
     inputs: Vec<(String, Vec<u8>)>,
     config: &RenderConfig,
     priority_cfg: &PriorityConfig,
@@ -243,7 +243,7 @@ pub fn headson_many_yaml_with_budgets(
     ))
 }
 
-pub fn headson_text_with_budgets(
+pub fn headson_text(
     input: Vec<u8>,
     config: &RenderConfig,
     priority_cfg: &PriorityConfig,
@@ -266,7 +266,7 @@ pub fn headson_text_with_budgets(
 
 /// Text ingest where each line is treated as an atomic string (non-truncatable).
 /// Useful for source-like files to avoid mid-line ellipses; omissions happen at line level.
-pub fn headson_text_with_budgets_code(
+pub fn headson_text_code(
     input: Vec<u8>,
     config: &RenderConfig,
     priority_cfg: &PriorityConfig,
@@ -286,7 +286,7 @@ pub fn headson_text_with_budgets_code(
     ))
 }
 
-pub fn headson_many_text_with_budgets(
+pub fn headson_many_text(
     inputs: Vec<(String, Vec<u8>)>,
     config: &RenderConfig,
     priority_cfg: &PriorityConfig,
@@ -302,7 +302,7 @@ pub fn headson_many_text_with_budgets(
 }
 
 /// Fileset helper that ingests each input according to its detected format.
-pub fn headson_fileset_multi_with_budgets(
+pub fn headson_fileset_multi(
     inputs: Vec<crate::ingest::fileset::FilesetInput>,
     config: &RenderConfig,
     priority_cfg: &PriorityConfig,

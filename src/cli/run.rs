@@ -59,20 +59,14 @@ fn run_from_stdin(
     let chosen_input = cli.input_format.unwrap_or(InputFormat::Json);
     let out = match chosen_input {
         InputFormat::Json => {
-            headson::headson_with_budgets(input_bytes, &cfg, &prio, budgets)?
+            headson::headson(input_bytes, &cfg, &prio, budgets)?
         }
-        InputFormat::Yaml => headson::headson_yaml_with_budgets(
-            input_bytes,
-            &cfg,
-            &prio,
-            budgets,
-        )?,
-        InputFormat::Text => headson::headson_text_with_budgets(
-            input_bytes,
-            &cfg,
-            &prio,
-            budgets,
-        )?,
+        InputFormat::Yaml => {
+            headson::headson_yaml(input_bytes, &cfg, &prio, budgets)?
+        }
+        InputFormat::Text => {
+            headson::headson_text(input_bytes, &cfg, &prio, budgets)?
+        }
     };
     Ok(out)
 }
@@ -123,9 +117,7 @@ fn run_from_paths(
                 headson::FilesetInput { name, bytes, kind }
             })
             .collect();
-        let out = headson::headson_fileset_multi_with_budgets(
-            files, &cfg, &prio, budgets,
-        )?;
+        let out = headson::headson_fileset_multi(files, &cfg, &prio, budgets)?;
         return Ok((out, ignored));
     }
 
@@ -160,11 +152,9 @@ fn run_from_paths(
     cfg = budget::render_config_for_budgets(cfg, &effective);
     let budgets = effective.budgets;
     let out = match chosen_input {
-        InputFormat::Json => {
-            headson::headson_with_budgets(bytes, &cfg, &prio, budgets)?
-        }
+        InputFormat::Json => headson::headson(bytes, &cfg, &prio, budgets)?,
         InputFormat::Yaml => {
-            headson::headson_yaml_with_budgets(bytes, &cfg, &prio, budgets)?
+            headson::headson_yaml(bytes, &cfg, &prio, budgets)?
         }
         InputFormat::Text => {
             let is_code = headson::extensions::is_code_like_name(&lower);
@@ -175,13 +165,9 @@ fn run_from_paths(
                 )]
                 let mut cfg_code = cfg.clone();
                 cfg_code.template = headson::OutputTemplate::Code;
-                headson::headson_text_with_budgets_code(
-                    bytes, &cfg_code, &prio, budgets,
-                )?
+                headson::headson_text_code(bytes, &cfg_code, &prio, budgets)?
             } else {
-                headson::headson_text_with_budgets(
-                    bytes, &cfg, &prio, budgets,
-                )?
+                headson::headson_text(bytes, &cfg, &prio, budgets)?
             }
         }
     };
