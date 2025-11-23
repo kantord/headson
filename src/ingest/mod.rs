@@ -3,6 +3,8 @@ use anyhow::Result;
 use crate::order::PriorityConfig;
 use crate::utils::tree_arena::JsonTreeArena as TreeArena;
 
+use crate::InputKind;
+
 /// Format-agnostic ingest boundary. Other formats can implement this trait
 /// to produce the neutral TreeArena without going through JSON first.
 pub trait Ingest {
@@ -13,16 +15,11 @@ pub trait Ingest {
     ) -> Result<TreeArena>;
 }
 
-// Format adapters and builders live under `formats/`.
 pub mod fileset;
 pub mod formats;
 
-// Use `crate::ingest::formats::{json,yaml,text}` for format-specific helpers.
-
-// Ingest-agnostic helpers (e.g., array sampling policies).
 pub mod sampling;
 
-// Convenience re-exports so callers can use `crate::ingest::parse_*`.
 #[allow(
     unused_imports,
     reason = "Re-exported helpers need to stay public even when unused internally"
@@ -32,7 +29,27 @@ pub use formats::{
     parse_text_one_with_mode, parse_yaml_many, parse_yaml_one,
 };
 
-// (intentionally no duplicate re-exports here; see formats::* above)
+/// Dispatch the appropriate ingest path for any supported input kind.
+pub fn ingest_into_arena(
+    input: InputKind,
+    priority_cfg: &PriorityConfig,
+) -> Result<TreeArena> {
+    match input {
+        InputKind::Json(bytes) => parse_json_one(bytes, priority_cfg),
+        InputKind::JsonMany(inputs) => parse_json_many(inputs, priority_cfg),
+        InputKind::Yaml(bytes) => parse_yaml_one(bytes, priority_cfg),
+        InputKind::YamlMany(inputs) => parse_yaml_many(inputs, priority_cfg),
+        InputKind::Text { bytes, atomic } => {
+            parse_text_one_with_mode(bytes, priority_cfg, atomic)
+        }
+        InputKind::TextMany { inputs, .. } => {
+            parse_text_many(inputs, priority_cfg)
+        }
+        InputKind::Fileset(inputs) => {
+            fileset::parse_fileset_multi(inputs, priority_cfg)
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

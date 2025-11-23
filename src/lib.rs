@@ -62,44 +62,9 @@ pub fn headson(
     priority_cfg: &PriorityConfig,
     budgets: Budgets,
 ) -> Result<String> {
-    let order_build = match input {
-        InputKind::Json(bytes) => {
-            let arena = crate::ingest::parse_json_one(bytes, priority_cfg)?;
-            order::build_order(&arena, priority_cfg)?
-        }
-        InputKind::JsonMany(inputs) => {
-            let arena = crate::ingest::parse_json_many(inputs, priority_cfg)?;
-            order::build_order(&arena, priority_cfg)?
-        }
-        InputKind::Yaml(bytes) => {
-            let arena = crate::ingest::parse_yaml_one(bytes, priority_cfg)?;
-            order::build_order(&arena, priority_cfg)?
-        }
-        InputKind::YamlMany(inputs) => {
-            let arena = crate::ingest::parse_yaml_many(inputs, priority_cfg)?;
-            order::build_order(&arena, priority_cfg)?
-        }
-        InputKind::Text { bytes, atomic } => {
-            let arena =
-                crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
-                    bytes,
-                    priority_cfg,
-                    atomic,
-                )?;
-            order::build_order(&arena, priority_cfg)?
-        }
-        InputKind::TextMany { inputs, .. } => {
-            let arena = crate::ingest::parse_text_many(inputs, priority_cfg)?;
-            order::build_order(&arena, priority_cfg)?
-        }
-        InputKind::Fileset(inputs) => {
-            let arena = crate::ingest::fileset::parse_fileset_multi(
-                inputs,
-                priority_cfg,
-            )?;
-            order::build_order(&arena, priority_cfg)?
-        }
-    };
+    let arena = crate::ingest::ingest_into_arena(input, priority_cfg)?;
+    let order_build = order::build_order(&arena, priority_cfg)?;
+
     Ok(find_largest_render_under_budgets(
         &order_build,
         config,
