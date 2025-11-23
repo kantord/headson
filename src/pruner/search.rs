@@ -1,4 +1,3 @@
-// Generic helper: largest integer in [lo, hi] satisfying `pred`.
 pub(crate) fn binary_search_max(
     mut lo: usize,
     mut hi: usize,

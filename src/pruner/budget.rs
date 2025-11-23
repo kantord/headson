@@ -7,7 +7,6 @@ pub struct Budgets {
     pub line_budget: Option<usize>,
 }
 
-/// New generalized budgeting: enforce optional char and/or line caps.
 pub fn find_largest_render_under_budgets(
     order_build: &PriorityOrder,
     config: &RenderConfig,
@@ -34,7 +33,6 @@ pub fn find_largest_render_under_budgets(
     let (k, mut inclusion_flags, render_set_id) =
         select_best_k(order_build, &measure_cfg, budgets);
 
-    // Prepare final inclusion set once and optionally build debug JSON.
     crate::serialization::prepare_render_set_top_k_and_ancestors(
         order_build,
         k,
@@ -42,7 +40,6 @@ pub fn find_largest_render_under_budgets(
         render_set_id,
     );
 
-    // If debug is enabled, emit a one-shot debug JSON built from this set.
     if config.debug {
         let mut no_color_cfg = config.clone();
         no_color_cfg.color_enabled = false;
@@ -86,7 +83,6 @@ pub fn find_largest_render_under_budgets(
         }
     }
 
-    // Final render with requested color settings
     crate::serialization::render_from_render_set(
         order_build,
         &inclusion_flags,
@@ -101,17 +97,14 @@ fn select_best_k(
     budgets: Budgets,
 ) -> (usize, Vec<u32>, u32) {
     let total = order_build.total_nodes;
-    // Each included node contributes at least some output; cap hi by budget.
     let lo = 1usize;
-    // For the upper bound, when a byte budget is present, we can safely cap by it;
-    // otherwise, cap by total.
     let hi = match budgets.byte_budget {
         Some(c) => total.min(c.max(1)),
         None => total,
     };
-    // Reuse render-inclusion flags across render attempts to avoid clearing the vector.
+
     let mut inclusion_flags: Vec<u32> = vec![0; total];
-    // Each render attempt bumps this non-zero identifier to create a fresh inclusion set.
+
     let mut render_set_id: u32 = 1;
     let mut best_k: Option<usize> = None;
     let measure_chars = budgets.char_budget.is_some();
