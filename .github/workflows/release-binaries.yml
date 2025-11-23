@@ -14,11 +14,21 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            targets: "--target x86_64-unknown-linux-gnu --target x86_64-unknown-linux-musl --target aarch64-unknown-linux-gnu --target aarch64-unknown-linux-musl"
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
           - os: macos-latest
-            targets: "--target x86_64-apple-darwin --target aarch64-apple-darwin"
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
           - os: windows-latest
-            targets: "--target x86_64-pc-windows-msvc --target aarch64-pc-windows-msvc"
+            target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
     env:
       CI: true
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -65,12 +75,12 @@ jobs:
           cosign-release: "v3.0.2"
 
       - name: Build artifacts
-        run: cargo dist build ${{ matrix.targets }}
+        run: cargo dist build --target ${{ matrix.target }}
 
       - name: Sign artifacts
         env:
           COSIGN_EXPERIMENTAL: "1"
-        run: cargo dist sign ${{ matrix.targets }}
+        run: cargo dist sign --target ${{ matrix.target }}
 
       - name: Upload artifacts
-        run: cargo dist upload ${{ matrix.targets }}
+        run: cargo dist upload --target ${{ matrix.target }}
