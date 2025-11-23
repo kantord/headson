@@ -4,7 +4,6 @@ use crate::PriorityConfig;
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
-use crate::ingest::Ingest;
 use crate::ingest::sampling::{ArraySamplerKind, choose_indices};
 use yaml_rust2::Yaml;
 
@@ -37,6 +36,7 @@ pub fn build_yaml_tree_arena_from_bytes(
     Ok(arena)
 }
 
+#[allow(dead_code, reason = "Public API parity with other ingest helpers")]
 pub fn build_yaml_tree_arena_from_many(
     mut inputs: Vec<(String, Vec<u8>)>,
     config: &PriorityConfig,
@@ -277,30 +277,12 @@ fn stringify_yaml_key(k: &Yaml) -> String {
     }
 }
 
-pub struct YamlIngest;
-
-impl Ingest for YamlIngest {
-    fn parse_one(
-        bytes: Vec<u8>,
-        cfg: &PriorityConfig,
-    ) -> Result<JsonTreeArena> {
-        build_yaml_tree_arena_from_bytes(bytes, cfg)
-    }
-
-    fn parse_many(
-        inputs: Vec<(String, Vec<u8>)>,
-        cfg: &PriorityConfig,
-    ) -> Result<JsonTreeArena> {
-        build_yaml_tree_arena_from_many(inputs, cfg)
-    }
-}
-
 /// Convenience functions for the YAML ingest path.
 pub fn parse_yaml_one(
     bytes: Vec<u8>,
     cfg: &PriorityConfig,
 ) -> Result<JsonTreeArena> {
-    YamlIngest::parse_one(bytes, cfg)
+    build_yaml_tree_arena_from_bytes(bytes, cfg)
 }
 
 #[cfg(test)]

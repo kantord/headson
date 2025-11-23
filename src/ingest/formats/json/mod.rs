@@ -8,8 +8,6 @@ use serde::de::DeserializeSeed;
 use crate::PriorityConfig;
 use crate::utils::tree_arena::JsonTreeArena as TreeArena;
 
-use crate::ingest::Ingest;
-
 #[cfg(test)]
 pub fn build_json_tree_arena(
     input: &str,
@@ -36,6 +34,10 @@ pub fn build_json_tree_arena_from_bytes(
     Ok(arena)
 }
 
+#[allow(
+    dead_code,
+    reason = "Retained for potential future JSON fileset usage"
+)]
 pub fn build_json_tree_arena_from_many(
     mut inputs: Vec<(String, Vec<u8>)>,
     config: &PriorityConfig,
@@ -60,29 +62,12 @@ pub fn build_json_tree_arena_from_many(
     Ok(arena)
 }
 
-/// JSON adapter for the ingest boundary. Delegates to the JSON builder to
-/// produce the neutral `TreeArena`.
-pub struct JsonIngest;
-
-impl Ingest for JsonIngest {
-    fn parse_one(bytes: Vec<u8>, cfg: &PriorityConfig) -> Result<TreeArena> {
-        build_json_tree_arena_from_bytes(bytes, cfg)
-    }
-
-    fn parse_many(
-        inputs: Vec<(String, Vec<u8>)>,
-        cfg: &PriorityConfig,
-    ) -> Result<TreeArena> {
-        build_json_tree_arena_from_many(inputs, cfg)
-    }
-}
-
 /// Convenience functions for the JSON ingest path.
 pub fn parse_json_one(
     bytes: Vec<u8>,
     cfg: &PriorityConfig,
 ) -> Result<TreeArena> {
-    JsonIngest::parse_one(bytes, cfg)
+    build_json_tree_arena_from_bytes(bytes, cfg)
 }
 
 #[cfg(test)]

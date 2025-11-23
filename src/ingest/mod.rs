@@ -5,16 +5,6 @@ use crate::utils::tree_arena::JsonTreeArena as TreeArena;
 
 use crate::InputKind;
 
-/// Format-agnostic ingest boundary. Other formats can implement this trait
-/// to produce the neutral TreeArena without going through JSON first.
-pub trait Ingest {
-    fn parse_one(bytes: Vec<u8>, cfg: &PriorityConfig) -> Result<TreeArena>;
-    fn parse_many(
-        inputs: Vec<(String, Vec<u8>)>,
-        cfg: &PriorityConfig,
-    ) -> Result<TreeArena>;
-}
-
 pub mod fileset;
 pub mod formats;
 
@@ -25,8 +15,7 @@ pub mod sampling;
     reason = "Re-exported helpers need to stay public even when unused internally"
 )]
 pub use formats::{
-    parse_json_one, parse_text_many, parse_text_one, parse_text_one_with_mode,
-    parse_yaml_one,
+    parse_json_one, parse_text_one, parse_text_one_with_mode, parse_yaml_one,
 };
 
 /// Dispatch the appropriate ingest path for any supported input kind.
@@ -37,16 +26,32 @@ pub fn ingest_into_arena(
     match input {
         InputKind::Json(bytes) => parse_json_one(bytes, priority_cfg),
         InputKind::Yaml(bytes) => parse_yaml_one(bytes, priority_cfg),
-        InputKind::Text { bytes, atomic } => {
+        InputKind::Text { bytes, mode } => {
+            let atomic = matches!(mode, crate::TextMode::CodeLike);
             parse_text_one_with_mode(bytes, priority_cfg, atomic)
         }
-        InputKind::TextMany { inputs, .. } => {
-            parse_text_many(inputs, priority_cfg)
+        InputKind::TextMany { inputs, mode } => {
+            let atomic = matches!(mode, crate::TextMode::CodeLike);
+            ingest_text_many(inputs, atomic, priority_cfg)
         }
         InputKind::Fileset(inputs) => {
             fileset::parse_fileset_multi(inputs, priority_cfg)
         }
     }
+}
+
+fn ingest_text_many(
+    inputs: Vec<(String, Vec<u8>)>,
+    atomic: bool,
+    priority_cfg: &PriorityConfig,
+) -> Result<TreeArena> {
+    let mut arenas: Vec<(String, TreeArena)> =
+        Vec::with_capacity(inputs.len());
+    for (name, bytes) in inputs {
+        let arena = parse_text_one_with_mode(bytes, priority_cfg, atomic)?;
+        arenas.push((name, arena));
+    }
+    Ok(crate::ingest::fileset::build_fileset_root(arenas))
 }
 
 #[cfg(test)]
@@ -76,7 +81,7 @@ mod tests {
             ("a.json".to_string(), b"{}".to_vec()),
             ("b.json".to_string(), b"[]".to_vec()),
         ];
-        let arena = formats::json::JsonIngest::parse_many(
+        let arena = formats::json::build_json_tree_arena_from_many(
             inputs,
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )

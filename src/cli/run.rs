@@ -73,7 +73,12 @@ fn run_from_stdin(
         InputFormat::Text => headson::headson(
             headson::InputKind::Text {
                 bytes: input_bytes,
-                atomic: matches!(cfg.template, headson::OutputTemplate::Code),
+                mode: if matches!(cfg.template, headson::OutputTemplate::Code)
+                {
+                    headson::TextMode::CodeLike
+                } else {
+                    headson::TextMode::Plain
+                },
             },
             &cfg,
             &prio,
@@ -193,7 +198,7 @@ fn run_from_paths(
                 headson::headson(
                     headson::InputKind::Text {
                         bytes,
-                        atomic: true,
+                        mode: headson::TextMode::CodeLike,
                     },
                     &cfg_code,
                     &prio,
@@ -203,10 +208,14 @@ fn run_from_paths(
                 headson::headson(
                     headson::InputKind::Text {
                         bytes,
-                        atomic: matches!(
+                        mode: if matches!(
                             cfg.template,
                             headson::OutputTemplate::Code
-                        ),
+                        ) {
+                            headson::TextMode::CodeLike
+                        } else {
+                            headson::TextMode::Plain
+                        },
                     },
                     &cfg,
                     &prio,

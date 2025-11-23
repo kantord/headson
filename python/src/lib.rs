@@ -123,6 +123,11 @@ fn summarize(
         char_budget: None,
         line_budget: None,
     };
+    let text_mode = if matches!(cfg.template, OutputTemplate::Code) {
+        headson_core::TextMode::CodeLike
+    } else {
+        headson_core::TextMode::Plain
+    };
     py.detach(|| match input_format.to_ascii_lowercase().as_str() {
         "json" => {
             headson_core::headson(InputKind::Json(input), &cfg, &prio, budgets)
@@ -135,7 +140,7 @@ fn summarize(
         "text" => headson_core::headson(
             InputKind::Text {
                 bytes: input,
-                atomic: matches!(cfg.template, OutputTemplate::Code),
+                mode: text_mode,
             },
             &cfg,
             &prio,

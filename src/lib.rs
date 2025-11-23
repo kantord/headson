@@ -40,16 +40,22 @@ pub use serialization::types::{
     ColorMode, OutputTemplate, RenderConfig, Style,
 };
 
+#[derive(Copy, Clone, Debug)]
+pub enum TextMode {
+    Plain,
+    CodeLike,
+}
+
 pub enum InputKind {
     Json(Vec<u8>),
     Yaml(Vec<u8>),
     Text {
         bytes: Vec<u8>,
-        atomic: bool,
+        mode: TextMode,
     },
     TextMany {
         inputs: Vec<(String, Vec<u8>)>,
-        atomic: bool,
+        mode: TextMode,
     },
     Fileset(Vec<FilesetInput>),
 }

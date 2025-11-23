@@ -10,7 +10,6 @@ use crate::utils::{
 use crate::{ArrayBias, PriorityConfig};
 
 use crate::ingest::sampling::{ArraySamplerKind, choose_indices};
-use crate::ingest::{Ingest, fileset::build_fileset_root};
 
 fn normalize_newlines(s: &str) -> Cow<'_, str> {
     // Normalize CRLF and CR to LF in a single allocation when needed.
@@ -466,44 +465,8 @@ pub fn build_text_tree_arena_from_bytes(
     build_text_tree_arena_plain(bytes, config)
 }
 
-#[allow(
-    clippy::unnecessary_wraps,
-    reason = "Signature matches other ingest helpers and trait expectations"
-)]
-pub fn build_text_tree_arena_from_many(
-    inputs: Vec<(String, Vec<u8>)>,
-    config: &PriorityConfig,
-) -> Result<JsonTreeArena> {
-    let mut arenas: Vec<(String, JsonTreeArena)> =
-        Vec::with_capacity(inputs.len());
-    for (key, bytes) in inputs {
-        let atomic = crate::utils::extensions::is_code_like_name(&key);
-        let arena =
-            build_text_tree_arena_from_bytes_with_mode(bytes, config, atomic)?;
-        arenas.push((key, arena));
-    }
-    Ok(build_fileset_root(arenas))
-}
-
-pub struct TextIngest;
-
-impl Ingest for TextIngest {
-    fn parse_one(
-        bytes: Vec<u8>,
-        cfg: &PriorityConfig,
-    ) -> Result<JsonTreeArena> {
-        parse_text_one(bytes, cfg)
-    }
-
-    fn parse_many(
-        inputs: Vec<(String, Vec<u8>)>,
-        cfg: &PriorityConfig,
-    ) -> Result<JsonTreeArena> {
-        build_text_tree_arena_from_many(inputs, cfg)
-    }
-}
-
 /// Convenience functions for the Text ingest path.
+#[allow(dead_code, reason = "Public API parity with other ingest helpers")]
 pub fn parse_text_one(
     bytes: Vec<u8>,
     cfg: &PriorityConfig,
@@ -518,13 +481,6 @@ pub fn parse_text_one_with_mode(
     atomic_strings: bool,
 ) -> Result<JsonTreeArena> {
     build_text_tree_arena_from_bytes_with_mode(bytes, cfg, atomic_strings)
-}
-
-pub fn parse_text_many(
-    inputs: Vec<(String, Vec<u8>)>,
-    cfg: &PriorityConfig,
-) -> Result<JsonTreeArena> {
-    TextIngest::parse_many(inputs, cfg)
 }
 
 #[cfg(test)]
@@ -562,7 +518,7 @@ mod tests {
         let out = crate::headson(
             InputKind::Text {
                 bytes: input,
-                atomic: matches!(cfg.template, OutputTemplate::Code),
+                mode: crate::TextMode::Plain,
             },
             &cfg,
             &prio,
@@ -588,7 +544,7 @@ mod tests {
         let out = crate::headson(
             InputKind::Text {
                 bytes: input.into_bytes(),
-                atomic: matches!(cfg.template, OutputTemplate::Code),
+                mode: crate::TextMode::Plain,
             },
             &cfg,
             &prio,

@@ -23,7 +23,7 @@ fn headson_many_text_smoke() {
     let out = headson::headson(
         headson::InputKind::TextMany {
             inputs,
-            atomic: false,
+            mode: headson::TextMode::Plain,
         },
         &cfg,
         &prio,
