@@ -122,3 +122,25 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           # Pin interpreters to avoid building against unsupported Python
           args: --skip-existing -i 3.10 3.11 3.12 3.13 3.14
+
+  trigger-binaries:
+    name: Trigger Release Binaries
+    needs: [release-plz-release]
+    if: ${{ needs.release-plz-release.result == 'success' && needs.release-plz-release.outputs.releases_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Dispatch Release Binaries workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'release-binaries.yml',
+              ref: context.ref.replace('refs/heads/', ''),
+              inputs: {}
+            })
