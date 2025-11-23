@@ -1,21 +1,25 @@
 name: Release Binaries
 
 on:
-  release:
-    types: [published]
-  push:
-    tags: ["headson-v*"]
+  workflow_run:
+    workflows: ["Release-plz"]
+    types: [completed]
   workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
 
 jobs:
   build:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == github.event.repository.default_branch)
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-    permissions:
-      contents: write
-      id-token: write
     env:
       CI: true
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -32,9 +36,9 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu
 
       - name: Set up Rust (stable)
-        uses: actions/setup-rust@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          rust-version: stable
+          toolchain: stable
 
       - name: Add Rust targets (Linux)
         if: runner.os == 'Linux'
@@ -55,9 +59,6 @@ jobs:
       - name: Install cargo-dist (v0.30.2) on Windows
         if: runner.os == 'Windows'
         run: powershell -ExecutionPolicy Bypass -Command "Invoke-RestMethod 'https://github.com/axodotdev/cargo-dist/releases/download/v0.30.2/cargo-dist-installer.ps1' | Invoke-Expression"
-
-      - name: Add cargo bin to PATH
-        run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v4.0.0
