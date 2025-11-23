@@ -36,9 +36,7 @@ pub fn ingest_into_arena(
 ) -> Result<TreeArena> {
     match input {
         InputKind::Json(bytes) => parse_json_one(bytes, priority_cfg),
-        InputKind::JsonMany(inputs) => parse_json_many(inputs, priority_cfg),
         InputKind::Yaml(bytes) => parse_yaml_one(bytes, priority_cfg),
-        InputKind::YamlMany(inputs) => parse_yaml_many(inputs, priority_cfg),
         InputKind::Text { bytes, atomic } => {
             parse_text_one_with_mode(bytes, priority_cfg, atomic)
         }

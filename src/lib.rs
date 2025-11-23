@@ -42,9 +42,7 @@ pub use serialization::types::{
 
 pub enum InputKind {
     Json(Vec<u8>),
-    JsonMany(Vec<(String, Vec<u8>)>),
     Yaml(Vec<u8>),
-    YamlMany(Vec<(String, Vec<u8>)>),
     Text {
         bytes: Vec<u8>,
         atomic: bool,

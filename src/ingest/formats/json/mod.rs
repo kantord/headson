@@ -85,6 +85,7 @@ pub fn parse_json_one(
     JsonIngest::parse_one(bytes, cfg)
 }
 
+#[allow(dead_code)]
 pub fn parse_json_many(
     inputs: Vec<(String, Vec<u8>)>,
     cfg: &PriorityConfig,
