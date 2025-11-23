@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
@@ -43,13 +43,13 @@ jobs:
 
       - name: Install cross (musl)
         if: contains(matrix.target, '-musl')
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@f79fe7514db78f0a7bdba3cb6dd9c1baa7d046d9 # v2
         with:
           tool: cross
 
       - name: Setup cross toolchain (non-musl Linux)
         if: startsWith(matrix.os, 'ubuntu') && !contains(matrix.target, '-musl')
-        uses: taiki-e/setup-cross-toolchain-action@v1
+        uses: taiki-e/setup-cross-toolchain-action@84e58a47fc2bcd3821a2aa8c153595bbffb0e10f # v1
         with:
           target: ${{ matrix.target }}
           runner: none
@@ -59,7 +59,7 @@ jobs:
         run: echo "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static" >> "${GITHUB_ENV}"
 
       - name: Build and upload binary
-        uses: taiki-e/upload-rust-binary-action@v1
+        uses: taiki-e/upload-rust-binary-action@3962470d6e7f1993108411bc3f75a135ec67fc8c # v1
         with:
           bin: hson
           target: ${{ matrix.target }}
