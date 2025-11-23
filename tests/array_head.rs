@@ -81,7 +81,7 @@ fn array_head_json_contains_first_k_values() {
     prio.prefer_tail_arrays = false;
     prio.array_sampler = headson::ArraySamplerStrategy::Head;
     let out = headson::headson(
-        input.into_bytes(),
+        headson::InputKind::Json(input.into_bytes()),
         &render_cfg,
         &prio,
         headson::Budgets {

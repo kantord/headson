@@ -128,7 +128,7 @@ fn array_tail_json_contains_last_k_values() {
     prio.prefer_tail_arrays = true;
     prio.array_sampler = headson::ArraySamplerStrategy::Tail;
     let out = headson::headson(
-        input.into_bytes(),
+        headson::InputKind::Json(input.into_bytes()),
         &render_cfg,
         &prio,
         headson::Budgets {

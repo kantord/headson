@@ -38,6 +38,22 @@ pub use serialization::types::{
     ColorMode, OutputTemplate, RenderConfig, Style,
 };
 
+pub enum InputKind {
+    Json(Vec<u8>),
+    JsonMany(Vec<(String, Vec<u8>)>),
+    Yaml(Vec<u8>),
+    YamlMany(Vec<(String, Vec<u8>)>),
+    Text {
+        bytes: Vec<u8>,
+        atomic: bool,
+    },
+    TextMany {
+        inputs: Vec<(String, Vec<u8>)>,
+        atomic: bool,
+    },
+    Fileset(Vec<FilesetInput>),
+}
+
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Budgets {
     pub byte_budget: Option<usize>,
@@ -182,144 +198,56 @@ fn select_best_k(
 
 // (removed) render_final helper was inlined to centralize optional debug dump
 
-// Optional new public API that accepts both budgets explicitly.
 pub fn headson(
-    input: Vec<u8>,
+    input: InputKind,
     config: &RenderConfig,
     priority_cfg: &PriorityConfig,
     budgets: Budgets,
 ) -> Result<String> {
-    let arena = crate::ingest::parse_json_one(input, priority_cfg)?;
-    let order_build = order::build_order(&arena, priority_cfg)?;
+    let order_build = match input {
+        InputKind::Json(bytes) => {
+            let arena = crate::ingest::parse_json_one(bytes, priority_cfg)?;
+            order::build_order(&arena, priority_cfg)?
+        }
+        InputKind::JsonMany(inputs) => {
+            let arena = crate::ingest::parse_json_many(inputs, priority_cfg)?;
+            order::build_order(&arena, priority_cfg)?
+        }
+        InputKind::Yaml(bytes) => {
+            let arena = crate::ingest::parse_yaml_one(bytes, priority_cfg)?;
+            order::build_order(&arena, priority_cfg)?
+        }
+        InputKind::YamlMany(inputs) => {
+            let arena = crate::ingest::parse_yaml_many(inputs, priority_cfg)?;
+            order::build_order(&arena, priority_cfg)?
+        }
+        InputKind::Text { bytes, atomic } => {
+            let arena =
+                crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
+                    bytes,
+                    priority_cfg,
+                    atomic,
+                )?;
+            order::build_order(&arena, priority_cfg)?
+        }
+        InputKind::TextMany { inputs, .. } => {
+            let arena = crate::ingest::parse_text_many(inputs, priority_cfg)?;
+            order::build_order(&arena, priority_cfg)?
+        }
+        InputKind::Fileset(inputs) => {
+            let arena = crate::ingest::fileset::parse_fileset_multi(
+                inputs,
+                priority_cfg,
+            )?;
+            order::build_order(&arena, priority_cfg)?
+        }
+    };
     Ok(find_largest_render_under_budgets(
         &order_build,
         config,
         budgets,
     ))
 }
-
-pub fn headson_many(
-    inputs: Vec<(String, Vec<u8>)>,
-    config: &RenderConfig,
-    priority_cfg: &PriorityConfig,
-    budgets: Budgets,
-) -> Result<String> {
-    let arena = crate::ingest::parse_json_many(inputs, priority_cfg)?;
-    let order_build = order::build_order(&arena, priority_cfg)?;
-    Ok(find_largest_render_under_budgets(
-        &order_build,
-        config,
-        budgets,
-    ))
-}
-
-pub fn headson_yaml(
-    input: Vec<u8>,
-    config: &RenderConfig,
-    priority_cfg: &PriorityConfig,
-    budgets: Budgets,
-) -> Result<String> {
-    let arena = crate::ingest::parse_yaml_one(input, priority_cfg)?;
-    let order_build = order::build_order(&arena, priority_cfg)?;
-    Ok(find_largest_render_under_budgets(
-        &order_build,
-        config,
-        budgets,
-    ))
-}
-
-pub fn headson_many_yaml(
-    inputs: Vec<(String, Vec<u8>)>,
-    config: &RenderConfig,
-    priority_cfg: &PriorityConfig,
-    budgets: Budgets,
-) -> Result<String> {
-    let arena = crate::ingest::parse_yaml_many(inputs, priority_cfg)?;
-    let order_build = order::build_order(&arena, priority_cfg)?;
-    Ok(find_largest_render_under_budgets(
-        &order_build,
-        config,
-        budgets,
-    ))
-}
-
-pub fn headson_text(
-    input: Vec<u8>,
-    config: &RenderConfig,
-    priority_cfg: &PriorityConfig,
-    budgets: Budgets,
-) -> Result<String> {
-    let atomic = matches!(config.template, OutputTemplate::Code);
-    let arena =
-        crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
-            input,
-            priority_cfg,
-            atomic,
-        )?;
-    let order_build = order::build_order(&arena, priority_cfg)?;
-    Ok(find_largest_render_under_budgets(
-        &order_build,
-        config,
-        budgets,
-    ))
-}
-
-/// Text ingest where each line is treated as an atomic string (non-truncatable).
-/// Useful for source-like files to avoid mid-line ellipses; omissions happen at line level.
-pub fn headson_text_code(
-    input: Vec<u8>,
-    config: &RenderConfig,
-    priority_cfg: &PriorityConfig,
-    budgets: Budgets,
-) -> Result<String> {
-    let arena =
-        crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
-            input,
-            priority_cfg,
-            true,
-        )?;
-    let order_build = order::build_order(&arena, priority_cfg)?;
-    Ok(find_largest_render_under_budgets(
-        &order_build,
-        config,
-        budgets,
-    ))
-}
-
-pub fn headson_many_text(
-    inputs: Vec<(String, Vec<u8>)>,
-    config: &RenderConfig,
-    priority_cfg: &PriorityConfig,
-    budgets: Budgets,
-) -> Result<String> {
-    let arena = crate::ingest::parse_text_many(inputs, priority_cfg)?;
-    let order_build = order::build_order(&arena, priority_cfg)?;
-    Ok(find_largest_render_under_budgets(
-        &order_build,
-        config,
-        budgets,
-    ))
-}
-
-/// Fileset helper that ingests each input according to its detected format.
-pub fn headson_fileset_multi(
-    inputs: Vec<crate::ingest::fileset::FilesetInput>,
-    config: &RenderConfig,
-    priority_cfg: &PriorityConfig,
-    budgets: Budgets,
-) -> Result<String> {
-    let arena =
-        crate::ingest::fileset::parse_fileset_multi(inputs, priority_cfg)?;
-    let order_build = order::build_order(&arena, priority_cfg)?;
-    Ok(find_largest_render_under_budgets(
-        &order_build,
-        config,
-        budgets,
-    ))
-}
-
-// Debug-enabled public APIs (CLI uses these when --debug is set). These emit a
-// JSON trace to stderr that reflects the exact inclusion set used for stdout.
 
 fn constrained_dimensions(
     budgets: Budgets,

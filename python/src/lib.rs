@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use headson_core::{
-    ArraySamplerStrategy, Budgets, ColorMode, OutputTemplate, PriorityConfig,
-    RenderConfig, Style,
+    ArraySamplerStrategy, Budgets, ColorMode, InputKind, OutputTemplate,
+    PriorityConfig, RenderConfig, Style,
 };
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
@@ -124,14 +124,24 @@ fn summarize(
         line_budget: None,
     };
     py.detach(|| match input_format.to_ascii_lowercase().as_str() {
-        "json" => headson_core::headson(input, &cfg, &prio, budgets)
-            .map_err(to_pyerr),
-        "yaml" | "yml" => {
-            headson_core::headson_yaml(input, &cfg, &prio, budgets)
+        "json" => {
+            headson_core::headson(InputKind::Json(input), &cfg, &prio, budgets)
                 .map_err(to_pyerr)
         }
-        "text" => headson_core::headson_text(input, &cfg, &prio, budgets)
-            .map_err(to_pyerr),
+        "yaml" | "yml" => {
+            headson_core::headson(InputKind::Yaml(input), &cfg, &prio, budgets)
+                .map_err(to_pyerr)
+        }
+        "text" => headson_core::headson(
+            InputKind::Text {
+                bytes: input,
+                atomic: matches!(cfg.template, OutputTemplate::Code),
+            },
+            &cfg,
+            &prio,
+            budgets,
+        )
+        .map_err(to_pyerr),
         other => Err(to_pyerr(anyhow::anyhow!(
             "unknown input_format: {} (expected 'json' | 'yaml' | 'text')",
             other

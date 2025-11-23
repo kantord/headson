@@ -72,8 +72,8 @@ environments:
         },
     ];
 
-    let out = headson::headson_fileset_multi(
-        inputs,
+    let out = headson::headson(
+        headson::InputKind::Fileset(inputs),
         &render_config(),
         &priority_config(),
         Budgets {

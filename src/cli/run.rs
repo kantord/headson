@@ -58,15 +58,27 @@ fn run_from_stdin(
     let budgets = effective.budgets;
     let chosen_input = cli.input_format.unwrap_or(InputFormat::Json);
     let out = match chosen_input {
-        InputFormat::Json => {
-            headson::headson(input_bytes, &cfg, &prio, budgets)?
-        }
-        InputFormat::Yaml => {
-            headson::headson_yaml(input_bytes, &cfg, &prio, budgets)?
-        }
-        InputFormat::Text => {
-            headson::headson_text(input_bytes, &cfg, &prio, budgets)?
-        }
+        InputFormat::Json => headson::headson(
+            headson::InputKind::Json(input_bytes),
+            &cfg,
+            &prio,
+            budgets,
+        )?,
+        InputFormat::Yaml => headson::headson(
+            headson::InputKind::Yaml(input_bytes),
+            &cfg,
+            &prio,
+            budgets,
+        )?,
+        InputFormat::Text => headson::headson(
+            headson::InputKind::Text {
+                bytes: input_bytes,
+                atomic: matches!(cfg.template, headson::OutputTemplate::Code),
+            },
+            &cfg,
+            &prio,
+            budgets,
+        )?,
     };
     Ok(out)
 }
@@ -117,7 +129,12 @@ fn run_from_paths(
                 headson::FilesetInput { name, bytes, kind }
             })
             .collect();
-        let out = headson::headson_fileset_multi(files, &cfg, &prio, budgets)?;
+        let out = headson::headson(
+            headson::InputKind::Fileset(files),
+            &cfg,
+            &prio,
+            budgets,
+        )?;
         return Ok((out, ignored));
     }
 
@@ -152,10 +169,18 @@ fn run_from_paths(
     cfg = budget::render_config_for_budgets(cfg, &effective);
     let budgets = effective.budgets;
     let out = match chosen_input {
-        InputFormat::Json => headson::headson(bytes, &cfg, &prio, budgets)?,
-        InputFormat::Yaml => {
-            headson::headson_yaml(bytes, &cfg, &prio, budgets)?
-        }
+        InputFormat::Json => headson::headson(
+            headson::InputKind::Json(bytes),
+            &cfg,
+            &prio,
+            budgets,
+        )?,
+        InputFormat::Yaml => headson::headson(
+            headson::InputKind::Yaml(bytes),
+            &cfg,
+            &prio,
+            budgets,
+        )?,
         InputFormat::Text => {
             let is_code = headson::extensions::is_code_like_name(&lower);
             if is_code && matches!(cli.format, OutputFormat::Auto) {
@@ -165,9 +190,28 @@ fn run_from_paths(
                 )]
                 let mut cfg_code = cfg.clone();
                 cfg_code.template = headson::OutputTemplate::Code;
-                headson::headson_text_code(bytes, &cfg_code, &prio, budgets)?
+                headson::headson(
+                    headson::InputKind::Text {
+                        bytes,
+                        atomic: true,
+                    },
+                    &cfg_code,
+                    &prio,
+                    budgets,
+                )?
             } else {
-                headson::headson_text(bytes, &cfg, &prio, budgets)?
+                headson::headson(
+                    headson::InputKind::Text {
+                        bytes,
+                        atomic: matches!(
+                            cfg.template,
+                            headson::OutputTemplate::Code
+                        ),
+                    },
+                    &cfg,
+                    &prio,
+                    budgets,
+                )?
             }
         }
     };
