@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.25](https://github.com/kantord/headson/compare/headson-v0.7.24...headson-v0.7.25) - 2025-11-24
+
+### Added
+
+- allow optionally counting headers in budgets ([#293](https://github.com/kantord/headson/pull/293))
+
+### Other
+
+- move debug logic to debug.rs ([#292](https://github.com/kantord/headson/pull/292))
+- move format detection logic to ingest module ([#291](https://github.com/kantord/headson/pull/291))
+- remove textmany ([#290](https://github.com/kantord/headson/pull/290))
+- remove some dead code ([#289](https://github.com/kantord/headson/pull/289))
+- add textmode ([#288](https://github.com/kantord/headson/pull/288))
+- remove redundant input kinds ([#287](https://github.com/kantord/headson/pull/287))
+- extract ingest_into_arena ([#286](https://github.com/kantord/headson/pull/286))
+- create pruner module ([#285](https://github.com/kantord/headson/pull/285))
+- have a single headson function ([#284](https://github.com/kantord/headson/pull/284))
+- remove redundant version of headson function ([#282](https://github.com/kantord/headson/pull/282))
+
 ## [0.7.24](https://github.com/kantord/headson/compare/headson-v0.7.23...headson-v0.7.24) - 2025-11-23
 
 ### Fixed
