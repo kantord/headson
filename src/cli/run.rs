@@ -379,6 +379,7 @@ fn collect_glob_matches(
     walker.require_git(false);
     walker.add_custom_ignore_filename(".gitignore");
     // Keep gitignore handling defaults; only include files (no dirs).
+    walker.sort_by_file_name(std::cmp::Ord::cmp);
     for dent in walker.build() {
         let dir_entry = dent?;
         if !dir_entry

@@ -196,3 +196,35 @@ fn non_git_repo_no_sort_keeps_input_order() {
     let names = parse_header_order(&out);
     assert_eq!(names, vec!["a.txt", "b.txt"]);
 }
+
+#[test]
+fn non_git_repo_glob_still_sorts_by_mtime() {
+    let dir = tempdir().expect("tempdir");
+    let a = dir.path().join("a.txt");
+    let b = dir.path().join("b.txt");
+    fs::write(&a, "a").expect("write a");
+    fs::write(&b, "b").expect("write b");
+    // Make b newer than a so sorted order should be b, a.
+    set_file_mtime(&a, FileTime::from_unix_time(1, 0)).expect("mtime a");
+    set_file_mtime(&b, FileTime::from_unix_time(3, 0)).expect("mtime b");
+
+    let mut cmd = cargo_bin_cmd!("hson");
+    let assert = cmd
+        .current_dir(dir.path())
+        .env("XDG_CACHE_HOME", dir.path().join("cache"))
+        .args([
+            "--no-color",
+            "-i",
+            "text",
+            "--debug",
+            "-c",
+            "1000",
+            "-g",
+            "*.txt",
+        ])
+        .assert()
+        .success();
+    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+    let names = parse_header_order(&out);
+    assert_eq!(names, vec!["b.txt", "a.txt"]);
+}
