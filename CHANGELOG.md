@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.27](https://github.com/kantord/headson/compare/headson-v0.7.26...headson-v0.7.27) - 2025-11-24
+
+### Added
+
+- penalize duplicated code lines ([#300](https://github.com/kantord/headson/pull/300))
+
 ## [0.7.26](https://github.com/kantord/headson/compare/headson-v0.7.25...headson-v0.7.26) - 2025-11-24
 
 ### Fixed
