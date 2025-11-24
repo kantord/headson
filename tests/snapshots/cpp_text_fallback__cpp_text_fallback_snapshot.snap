@@ -1,10 +1,7 @@
 ---
 source: tests/cpp_text_fallback.rs
-assertion_line: 27
 expression: out
 ---
- 1: #include <iostream>
- 3: void greet(const std::string& name) {
- 5: }
- 7: int main() {
-19: }
+1: #include <iostream>
+3: void greet(const std::string& name) {
+7: int main() {

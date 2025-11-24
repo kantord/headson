@@ -2,8 +2,6 @@
 source: tests/code_text_fallback_param.rs
 expression: out_default
 ---
- 1: import React from 'react';
- 5: function Item({ i }: { i: number }) {
- 6:   return <li>i: {i}</li>;
- 7: }
-35: }
+1: import React from 'react';
+5: function Item({ i }: { i: number }) {
+6:   return <li>i: {i}</li>;

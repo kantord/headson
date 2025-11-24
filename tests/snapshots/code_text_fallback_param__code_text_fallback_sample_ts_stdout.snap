@@ -4,6 +4,4 @@ expression: out_default
 ---
  1: function greet(name: string) {
  2:   console.log(`Hello, ${name}`);
- 3: }
-15: }
 28: main();

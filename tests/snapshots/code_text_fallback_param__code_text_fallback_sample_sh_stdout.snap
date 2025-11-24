@@ -6,5 +6,4 @@ expression: out_default
  8: compute() {
 10:   local total=0
 11:   for ((i=0; i<n; i++)); do
-19: }
 32: main "$@"

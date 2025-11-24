@@ -740,28 +740,67 @@ fn enforce_force_first_child(
     inclusion_flags: &mut [u32],
     render_id: u32,
 ) {
+    let priority_index = build_priority_index(order_build);
+
     for (idx, force) in order_build.force_first_child.iter().enumerate() {
-        let included =
-            inclusion_flags.get(idx).copied().unwrap_or_default() == render_id;
-        if !*force || !included {
+        if !force_child_parent_included(
+            inclusion_flags,
+            render_id,
+            *force,
+            idx,
+        ) {
             continue;
         }
-        let Some(children) = order_build.children.get(idx) else {
+        let Some(best_child) =
+            best_priority_child(order_build, idx, &priority_index)
+        else {
             continue;
         };
-        let Some(first_child) = children.first() else {
-            continue;
-        };
-        if inclusion_flags[first_child.0] == render_id {
+        if inclusion_flags[best_child.0] == render_id {
             continue;
         }
         crate::utils::graph::mark_node_and_ancestors(
             order_build,
-            *first_child,
+            best_child,
             inclusion_flags,
             render_id,
         );
     }
+}
+
+fn build_priority_index(order_build: &PriorityOrder) -> Vec<usize> {
+    let mut priority_index = vec![usize::MAX; order_build.total_nodes];
+    for (idx, nid) in order_build.by_priority.iter().enumerate() {
+        if let Some(slot) = priority_index.get_mut(nid.0) {
+            *slot = idx;
+        }
+    }
+    priority_index
+}
+
+fn force_child_parent_included(
+    inclusion_flags: &[u32],
+    render_id: u32,
+    force: bool,
+    idx: usize,
+) -> bool {
+    let included =
+        inclusion_flags.get(idx).copied().unwrap_or_default() == render_id;
+    force && included
+}
+
+fn best_priority_child(
+    order_build: &PriorityOrder,
+    parent_idx: usize,
+    priority_index: &[usize],
+) -> Option<NodeId> {
+    let children = order_build.children.get(parent_idx)?;
+    children
+        .iter()
+        .min_by_key(|cid| {
+            priority_index.get(cid.0).copied().unwrap_or(usize::MAX)
+        })
+        .copied()
 }
 
 pub fn prepare_render_set_top_k_and_ancestors(
@@ -898,7 +937,10 @@ pub fn render_top_k(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::order::build_order;
+    use crate::order::types::NodeMetrics;
+    use crate::order::{
+        NodeId, ObjectType, PriorityOrder, RankedNode, build_order,
+    };
     use insta::assert_snapshot;
 
     fn assert_yaml_valid(s: &str) {
@@ -1730,5 +1772,58 @@ mod tests {
         let out = s;
         assert!(out.contains("/* 2 more items */"));
         assert!(out.contains("/* 1 more items */"));
+    }
+
+    #[test]
+    fn force_child_prefers_highest_priority_child() {
+        // Parent has two children; child with PQ id 2 has higher global priority
+        // than child with PQ id 1, but force-first-child currently pulls the
+        // first listed child. This captures the undesired behavior.
+        let order = PriorityOrder {
+            metrics: vec![NodeMetrics::default(); 3],
+            nodes: vec![
+                RankedNode::Array {
+                    node_id: NodeId(0),
+                    key_in_object: None,
+                },
+                RankedNode::Array {
+                    node_id: NodeId(1),
+                    key_in_object: None,
+                },
+                RankedNode::Array {
+                    node_id: NodeId(2),
+                    key_in_object: None,
+                },
+            ],
+            scores: vec![0, 0, 0],
+            parent: vec![None, Some(NodeId(0)), Some(NodeId(0))],
+            children: vec![
+                vec![NodeId(1), NodeId(2)], // first child = NodeId(1)
+                Vec::new(),
+                Vec::new(),
+            ],
+            index_in_parent_array: vec![None, Some(0), Some(1)],
+            by_priority: vec![NodeId(0), NodeId(2), NodeId(1)], // child 2 outranks child 1
+            total_nodes: 3,
+            object_type: vec![ObjectType::Object; 3],
+            force_first_child: vec![true, false, false],
+            code_lines: HashMap::new(),
+            fileset_children: None,
+        };
+        let mut flags = Vec::new();
+        let render_id = 1u32;
+        prepare_render_set_top_k_and_ancestors(
+            &order, 1, &mut flags, render_id,
+        );
+        assert_eq!(
+            flags.get(2).copied().unwrap_or_default(),
+            render_id,
+            "expected highest-priority child to be pulled in alongside force-first parent"
+        );
+        assert_ne!(
+            flags.get(1).copied().unwrap_or_default(),
+            render_id,
+            "lower-priority first child should not be forced when a higher-priority sibling exists"
+        );
     }
 }

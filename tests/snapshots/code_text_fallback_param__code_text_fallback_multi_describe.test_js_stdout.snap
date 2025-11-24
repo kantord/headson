@@ -2,7 +2,6 @@
 source: tests/code_text_fallback_param.rs
 expression: out_default
 ---
-  1: const helper = require('helper');
-  3: describe('suite 0', () => {
-115: });
-229: });
+ 1: const helper = require('helper');
+ 3: describe('suite 0', () => {
+60: describe('suite 1', () => {

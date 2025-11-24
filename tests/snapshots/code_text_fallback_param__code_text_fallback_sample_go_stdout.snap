@@ -3,8 +3,7 @@ source: tests/code_text_fallback_param.rs
 expression: out_default
 ---
  1: package main
- 7: }
+ 3: import "fmt"
  9: func compute(n int) int {
 11:     for i := 0; i < n; i++ {
 18:     return total
-30: }

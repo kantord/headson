@@ -4,7 +4,5 @@ expression: out_default
 ---
  1: function greet(name) {
  2:   console.log(`Hello, ${name}`);
- 3: }
  5: function compute(n) {
-15: }
 28: main();
