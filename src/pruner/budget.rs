@@ -28,6 +28,8 @@ pub fn find_largest_render_under_budgets(
         && config.show_fileset_headers
         && root_is_fileset
     {
+        // Lines budgets are for content; measure without fileset headers so
+        // section titles/summary lines remain “free” during selection.
         measure_cfg.show_fileset_headers = false;
     }
     let (k, mut inclusion_flags, render_set_id) =

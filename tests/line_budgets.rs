@@ -145,6 +145,12 @@ fn fileset_global_lines() {
     );
     // Should contain at least one fileset header.
     assert!(out.contains("==> "));
+    // Total lines may exceed the budget because headers/summary lines are free.
+    let total = count_lines_normalized(&out);
+    assert!(
+        total > non_header,
+        "expected free header lines to be present: total={total}, content={non_header}, out={out:?}"
+    );
 }
 
 #[test]
