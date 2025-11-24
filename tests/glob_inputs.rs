@@ -47,15 +47,25 @@ fn glob_expands_recursively_and_respects_gitignore() {
     let out = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(ok, "glob run should succeed: {out}");
     let keep_header =
-        format!("==> {} <==", Path::new("src/keep.json").display());
+        format!("==> {} <==", Path::new("src").join("keep.json").display());
     let nested_header = format!(
         "==> {} <==",
-        Path::new("src/nested/also_keep.json").display()
+        Path::new("src")
+            .join("nested")
+            .join("also_keep.json")
+            .display()
     );
-    let ignored_header =
-        format!("==> {} <==", Path::new("src/ignored.json").display());
-    let ignored_nested_header =
-        format!("==> {} <==", Path::new("src/nested/ignored.json").display());
+    let ignored_header = format!(
+        "==> {} <==",
+        Path::new("src").join("ignored.json").display()
+    );
+    let ignored_nested_header = format!(
+        "==> {} <==",
+        Path::new("src")
+            .join("nested")
+            .join("ignored.json")
+            .display()
+    );
     assert!(
         out.contains(&keep_header),
         "expected keep.json to be included: {out}"
