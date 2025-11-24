@@ -74,4 +74,3 @@ jobs:
           tar: all
           zip: windows
           token: ${{ secrets.GITHUB_TOKEN }}
-          ref: ${{ github.event.release.tag_name }}
