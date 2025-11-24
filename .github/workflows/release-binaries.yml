@@ -1,19 +1,21 @@
 name: Release Binaries
 
 on:
-  push:
-    tags:
-      - "headson-v*"
   release:
     types: [published]
 
 permissions:
   contents: write
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   upload-assets:
+    name: ${{ matrix.target }}
+    if: startsWith(github.event.release.tag_name, 'headson-v')
     runs-on: ${{ matrix.os }}
-    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'headson-v')
     strategy:
       fail-fast: false
       matrix:
@@ -39,10 +41,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
         with:
           fetch-depth: 0
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -72,4 +74,4 @@ jobs:
           tar: all
           zip: windows
           token: ${{ secrets.GITHUB_TOKEN }}
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ github.event.release.tag_name }}
