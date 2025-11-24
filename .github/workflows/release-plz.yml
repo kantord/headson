@@ -126,21 +126,7 @@ jobs:
   trigger-binaries:
     name: Trigger Release Binaries
     needs: [release-plz-release]
-    if: ${{ needs.release-plz-release.result == 'success' && needs.release-plz-release.outputs.releases_created == 'true' }}
+    if: ${{ false }} # binaries are built on release published; no manual dispatch needed
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      actions: write
     steps:
-      - name: Dispatch Release Binaries workflow
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'release-binaries.yml',
-              ref: context.ref.replace('refs/heads/', ''),
-              inputs: {}
-            })
+      - run: echo "release-binaries now runs on release published; no dispatch needed"
