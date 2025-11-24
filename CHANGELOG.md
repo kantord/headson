@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.26](https://github.com/kantord/headson/compare/headson-v0.7.25...headson-v0.7.26) - 2025-11-24
+
+### Fixed
+
+- improve "prioritize at least one line" logic ([#297](https://github.com/kantord/headson/pull/297))
+
+### Other
+
+- remove a few useless comments ([#295](https://github.com/kantord/headson/pull/295))
+
 ## [0.7.25](https://github.com/kantord/headson/compare/headson-v0.7.24...headson-v0.7.25) - 2025-11-24
 
 ### Added
