@@ -44,3 +44,5 @@ pub(crate) const CODE_BRACE_ONLY_PENALTY: u128 = ARRAY_INDEX_CUBIC_WEIGHT;
 /// Penalty for shallow code arrays (e.g., standalone braces) under tight line budgets.
 pub(crate) const CODE_SHALLOW_ARRAY_PENALTY: u128 =
     ARRAY_INDEX_CUBIC_WEIGHT / 2;
+/// Penalty for code lines that repeat across the input/fileset to deprioritize boilerplate.
+pub(crate) const CODE_DUPLICATE_LINE_PENALTY: u128 = ARRAY_INDEX_CUBIC_WEIGHT;

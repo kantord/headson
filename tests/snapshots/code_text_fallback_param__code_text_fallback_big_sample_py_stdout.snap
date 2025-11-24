@@ -4,5 +4,5 @@ expression: out_default
 ---
   1: # big sample file for snapshot testing
 486: def func_100():
-488:     for j in range(3):
+487:     print("line 100")
 976: def func_200():

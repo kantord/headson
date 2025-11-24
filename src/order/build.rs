@@ -155,6 +155,7 @@ struct Scope<'a> {
     arena_to_pq: &'a mut Vec<Option<usize>>,
     node_slots: &'a mut Vec<Option<usize>>,
     arena_slots: Option<&'a [Option<usize>]>,
+    duplicate_counts: &'a std::collections::HashMap<String, usize>,
 }
 
 impl<'a> Scope<'a> {
@@ -197,6 +198,16 @@ impl<'a> Scope<'a> {
             && code_array_is_brace_only(self.arena, child_arena_id)
         {
             return None;
+        }
+        if let Some(token) = child_node.atomic_token.as_ref() {
+            if child_node.prefers_parent_line {
+                if let Some(count) = self.duplicate_counts.get(token.trim()) {
+                    if *count > 1 {
+                        score =
+                            score.saturating_add(CODE_DUPLICATE_LINE_PENALTY);
+                    }
+                }
+            }
         }
         if matches!(
             child_kind,
@@ -680,6 +691,7 @@ pub fn build_order(
     arena: &JsonTreeArena,
     config: &PriorityConfig,
 ) -> Result<PriorityOrder> {
+    let duplicate_counts = compute_duplicate_line_counts(arena);
     let mut next_pq_id: usize = 0;
     let mut nodes: Vec<RankedNode> = Vec::new();
     let mut scores: Vec<u128> = Vec::new();
@@ -768,6 +780,7 @@ pub fn build_order(
             arena_to_pq: &mut arena_to_pq,
             node_slots: &mut node_slots,
             arena_slots: fileset_slots.as_deref(),
+            duplicate_counts: &duplicate_counts,
         };
         scope.process_entry(&entry, &mut order);
         if next_pq_id >= SAFETY_CAP {
@@ -817,10 +830,67 @@ pub fn build_order(
     })
 }
 
+fn compute_duplicate_line_counts(
+    arena: &JsonTreeArena,
+) -> std::collections::HashMap<String, usize> {
+    use std::collections::HashMap;
+    let mut counts: HashMap<String, usize> = HashMap::new();
+    for node in &arena.nodes {
+        if node.prefers_parent_line {
+            if let Some(token) = node.atomic_token.as_ref() {
+                let norm = token.trim();
+                if norm.is_empty() {
+                    continue;
+                }
+                *counts.entry(norm.to_string()).or_insert(0) += 1;
+            }
+        }
+    }
+    counts
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use insta::assert_snapshot;
+
+    #[test]
+    fn duplicate_lines_penalized_in_code_mode() {
+        let input = b"dup\nunique\ndup\n".to_vec();
+        let mut cfg = PriorityConfig::new(usize::MAX, 5);
+        cfg.line_budget_only = false;
+        let arena = crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
+            input,
+            &cfg,
+            true,
+        )
+        .expect("arena");
+        let build = super::build_order(&arena, &cfg).expect("order");
+        // Collect priority positions for each line token.
+        let mut positions = std::collections::HashMap::new();
+        for (pos, nid) in build.by_priority.iter().enumerate() {
+            if let Some(RankedNode::AtomicLeaf { token, .. }) =
+                build.nodes.get(nid.0)
+            {
+                positions
+                    .entry(token.clone())
+                    .or_insert_with(Vec::new)
+                    .push(pos);
+            }
+        }
+        let unique_pos = positions
+            .get("unique")
+            .and_then(|v| v.first().copied())
+            .unwrap_or(usize::MAX);
+        let dup_pos = positions
+            .get("dup")
+            .and_then(|v| v.first().copied())
+            .unwrap_or(usize::MAX);
+        assert!(
+            unique_pos < dup_pos,
+            "expected unique line to outrank duplicate line: unique at {unique_pos}, dup at {dup_pos}"
+        );
+    }
 
     #[test]
     fn order_empty_array() {
