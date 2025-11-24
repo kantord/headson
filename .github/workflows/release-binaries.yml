@@ -2,6 +2,9 @@ name: Release Binaries
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "headson-v*"
 
 permissions:
   contents: write
