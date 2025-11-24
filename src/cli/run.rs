@@ -1,9 +1,12 @@
+use std::collections::HashSet;
+use std::env;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use content_inspector::{ContentType, inspect};
+use ignore::{WalkBuilder, overrides::OverrideBuilder};
 
 use crate::cli::args::{
     Cli, InputFormat, OutputFormat, get_render_config_from,
@@ -18,10 +21,11 @@ pub type IgnoreNotices = Vec<String>;
 
 pub fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
     let render_cfg = get_render_config_from(cli);
-    if cli.inputs.is_empty() {
+    let resolved_inputs = resolve_inputs(cli)?;
+    if resolved_inputs.is_empty() {
         Ok((run_from_stdin(cli, &render_cfg)?, Vec::new()))
     } else {
-        run_from_paths(cli, &render_cfg)
+        run_from_paths(cli, &render_cfg, &resolved_inputs)
     }
 }
 
@@ -96,11 +100,12 @@ fn run_from_stdin(
 fn run_from_paths(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
+    inputs: &[PathBuf],
 ) -> Result<(String, IgnoreNotices)> {
-    let sorted_inputs = if cli.inputs.len() > 1 && !cli.no_sort {
-        sort_paths_for_fileset(&cli.inputs)
+    let sorted_inputs = if inputs.len() > 1 && !cli.no_sort {
+        sort_paths_for_fileset(inputs)
     } else {
-        cli.inputs.clone()
+        inputs.to_vec()
     };
     if std::env::var_os("HEADSON_FRECEN_TRACE").is_some() {
         eprintln!("run_from_paths sorted_inputs={sorted_inputs:?}");
@@ -116,7 +121,7 @@ fn run_from_paths(
     let input_count = included.max(1);
     let effective = budget::compute_effective(cli, input_count);
     let prio = budget::build_priority_config(cli, &effective);
-    if cli.inputs.len() > 1 {
+    if inputs.len() > 1 {
         if !matches!(cli.format, OutputFormat::Auto) {
             bail!(
                 "--format cannot be customized for filesets; remove it or set to auto"
@@ -289,6 +294,104 @@ fn ingest_paths(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
         }
     }
     Ok((out, ignored))
+}
+
+fn resolve_inputs(cli: &Cli) -> Result<Vec<PathBuf>> {
+    let cwd =
+        env::current_dir().context("failed to read current directory")?;
+    let mut seen_abs: HashSet<PathBuf> = HashSet::new();
+    let mut inputs: Vec<PathBuf> = Vec::new();
+
+    for path in &cli.inputs {
+        push_unique(&cwd, &mut seen_abs, &mut inputs, path);
+    }
+
+    if !cli.globs.is_empty() {
+        let gitignore = load_gitignore(&cwd);
+        collect_glob_matches(
+            &cli.globs,
+            &cwd,
+            &mut seen_abs,
+            &mut inputs,
+            gitignore.as_ref(),
+        )?;
+    }
+
+    Ok(inputs)
+}
+
+fn push_unique(
+    cwd: &Path,
+    seen_abs: &mut HashSet<PathBuf>,
+    inputs: &mut Vec<PathBuf>,
+    path: &Path,
+) {
+    let abs = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        cwd.join(path)
+    };
+    if seen_abs.insert(abs) {
+        inputs.push(path.to_path_buf());
+    }
+}
+
+fn relativize<'a>(path: &'a Path, cwd: &Path) -> &'a Path {
+    path.strip_prefix(cwd)
+        .or_else(|_| path.strip_prefix("."))
+        .unwrap_or(path)
+}
+
+fn load_gitignore(cwd: &Path) -> Option<ignore::gitignore::Gitignore> {
+    let gi_path = cwd.join(".gitignore");
+    let (gi, err) = ignore::gitignore::Gitignore::new(gi_path);
+    if err.is_none() { Some(gi) } else { None }
+}
+
+fn collect_glob_matches(
+    patterns: &[String],
+    cwd: &Path,
+    seen_abs: &mut HashSet<PathBuf>,
+    inputs: &mut Vec<PathBuf>,
+    gitignore: Option<&ignore::gitignore::Gitignore>,
+) -> Result<()> {
+    let mut overrides = OverrideBuilder::new(".");
+    for pattern in patterns {
+        overrides
+            .add(pattern)
+            .with_context(|| format!("invalid glob pattern: {pattern}"))?;
+    }
+    let overrides = overrides
+        .build()
+        .context("failed to compile glob overrides")?;
+
+    let mut walker = WalkBuilder::new(".");
+    walker.overrides(overrides);
+    walker.git_ignore(true);
+    walker.git_global(true);
+    walker.git_exclude(true);
+    walker.require_git(false);
+    walker.add_custom_ignore_filename(".gitignore");
+    // Keep gitignore handling defaults; only include files (no dirs).
+    for dent in walker.build() {
+        let dir_entry = dent?;
+        if !dir_entry
+            .file_type()
+            .map(|ft| ft.is_file())
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        let path = dir_entry.into_path();
+        let rel = relativize(&path, cwd).to_path_buf();
+        if gitignore.is_some_and(|gi| {
+            gi.matched_path_or_any_parents(&rel, false).is_ignore()
+        }) {
+            continue;
+        }
+        push_unique(cwd, seen_abs, inputs, &rel);
+    }
+    Ok(())
 }
 
 fn resolve_effective_template_for_stdin(

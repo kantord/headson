@@ -129,6 +129,14 @@ pub struct Cli {
     )]
     pub no_color: bool,
     #[arg(
+        short = 'g',
+        long = "glob",
+        value_name = "PATTERN",
+        num_args = 0..,
+        help = "Additional input glob(s) to expand (respects .gitignore). Can be used multiple times."
+    )]
+    pub globs: Vec<String>,
+    #[arg(
         value_name = "INPUT",
         value_hint = clap::ValueHint::FilePath,
         num_args = 0..,
