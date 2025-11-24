@@ -1,6 +1,7 @@
 #[test]
 fn headson_many_text_smoke() {
     // Cover the public library entrypoint for multi-file text ingest.
+    use headson::{FilesetInput, FilesetInputKind};
     let cfg = headson::RenderConfig {
         template: headson::OutputTemplate::Text,
         indent_unit: "  ".to_string(),
@@ -17,14 +18,23 @@ fn headson_many_text_smoke() {
     };
     let prio = headson::PriorityConfig::new(100, 100);
     let inputs = vec![
-        ("a.txt".to_string(), b"one\ntwo\n".to_vec()),
-        ("b.log".to_string(), b"alpha\nbeta\n".to_vec()),
+        FilesetInput {
+            name: "a.txt".to_string(),
+            bytes: b"one\ntwo\n".to_vec(),
+            kind: FilesetInputKind::Text {
+                atomic_lines: false,
+            },
+        },
+        FilesetInput {
+            name: "b.log".to_string(),
+            bytes: b"alpha\nbeta\n".to_vec(),
+            kind: FilesetInputKind::Text {
+                atomic_lines: false,
+            },
+        },
     ];
     let out = headson::headson(
-        headson::InputKind::TextMany {
-            inputs,
-            mode: headson::TextMode::Plain,
-        },
+        headson::InputKind::Fileset(inputs),
         &cfg,
         &prio,
         headson::Budgets {

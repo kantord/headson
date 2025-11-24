@@ -28,28 +28,10 @@ pub fn ingest_into_arena(
             let atomic = matches!(mode, crate::TextMode::CodeLike);
             parse_text_one_with_mode(bytes, priority_cfg, atomic)
         }
-        InputKind::TextMany { inputs, mode } => {
-            let atomic = matches!(mode, crate::TextMode::CodeLike);
-            ingest_text_many(inputs, atomic, priority_cfg)
-        }
         InputKind::Fileset(inputs) => {
             fileset::parse_fileset_multi(inputs, priority_cfg)
         }
     }
-}
-
-fn ingest_text_many(
-    inputs: Vec<(String, Vec<u8>)>,
-    atomic: bool,
-    priority_cfg: &PriorityConfig,
-) -> Result<TreeArena> {
-    let mut arenas: Vec<(String, TreeArena)> =
-        Vec::with_capacity(inputs.len());
-    for (name, bytes) in inputs {
-        let arena = parse_text_one_with_mode(bytes, priority_cfg, atomic)?;
-        arenas.push((name, arena));
-    }
-    Ok(crate::ingest::fileset::build_fileset_root(arenas))
 }
 
 #[cfg(test)]

@@ -49,14 +49,7 @@ pub enum TextMode {
 pub enum InputKind {
     Json(Vec<u8>),
     Yaml(Vec<u8>),
-    Text {
-        bytes: Vec<u8>,
-        mode: TextMode,
-    },
-    TextMany {
-        inputs: Vec<(String, Vec<u8>)>,
-        mode: TextMode,
-    },
+    Text { bytes: Vec<u8>, mode: TextMode },
     Fileset(Vec<FilesetInput>),
 }
 
