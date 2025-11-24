@@ -41,46 +41,14 @@ pub fn find_largest_render_under_budgets(
     );
 
     if config.debug {
-        let mut no_color_cfg = config.clone();
-        no_color_cfg.color_enabled = false;
-        let measured = crate::serialization::render_from_render_set(
+        crate::debug::emit_render_debug(
             order_build,
             &inclusion_flags,
             render_set_id,
-            &no_color_cfg,
+            config,
+            budgets,
+            k,
         );
-        let stats = crate::utils::measure::count_output_stats(
-            &measured,
-            budgets.char_budget.is_some(),
-        );
-        let constrained_by = constrained_dimensions(budgets, &stats);
-        let out_stats = crate::debug::OutputStatsDbg {
-            bytes: stats.bytes,
-            chars: stats.chars,
-            lines: stats.lines,
-        };
-        let array_sampler = crate::ArraySamplerStrategy::Default;
-        let dbg = crate::debug::build_render_debug_json(
-            crate::debug::RenderDebugArgs {
-                order: order_build,
-                inclusion_flags: &inclusion_flags,
-                render_id: render_set_id,
-                cfg: config,
-                budgets,
-                style: config.style,
-                array_sampler,
-                top_k: k,
-                output_stats: out_stats,
-                constrained_by,
-            },
-        );
-        #[allow(
-            clippy::print_stderr,
-            reason = "Debug mode emits JSON to stderr to aid troubleshooting"
-        )]
-        {
-            eprintln!("{dbg}");
-        }
     }
 
     crate::serialization::render_from_render_set(

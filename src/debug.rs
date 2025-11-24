@@ -199,6 +199,56 @@ fn make_metrics(order: &PriorityOrder, id: usize) -> MetricsDbg {
     }
 }
 
+pub(crate) fn emit_render_debug(
+    order_build: &crate::PriorityOrder,
+    inclusion_flags: &[u32],
+    render_set_id: u32,
+    config: &crate::RenderConfig,
+    budgets: crate::Budgets,
+    top_k: usize,
+) {
+    let mut no_color_cfg = config.clone();
+    no_color_cfg.color_enabled = false;
+    let measured = crate::serialization::render_from_render_set(
+        order_build,
+        inclusion_flags,
+        render_set_id,
+        &no_color_cfg,
+    );
+    let stats = crate::utils::measure::count_output_stats(
+        &measured,
+        budgets.char_budget.is_some(),
+    );
+    let constrained_by =
+        crate::pruner::budget::constrained_dimensions(budgets, &stats);
+    let out_stats = crate::debug::OutputStatsDbg {
+        bytes: stats.bytes,
+        chars: stats.chars,
+        lines: stats.lines,
+    };
+    let array_sampler = crate::ArraySamplerStrategy::Default;
+    let dbg =
+        crate::debug::build_render_debug_json(crate::debug::RenderDebugArgs {
+            order: order_build,
+            inclusion_flags,
+            render_id: render_set_id,
+            cfg: config,
+            budgets,
+            style: config.style,
+            array_sampler,
+            top_k,
+            output_stats: out_stats,
+            constrained_by,
+        });
+    #[allow(
+        clippy::print_stderr,
+        reason = "Debug mode emits JSON to stderr to aid troubleshooting"
+    )]
+    {
+        eprintln!("{dbg}");
+    }
+}
+
 fn string_preview(value: &str) -> String {
     // Show a small, grapheme-aware prefix to aid debugging.
     let prefix = crate::utils::text::take_n_graphemes(value, 32);
