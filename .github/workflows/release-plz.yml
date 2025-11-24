@@ -38,7 +38,7 @@ jobs:
         with:
           command: release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   release-plz-pr:
@@ -70,7 +70,7 @@ jobs:
         with:
           command: release-pr
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   python-wheels:
@@ -105,21 +105,21 @@ jobs:
           command: build
           args: --release --locked -m python/Cargo.toml -i 3.10 3.11 3.12 3.13 3.14
           manylinux: "2014"
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
           before-script-linux: yum install -y perl-core
 
       - name: Build sdist
         uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1
         with:
           command: sdist
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
           # no --locked for sdist (not supported by maturin)
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@86b9d133d34bc1b40018696f782949dac11bd380 # v1
         with:
           command: publish
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
           # Pin interpreters to avoid building against unsupported Python
           args: --skip-existing -i 3.10 3.11 3.12 3.13 3.14
 
