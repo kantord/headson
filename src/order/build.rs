@@ -200,12 +200,9 @@ impl<'a> Scope<'a> {
             return None;
         }
         if let Some(token) = child_node.atomic_token.as_ref() {
-            if child_node.prefers_parent_line {
-                if let Some(count) = self.duplicate_counts.get(token.trim()) {
-                    if *count > 1 {
-                        score =
-                            score.saturating_add(CODE_DUPLICATE_LINE_PENALTY);
-                    }
+            if let Some(count) = self.duplicate_counts.get(token.trim()) {
+                if *count > 1 {
+                    score = score.saturating_add(CODE_DUPLICATE_LINE_PENALTY);
                 }
             }
         }
@@ -836,14 +833,12 @@ fn compute_duplicate_line_counts(
     use std::collections::HashMap;
     let mut counts: HashMap<String, usize> = HashMap::new();
     for node in &arena.nodes {
-        if node.prefers_parent_line {
-            if let Some(token) = node.atomic_token.as_ref() {
-                let norm = token.trim();
-                if norm.is_empty() {
-                    continue;
-                }
-                *counts.entry(norm.to_string()).or_insert(0) += 1;
+        if let Some(token) = node.atomic_token.as_ref() {
+            let norm = token.trim();
+            if norm.is_empty() {
+                continue;
             }
+            *counts.entry(norm.to_string()).or_insert(0) += 1;
         }
     }
     counts
@@ -889,6 +884,61 @@ mod tests {
         assert!(
             unique_pos < dup_pos,
             "expected unique line to outrank duplicate line: unique at {unique_pos}, dup at {dup_pos}"
+        );
+    }
+
+    #[test]
+    fn duplicate_lines_penalized_across_fileset() {
+        // Two files share "dup"; each has a unique line. Unique lines should outrank the shared duplicate.
+        let mut cfg = PriorityConfig::new(usize::MAX, 5);
+        cfg.line_budget_only = false;
+        let arena = crate::ingest::fileset::build_fileset_root(vec![
+            (
+                "a".to_string(),
+                crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
+                    b"dup\nunique_a\n".to_vec(),
+                    &cfg,
+                    true,
+                )
+                .expect("arena"),
+            ),
+            (
+                "b".to_string(),
+                crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
+                    b"dup\nunique_b\n".to_vec(),
+                    &cfg,
+                    true,
+                )
+                .expect("arena"),
+            ),
+        ]);
+        let build = super::build_order(&arena, &cfg).expect("order");
+        let mut positions = std::collections::HashMap::new();
+        for (pos, nid) in build.by_priority.iter().enumerate() {
+            if let Some(RankedNode::AtomicLeaf { token, .. }) =
+                build.nodes.get(nid.0)
+            {
+                positions
+                    .entry(token.clone())
+                    .or_insert_with(Vec::new)
+                    .push(pos);
+            }
+        }
+        let dup_pos = positions
+            .get("dup")
+            .and_then(|v| v.first().copied())
+            .unwrap_or(usize::MAX);
+        let unique_pos_a = positions
+            .get("unique_a")
+            .and_then(|v| v.first().copied())
+            .unwrap_or(usize::MAX);
+        let unique_pos_b = positions
+            .get("unique_b")
+            .and_then(|v| v.first().copied())
+            .unwrap_or(usize::MAX);
+        assert!(
+            unique_pos_a < dup_pos && unique_pos_b < dup_pos,
+            "expected per-file unique lines to outrank shared duplicate: ua={unique_pos_a}, ub={unique_pos_b}, dup={dup_pos}"
         );
     }
 
