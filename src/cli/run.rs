@@ -388,7 +388,9 @@ fn configure_walker(
     walker.require_git(false);
     walker.add_custom_ignore_filename(".gitignore");
     // Deterministic expansion keeps traversal stable; fileset ordering is still
-    // resolved later (mtime/frecency or --no-sort) on the collected list.
+    // resolved later (mtime/frecency or --no-sort) on the collected list. Even
+    // with --no-sort, we keep this lexicographic expansion so glob results are
+    // predictable across platforms.
     walker.sort_by_file_name(std::cmp::Ord::cmp);
 }
 
