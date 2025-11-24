@@ -21,7 +21,6 @@
 use anyhow::Result;
 
 mod debug;
-mod format;
 mod ingest;
 mod order;
 mod pruner;

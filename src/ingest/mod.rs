@@ -6,6 +6,7 @@ use crate::utils::tree_arena::JsonTreeArena as TreeArena;
 use crate::InputKind;
 
 pub mod fileset;
+pub mod format;
 pub mod formats;
 
 pub mod sampling;

@@ -1,6 +1,5 @@
 /// Logical data formats detected from filenames or paths.
-/// This is independent from input ingestion; it controls how an item
-/// should be rendered within a fileset based on its filename extension.
+/// Used to choose ingest/render defaults for fileset entries.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Format {
     Json,

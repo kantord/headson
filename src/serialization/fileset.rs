@@ -1,5 +1,5 @@
 use super::RenderScope;
-use crate::format::Format;
+use crate::ingest::format::Format;
 use crate::order::{NodeId, ObjectType, ROOT_PQ_ID};
 use crate::serialization::types::OutputTemplate;
 
