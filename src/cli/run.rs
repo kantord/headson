@@ -372,14 +372,33 @@ fn collect_glob_matches(
         .context("failed to compile glob overrides")?;
 
     let mut walker = WalkBuilder::new(".");
+    configure_walker(&mut walker, overrides);
+    collect_from_walker(&walker, cwd, seen_abs, inputs, gitignore)?;
+    Ok(())
+}
+
+fn configure_walker(
+    walker: &mut WalkBuilder,
+    overrides: ignore::overrides::Override,
+) {
     walker.overrides(overrides);
     walker.git_ignore(true);
     walker.git_global(true);
     walker.git_exclude(true);
     walker.require_git(false);
     walker.add_custom_ignore_filename(".gitignore");
-    // Keep gitignore handling defaults; only include files (no dirs).
+    // Deterministic expansion keeps traversal stable; fileset ordering is still
+    // resolved later (mtime/frecency or --no-sort) on the collected list.
     walker.sort_by_file_name(std::cmp::Ord::cmp);
+}
+
+fn collect_from_walker(
+    walker: &WalkBuilder,
+    cwd: &Path,
+    seen_abs: &mut HashSet<PathBuf>,
+    inputs: &mut Vec<PathBuf>,
+    gitignore: Option<&ignore::gitignore::Gitignore>,
+) -> Result<()> {
     for dent in walker.build() {
         let dir_entry = dent?;
         if !dir_entry
