@@ -109,3 +109,25 @@ fn glob_inputs_deduplicate_overlaps_and_explicit_paths() {
         "two.json should appear once from the glob: {out}"
     );
 }
+
+#[test]
+fn glob_with_no_matches_emits_notice_instead_of_blocking_on_stdin() {
+    let tmp = tempfile::tempdir().expect("tmpdir");
+    let root = tmp.path();
+
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
+    let assert = cmd
+        .current_dir(root)
+        .args(["--no-color", "-g", "*.json"])
+        .assert();
+
+    let ok = assert.get_output().status.success();
+    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(ok, "glob with no matches should still succeed: {err}");
+    assert_eq!(out, "\n", "stdout should stay empty: {out:?}");
+    assert!(
+        err.contains("No files matched"),
+        "expected notice about unmatched globs: {err:?}"
+    );
+}

@@ -23,6 +23,12 @@ pub fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
     let render_cfg = get_render_config_from(cli);
     let resolved_inputs = resolve_inputs(cli)?;
     if resolved_inputs.is_empty() {
+        if !cli.globs.is_empty() {
+            return Ok((
+                String::new(),
+                vec!["No files matched provided globs".to_string()],
+            ));
+        }
         Ok((run_from_stdin(cli, &render_cfg)?, Vec::new()))
     } else {
         run_from_paths(cli, &render_cfg, &resolved_inputs)
