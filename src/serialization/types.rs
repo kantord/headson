@@ -45,6 +45,8 @@ pub struct RenderConfig {
     pub primary_source_name: Option<String>,
     // When false, suppress fileset section headers and summary lines.
     pub show_fileset_headers: bool,
+    // When true, fileset headers and summaries count toward line budgets.
+    pub count_fileset_headers_in_budgets: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

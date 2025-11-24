@@ -42,6 +42,7 @@ fn yaml_coloring_applies_and_strips_to_plain() {
         debug: false,
         primary_source_name: None,
         show_fileset_headers: true,
+        count_fileset_headers_in_budgets: false,
     };
     let cfg_color = RenderConfig {
         color_enabled: true,

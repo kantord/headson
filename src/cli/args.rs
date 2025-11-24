@@ -26,6 +26,14 @@ pub struct Cli {
         help = "Per-file line budget (adds up across files if --global-lines not set). Fileset headers/summary lines do not consume this budget."
     )]
     pub lines: Option<usize>,
+    #[arg(
+        short = 'H',
+        long = "count-headers",
+        action = ArgAction::SetTrue,
+        default_value_t = false,
+        help = "Count fileset headers/summary lines toward budgets instead of treating them as free"
+    )]
+    pub count_headers: bool,
     #[arg(long = "no-space", default_value_t = false)]
     pub no_space: bool,
     #[arg(
@@ -212,6 +220,7 @@ pub fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         debug: cli.debug,
         primary_source_name: None,
         show_fileset_headers: !cli.no_header,
+        count_fileset_headers_in_budgets: cli.count_headers,
     }
 }
 

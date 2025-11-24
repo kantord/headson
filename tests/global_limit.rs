@@ -137,7 +137,7 @@ fn global_limit_can_omit_entire_files() {
         "tests/fixtures/explicit/string_escaping.json",
     ];
     // Impose a small global limit so not all files fit.
-    let (ok, out, err) = run_paths_json(&paths, &["-C", "120"]);
+    let (ok, out, err) = run_paths_json(&paths, &["-C", "80"]);
     assert!(ok, "should succeed: {err}");
     let kept = count_section_headers(&out);
     assert!(kept < paths.len(), "expected some files omitted: {out}");

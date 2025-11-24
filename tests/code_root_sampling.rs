@@ -138,6 +138,7 @@ fn run_code_fileset_with_budget(budget: usize) -> String {
     let mut cmd = cargo_bin_cmd!("hson");
     cmd.arg("--no-color")
         .arg("--no-sort")
+        .arg("-H")
         .arg("-c")
         .arg(budget.to_string())
         .arg("-f")

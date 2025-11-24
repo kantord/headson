@@ -102,6 +102,7 @@ fn colored_vs_plain_match_after_stripping_under_char_budget() {
         debug: false,
         primary_source_name: None,
         show_fileset_headers: true,
+        count_fileset_headers_in_budgets: false,
     };
     let cfg_color = headson::RenderConfig {
         color_enabled: true,
@@ -179,6 +180,7 @@ fn fileset_char_budget_scales_with_inputs() {
     let assert = cmd
         .args([
             "--no-color",
+            "-H",
             "-u",
             "40",
             "-f",

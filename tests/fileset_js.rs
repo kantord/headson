@@ -31,7 +31,7 @@ fn js_fileset_shows_omitted_summary_when_budget_small() {
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let p3 = "tests/fixtures/explicit/string_escaping.json";
     // Use a tiny budget to ensure some files are omitted
-    let out = run_js(&[p1, p2, p3], 50);
+    let out = run_js(&[p1, p2, p3], 30);
     assert!(
         out.contains("more files"),
         "expected omitted summary in output: {out:?}"

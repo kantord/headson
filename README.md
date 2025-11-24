@@ -115,7 +115,7 @@ Notes:
   - Caps the number of lines in the output.
   - Incompatible with `--no-newline`.
   - Multiple inputs: defaults to `<LINES> * number_of_inputs`; `--global-lines` caps the total.
-  - Fileset headers, blank separators, and summary lines do not count toward the line cap; only actual content lines are considered.
+  - Fileset headers, blank separators, and summary lines do not count toward the line cap by default; only actual content lines are considered. Pass `-H/--count-headers` to include headers/summaries in the line budget.
 
 - Interactions and precedence
   - All active budgets are enforced simultaneously. The render must satisfy all of: bytes (if set), chars (if set), and lines (if set). The strictest cap wins.

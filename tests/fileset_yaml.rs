@@ -24,7 +24,26 @@ fn yaml_fileset_omitted_summary_when_budget_small() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let p3 = "tests/fixtures/explicit/string_escaping.json";
-    let out = run_yaml(&[p1, p2, p3], 50);
+    let budget = 30usize;
+    let budget_s = budget.to_string();
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
+    let assert = cmd
+        .args([
+            "--no-color",
+            "--no-sort",
+            "-H",
+            "-c",
+            &budget_s,
+            "-f",
+            "auto",
+            p1,
+            p2,
+            p3,
+        ])
+        .assert()
+        .success();
+    let out =
+        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
     assert!(out.contains("more files"));
 }
 

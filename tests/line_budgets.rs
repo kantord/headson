@@ -27,6 +27,10 @@ fn count_lines_normalized(s: &str) -> usize {
     }
 }
 
+fn count_bytes(s: &str) -> usize {
+    s.len()
+}
+
 fn count_non_header_lines(s: &str) -> usize {
     s.lines()
         .filter(|line| {
@@ -150,6 +154,141 @@ fn fileset_global_lines() {
     assert!(
         total > non_header,
         "expected free header lines to be present: total={total}, content={non_header}, out={out:?}"
+    );
+}
+
+#[test]
+fn fileset_global_lines_count_headers() {
+    use std::fs;
+    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let a = tmp.path().join("a.json");
+    let b = tmp.path().join("b.json");
+    fs::write(&a, b"{}\n").unwrap();
+    fs::write(&b, b"[]\n").unwrap();
+    let out = run(&[
+        "-f",
+        "auto",
+        "--global-lines",
+        "5",
+        "-H",
+        a.to_str().unwrap(),
+        b.to_str().unwrap(),
+    ]);
+    let total = count_lines_normalized(&out);
+    assert!(
+        total <= 5,
+        "global lines cap should include headers when -H is set: total={total}, out={out:?}"
+    );
+    let header_a = format!("==> {} <==", a.display());
+    assert!(
+        out.contains(&header_a),
+        "first fileset header should appear: {out:?}"
+    );
+    let header_b = format!("==> {} <==", b.display());
+    assert!(
+        out.contains(&header_b),
+        "second fileset header should appear when budget allows: {out:?}"
+    );
+    assert!(
+        !out.contains("more files"),
+        "no summary expected when both files fit: {out:?}"
+    );
+}
+
+#[test]
+fn fileset_per_file_lines_count_headers() {
+    use std::fs;
+    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let a = tmp.path().join("a.json");
+    let b = tmp.path().join("b.json");
+    fs::write(&a, b"{}\n").unwrap();
+    fs::write(&b, b"[]\n").unwrap();
+    let out = run(&[
+        "-f",
+        "auto",
+        "--lines",
+        "2",
+        "-H",
+        a.to_str().unwrap(),
+        b.to_str().unwrap(),
+    ]);
+    let total = count_lines_normalized(&out);
+    assert!(
+        total <= 4,
+        "per-file line budget scales by inputs; headers should count when -H is set: total={total}, out={out:?}"
+    );
+    let header_a = format!("==> {} <==", a.display());
+    assert!(
+        out.contains(&header_a),
+        "first fileset header should appear: {out:?}"
+    );
+    let header_b = format!("==> {} <==", b.display());
+    assert!(
+        !out.contains(&header_b),
+        "second fileset should be omitted to honor counted headers at the chosen cap: {out:?}"
+    );
+    assert!(
+        out.contains("more files"),
+        "summary should indicate omitted files when headers count: {out:?}"
+    );
+}
+
+#[test]
+fn fileset_global_bytes_count_headers() {
+    use std::fs;
+    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let a = tmp.path().join("a.json");
+    let b = tmp.path().join("b.json");
+    let c = tmp.path().join("c.json");
+    fs::write(&a, b"{}\n").unwrap();
+    fs::write(&b, b"{}\n").unwrap();
+    fs::write(&c, b"{}\n").unwrap();
+    let cap = 120usize;
+    let out = run(&[
+        "-f",
+        "auto",
+        "--global-bytes",
+        &cap.to_string(),
+        "-H",
+        a.to_str().unwrap(),
+        b.to_str().unwrap(),
+        c.to_str().unwrap(),
+    ]);
+    assert!(
+        count_bytes(&out) <= cap,
+        "global byte cap should include headers when -H is set: len={}, cap={}, out={out:?}",
+        count_bytes(&out),
+        cap
+    );
+    let header_a = format!("==> {} <==", a.display());
+    assert!(out.contains(&header_a), "first header present");
+    assert!(
+        out.contains("more files"),
+        "summary should appear when not all files fit under counted headers"
+    );
+}
+
+#[test]
+fn fileset_chars_count_headers() {
+    use std::fs;
+    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let a = tmp.path().join("a.json");
+    let b = tmp.path().join("b.json");
+    fs::write(&a, b"{}\n").unwrap();
+    fs::write(&b, b"{}\n").unwrap();
+    // chars budget multiplies by input count (2 files => 240 chars).
+    let out = run(&[
+        "-f",
+        "auto",
+        "-u",
+        "120",
+        "-H",
+        a.to_str().unwrap(),
+        b.to_str().unwrap(),
+    ]);
+    assert!(
+        out.chars().count() <= 240,
+        "chars cap should include headers when -H is set"
     );
 }
 

@@ -24,11 +24,11 @@ pub fn find_largest_render_under_budgets(
         .is_some_and(|t| *t == crate::order::ObjectType::Fileset);
     let mut measure_cfg = config.clone();
     measure_cfg.color_enabled = false;
-    if budgets.line_budget.is_some()
-        && config.show_fileset_headers
+    if config.show_fileset_headers
         && root_is_fileset
+        && !config.count_fileset_headers_in_budgets
     {
-        // Lines budgets are for content; measure without fileset headers so
+        // Budgets are for content; measure without fileset headers so
         // section titles/summary lines remain “free” during selection.
         measure_cfg.show_fileset_headers = false;
     }
