@@ -89,3 +89,29 @@ fn grep_pins_sampled_array_elements() {
         "strong grep should expand the effective budget beyond the user cap to include matches"
     );
 }
+
+#[test]
+fn grep_highlights_matching_keys() {
+    let input = br#"{"needle":123,"other":456}"#.to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "--color",
+            "--no-sort",
+            "-c",
+            "50",
+            "-f",
+            "json",
+            "-t",
+            "default",
+            "--grep",
+            "needle",
+        ])
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("\u{001b}[43mneedle\u{001b}[0m"),
+        "matching keys should be highlighted when color is enabled"
+    );
+}

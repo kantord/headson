@@ -16,7 +16,7 @@ pub enum Style {
     Detailed,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct RenderConfig {
     pub template: OutputTemplate,
     pub indent_unit: String,
@@ -47,6 +47,8 @@ pub struct RenderConfig {
     pub show_fileset_headers: bool,
     // When true, fileset headers and summaries count toward line budgets.
     pub count_fileset_headers_in_budgets: bool,
+    // Optional regex for highlighting grep matches during rendering (color modes only).
+    pub grep_highlight: Option<regex::Regex>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

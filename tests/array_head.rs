@@ -77,6 +77,7 @@ fn array_head_json_contains_first_k_values() {
         primary_source_name: None,
         show_fileset_headers: true,
         count_fileset_headers_in_budgets: false,
+        grep_highlight: None,
     };
     let mut prio = headson::PriorityConfig::new(usize::MAX, 15);
     prio.prefer_tail_arrays = false;

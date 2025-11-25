@@ -1,5 +1,6 @@
 use crate::order::ObjectType;
 use crate::order::{NodeId, NodeKind, PriorityOrder, ROOT_PQ_ID, RankedNode};
+use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
 pub mod color;
@@ -28,6 +29,7 @@ pub(crate) struct RenderScope<'a> {
     // Optional global width for line number alignment when enabled.
     line_number_width: Option<usize>,
     code_highlight_cache: HashMap<usize, Arc<Vec<String>>>,
+    grep_highlight: Option<Regex>,
 }
 
 impl<'a> RenderScope<'a> {
@@ -332,7 +334,7 @@ impl<'a> RenderScope<'a> {
                 "serialize_string called for non-string node: id={id}"
             ),
         };
-        if matches!(
+        let rendered = if matches!(
             self.config.template,
             crate::serialization::types::OutputTemplate::Text
                 | crate::serialization::types::OutputTemplate::Code
@@ -355,7 +357,8 @@ impl<'a> RenderScope<'a> {
             );
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
-        }
+        };
+        self.maybe_highlight_value(rendered)
     }
 
     #[allow(
@@ -383,7 +386,7 @@ impl<'a> RenderScope<'a> {
                 "serialize_string called for non-string node: id={id}"
             ),
         };
-        if matches!(
+        let rendered = if matches!(
             template,
             crate::serialization::types::OutputTemplate::Text
                 | crate::serialization::types::OutputTemplate::Code
@@ -406,14 +409,16 @@ impl<'a> RenderScope<'a> {
             );
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
-        }
+        };
+        self.maybe_highlight_value(rendered)
     }
 
     fn serialize_atomic(&self, id: usize) -> String {
-        match &self.order.nodes[id] {
+        let rendered = match &self.order.nodes[id] {
             RankedNode::AtomicLeaf { token, .. } => token.clone(),
             _ => unreachable!("atomic leaf without token: id={id}"),
-        }
+        };
+        self.maybe_highlight_value(rendered)
     }
 
     fn write_node(
@@ -440,7 +445,7 @@ impl<'a> RenderScope<'a> {
                     // For text/code templates, push raw string without quotes or color.
                     out.push_str(&s);
                 } else {
-                    out.push_string_literal(&s);
+                    out.push_string_literal(&self.maybe_highlight_value(s));
                 }
             }
             RankedNode::AtomicLeaf { .. } => {
@@ -575,7 +580,9 @@ impl<'a> RenderScope<'a> {
                 kept += 1;
                 let child = &self.order.nodes[child_id.0];
                 let raw_key = child.key_in_object().unwrap_or("");
-                let key = crate::utils::json::json_string(raw_key);
+                let key = self.maybe_highlight_value(
+                    crate::utils::json::json_string(raw_key),
+                );
                 let val =
                     self.render_node_to_string(child_id.0, depth + 1, true);
                 children_pairs.push((i, (key, val)));
@@ -600,7 +607,9 @@ impl<'a> RenderScope<'a> {
                 kept += 1;
                 let child = &self.order.nodes[child_id.0];
                 let raw_key = child.key_in_object().unwrap_or("");
-                let key = crate::utils::json::json_string(raw_key);
+                let key = self.maybe_highlight_value(
+                    crate::utils::json::json_string(raw_key),
+                );
                 let val = self.render_node_to_string_with_template(
                     child_id.0,
                     depth + 1,
@@ -731,6 +740,43 @@ impl<'a> RenderScope<'a> {
             }
         }
     }
+
+    fn maybe_highlight_value(&self, rendered: String) -> String {
+        if !self.config.color_enabled {
+            return rendered;
+        }
+        if matches!(
+            self.config.style,
+            crate::serialization::types::Style::Strict
+        ) {
+            return rendered;
+        }
+        if matches!(
+            self.config.template,
+            crate::serialization::types::OutputTemplate::Code
+        ) {
+            // Code template already contains syntax highlighting; avoid mixing layers.
+            return rendered;
+        }
+        let Some(re) = &self.grep_highlight else {
+            return rendered;
+        };
+        highlight_matches(re, &rendered)
+    }
+}
+
+fn highlight_matches(re: &Regex, text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut last = 0usize;
+    for m in re.find_iter(text) {
+        out.push_str(&text[last..m.start()]);
+        out.push_str("\u{001b}[43m");
+        out.push_str(m.as_str());
+        out.push_str("\u{001b}[0m");
+        last = m.end();
+    }
+    out.push_str(&text[last..]);
+    out
 }
 
 /// Prepare a render set by including the first `top_k` nodes by priority
@@ -908,6 +954,7 @@ pub fn render_from_render_set(
         config,
         line_number_width,
         code_highlight_cache: HashMap::new(),
+        grep_highlight: config.grep_highlight.clone(),
     };
     let mut s = String::new();
     let mut out = Out::new(&mut s, config, line_number_width);
@@ -979,6 +1026,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_snapshot!("arena_render_empty", out);
@@ -1019,6 +1067,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         // Sanity: output should contain CRLF newlines and render the object child across lines.
@@ -1061,6 +1110,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_snapshot!("arena_render_single", out);
@@ -1104,6 +1154,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_snapshot!("array_omitted_pseudo_head", out_head);
@@ -1128,6 +1179,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_snapshot!("array_omitted_pseudo_tail", out_tail);
@@ -1169,6 +1221,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_snapshot!("array_omitted_js_head", out_head);
@@ -1192,6 +1245,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_snapshot!("array_omitted_js_tail", out_tail);
@@ -1233,6 +1287,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_yaml_valid(&out_head);
@@ -1257,6 +1312,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_yaml_valid(&out_tail);
@@ -1295,6 +1351,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1333,6 +1390,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1369,6 +1427,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1433,6 +1492,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1508,6 +1568,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         // Expect the first 5 characters plus an ellipsis, as a valid JSON string literal.
@@ -1546,6 +1607,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_yaml_valid(&out);
@@ -1591,6 +1653,7 @@ mod tests {
             primary_source_name: None,
             show_fileset_headers: true,
             count_fileset_headers_in_budgets: false,
+            grep_highlight: None,
         };
         let scope = RenderScope {
             order: &build,
@@ -1599,6 +1662,7 @@ mod tests {
             config: &cfg,
             line_number_width: None,
             code_highlight_cache: HashMap::new(),
+            grep_highlight: None,
         };
         // Atomic leaves never report omitted counts.
         let none = scope.omitted_for(crate::order::ROOT_PQ_ID, 0);
@@ -1635,6 +1699,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         assert_snapshot!("inline_open_array_in_object_json", out);
@@ -1674,6 +1739,7 @@ mod tests {
                 primary_source_name: None,
                 show_fileset_headers: true,
                 count_fileset_headers_in_budgets: false,
+                grep_highlight: None,
             },
         );
         // Should be a valid JS object with one property and an omitted summary.
@@ -1728,6 +1794,7 @@ mod tests {
             primary_source_name: None,
             show_fileset_headers: true,
             count_fileset_headers_in_budgets: false,
+            grep_highlight: None,
         }
     }
 

@@ -103,6 +103,7 @@ fn colored_vs_plain_match_after_stripping_under_char_budget() {
         primary_source_name: None,
         show_fileset_headers: true,
         count_fileset_headers_in_budgets: false,
+        grep_highlight: None,
     };
     let cfg_color = headson::RenderConfig {
         color_enabled: true,

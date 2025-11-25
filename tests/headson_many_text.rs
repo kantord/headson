@@ -16,6 +16,7 @@ fn headson_many_text_smoke() {
         primary_source_name: None,
         show_fileset_headers: true,
         count_fileset_headers_in_budgets: false,
+        grep_highlight: None,
     };
     let prio = headson::PriorityConfig::new(100, 100);
     let inputs = vec![

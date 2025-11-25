@@ -235,6 +235,7 @@ pub fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         primary_source_name: None,
         show_fileset_headers: !cli.no_header,
         count_fileset_headers_in_budgets: cli.count_headers,
+        grep_highlight: None,
     }
 }
 
