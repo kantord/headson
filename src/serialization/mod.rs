@@ -916,6 +916,7 @@ pub fn render_from_render_set(
 }
 
 /// Convenience: prepare the render set for `top_k` nodes and render in one call.
+#[allow(dead_code, reason = "Used by tests and pruner budget measurements")]
 pub fn render_top_k(
     order_build: &PriorityOrder,
     top_k: usize,
@@ -931,8 +932,6 @@ pub fn render_top_k(
     );
     render_from_render_set(order_build, inclusion_flags, render_id, config)
 }
-
-//
 
 #[cfg(test)]
 mod tests {

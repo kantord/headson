@@ -32,14 +32,11 @@ fn matches_ranked(node: &RankedNode, re: &Regex) -> bool {
     node.key_in_object().is_some_and(|k| re.is_match(k))
 }
 
-/// Find all nodes that match the regex (or whose keys match) and mark their
-/// ancestor chain for guaranteed inclusion.
-pub(crate) fn compute_grep_state(
+fn mark_matches_and_ancestors(
     order: &PriorityOrder,
-    grep: &GrepConfig,
-) -> Option<GrepState> {
-    let re = grep.regex.as_ref()?;
-    let mut must_keep = vec![false; order.total_nodes];
+    re: &Regex,
+    must_keep: &mut [bool],
+) {
     for (idx, node) in order.nodes.iter().enumerate() {
         if !matches_ranked(node, re) {
             continue;
@@ -54,6 +51,17 @@ pub(crate) fn compute_grep_state(
             cursor = order.parent.get(raw).and_then(|p| *p);
         }
     }
+}
+
+/// Find all nodes that match the regex (or whose keys match) and mark their
+/// ancestor chain for guaranteed inclusion.
+pub(crate) fn compute_grep_state(
+    order: &PriorityOrder,
+    grep: &GrepConfig,
+) -> Option<GrepState> {
+    let re = grep.regex.as_ref()?;
+    let mut must_keep = vec![false; order.total_nodes];
+    mark_matches_and_ancestors(order, re, &mut must_keep);
     let must_keep_count = must_keep.iter().filter(|b| **b).count();
     (must_keep_count > 0).then_some(GrepState {
         must_keep,

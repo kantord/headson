@@ -1,4 +1,6 @@
-use crate::grep::{compute_grep_state, reorder_priority_with_must_keep};
+use crate::grep::{
+    GrepState, compute_grep_state, reorder_priority_with_must_keep,
+};
 use crate::utils::measure::OutputStats;
 use crate::{GrepConfig, PriorityOrder, RenderConfig};
 
@@ -15,42 +17,30 @@ pub fn find_largest_render_under_budgets(
     grep: &GrepConfig,
     budgets: Budgets,
 ) -> String {
-    // Binary search the largest k in [1, total] whose render
-    // fits within all requested budgets.
     let total = order_build.total_nodes;
     if total == 0 {
         return String::new();
     }
     let measure_cfg = measure_config(order_build, config);
     let grep_state = compute_grep_state(order_build, grep);
-    if let Some(state) = &grep_state {
-        if !grep.weak && state.is_enabled() {
-            reorder_priority_with_must_keep(order_build, &state.must_keep);
-        }
-    }
-    let effective_budgets = if let Some(state) = &grep_state {
-        if !grep.weak && state.is_enabled() {
-            let cost = measure_must_keep(
-                order_build,
-                &measure_cfg,
-                &state.must_keep,
-                budgets.char_budget.is_some(),
-            );
-            add_budgets(budgets, cost)
-        } else {
-            budgets
-        }
-    } else {
-        budgets
-    };
-    let min_k = grep_state
-        .as_ref()
-        .filter(|s| s.is_enabled() && !grep.weak)
-        .map(|s| s.must_keep_count.max(1))
-        .unwrap_or(1);
+    reorder_if_strong_grep(order_build, &grep_state, grep);
+    let effective_budgets = effective_budgets_with_grep(
+        order_build,
+        &measure_cfg,
+        grep,
+        budgets,
+        &grep_state,
+    );
+    let min_k = min_k_for(&grep_state, grep);
+    let must_keep_slice = must_keep_slice(&grep_state, grep);
 
-    let (k, mut inclusion_flags, render_set_id) =
-        select_best_k(order_build, &measure_cfg, effective_budgets, min_k);
+    let (k, mut inclusion_flags, render_set_id) = select_best_k(
+        order_build,
+        &measure_cfg,
+        effective_budgets,
+        min_k,
+        must_keep_slice,
+    );
 
     crate::serialization::prepare_render_set_top_k_and_ancestors(
         order_build,
@@ -88,11 +78,71 @@ pub fn find_largest_render_under_budgets(
     )
 }
 
+fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
+    state.as_ref().is_some_and(GrepState::is_enabled) && !grep.weak
+}
+
+fn reorder_if_strong_grep(
+    order_build: &mut PriorityOrder,
+    state: &Option<GrepState>,
+    grep: &GrepConfig,
+) {
+    if is_strong_grep(grep, state) {
+        if let Some(s) = state {
+            reorder_priority_with_must_keep(order_build, &s.must_keep);
+        }
+    }
+}
+
+fn effective_budgets_with_grep(
+    order_build: &PriorityOrder,
+    measure_cfg: &RenderConfig,
+    grep: &GrepConfig,
+    budgets: Budgets,
+    state: &Option<GrepState>,
+) -> Budgets {
+    if !is_strong_grep(grep, state) {
+        return budgets;
+    }
+    let Some(s) = state else {
+        return budgets;
+    };
+    let cost = measure_must_keep(
+        order_build,
+        measure_cfg,
+        &s.must_keep,
+        budgets.char_budget.is_some(),
+    );
+    add_budgets(budgets, cost)
+}
+
+fn min_k_for(state: &Option<GrepState>, grep: &GrepConfig) -> usize {
+    if is_strong_grep(grep, state) {
+        state
+            .as_ref()
+            .map(|s| s.must_keep_count.max(1))
+            .unwrap_or(1)
+    } else {
+        1
+    }
+}
+
+fn must_keep_slice<'a>(
+    state: &'a Option<GrepState>,
+    grep: &GrepConfig,
+) -> Option<&'a [bool]> {
+    state
+        .as_ref()
+        .filter(|_| !grep.weak)
+        .and_then(|s| s.is_enabled().then_some(s.must_keep.as_slice()))
+}
+
 fn select_best_k(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
     budgets: Budgets,
     min_k: usize,
+    must_keep: Option<&[bool]>,
 ) -> (usize, Vec<u32>, u32) {
     let total = order_build.total_nodes;
     let lo = min_k.max(1);
@@ -108,10 +158,23 @@ fn select_best_k(
     let measure_chars = budgets.char_budget.is_some();
     let _ = crate::pruner::search::binary_search_max(lo, hi, |mid| {
         let current_render_id = render_set_id;
-        let s = crate::serialization::render_top_k(
+        crate::serialization::prepare_render_set_top_k_and_ancestors(
             order_build,
             mid,
             &mut inclusion_flags,
+            current_render_id,
+        );
+        if let Some(flags) = must_keep {
+            include_must_keep(
+                order_build,
+                &mut inclusion_flags,
+                current_render_id,
+                flags,
+            );
+        }
+        let s = crate::serialization::render_from_render_set(
+            order_build,
+            &inclusion_flags,
             current_render_id,
             measure_cfg,
         );
