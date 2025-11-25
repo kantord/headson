@@ -320,6 +320,7 @@ fn resolve_inputs(cli: &Cli) -> Result<Vec<PathBuf>> {
             &mut seen_abs,
             &mut inputs,
             gitignore.as_ref(),
+            cli.no_sort,
         )?;
     }
 
@@ -360,7 +361,26 @@ fn collect_glob_matches(
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
     gitignore: Option<&ignore::gitignore::Gitignore>,
+    no_sort: bool,
 ) -> Result<()> {
+    if no_sort {
+        // Expand each glob in the order provided so --no-sort preserves user intent.
+        for pattern in patterns {
+            let mut overrides = OverrideBuilder::new(".");
+            overrides
+                .add(pattern)
+                .with_context(|| format!("invalid glob pattern: {pattern}"))?;
+            let overrides = overrides
+                .build()
+                .context("failed to compile glob overrides")?;
+            let mut walker = WalkBuilder::new(".");
+            // Still sort within each glob for deterministic traversal.
+            configure_walker(&mut walker, overrides, true);
+            collect_from_walker(&walker, cwd, seen_abs, inputs, gitignore)?;
+        }
+        return Ok(());
+    }
+
     let mut overrides = OverrideBuilder::new(".");
     for pattern in patterns {
         overrides
@@ -372,7 +392,7 @@ fn collect_glob_matches(
         .context("failed to compile glob overrides")?;
 
     let mut walker = WalkBuilder::new(".");
-    configure_walker(&mut walker, overrides);
+    configure_walker(&mut walker, overrides, true);
     collect_from_walker(&walker, cwd, seen_abs, inputs, gitignore)?;
     Ok(())
 }
@@ -380,6 +400,7 @@ fn collect_glob_matches(
 fn configure_walker(
     walker: &mut WalkBuilder,
     overrides: ignore::overrides::Override,
+    should_sort: bool,
 ) {
     walker.overrides(overrides);
     walker.git_ignore(true);
@@ -387,11 +408,15 @@ fn configure_walker(
     walker.git_exclude(true);
     walker.require_git(false);
     walker.add_custom_ignore_filename(".gitignore");
-    // Deterministic expansion keeps traversal stable; fileset ordering is still
-    // resolved later (mtime/frecency or --no-sort) on the collected list. Even
-    // with --no-sort, we keep this lexicographic expansion so glob results are
-    // predictable across platforms.
-    walker.sort_by_file_name(std::cmp::Ord::cmp);
+    if should_sort {
+        // Deterministic expansion keeps traversal stable; fileset ordering is still
+        // resolved later (mtime/frecency or --no-sort) on the collected list.
+        walker.sort_by_file_name(std::cmp::Ord::cmp);
+    } else {
+        // Keep discovery order stable for --no-sort: single-threaded walk and no sorting.
+        walker.threads(1);
+        walker.sort_by_file_name(|_, _| std::cmp::Ordering::Equal);
+    }
 }
 
 fn collect_from_walker(

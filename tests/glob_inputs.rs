@@ -82,6 +82,46 @@ fn glob_expands_recursively_and_respects_gitignore() {
 }
 
 #[test]
+fn glob_no_sort_preserves_pattern_order() {
+    let tmp = tempfile::tempdir().expect("tmpdir");
+    let root = tmp.path();
+
+    write_json(root.join("a.json").as_path(), r#"{"a": 1}"#);
+    write_json(root.join("b.json").as_path(), r#"{"b": 2}"#);
+
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
+    let assert = cmd
+        .current_dir(root)
+        .args([
+            "--no-color",
+            "--no-sort",
+            "-c",
+            "1000",
+            "-g",
+            "b*.json",
+            "-g",
+            "a*.json",
+        ])
+        .assert();
+
+    let ok = assert.get_output().status.success();
+    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(ok, "glob run should succeed: {out}");
+    let header_a = format!("==> {} <==", Path::new("a.json").display());
+    let header_b = format!("==> {} <==", Path::new("b.json").display());
+    let pos_a = out
+        .find(&header_a)
+        .expect("should include a.json in output");
+    let pos_b = out
+        .find(&header_b)
+        .expect("should include b.json in output");
+    assert!(
+        pos_b < pos_a,
+        "glob expansion should follow user-provided pattern order with --no-sort: {out}"
+    );
+}
+
+#[test]
 fn glob_inputs_deduplicate_overlaps_and_explicit_paths() {
     let tmp = tempfile::tempdir().expect("tmpdir");
     let root = tmp.path();
