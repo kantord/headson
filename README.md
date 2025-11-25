@@ -79,6 +79,7 @@ Common flags:
 - `--no-space`: no space after `:` in objects
 - `--indent <STR>`: indentation unit (default: two spaces)
 - `--string-cap <N>`: max graphemes to consider per string (default: 500)
+- `--grep <REGEX>`: guarantee inclusion of values/keys/lines matching the regex (ripgrep‑style). Matches + ancestors are “free”; budgets apply to everything else. If matches consume all headroom, only the must‑keep path is shown.
 - `--head`: prefer the beginning of arrays when truncating (keep first N). Strings are unaffected. Display styles place omission markers accordingly; strict JSON remains unannotated. Mutually exclusive with `--tail`.
 - `--tail`: prefer the end of arrays when truncating (keep last N). Strings are unaffected. Display styles place omission markers accordingly; strict JSON remains unannotated. Mutually exclusive with `--head`.
 
