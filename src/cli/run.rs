@@ -21,6 +21,7 @@ pub type IgnoreNotices = Vec<String>;
 
 pub fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
     let render_cfg = get_render_config_from(cli);
+    let grep_cfg = crate::cli::args::build_grep_config(cli)?;
     let resolved_inputs = resolve_inputs(cli)?;
     if resolved_inputs.is_empty() {
         if !cli.globs.is_empty() {
@@ -29,9 +30,9 @@ pub fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
                 vec!["No files matched provided globs".to_string()],
             ));
         }
-        Ok((run_from_stdin(cli, &render_cfg)?, Vec::new()))
+        Ok((run_from_stdin(cli, &render_cfg, &grep_cfg)?, Vec::new()))
     } else {
-        run_from_paths(cli, &render_cfg, &resolved_inputs)
+        run_from_paths(cli, &render_cfg, &grep_cfg, &resolved_inputs)
     }
 }
 
@@ -56,6 +57,7 @@ fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
 fn run_from_stdin(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
+    grep_cfg: &headson::GrepConfig,
 ) -> Result<String> {
     let input_bytes = read_stdin()?;
     let input_count = 1usize;
@@ -72,12 +74,14 @@ fn run_from_stdin(
             headson::InputKind::Json(input_bytes),
             &cfg,
             &prio,
+            grep_cfg,
             budgets,
         )?,
         InputFormat::Yaml => headson::headson(
             headson::InputKind::Yaml(input_bytes),
             &cfg,
             &prio,
+            grep_cfg,
             budgets,
         )?,
         InputFormat::Text => headson::headson(
@@ -92,6 +96,7 @@ fn run_from_stdin(
             },
             &cfg,
             &prio,
+            grep_cfg,
             budgets,
         )?,
     };
@@ -106,6 +111,7 @@ fn run_from_stdin(
 fn run_from_paths(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
+    grep_cfg: &headson::GrepConfig,
     inputs: &[PathBuf],
 ) -> Result<(String, IgnoreNotices)> {
     let sorted_inputs = if inputs.len() > 1 && !cli.no_sort {
@@ -149,6 +155,7 @@ fn run_from_paths(
             headson::InputKind::Fileset(files),
             &cfg,
             &prio,
+            grep_cfg,
             budgets,
         )?;
         return Ok((out, ignored));
@@ -189,12 +196,14 @@ fn run_from_paths(
             headson::InputKind::Json(bytes),
             &cfg,
             &prio,
+            grep_cfg,
             budgets,
         )?,
         InputFormat::Yaml => headson::headson(
             headson::InputKind::Yaml(bytes),
             &cfg,
             &prio,
+            grep_cfg,
             budgets,
         )?,
         InputFormat::Text => {
@@ -213,6 +222,7 @@ fn run_from_paths(
                     },
                     &cfg_code,
                     &prio,
+                    grep_cfg,
                     budgets,
                 )?
             } else {
@@ -230,6 +240,7 @@ fn run_from_paths(
                     },
                     &cfg,
                     &prio,
+                    grep_cfg,
                     budgets,
                 )?
             }

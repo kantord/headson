@@ -56,10 +56,12 @@ fn yaml_coloring_applies_and_strips_to_plain() {
         char_budget: None,
         line_budget: None,
     };
+    let grep = headson::GrepConfig::default();
     let plain = headson::headson(
         headson::InputKind::Yaml(input.clone()),
         &cfg_plain,
         &prio,
+        &grep,
         budgets,
     )
     .expect("plain yaml");
@@ -67,6 +69,7 @@ fn yaml_coloring_applies_and_strips_to_plain() {
         headson::InputKind::Yaml(input),
         &cfg_color,
         &prio,
+        &grep,
         budgets,
     )
     .expect("colored yaml");

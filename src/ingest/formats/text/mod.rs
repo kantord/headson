@@ -478,7 +478,7 @@ pub fn parse_text_one_with_mode(
 mod tests {
     use super::ARRAY_NO_SAMPLING_THRESHOLD;
     use crate::{
-        Budgets, InputKind, PriorityConfig, RenderConfig,
+        Budgets, GrepConfig, InputKind, PriorityConfig, RenderConfig,
         serialization::types::{OutputTemplate, Style},
     };
     use unicode_segmentation::UnicodeSegmentation;
@@ -507,6 +507,7 @@ mod tests {
     fn text_roundtrip_basic() {
         let (cfg, prio) = cfg_text();
         let input = b"a\nb\nc".to_vec();
+        let grep = GrepConfig::default();
         let out = crate::headson(
             InputKind::Text {
                 bytes: input,
@@ -514,6 +515,7 @@ mod tests {
             },
             &cfg,
             &prio,
+            &grep,
             Budgets {
                 byte_budget: Some(100),
                 char_budget: None,
@@ -533,6 +535,7 @@ mod tests {
             .join("\n");
         // Budget small so only some lines fit
         cfg.style = Style::Default;
+        let grep = GrepConfig::default();
         let out = crate::headson(
             InputKind::Text {
                 bytes: input.into_bytes(),
@@ -540,6 +543,7 @@ mod tests {
             },
             &cfg,
             &prio,
+            &grep,
             Budgets {
                 byte_budget: Some(20),
                 char_budget: None,

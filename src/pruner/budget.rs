@@ -1,4 +1,6 @@
-use crate::{PriorityOrder, RenderConfig};
+use crate::grep::{compute_grep_state, reorder_priority_with_must_keep};
+use crate::utils::measure::OutputStats;
+use crate::{GrepConfig, PriorityOrder, RenderConfig};
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Budgets {
@@ -8,8 +10,9 @@ pub struct Budgets {
 }
 
 pub fn find_largest_render_under_budgets(
-    order_build: &PriorityOrder,
+    order_build: &mut PriorityOrder,
     config: &RenderConfig,
+    grep: &GrepConfig,
     budgets: Budgets,
 ) -> String {
     // Binary search the largest k in [1, total] whose render
@@ -18,22 +21,36 @@ pub fn find_largest_render_under_budgets(
     if total == 0 {
         return String::new();
     }
-    let root_is_fileset = order_build
-        .object_type
-        .get(crate::order::ROOT_PQ_ID)
-        .is_some_and(|t| *t == crate::order::ObjectType::Fileset);
-    let mut measure_cfg = config.clone();
-    measure_cfg.color_enabled = false;
-    if config.show_fileset_headers
-        && root_is_fileset
-        && !config.count_fileset_headers_in_budgets
-    {
-        // Budgets are for content; measure without fileset headers so
-        // section titles/summary lines remain “free” during selection.
-        measure_cfg.show_fileset_headers = false;
+    let measure_cfg = measure_config(order_build, config);
+    let grep_state = compute_grep_state(order_build, grep);
+    if let Some(state) = &grep_state {
+        if !grep.weak && state.is_enabled() {
+            reorder_priority_with_must_keep(order_build, &state.must_keep);
+        }
     }
+    let effective_budgets = if let Some(state) = &grep_state {
+        if !grep.weak && state.is_enabled() {
+            let cost = measure_must_keep(
+                order_build,
+                &measure_cfg,
+                &state.must_keep,
+                budgets.char_budget.is_some(),
+            );
+            add_budgets(budgets, cost)
+        } else {
+            budgets
+        }
+    } else {
+        budgets
+    };
+    let min_k = grep_state
+        .as_ref()
+        .filter(|s| s.is_enabled() && !grep.weak)
+        .map(|s| s.must_keep_count.max(1))
+        .unwrap_or(1);
+
     let (k, mut inclusion_flags, render_set_id) =
-        select_best_k(order_build, &measure_cfg, budgets);
+        select_best_k(order_build, &measure_cfg, effective_budgets, min_k);
 
     crate::serialization::prepare_render_set_top_k_and_ancestors(
         order_build,
@@ -41,6 +58,16 @@ pub fn find_largest_render_under_budgets(
         &mut inclusion_flags,
         render_set_id,
     );
+    if let Some(state) = &grep_state {
+        if !grep.weak && state.is_enabled() {
+            include_must_keep(
+                order_build,
+                &mut inclusion_flags,
+                render_set_id,
+                &state.must_keep,
+            );
+        }
+    }
 
     if config.debug {
         crate::debug::emit_render_debug(
@@ -65,9 +92,10 @@ fn select_best_k(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
     budgets: Budgets,
+    min_k: usize,
 ) -> (usize, Vec<u32>, u32) {
     let total = order_build.total_nodes;
-    let lo = 1usize;
+    let lo = min_k.max(1);
     let hi = match budgets.byte_budget {
         Some(c) => total.min(c.max(1)),
         None => total,
@@ -101,7 +129,7 @@ fn select_best_k(
             false
         }
     });
-    let k = best_k.unwrap_or(1);
+    let k = best_k.unwrap_or(lo);
     (k, inclusion_flags, render_set_id)
 }
 
@@ -118,4 +146,109 @@ pub(crate) fn constrained_dimensions(
         .iter()
         .filter_map(|(cond, name)| cond.unwrap_or(false).then_some(*name))
         .collect()
+}
+
+fn measure_config(
+    order_build: &PriorityOrder,
+    config: &RenderConfig,
+) -> RenderConfig {
+    let root_is_fileset = order_build
+        .object_type
+        .get(crate::order::ROOT_PQ_ID)
+        .is_some_and(|t| *t == crate::order::ObjectType::Fileset);
+    let mut measure_cfg = config.clone();
+    measure_cfg.color_enabled = false;
+    if config.show_fileset_headers
+        && root_is_fileset
+        && !config.count_fileset_headers_in_budgets
+    {
+        // Budgets are for content; measure without fileset headers so
+        // section titles/summary lines remain “free” during selection.
+        measure_cfg.show_fileset_headers = false;
+    }
+    measure_cfg
+}
+
+fn measure_must_keep(
+    order_build: &PriorityOrder,
+    measure_cfg: &RenderConfig,
+    must_keep: &[bool],
+    measure_chars: bool,
+) -> OutputStats {
+    let mut inclusion_flags: Vec<u32> = vec![0; order_build.total_nodes];
+    let render_set_id: u32 = 1;
+    include_must_keep(
+        order_build,
+        &mut inclusion_flags,
+        render_set_id,
+        must_keep,
+    );
+    let rendered = crate::serialization::render_from_render_set(
+        order_build,
+        &inclusion_flags,
+        render_set_id,
+        measure_cfg,
+    );
+    crate::utils::measure::count_output_stats(&rendered, measure_chars)
+}
+
+fn add_budgets(budgets: Budgets, extra: OutputStats) -> Budgets {
+    Budgets {
+        byte_budget: budgets
+            .byte_budget
+            .map(|b| b.saturating_add(extra.bytes)),
+        char_budget: budgets
+            .char_budget
+            .map(|c| c.saturating_add(extra.chars)),
+        line_budget: budgets
+            .line_budget
+            .map(|l| l.saturating_add(extra.lines)),
+    }
+}
+
+fn include_string_descendants(
+    order: &PriorityOrder,
+    id: usize,
+    flags: &mut [u32],
+    render_id: u32,
+) {
+    if let Some(children) = order.children.get(id) {
+        for child in children {
+            let idx = child.0;
+            if flags[idx] != render_id {
+                flags[idx] = render_id;
+                include_string_descendants(order, idx, flags, render_id);
+            }
+        }
+    }
+}
+
+fn include_must_keep(
+    order_build: &PriorityOrder,
+    inclusion_flags: &mut [u32],
+    render_set_id: u32,
+    must_keep: &[bool],
+) {
+    for (idx, keep) in must_keep.iter().enumerate() {
+        if !*keep {
+            continue;
+        }
+        crate::utils::graph::mark_node_and_ancestors(
+            order_build,
+            crate::NodeId(idx),
+            inclusion_flags,
+            render_set_id,
+        );
+        if matches!(
+            order_build.nodes.get(idx),
+            Some(crate::RankedNode::SplittableLeaf { .. })
+        ) {
+            include_string_descendants(
+                order_build,
+                idx,
+                inclusion_flags,
+                render_set_id,
+            );
+        }
+    }
 }

@@ -156,6 +156,12 @@ pub struct Cli {
         help = "Dump pruned internal tree (JSON) to stderr for the final render attempt"
     )]
     pub debug: bool,
+    #[arg(
+        long = "grep",
+        value_name = "REGEX",
+        help = "Guarantee inclusion of values (and their ancestors) matching this regex; budgets apply to everything else."
+    )]
+    pub grep: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -248,4 +254,15 @@ pub fn map_json_template_for_style(
         headson::Style::Default => headson::OutputTemplate::Pseudo,
         headson::Style::Detailed => headson::OutputTemplate::Js,
     }
+}
+
+pub fn build_grep_config(cli: &Cli) -> anyhow::Result<headson::GrepConfig> {
+    let Some(pattern) = cli.grep.as_ref() else {
+        return Ok(headson::GrepConfig::default());
+    };
+    let regex = regex::RegexBuilder::new(pattern).unicode(true).build()?;
+    Ok(headson::GrepConfig {
+        regex: Some(regex),
+        weak: false,
+    })
 }

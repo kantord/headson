@@ -73,10 +73,12 @@ environments:
         },
     ];
 
+    let grep = headson::GrepConfig::default();
     let out = headson::headson(
         headson::InputKind::Fileset(inputs),
         &render_config(),
         &priority_config(),
+        &grep,
         Budgets {
             byte_budget: Some(4096),
             char_budget: None,

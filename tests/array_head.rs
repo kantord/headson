@@ -81,10 +81,12 @@ fn array_head_json_contains_first_k_values() {
     let mut prio = headson::PriorityConfig::new(usize::MAX, 15);
     prio.prefer_tail_arrays = false;
     prio.array_sampler = headson::ArraySamplerStrategy::Head;
+    let grep = headson::GrepConfig::default();
     let out = headson::headson(
         headson::InputKind::Json(input.into_bytes()),
         &render_cfg,
         &prio,
+        &grep,
         headson::Budgets {
             byte_budget: Some(10_000),
             char_budget: None,

@@ -21,11 +21,13 @@
 use anyhow::Result;
 
 mod debug;
+mod grep;
 mod ingest;
 mod order;
 mod pruner;
 mod serialization;
 mod utils;
+pub use grep::GrepConfig;
 pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
 pub use order::{
@@ -56,14 +58,21 @@ pub fn headson(
     input: InputKind,
     config: &RenderConfig,
     priority_cfg: &PriorityConfig,
+    grep: &GrepConfig,
     budgets: Budgets,
 ) -> Result<String> {
-    let arena = crate::ingest::ingest_into_arena(input, priority_cfg)?;
-    let order_build = order::build_order(&arena, priority_cfg)?;
+    let mut prio = *priority_cfg;
+    if grep.regex.is_some() && !grep.weak {
+        // Avoid sampling away potential matches in strong grep mode.
+        prio.array_max_items = usize::MAX;
+    }
+    let arena = crate::ingest::ingest_into_arena(input, &prio)?;
+    let mut order_build = order::build_order(&arena, &prio)?;
 
     Ok(find_largest_render_under_budgets(
-        &order_build,
+        &mut order_build,
         config,
+        grep,
         budgets,
     ))
 }

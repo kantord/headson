@@ -34,10 +34,12 @@ fn headson_many_text_smoke() {
             },
         },
     ];
+    let grep = headson::GrepConfig::default();
     let out = headson::headson(
         headson::InputKind::Fileset(inputs),
         &cfg,
         &prio,
+        &grep,
         headson::Budgets {
             byte_budget: Some(10_000),
             char_budget: None,

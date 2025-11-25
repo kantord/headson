@@ -119,6 +119,7 @@ fn summarize(
     let per_file_for_priority = budget.max(1);
     let prio = priority_config(per_file_for_priority, sampler);
     let input = text.as_bytes().to_vec();
+    let grep_cfg = headson_core::GrepConfig::default();
     let budgets = Budgets {
         byte_budget: Some(budget),
         char_budget: None,
@@ -130,14 +131,22 @@ fn summarize(
         headson_core::TextMode::Plain
     };
     py.detach(|| match input_format.to_ascii_lowercase().as_str() {
-        "json" => {
-            headson_core::headson(InputKind::Json(input), &cfg, &prio, budgets)
-                .map_err(to_pyerr)
-        }
-        "yaml" | "yml" => {
-            headson_core::headson(InputKind::Yaml(input), &cfg, &prio, budgets)
-                .map_err(to_pyerr)
-        }
+        "json" => headson_core::headson(
+            InputKind::Json(input),
+            &cfg,
+            &prio,
+            &grep_cfg,
+            budgets,
+        )
+        .map_err(to_pyerr),
+        "yaml" | "yml" => headson_core::headson(
+            InputKind::Yaml(input),
+            &cfg,
+            &prio,
+            &grep_cfg,
+            budgets,
+        )
+        .map_err(to_pyerr),
         "text" => headson_core::headson(
             InputKind::Text {
                 bytes: input,
@@ -145,6 +154,7 @@ fn summarize(
             },
             &cfg,
             &prio,
+            &grep_cfg,
             budgets,
         )
         .map_err(to_pyerr),
