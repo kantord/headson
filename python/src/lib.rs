@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use headson_core::{
-    ArraySamplerStrategy, Budgets, ColorMode, InputKind, OutputTemplate,
-    PriorityConfig, RenderConfig, Style,
+    ArraySamplerStrategy, Budgets, ColorMode, ColorStrategy, InputKind,
+    OutputTemplate, PriorityConfig, RenderConfig, Style,
 };
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
@@ -60,7 +60,7 @@ fn render_config_with_sampler(
         prefer_tail_arrays,
         color_mode: ColorMode::Auto,
         color_enabled: false,
-        color_strategy: headson::ColorStrategy::Syntax,
+        color_strategy: ColorStrategy::Syntax,
         style: s,
         string_free_prefix_graphemes: None,
         debug: false,

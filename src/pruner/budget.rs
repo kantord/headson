@@ -11,6 +11,10 @@ pub struct Budgets {
     pub line_budget: Option<usize>,
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Top-level orchestrator; splitting would obscure the budget/search flow"
+)]
 pub fn find_largest_render_under_budgets(
     order_build: &mut PriorityOrder,
     config: &RenderConfig,

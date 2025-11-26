@@ -1,5 +1,7 @@
 use crate::order::ObjectType;
 use crate::order::{NodeId, NodeKind, PriorityOrder, ROOT_PQ_ID, RankedNode};
+
+type GrepSpansSlice<'a> = Option<&'a [Option<Vec<(usize, usize)>>]>;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -30,7 +32,7 @@ pub(crate) struct RenderScope<'a> {
     line_number_width: Option<usize>,
     code_highlight_cache: HashMap<usize, Arc<Vec<String>>>,
     grep_highlight: Option<Regex>,
-    grep_spans: Option<&'a [Option<Vec<(usize, usize)>>]>,
+    grep_spans: GrepSpansSlice<'a>,
 }
 
 impl<'a> RenderScope<'a> {
@@ -444,16 +446,15 @@ impl<'a> RenderScope<'a> {
             }
             RankedNode::SplittableLeaf { .. } => {
                 let s = self.serialize_string(id);
+                let h = self.maybe_highlight_value(id, s);
                 if matches!(
                     self.config.template,
                     crate::serialization::types::OutputTemplate::Text
                         | crate::serialization::types::OutputTemplate::Code
                 ) {
                     // For text/code templates, push raw string.
-                    let h = self.maybe_highlight_value(id, s);
                     out.push_str(&h);
                 } else {
-                    let h = self.maybe_highlight_value(id, s);
                     out.push_string_literal(&h);
                 }
             }
@@ -760,8 +761,8 @@ impl<'a> RenderScope<'a> {
             return rendered;
         }
         match self.config.color_strategy {
-            crate::serialization::types::ColorStrategy::None => rendered,
-            crate::serialization::types::ColorStrategy::Syntax => rendered,
+            crate::serialization::types::ColorStrategy::None
+            | crate::serialization::types::ColorStrategy::Syntax => rendered,
             crate::serialization::types::ColorStrategy::HighlightOnly => {
                 if let Some(spans) = self
                     .grep_spans
@@ -912,7 +913,7 @@ pub fn render_from_render_set(
     inclusion_flags: &[u32],
     render_id: u32,
     config: &crate::RenderConfig,
-    grep_spans: Option<&[Option<Vec<(usize, usize)>>]>,
+    grep_spans: GrepSpansSlice<'_>,
 ) -> String {
     let root_id = ROOT_PQ_ID;
     // Compute optional global line-number width when numbering is enabled for text.

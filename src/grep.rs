@@ -40,25 +40,22 @@ fn collect_spans(
     let mut spans: Vec<Option<Vec<(usize, usize)>>> =
         vec![None; order.total_nodes];
     for (idx, node) in order.nodes.iter().enumerate() {
-        let mut found: Vec<(usize, usize)> = Vec::new();
-        match node {
+        let found = match node {
             RankedNode::SplittableLeaf { value, .. } => {
-                for m in re.find_iter(value) {
-                    found.push((m.start(), m.end()));
-                }
+                spans_for_text(value, re)
             }
-            RankedNode::AtomicLeaf { token, .. } => {
-                for m in re.find_iter(token) {
-                    found.push((m.start(), m.end()));
-                }
-            }
-            _ => {}
-        }
-        if !found.is_empty() {
-            spans[idx] = Some(found);
-        }
+            RankedNode::AtomicLeaf { token, .. } => spans_for_text(token, re),
+            _ => None,
+        };
+        spans[idx] = found;
     }
     spans
+}
+
+fn spans_for_text(text: &str, re: &Regex) -> Option<Vec<(usize, usize)>> {
+    let found: Vec<(usize, usize)> =
+        re.find_iter(text).map(|m| (m.start(), m.end())).collect();
+    if found.is_empty() { None } else { Some(found) }
 }
 
 fn mark_matches_and_ancestors(
