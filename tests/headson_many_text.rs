@@ -10,6 +10,7 @@ fn headson_many_text_smoke() {
         prefer_tail_arrays: false,
         color_mode: headson::ColorMode::Off,
         color_enabled: false,
+        color_strategy: headson::ColorStrategy::Syntax,
         style: headson::Style::Default,
         string_free_prefix_graphemes: None,
         debug: false,

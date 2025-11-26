@@ -12,6 +12,7 @@ pub struct GrepConfig {
 pub(crate) struct GrepState {
     pub must_keep: Vec<bool>,
     pub must_keep_count: usize,
+    pub spans: Vec<Option<Vec<(usize, usize)>>>,
 }
 
 impl GrepState {
@@ -30,6 +31,34 @@ fn matches_ranked(node: &RankedNode, re: &Regex) -> bool {
         return true;
     }
     node.key_in_object().is_some_and(|k| re.is_match(k))
+}
+
+fn collect_spans(
+    order: &PriorityOrder,
+    re: &Regex,
+) -> Vec<Option<Vec<(usize, usize)>>> {
+    let mut spans: Vec<Option<Vec<(usize, usize)>>> =
+        vec![None; order.total_nodes];
+    for (idx, node) in order.nodes.iter().enumerate() {
+        let mut found: Vec<(usize, usize)> = Vec::new();
+        match node {
+            RankedNode::SplittableLeaf { value, .. } => {
+                for m in re.find_iter(value) {
+                    found.push((m.start(), m.end()));
+                }
+            }
+            RankedNode::AtomicLeaf { token, .. } => {
+                for m in re.find_iter(token) {
+                    found.push((m.start(), m.end()));
+                }
+            }
+            _ => {}
+        }
+        if !found.is_empty() {
+            spans[idx] = Some(found);
+        }
+    }
+    spans
 }
 
 fn mark_matches_and_ancestors(
@@ -61,11 +90,13 @@ pub(crate) fn compute_grep_state(
 ) -> Option<GrepState> {
     let re = grep.regex.as_ref()?;
     let mut must_keep = vec![false; order.total_nodes];
+    let spans = collect_spans(order, re);
     mark_matches_and_ancestors(order, re, &mut must_keep);
     let must_keep_count = must_keep.iter().filter(|b| **b).count();
     (must_keep_count > 0).then_some(GrepState {
         must_keep,
         must_keep_count,
+        spans,
     })
 }
 
@@ -84,6 +115,7 @@ pub(crate) fn reorder_priority_with_must_keep(
             seen[idx] = true;
         }
     }
+
     for &id in order.by_priority.iter() {
         let idx = id.0;
         if !seen[idx] {

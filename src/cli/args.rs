@@ -229,6 +229,7 @@ pub fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         prefer_tail_arrays: cli.tail,
         color_mode,
         color_enabled,
+        color_strategy: headson::ColorStrategy::Syntax,
         style: map_style(cli.style),
         string_free_prefix_graphemes: None,
         debug: cli.debug,

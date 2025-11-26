@@ -6,7 +6,9 @@ pub struct Out<'a> {
     buf: &'a mut String,
     newline: String,
     indent_unit: String,
-    color_enabled: bool,
+    // Syntax/role colors are only emitted when both color_enabled is true
+    // and the strategy allows syntax coloring (ColorStrategy::Syntax).
+    role_colors_enabled: bool,
     style: crate::serialization::types::Style,
     line_number_width: Option<usize>,
 }
@@ -17,11 +19,16 @@ impl<'a> Out<'a> {
         config: &crate::RenderConfig,
         line_number_width: Option<usize>,
     ) -> Self {
+        let role_colors_enabled = config.color_enabled
+            && matches!(
+                config.color_strategy,
+                crate::serialization::types::ColorStrategy::Syntax
+            );
         Self {
             buf,
             newline: config.newline.clone(),
             indent_unit: config.indent_unit.clone(),
-            color_enabled: config.color_enabled,
+            role_colors_enabled,
             style: config.style,
             line_number_width,
         }
@@ -44,13 +51,13 @@ impl<'a> Out<'a> {
     }
 
     pub fn push_comment<S: Into<String>>(&mut self, body: S) {
-        let s = color::color_comment(body, self.color_enabled);
+        let s = color::color_comment(body, self.role_colors_enabled);
         self.buf.push_str(&s);
     }
 
     pub fn push_omission(&mut self) {
         self.buf
-            .push_str(color::omission_marker(self.color_enabled));
+            .push_str(color::omission_marker(self.role_colors_enabled));
     }
 
     // Color role helpers for tokens
@@ -58,7 +65,7 @@ impl<'a> Out<'a> {
         let s = color::wrap_role(
             quoted_key,
             color::ColorRole::Key,
-            self.color_enabled,
+            self.role_colors_enabled,
         );
         self.buf.push_str(&s);
     }
@@ -67,7 +74,7 @@ impl<'a> Out<'a> {
         let s = color::wrap_role(
             quoted_value,
             color::ColorRole::String,
-            self.color_enabled,
+            self.role_colors_enabled,
         );
         self.buf.push_str(&s);
     }
@@ -77,7 +84,7 @@ impl<'a> Out<'a> {
         let s = color::wrap_role(
             value,
             color::ColorRole::String,
-            self.color_enabled,
+            self.role_colors_enabled,
         );
         self.buf.push_str(&s);
     }
@@ -96,6 +103,6 @@ impl<'a> Out<'a> {
     }
 
     pub fn colors_enabled(&self) -> bool {
-        self.color_enabled
+        self.role_colors_enabled
     }
 }

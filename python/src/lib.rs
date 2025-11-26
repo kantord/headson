@@ -60,6 +60,7 @@ fn render_config_with_sampler(
         prefer_tail_arrays,
         color_mode: ColorMode::Auto,
         color_enabled: false,
+        color_strategy: headson::ColorStrategy::Syntax,
         style: s,
         string_free_prefix_graphemes: None,
         debug: false,

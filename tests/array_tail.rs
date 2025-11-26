@@ -118,6 +118,7 @@ fn array_tail_json_contains_last_k_values() {
         prefer_tail_arrays: true,
         color_mode: headson::ColorMode::Auto,
         color_enabled: false,
+        color_strategy: headson::ColorStrategy::Syntax,
         style: headson::Style::Strict,
         string_free_prefix_graphemes: None,
         debug: false,

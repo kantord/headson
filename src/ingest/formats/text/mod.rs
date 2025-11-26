@@ -478,7 +478,8 @@ pub fn parse_text_one_with_mode(
 mod tests {
     use super::ARRAY_NO_SAMPLING_THRESHOLD;
     use crate::{
-        Budgets, GrepConfig, InputKind, PriorityConfig, RenderConfig,
+        Budgets, ColorStrategy, GrepConfig, InputKind, PriorityConfig,
+        RenderConfig,
         serialization::types::{OutputTemplate, Style},
     };
     use unicode_segmentation::UnicodeSegmentation;
@@ -492,6 +493,7 @@ mod tests {
             prefer_tail_arrays: false,
             color_mode: crate::serialization::types::ColorMode::Off,
             color_enabled: false,
+            color_strategy: ColorStrategy::Syntax,
             style: Style::Default,
             string_free_prefix_graphemes: None,
             debug: false,

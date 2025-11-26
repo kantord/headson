@@ -13,6 +13,7 @@ fn render_config() -> RenderConfig {
         prefer_tail_arrays: false,
         color_mode: ColorMode::Off,
         color_enabled: false,
+        color_strategy: headson::ColorStrategy::Syntax,
         style: Style::Default,
         string_free_prefix_graphemes: None,
         debug: false,

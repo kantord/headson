@@ -214,6 +214,7 @@ pub(crate) fn emit_render_debug(
         inclusion_flags,
         render_set_id,
         &no_color_cfg,
+        None,
     );
     let stats = crate::utils::measure::count_output_stats(
         &measured,

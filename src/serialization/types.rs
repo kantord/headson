@@ -31,6 +31,8 @@ pub struct RenderConfig {
     pub color_mode: ColorMode,
     // Resolved color enablement after considering `color_mode` and stdout TTY.
     pub color_enabled: bool,
+    // Internal color strategy: Syntax colors, Highlights only, or None.
+    pub color_strategy: ColorStrategy,
     // Output styling mode (controls omission annotations), orthogonal to template.
     pub style: Style,
     // When Some(n), and only a line budget is active, allow rendering up to
@@ -56,6 +58,13 @@ pub enum ColorMode {
     On,
     Off,
     Auto,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ColorStrategy {
+    None,
+    Syntax,
+    HighlightOnly,
 }
 
 impl ColorMode {

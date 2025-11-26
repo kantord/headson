@@ -37,6 +37,7 @@ fn yaml_coloring_applies_and_strips_to_plain() {
         prefer_tail_arrays: false,
         color_mode: ColorMode::On,
         color_enabled: false,
+        color_strategy: headson::ColorStrategy::Syntax,
         style: headson::Style::Default,
         string_free_prefix_graphemes: None,
         debug: false,

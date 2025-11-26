@@ -105,13 +105,14 @@ fn grep_highlights_matching_keys() {
             "default",
             "--grep",
             "needle",
+            "--no-header",
         ])
         .write_stdin(input)
         .assert()
         .success();
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(
-        stdout.contains("\u{001b}[43mneedle\u{001b}[0m"),
+        stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "matching keys should be highlighted when color is enabled"
     );
 }

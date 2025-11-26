@@ -38,7 +38,7 @@ pub use utils::extensions;
 pub use pruner::budget::{Budgets, find_largest_render_under_budgets};
 pub use serialization::color::resolve_color_enabled;
 pub use serialization::types::{
-    ColorMode, OutputTemplate, RenderConfig, Style,
+    ColorMode, ColorStrategy, OutputTemplate, RenderConfig, Style,
 };
 
 #[derive(Copy, Clone, Debug)]

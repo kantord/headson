@@ -33,6 +33,14 @@ pub fn find_largest_render_under_budgets(
     );
     let min_k = min_k_for(&grep_state, grep);
     let must_keep_slice = must_keep_slice(&grep_state, grep);
+    let color_strategy =
+        if grep_state.as_ref().is_some() && config.color_enabled {
+            crate::ColorStrategy::HighlightOnly
+        } else if config.color_enabled {
+            crate::ColorStrategy::Syntax
+        } else {
+            crate::ColorStrategy::None
+        };
 
     let (k, mut inclusion_flags, render_set_id) = select_best_k(
         order_build,
@@ -74,7 +82,11 @@ pub fn find_largest_render_under_budgets(
         order_build,
         &inclusion_flags,
         render_set_id,
-        config,
+        &crate::RenderConfig {
+            color_strategy,
+            ..config.clone()
+        },
+        grep_state.as_ref().map(|s| s.spans.as_slice()),
     )
 }
 
@@ -177,6 +189,7 @@ fn select_best_k(
             &inclusion_flags,
             current_render_id,
             measure_cfg,
+            None,
         );
         let stats =
             crate::utils::measure::count_output_stats(&s, measure_chars);
@@ -251,6 +264,7 @@ fn measure_must_keep(
         &inclusion_flags,
         render_set_id,
         measure_cfg,
+        None,
     );
     crate::utils::measure::count_output_stats(&rendered, measure_chars)
 }

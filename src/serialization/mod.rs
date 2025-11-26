@@ -30,6 +30,7 @@ pub(crate) struct RenderScope<'a> {
     line_number_width: Option<usize>,
     code_highlight_cache: HashMap<usize, Arc<Vec<String>>>,
     grep_highlight: Option<Regex>,
+    grep_spans: Option<&'a [Option<Vec<(usize, usize)>>]>,
 }
 
 impl<'a> RenderScope<'a> {
@@ -170,6 +171,12 @@ impl<'a> RenderScope<'a> {
         template: crate::OutputTemplate,
     ) -> Option<Arc<Vec<String>>> {
         if !self.config.color_enabled {
+            return None;
+        }
+        if !matches!(
+            self.config.color_strategy,
+            crate::serialization::types::ColorStrategy::Syntax
+        ) {
             return None;
         }
         if !matches!(template, crate::OutputTemplate::Code) {
@@ -358,7 +365,7 @@ impl<'a> RenderScope<'a> {
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
         };
-        self.maybe_highlight_value(rendered)
+        self.maybe_highlight_value(id, rendered)
     }
 
     #[allow(
@@ -410,7 +417,7 @@ impl<'a> RenderScope<'a> {
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
         };
-        self.maybe_highlight_value(rendered)
+        self.maybe_highlight_value(id, rendered)
     }
 
     fn serialize_atomic(&self, id: usize) -> String {
@@ -418,7 +425,7 @@ impl<'a> RenderScope<'a> {
             RankedNode::AtomicLeaf { token, .. } => token.clone(),
             _ => unreachable!("atomic leaf without token: id={id}"),
         };
-        self.maybe_highlight_value(rendered)
+        self.maybe_highlight_value(id, rendered)
     }
 
     fn write_node(
@@ -442,10 +449,12 @@ impl<'a> RenderScope<'a> {
                     crate::serialization::types::OutputTemplate::Text
                         | crate::serialization::types::OutputTemplate::Code
                 ) {
-                    // For text/code templates, push raw string without quotes or color.
-                    out.push_str(&s);
+                    // For text/code templates, push raw string.
+                    let h = self.maybe_highlight_value(id, s);
+                    out.push_str(&h);
                 } else {
-                    out.push_string_literal(&self.maybe_highlight_value(s));
+                    let h = self.maybe_highlight_value(id, s);
+                    out.push_string_literal(&h);
                 }
             }
             RankedNode::AtomicLeaf { .. } => {
@@ -581,6 +590,7 @@ impl<'a> RenderScope<'a> {
                 let child = &self.order.nodes[child_id.0];
                 let raw_key = child.key_in_object().unwrap_or("");
                 let key = self.maybe_highlight_value(
+                    child_id.0,
                     crate::utils::json::json_string(raw_key),
                 );
                 let val =
@@ -608,6 +618,7 @@ impl<'a> RenderScope<'a> {
                 let child = &self.order.nodes[child_id.0];
                 let raw_key = child.key_in_object().unwrap_or("");
                 let key = self.maybe_highlight_value(
+                    child_id.0,
                     crate::utils::json::json_string(raw_key),
                 );
                 let val = self.render_node_to_string_with_template(
@@ -741,28 +752,55 @@ impl<'a> RenderScope<'a> {
         }
     }
 
-    fn maybe_highlight_value(&self, rendered: String) -> String {
-        if !self.config.color_enabled {
-            return rendered;
-        }
+    fn maybe_highlight_value(&self, id: usize, rendered: String) -> String {
         if matches!(
             self.config.style,
             crate::serialization::types::Style::Strict
         ) {
             return rendered;
         }
-        if matches!(
-            self.config.template,
-            crate::serialization::types::OutputTemplate::Code
-        ) {
-            // Code template already contains syntax highlighting; avoid mixing layers.
-            return rendered;
+        match self.config.color_strategy {
+            crate::serialization::types::ColorStrategy::None => rendered,
+            crate::serialization::types::ColorStrategy::Syntax => rendered,
+            crate::serialization::types::ColorStrategy::HighlightOnly => {
+                if let Some(spans) = self
+                    .grep_spans
+                    .and_then(|m| m.get(id))
+                    .and_then(|o| o.as_ref())
+                {
+                    return highlight_with_spans(spans, &rendered);
+                }
+                if let Some(re) = &self.grep_highlight {
+                    return highlight_matches(re, &rendered);
+                }
+                rendered
+            }
         }
-        let Some(re) = &self.grep_highlight else {
-            return rendered;
-        };
-        highlight_matches(re, &rendered)
     }
+}
+
+fn highlight_with_spans(spans: &[(usize, usize)], text: &str) -> String {
+    if spans.is_empty() {
+        return text.to_string();
+    }
+    if spans.iter().any(|(_, end)| *end > text.len()) {
+        return text.to_string();
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut last = 0usize;
+    for (start, end) in spans.iter().copied() {
+        if start > last {
+            out.push_str(&text[last..start]);
+        }
+        out.push_str("\u{001b}[31m");
+        out.push_str(&text[start..end]);
+        out.push_str("\u{001b}[39m");
+        last = end;
+    }
+    if last < text.len() {
+        out.push_str(&text[last..]);
+    }
+    out
 }
 
 fn highlight_matches(re: &Regex, text: &str) -> String {
@@ -770,9 +808,9 @@ fn highlight_matches(re: &Regex, text: &str) -> String {
     let mut last = 0usize;
     for m in re.find_iter(text) {
         out.push_str(&text[last..m.start()]);
-        out.push_str("\u{001b}[43m");
+        out.push_str("\u{001b}[31m");
         out.push_str(m.as_str());
-        out.push_str("\u{001b}[0m");
+        out.push_str("\u{001b}[39m");
         last = m.end();
     }
     out.push_str(&text[last..]);
@@ -874,6 +912,7 @@ pub fn render_from_render_set(
     inclusion_flags: &[u32],
     render_id: u32,
     config: &crate::RenderConfig,
+    grep_spans: Option<&[Option<Vec<(usize, usize)>>]>,
 ) -> String {
     let root_id = ROOT_PQ_ID;
     // Compute optional global line-number width when numbering is enabled for text.
@@ -955,6 +994,7 @@ pub fn render_from_render_set(
         line_number_width,
         code_highlight_cache: HashMap::new(),
         grep_highlight: config.grep_highlight.clone(),
+        grep_spans,
     };
     let mut s = String::new();
     let mut out = Out::new(&mut s, config, line_number_width);
@@ -977,7 +1017,13 @@ pub fn render_top_k(
         inclusion_flags,
         render_id,
     );
-    render_from_render_set(order_build, inclusion_flags, render_id, config)
+    render_from_render_set(
+        order_build,
+        inclusion_flags,
+        render_id,
+        config,
+        None,
+    )
 }
 
 #[cfg(test)]
@@ -1020,6 +1066,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1061,6 +1109,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1104,6 +1154,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1148,6 +1200,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1173,6 +1227,8 @@ mod tests {
                 prefer_tail_arrays: true,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1215,6 +1271,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1239,6 +1297,8 @@ mod tests {
                 prefer_tail_arrays: true,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1281,6 +1341,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1306,6 +1368,8 @@ mod tests {
                 prefer_tail_arrays: true,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1345,6 +1409,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1384,6 +1450,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1421,6 +1489,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1486,6 +1556,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1562,6 +1634,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1601,6 +1675,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1647,6 +1723,7 @@ mod tests {
             prefer_tail_arrays: false,
             color_mode: crate::ColorMode::Off,
             color_enabled: false,
+            color_strategy: crate::serialization::types::ColorStrategy::Syntax,
             style: crate::serialization::types::Style::Strict,
             string_free_prefix_graphemes: None,
             debug: false,
@@ -1663,6 +1740,7 @@ mod tests {
             line_number_width: None,
             code_highlight_cache: HashMap::new(),
             grep_highlight: None,
+            grep_spans: None,
         };
         // Atomic leaves never report omitted counts.
         let none = scope.omitted_for(crate::order::ROOT_PQ_ID, 0);
@@ -1693,6 +1771,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1733,6 +1813,8 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
+                color_strategy:
+                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1788,6 +1870,7 @@ mod tests {
             prefer_tail_arrays: false,
             color_mode: crate::ColorMode::Off,
             color_enabled: false,
+            color_strategy: crate::serialization::types::ColorStrategy::Syntax,
             style,
             string_free_prefix_graphemes: None,
             debug: false,
