@@ -4,13 +4,14 @@ Minimal Python API for the `headson` preview renderer.
 
 API
 
-- `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", byte_budget: int | None = None, skew: str = "balanced") -> str`
+- `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", byte_budget: int | None = None, skew: str = "balanced", grep: str | None = None) -> str`
   - `format`: output format — `"auto" | "json" | "yaml" | "text"`.
   - `style`: output style — `"strict" | "default" | "detailed"`.
   - `input_format`: ingestion format — `"json" | "yaml" | "text"`.
   - `byte_budget`: maximum output size in bytes (defaults to 500 if not set).
   - `skew`: one of `"balanced" | "head" | "tail"`.
     - `balanced` (default), `head` keeps first N, `tail` keeps last N. Display styles place omission markers accordingly; strict JSON remains unannotated.
+  - `grep`: optional regex to guarantee inclusion of matching values/keys/lines; syntax colors are suppressed in grep mode and only matches would be highlighted—but Python bindings always disable ANSI colors, so output stays plain text.
   - Notes:
     - For single inputs, `format="auto"` maps to the JSON family; set `format="yaml"` to emit YAML.
 

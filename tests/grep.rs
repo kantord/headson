@@ -190,7 +190,17 @@ fn grep_respects_auto_color_when_not_tty() {
 fn grep_highlights_yaml_values_correctly() {
     let input = b"foo: bar\nmatch: baz\n".to_vec();
     let assert = cargo_bin_cmd!("hson")
-        .args(["-f", "yaml", "-t", "default", "--grep", "baz", "--no-sort"])
+        .args([
+            "-f",
+            "yaml",
+            "-i",
+            "yaml",
+            "-t",
+            "default",
+            "--grep",
+            "baz",
+            "--no-sort",
+        ])
         .env("FORCE_COLOR", "1")
         .write_stdin(input)
         .assert()
@@ -224,6 +234,8 @@ fn grep_highlights_code_lines_without_syntax_colors() {
     let assert = cargo_bin_cmd!("hson")
         .args([
             "-f",
+            "text",
+            "-i",
             "text",
             "-t",
             "default",
