@@ -132,6 +132,30 @@ fn grep_defaults_to_color_output() {
 }
 
 #[test]
+fn grep_suppresses_syntax_colors_even_when_no_matches() {
+    // With a grep pattern that matches nothing, syntax colors should still be off.
+    let input = br#"{"a":1,"b":2}"#.to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "-f",
+            "json",
+            "-t",
+            "default",
+            "--grep",
+            "nomatch",
+            "--no-sort",
+        ])
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        !stdout.contains("\u{001b}[32m") && !stdout.contains("\u{001b}[1;34m"),
+        "syntax coloring should be disabled in grep mode even with zero matches; got: {stdout:?}"
+    );
+}
+
+#[test]
 fn grep_highlights_yaml_values_correctly() {
     let input = b"foo: bar\nmatch: baz\n".to_vec();
     let assert = cargo_bin_cmd!("hson")

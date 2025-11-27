@@ -37,14 +37,13 @@ pub fn find_largest_render_under_budgets(
     );
     let min_k = min_k_for(&grep_state, grep);
     let must_keep_slice = must_keep_slice(&grep_state, grep);
-    let color_strategy =
-        if grep_state.as_ref().is_some() && config.color_enabled {
-            crate::ColorStrategy::HighlightOnly
-        } else if config.color_enabled {
-            crate::ColorStrategy::Syntax
-        } else {
-            crate::ColorStrategy::None
-        };
+    let color_strategy = if grep.regex.is_some() && config.color_enabled {
+        crate::ColorStrategy::HighlightOnly
+    } else if config.color_enabled {
+        crate::ColorStrategy::Syntax
+    } else {
+        crate::ColorStrategy::None
+    };
 
     let (k, mut inclusion_flags, render_set_id) = select_best_k(
         order_build,
