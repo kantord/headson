@@ -330,7 +330,6 @@ fn grep_highlights_for_library_calls_without_extra_config() {
         prefer_tail_arrays: false,
         color_mode: headson::ColorMode::On,
         color_enabled: true,
-        color_strategy: headson::ColorStrategy::Syntax,
         style: Style::Default,
         string_free_prefix_graphemes: None,
         debug: false,

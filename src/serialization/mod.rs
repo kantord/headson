@@ -169,11 +169,8 @@ impl<'a> RenderScope<'a> {
         array_id: usize,
         template: crate::OutputTemplate,
     ) -> Option<Arc<Vec<String>>> {
-        if !self.config.color_enabled {
-            return None;
-        }
         if !matches!(
-            self.config.color_strategy,
+            self.config.color_strategy(),
             crate::serialization::types::ColorStrategy::Syntax
         ) {
             return None;
@@ -750,7 +747,7 @@ impl<'a> RenderScope<'a> {
     }
 
     fn maybe_highlight_value(&self, _id: usize, rendered: String) -> String {
-        match self.config.color_strategy {
+        match self.config.color_strategy() {
             crate::serialization::types::ColorStrategy::None
             | crate::serialization::types::ColorStrategy::Syntax => rendered,
             crate::serialization::types::ColorStrategy::HighlightOnly => {
@@ -1018,8 +1015,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1061,8 +1056,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1106,8 +1099,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1152,8 +1143,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1179,8 +1168,6 @@ mod tests {
                 prefer_tail_arrays: true,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1223,8 +1210,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1249,8 +1234,6 @@ mod tests {
                 prefer_tail_arrays: true,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1293,8 +1276,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1320,8 +1301,6 @@ mod tests {
                 prefer_tail_arrays: true,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1361,8 +1340,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1402,8 +1379,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1441,8 +1416,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1508,8 +1481,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1586,8 +1557,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1627,8 +1596,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Default,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1675,7 +1642,6 @@ mod tests {
             prefer_tail_arrays: false,
             color_mode: crate::ColorMode::Off,
             color_enabled: false,
-            color_strategy: crate::serialization::types::ColorStrategy::Syntax,
             style: crate::serialization::types::Style::Strict,
             string_free_prefix_graphemes: None,
             debug: false,
@@ -1722,8 +1688,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Off,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Strict,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1764,8 +1728,6 @@ mod tests {
                 prefer_tail_arrays: false,
                 color_mode: crate::ColorMode::Auto,
                 color_enabled: false,
-                color_strategy:
-                    crate::serialization::types::ColorStrategy::Syntax,
                 style: crate::serialization::types::Style::Detailed,
                 string_free_prefix_graphemes: None,
                 debug: false,
@@ -1821,7 +1783,6 @@ mod tests {
             prefer_tail_arrays: false,
             color_mode: crate::ColorMode::Off,
             color_enabled: false,
-            color_strategy: crate::serialization::types::ColorStrategy::Syntax,
             style,
             string_free_prefix_graphemes: None,
             debug: false,

@@ -19,11 +19,10 @@ impl<'a> Out<'a> {
         config: &crate::RenderConfig,
         line_number_width: Option<usize>,
     ) -> Self {
-        let role_colors_enabled = config.color_enabled
-            && matches!(
-                config.color_strategy,
-                crate::serialization::types::ColorStrategy::Syntax
-            );
+        let role_colors_enabled = matches!(
+            config.color_strategy(),
+            crate::serialization::types::ColorStrategy::Syntax
+        );
         Self {
             buf,
             newline: config.newline.clone(),
