@@ -669,6 +669,7 @@ dependencies = [
  "anyhow",
  "headson",
  "pyo3",
+ "regex",
 ]
 
 [[package]]
