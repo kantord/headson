@@ -180,10 +180,10 @@ def test_head_affects_arrays_js():
 
 
 def test_grep_highlights_in_python_api(monkeypatch):
-    monkeypatch.setenv("FORCE_COLOR", "1")
     text = '{"needle":123,"other":456}'
     out = headson.summarize(text, format="json", style="default", grep="needle")
-    assert "\x1b[31mneedle\x1b[39m" in out
+    assert "needle" in out
+    assert "\x1b" not in out
 
 
 def test_head_json_remains_strict():

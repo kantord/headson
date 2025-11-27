@@ -1,8 +1,7 @@
 use anyhow::{bail, Result};
 use headson_core::{
-    resolve_color_enabled, ArraySamplerStrategy, Budgets, ColorMode,
-    ColorStrategy, GrepConfig, InputKind, OutputTemplate, PriorityConfig,
-    RenderConfig, Style,
+    ArraySamplerStrategy, Budgets, ColorMode, ColorStrategy, GrepConfig,
+    InputKind, OutputTemplate, PriorityConfig, RenderConfig, Style,
 };
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
@@ -54,8 +53,8 @@ fn render_config_with_sampler(
     let newline = "\n".to_string();
     let indent_unit = "  ".to_string();
     let prefer_tail_arrays = matches!(sampler, ArraySamplerStrategy::Tail);
-    let color_mode = ColorMode::Auto;
-    let color_enabled = resolve_color_enabled(color_mode);
+    let color_mode = ColorMode::Off;
+    let color_enabled = false;
     Ok(RenderConfig {
         template: t,
         indent_unit,
@@ -64,7 +63,7 @@ fn render_config_with_sampler(
         prefer_tail_arrays,
         color_mode,
         color_enabled,
-        color_strategy: ColorStrategy::Syntax,
+        color_strategy: ColorStrategy::None,
         style: s,
         string_free_prefix_graphemes: None,
         debug: false,
