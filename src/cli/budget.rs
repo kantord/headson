@@ -19,7 +19,10 @@ pub struct EffectiveBudgets {
     pub line_only: bool,
 }
 
-pub fn compute_effective(cli: &Cli, input_count: usize) -> EffectiveBudgets {
+pub(crate) fn compute_effective(
+    cli: &Cli,
+    input_count: usize,
+) -> EffectiveBudgets {
     let any_bytes = cli.bytes.is_some() || cli.global_bytes.is_some();
     let any_lines = cli.lines.is_some() || cli.global_lines.is_some();
     let any_chars = cli.chars.is_some();
@@ -100,7 +103,7 @@ fn compute_global_cap(
 
 // Return a rendering config adjusted for active budget modes (pure; does not mutate caller state).
 // In practice this only lifts string trimming when running line-only (lines set, no bytes).
-pub fn render_config_for_budgets(
+pub(crate) fn render_config_for_budgets(
     mut cfg: RenderConfig,
     effective: &EffectiveBudgets,
 ) -> RenderConfig {
@@ -114,7 +117,7 @@ pub fn render_config_for_budgets(
     cfg
 }
 
-pub fn build_priority_config(
+pub(crate) fn build_priority_config(
     cli: &Cli,
     effective: &EffectiveBudgets,
 ) -> PriorityConfig {

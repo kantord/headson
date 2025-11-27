@@ -17,9 +17,9 @@ use crate::sorting::sort_paths_for_fileset;
 
 type InputEntry = (String, Vec<u8>);
 type InputEntries = Vec<InputEntry>;
-pub type IgnoreNotices = Vec<String>;
+pub(crate) type IgnoreNotices = Vec<String>;
 
-pub fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
+pub(crate) fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
     let mut render_cfg = get_render_config_from(cli);
     let grep_cfg = crate::cli::args::build_grep_config(cli)?;
     render_cfg.grep_highlight = grep_cfg.regex.clone();
