@@ -106,6 +106,7 @@ fn grep_highlights_matching_keys() {
             "needle",
             "--no-header",
         ])
+        .env("FORCE_COLOR", "1")
         .write_stdin(input)
         .assert()
         .success();
@@ -121,6 +122,7 @@ fn grep_defaults_to_color_output() {
     let input = br#"{"k":"foo","x":"bar"}"#.to_vec();
     let assert = cargo_bin_cmd!("hson")
         .args(["-f", "json", "-t", "default", "--grep", "foo", "--no-sort"])
+        .env("FORCE_COLOR", "1")
         .write_stdin(input)
         .assert()
         .success();
@@ -156,10 +158,37 @@ fn grep_suppresses_syntax_colors_even_when_no_matches() {
 }
 
 #[test]
+fn grep_respects_auto_color_when_not_tty() {
+    // Default (auto) color mode should avoid escape codes when stdout is not a TTY,
+    // even if --grep is provided.
+    let input = br#"{"needle": 1}"#.to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "-f",
+            "json",
+            "-t",
+            "default",
+            "--grep",
+            "needle",
+            "--no-sort",
+            "--no-header",
+        ])
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        !stdout.contains('\u{001b}'),
+        "auto color should be disabled for non-TTY stdout; got escapes in: {stdout:?}"
+    );
+}
+
+#[test]
 fn grep_highlights_yaml_values_correctly() {
     let input = b"foo: bar\nmatch: baz\n".to_vec();
     let assert = cargo_bin_cmd!("hson")
         .args(["-f", "yaml", "-t", "default", "--grep", "baz", "--no-sort"])
+        .env("FORCE_COLOR", "1")
         .write_stdin(input)
         .assert()
         .success();
@@ -200,6 +229,7 @@ fn grep_highlights_code_lines_without_syntax_colors() {
             "--no-sort",
             "--no-header",
         ])
+        .env("FORCE_COLOR", "1")
         .write_stdin(input)
         .assert()
         .success();
@@ -231,6 +261,7 @@ fn grep_highlight_is_applied_once_per_value() {
             "--no-sort",
             "--no-header",
         ])
+        .env("FORCE_COLOR", "1")
         .write_stdin(input)
         .assert()
         .success();

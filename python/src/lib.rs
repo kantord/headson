@@ -1,7 +1,8 @@
 use anyhow::{bail, Result};
 use headson_core::{
-    ArraySamplerStrategy, Budgets, ColorMode, ColorStrategy, GrepConfig,
-    InputKind, OutputTemplate, PriorityConfig, RenderConfig, Style,
+    resolve_color_enabled, ArraySamplerStrategy, Budgets, ColorMode,
+    ColorStrategy, GrepConfig, InputKind, OutputTemplate, PriorityConfig,
+    RenderConfig, Style,
 };
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
@@ -46,7 +47,6 @@ fn render_config_with_sampler(
     format: &str,
     style: &str,
     sampler: ArraySamplerStrategy,
-    grep_enabled: bool,
 ) -> Result<RenderConfig> {
     let s = to_style(style)?;
     let t = map_output_template(format, s)?;
@@ -54,12 +54,8 @@ fn render_config_with_sampler(
     let newline = "\n".to_string();
     let indent_unit = "  ".to_string();
     let prefer_tail_arrays = matches!(sampler, ArraySamplerStrategy::Tail);
-    let mut color_mode = ColorMode::Auto;
-    let mut color_enabled = false;
-    if grep_enabled {
-        color_mode = ColorMode::On;
-        color_enabled = true;
-    }
+    let color_mode = ColorMode::Auto;
+    let color_enabled = resolve_color_enabled(color_mode);
     Ok(RenderConfig {
         template: t,
         indent_unit,
@@ -134,9 +130,8 @@ fn summarize(
         None
     };
     let sampler = parse_skew(skew).map_err(to_pyerr)?;
-    let mut cfg =
-        render_config_with_sampler(format, style, sampler, grep_re.is_some())
-            .map_err(to_pyerr)?;
+    let mut cfg = render_config_with_sampler(format, style, sampler)
+        .map_err(to_pyerr)?;
     let budget = byte_budget.unwrap_or(500);
     let per_file_for_priority = budget.max(1);
     let prio = priority_config(per_file_for_priority, sampler);

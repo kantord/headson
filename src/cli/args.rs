@@ -222,11 +222,7 @@ pub fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
     } else {
         cli.indent.clone()
     };
-    let mut color_mode = color_mode_from_flags(cli);
-    // For grep, default to colored output unless explicitly disabled.
-    if cli.grep.is_some() && !cli.no_color {
-        color_mode = headson::ColorMode::On;
-    }
+    let color_mode = color_mode_from_flags(cli);
     let color_enabled = headson::resolve_color_enabled(color_mode);
 
     headson::RenderConfig {

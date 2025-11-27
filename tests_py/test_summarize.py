@@ -179,7 +179,8 @@ def test_head_affects_arrays_js():
         ), f"expected single-line omission comment inside brackets, got: {out_head!r}"
 
 
-def test_grep_highlights_in_python_api():
+def test_grep_highlights_in_python_api(monkeypatch):
+    monkeypatch.setenv("FORCE_COLOR", "1")
     text = '{"needle":123,"other":456}'
     out = headson.summarize(text, format="json", style="default", grep="needle")
     assert "\x1b[31mneedle\x1b[39m" in out
