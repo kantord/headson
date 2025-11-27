@@ -90,7 +90,6 @@ pub fn find_largest_render_under_budgets(
             color_strategy,
             ..config.clone()
         },
-        grep_state.as_ref().map(|s| s.spans.as_slice()),
     )
 }
 
@@ -193,7 +192,6 @@ fn select_best_k(
             &inclusion_flags,
             current_render_id,
             measure_cfg,
-            None,
         );
         let stats =
             crate::utils::measure::count_output_stats(&s, measure_chars);
@@ -268,7 +266,6 @@ fn measure_must_keep(
         &inclusion_flags,
         render_set_id,
         measure_cfg,
-        None,
     );
     crate::utils::measure::count_output_stats(&rendered, measure_chars)
 }

@@ -12,7 +12,6 @@ pub struct GrepConfig {
 pub(crate) struct GrepState {
     pub must_keep: Vec<bool>,
     pub must_keep_count: usize,
-    pub spans: Vec<Option<Vec<(usize, usize)>>>,
 }
 
 impl GrepState {
@@ -31,31 +30,6 @@ fn matches_ranked(node: &RankedNode, re: &Regex) -> bool {
         return true;
     }
     node.key_in_object().is_some_and(|k| re.is_match(k))
-}
-
-fn collect_spans(
-    order: &PriorityOrder,
-    re: &Regex,
-) -> Vec<Option<Vec<(usize, usize)>>> {
-    let mut spans: Vec<Option<Vec<(usize, usize)>>> =
-        vec![None; order.total_nodes];
-    for (idx, node) in order.nodes.iter().enumerate() {
-        let found = match node {
-            RankedNode::SplittableLeaf { value, .. } => {
-                spans_for_text(value, re)
-            }
-            RankedNode::AtomicLeaf { token, .. } => spans_for_text(token, re),
-            _ => None,
-        };
-        spans[idx] = found;
-    }
-    spans
-}
-
-fn spans_for_text(text: &str, re: &Regex) -> Option<Vec<(usize, usize)>> {
-    let found: Vec<(usize, usize)> =
-        re.find_iter(text).map(|m| (m.start(), m.end())).collect();
-    if found.is_empty() { None } else { Some(found) }
 }
 
 fn mark_matches_and_ancestors(
@@ -87,13 +61,11 @@ pub(crate) fn compute_grep_state(
 ) -> Option<GrepState> {
     let re = grep.regex.as_ref()?;
     let mut must_keep = vec![false; order.total_nodes];
-    let spans = collect_spans(order, re);
     mark_matches_and_ancestors(order, re, &mut must_keep);
     let must_keep_count = must_keep.iter().filter(|b| **b).count();
     (must_keep_count > 0).then_some(GrepState {
         must_keep,
         must_keep_count,
-        spans,
     })
 }
 

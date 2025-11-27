@@ -1,7 +1,5 @@
 use crate::order::ObjectType;
 use crate::order::{NodeId, NodeKind, PriorityOrder, ROOT_PQ_ID, RankedNode};
-
-type GrepSpansSlice<'a> = Option<&'a [Option<Vec<(usize, usize)>>]>;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -32,7 +30,6 @@ pub(crate) struct RenderScope<'a> {
     line_number_width: Option<usize>,
     code_highlight_cache: HashMap<usize, Arc<Vec<String>>>,
     grep_highlight: Option<Regex>,
-    grep_spans: GrepSpansSlice<'a>,
 }
 
 impl<'a> RenderScope<'a> {
@@ -753,7 +750,7 @@ impl<'a> RenderScope<'a> {
         }
     }
 
-    fn maybe_highlight_value(&self, id: usize, rendered: String) -> String {
+    fn maybe_highlight_value(&self, _id: usize, rendered: String) -> String {
         if matches!(
             self.config.style,
             crate::serialization::types::Style::Strict
@@ -764,20 +761,6 @@ impl<'a> RenderScope<'a> {
             crate::serialization::types::ColorStrategy::None
             | crate::serialization::types::ColorStrategy::Syntax => rendered,
             crate::serialization::types::ColorStrategy::HighlightOnly => {
-                let use_spans = matches!(
-                    self.config.template,
-                    crate::serialization::types::OutputTemplate::Text
-                        | crate::serialization::types::OutputTemplate::Code
-                );
-                if use_spans {
-                    if let Some(spans) = self
-                        .grep_spans
-                        .and_then(|m| m.get(id))
-                        .and_then(|o| o.as_ref())
-                    {
-                        return highlight_with_spans(spans, &rendered);
-                    }
-                }
                 if let Some(re) = &self.grep_highlight {
                     return highlight_matches(re, &rendered);
                 }
@@ -785,30 +768,6 @@ impl<'a> RenderScope<'a> {
             }
         }
     }
-}
-
-fn highlight_with_spans(spans: &[(usize, usize)], text: &str) -> String {
-    if spans.is_empty() {
-        return text.to_string();
-    }
-    if spans.iter().any(|(_, end)| *end > text.len()) {
-        return text.to_string();
-    }
-    let mut out = String::with_capacity(text.len());
-    let mut last = 0usize;
-    for (start, end) in spans.iter().copied() {
-        if start > last {
-            out.push_str(&text[last..start]);
-        }
-        out.push_str("\u{001b}[31m");
-        out.push_str(&text[start..end]);
-        out.push_str("\u{001b}[39m");
-        last = end;
-    }
-    if last < text.len() {
-        out.push_str(&text[last..]);
-    }
-    out
 }
 
 fn highlight_matches(re: &Regex, text: &str) -> String {
@@ -920,7 +879,6 @@ pub fn render_from_render_set(
     inclusion_flags: &[u32],
     render_id: u32,
     config: &crate::RenderConfig,
-    grep_spans: GrepSpansSlice<'_>,
 ) -> String {
     let root_id = ROOT_PQ_ID;
     // Compute optional global line-number width when numbering is enabled for text.
@@ -1002,7 +960,6 @@ pub fn render_from_render_set(
         line_number_width,
         code_highlight_cache: HashMap::new(),
         grep_highlight: config.grep_highlight.clone(),
-        grep_spans,
     };
     let mut s = String::new();
     let mut out = Out::new(&mut s, config, line_number_width);
@@ -1025,13 +982,7 @@ pub fn render_top_k(
         inclusion_flags,
         render_id,
     );
-    render_from_render_set(
-        order_build,
-        inclusion_flags,
-        render_id,
-        config,
-        None,
-    )
+    render_from_render_set(order_build, inclusion_flags, render_id, config)
 }
 
 #[cfg(test)]
@@ -1748,7 +1699,6 @@ mod tests {
             line_number_width: None,
             code_highlight_cache: HashMap::new(),
             grep_highlight: None,
-            grep_spans: None,
         };
         // Atomic leaves never report omitted counts.
         let none = scope.omitted_for(crate::order::ROOT_PQ_ID, 0);
