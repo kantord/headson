@@ -443,16 +443,15 @@ impl<'a> RenderScope<'a> {
             }
             RankedNode::SplittableLeaf { .. } => {
                 let s = self.serialize_string(id);
-                let h = self.maybe_highlight_value(id, s);
                 if matches!(
                     self.config.template,
                     crate::serialization::types::OutputTemplate::Text
                         | crate::serialization::types::OutputTemplate::Code
                 ) {
                     // For text/code templates, push raw string.
-                    out.push_str(&h);
+                    out.push_str(&s);
                 } else {
-                    out.push_string_literal(&h);
+                    out.push_string_literal(&s);
                 }
             }
             RankedNode::AtomicLeaf { .. } => {

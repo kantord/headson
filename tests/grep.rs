@@ -189,3 +189,34 @@ fn grep_highlights_code_lines_without_syntax_colors() {
         "syntax colors should be suppressed in grep mode for code/text: {stdout:?}"
     );
 }
+
+#[test]
+fn grep_highlight_is_applied_once_per_value() {
+    // Top-level string to exercise the direct leaf rendering path.
+    let input = br#""foo""#.to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "-f",
+            "json",
+            "-t",
+            "default",
+            "--grep",
+            "foo",
+            "--bytes",
+            "50",
+            "--no-sort",
+            "--no-header",
+        ])
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("\u{001b}[31mfoo\u{001b}[39m"),
+        "expected single highlighted match in output; got: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\u{001b}[31m\u{001b}[31mfoo"),
+        "matches should be highlighted once, without nested escapes; got: {stdout:?}"
+    );
+}
