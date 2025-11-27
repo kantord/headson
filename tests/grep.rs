@@ -145,3 +145,47 @@ fn grep_highlights_yaml_values_correctly() {
         "expected exact match highlighting for YAML scalar values; got: {stdout:?}"
     );
 }
+
+#[test]
+fn grep_does_not_highlight_json_punctuation() {
+    let input = br#"{"a":1,"b":2}"#.to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args(["-f", "json", "-t", "default", "--grep", ":", "--no-sort"])
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        !stdout.contains("\u{001b}[31m:\u{001b}[39m"),
+        "grep should not color structural punctuation: {stdout:?}"
+    );
+}
+
+#[test]
+fn grep_highlights_code_lines_without_syntax_colors() {
+    // Small Rust-like snippet; grep should highlight only matches and not emit syntax colors.
+    let input = b"fn build_order() {}\n// build something else\n".to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "-f",
+            "text",
+            "-t",
+            "default",
+            "--grep",
+            "build",
+            "--no-sort",
+            "--no-header",
+        ])
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("\u{001b}[31mbuild\u{001b}[39m"),
+        "expected grep highlight in code-like text: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\u{001b}[32m") && !stdout.contains("\u{001b}[1;34m"),
+        "syntax colors should be suppressed in grep mode for code/text: {stdout:?}"
+    );
+}
