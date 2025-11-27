@@ -27,8 +27,7 @@ impl<'a> RenderScope<'a> {
         else {
             return String::new();
         };
-        let show_headers =
-            self.should_render_fileset_headers() && children_ids.len() > 1;
+        let show_headers = self.should_render_fileset_headers();
         let mut out = String::new();
         let kept = self.render_fileset_children(
             children_ids,

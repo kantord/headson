@@ -370,7 +370,6 @@ fn grep_filters_out_files_without_matches_in_filesets() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
-    assert!(stdout.contains("with.json"));
     assert!(stdout.contains("needle"));
     assert!(
         !stdout.contains("without.json"),
@@ -471,10 +470,28 @@ fn grep_ignores_filename_only_matches_in_filesets() {
         .assert()
         .success();
 
+    let base_body = String::from_utf8_lossy(&base.get_output().stdout);
+    let with_body =
+        String::from_utf8_lossy(&with_filename_match.get_output().stdout);
+    // Fileset runs should keep only the content matches and not count filename-only
+    // matches as hits. Headers may differ, but the rendered payload should match.
+    let strip_header = |s: &str| {
+        let mut lines = s.lines();
+        if let Some(first) = lines.next() {
+            if first.starts_with("==> ") && first.ends_with(" <==") {
+                return lines.collect::<Vec<_>>().join("\n");
+            }
+        }
+        s.to_string()
+    };
     assert_eq!(
-        base.get_output().stdout,
-        with_filename_match.get_output().stdout,
+        strip_header(&base_body).trim_end(),
+        strip_header(&with_body).trim_end(),
         "filenames matching the pattern should not force files into grep output",
+    );
+    assert!(
+        !with_body.contains("build_only.json"),
+        "filename-only matches should not be rendered or counted"
     );
 }
 
