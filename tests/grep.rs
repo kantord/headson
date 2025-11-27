@@ -121,6 +121,33 @@ fn grep_highlights_matching_keys() {
 }
 
 #[test]
+fn grep_highlights_anchored_keys_without_quotes() {
+    let input = br#"{"needle":123,"other":456}"#.to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "--no-sort",
+            "-c",
+            "50",
+            "-f",
+            "json",
+            "-t",
+            "default",
+            "--grep",
+            "^needle$",
+            "--no-header",
+        ])
+        .env("FORCE_COLOR", "1")
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
+        "anchored regex should highlight the matching key without requiring quotes; got: {stdout:?}"
+    );
+}
+
+#[test]
 fn grep_highlights_in_strict_style() {
     let input = br#"{"foo":"needle","bar":"other"}"#.to_vec();
     let assert = cargo_bin_cmd!("hson")

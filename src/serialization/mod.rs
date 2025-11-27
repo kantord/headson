@@ -337,6 +337,15 @@ impl<'a> RenderScope<'a> {
                 "serialize_string called for non-string node: id={id}"
             ),
         };
+        let highlight_kind = if matches!(
+            self.config.template,
+            crate::serialization::types::OutputTemplate::Text
+                | crate::serialization::types::OutputTemplate::Code
+        ) {
+            HighlightKind::TextLike
+        } else {
+            HighlightKind::JsonString
+        };
         let rendered = if matches!(
             self.config.template,
             crate::serialization::types::OutputTemplate::Text
@@ -361,7 +370,7 @@ impl<'a> RenderScope<'a> {
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
         };
-        self.maybe_highlight_value(id, rendered)
+        self.maybe_highlight_value(Some(full), rendered, highlight_kind)
     }
 
     #[allow(
@@ -389,6 +398,15 @@ impl<'a> RenderScope<'a> {
                 "serialize_string called for non-string node: id={id}"
             ),
         };
+        let highlight_kind = if matches!(
+            template,
+            crate::serialization::types::OutputTemplate::Text
+                | crate::serialization::types::OutputTemplate::Code
+        ) {
+            HighlightKind::TextLike
+        } else {
+            HighlightKind::JsonString
+        };
         let rendered = if matches!(
             template,
             crate::serialization::types::OutputTemplate::Text
@@ -413,7 +431,7 @@ impl<'a> RenderScope<'a> {
             let truncated = format!("{prefix}…");
             crate::utils::json::json_string(&truncated)
         };
-        self.maybe_highlight_value(id, rendered)
+        self.maybe_highlight_value(Some(full), rendered, highlight_kind)
     }
 
     fn serialize_atomic(&self, id: usize) -> String {
@@ -421,7 +439,7 @@ impl<'a> RenderScope<'a> {
             RankedNode::AtomicLeaf { token, .. } => token.clone(),
             _ => unreachable!("atomic leaf without token: id={id}"),
         };
-        self.maybe_highlight_value(id, rendered)
+        self.maybe_highlight_value(None, rendered, HighlightKind::TextLike)
     }
 
     fn write_node(
@@ -584,8 +602,9 @@ impl<'a> RenderScope<'a> {
                 let child = &self.order.nodes[child_id.0];
                 let raw_key = child.key_in_object().unwrap_or("");
                 let key = self.maybe_highlight_value(
-                    child_id.0,
+                    Some(raw_key),
                     crate::utils::json::json_string(raw_key),
+                    HighlightKind::JsonString,
                 );
                 let val =
                     self.render_node_to_string(child_id.0, depth + 1, true);
@@ -612,8 +631,9 @@ impl<'a> RenderScope<'a> {
                 let child = &self.order.nodes[child_id.0];
                 let raw_key = child.key_in_object().unwrap_or("");
                 let key = self.maybe_highlight_value(
-                    child_id.0,
+                    Some(raw_key),
                     crate::utils::json::json_string(raw_key),
+                    HighlightKind::JsonString,
                 );
                 let val = self.render_node_to_string_with_template(
                     child_id.0,
@@ -746,18 +766,36 @@ impl<'a> RenderScope<'a> {
         }
     }
 
-    fn maybe_highlight_value(&self, _id: usize, rendered: String) -> String {
+    fn maybe_highlight_value(
+        &self,
+        raw: Option<&str>,
+        rendered: String,
+        kind: HighlightKind,
+    ) -> String {
         match self.config.color_strategy() {
             crate::serialization::types::ColorStrategy::None
             | crate::serialization::types::ColorStrategy::Syntax => rendered,
             crate::serialization::types::ColorStrategy::HighlightOnly => {
                 if let Some(re) = &self.grep_highlight {
-                    return highlight_matches(re, &rendered);
+                    return match kind {
+                        HighlightKind::JsonString => raw
+                            .map(|r| highlight_json_string(re, r))
+                            .unwrap_or(rendered),
+                        HighlightKind::TextLike => {
+                            highlight_matches(re, &rendered)
+                        }
+                    };
                 }
                 rendered
             }
         }
     }
+}
+
+#[derive(Copy, Clone, Debug)]
+enum HighlightKind {
+    TextLike,
+    JsonString,
 }
 
 fn highlight_matches(re: &Regex, text: &str) -> String {
@@ -772,6 +810,30 @@ fn highlight_matches(re: &Regex, text: &str) -> String {
     }
     out.push_str(&text[last..]);
     out
+}
+
+fn highlight_json_string(re: &Regex, raw: &str) -> String {
+    // Build a JSON string literal while inserting highlight escapes around
+    // matched spans computed on the raw (unescaped) value.
+    let mut out = String::with_capacity(raw.len() + 16);
+    out.push('"');
+    let mut last = 0usize;
+    for m in re.find_iter(raw) {
+        out.push_str(&escape_json_fragment(&raw[last..m.start()]));
+        out.push_str("\u{001b}[31m");
+        out.push_str(&escape_json_fragment(m.as_str()));
+        out.push_str("\u{001b}[39m");
+        last = m.end();
+    }
+    out.push_str(&escape_json_fragment(&raw[last..]));
+    out.push('"');
+    out
+}
+
+fn escape_json_fragment(s: &str) -> String {
+    let quoted = crate::utils::json::json_string(s);
+    // Strip surrounding quotes from a valid JSON string literal.
+    quoted[1..quoted.len() - 1].to_string()
 }
 
 /// Prepare a render set by including the first `top_k` nodes by priority
