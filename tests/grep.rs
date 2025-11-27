@@ -95,7 +95,6 @@ fn grep_highlights_matching_keys() {
     let input = br#"{"needle":123,"other":456}"#.to_vec();
     let assert = cargo_bin_cmd!("hson")
         .args([
-            "--color",
             "--no-sort",
             "-c",
             "50",
@@ -114,5 +113,35 @@ fn grep_highlights_matching_keys() {
     assert!(
         stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "matching keys should be highlighted when color is enabled"
+    );
+}
+
+#[test]
+fn grep_defaults_to_color_output() {
+    let input = br#"{"k":"foo","x":"bar"}"#.to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args(["-f", "json", "-t", "default", "--grep", "foo", "--no-sort"])
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("\u{001b}[31m"),
+        "grep should emit colored matches by default; got: {stdout:?}"
+    );
+}
+
+#[test]
+fn grep_highlights_yaml_values_correctly() {
+    let input = b"foo: bar\nmatch: baz\n".to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args(["-f", "yaml", "-t", "default", "--grep", "baz", "--no-sort"])
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("\u{001b}[31mbaz\u{001b}[39m"),
+        "expected exact match highlighting for YAML scalar values; got: {stdout:?}"
     );
 }

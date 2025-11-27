@@ -764,12 +764,19 @@ impl<'a> RenderScope<'a> {
             crate::serialization::types::ColorStrategy::None
             | crate::serialization::types::ColorStrategy::Syntax => rendered,
             crate::serialization::types::ColorStrategy::HighlightOnly => {
-                if let Some(spans) = self
-                    .grep_spans
-                    .and_then(|m| m.get(id))
-                    .and_then(|o| o.as_ref())
-                {
-                    return highlight_with_spans(spans, &rendered);
+                let use_spans = matches!(
+                    self.config.template,
+                    crate::serialization::types::OutputTemplate::Text
+                        | crate::serialization::types::OutputTemplate::Code
+                );
+                if use_spans {
+                    if let Some(spans) = self
+                        .grep_spans
+                        .and_then(|m| m.get(id))
+                        .and_then(|o| o.as_ref())
+                    {
+                        return highlight_with_spans(spans, &rendered);
+                    }
                 }
                 if let Some(re) = &self.grep_highlight {
                     return highlight_matches(re, &rendered);
