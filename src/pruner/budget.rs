@@ -1,6 +1,7 @@
 use crate::grep::{
     GrepState, compute_grep_state, reorder_priority_with_must_keep,
 };
+use crate::order::{NodeId, ObjectType};
 use crate::utils::measure::OutputStats;
 use crate::{GrepConfig, PriorityOrder, RenderConfig};
 
@@ -21,12 +22,15 @@ pub fn find_largest_render_under_budgets(
     grep: &GrepConfig,
     budgets: Budgets,
 ) -> String {
+    let mut budgets = budgets;
     let total = order_build.total_nodes;
     if total == 0 {
         return String::new();
     }
     let measure_cfg = measure_config(order_build, config);
     let grep_state = compute_grep_state(order_build, grep);
+    filter_fileset_without_matches(order_build, &grep_state);
+    budgets = adjust_budgets_for_filtered_fileset(budgets, order_build);
     reorder_if_strong_grep(order_build, &grep_state, grep);
     let effective_budgets = effective_budgets_with_grep(
         order_build,
@@ -87,6 +91,43 @@ pub fn find_largest_render_under_budgets(
     )
 }
 
+fn adjust_budgets_for_filtered_fileset(
+    budgets: Budgets,
+    order_build: &PriorityOrder,
+) -> Budgets {
+    let Some(total_files) = order_build
+        .children
+        .get(crate::order::ROOT_PQ_ID)
+        .map(std::vec::Vec::len)
+    else {
+        return budgets;
+    };
+    if total_files == 0 {
+        return budgets;
+    }
+    let kept_files = order_build
+        .fileset_children
+        .as_ref()
+        .map(std::vec::Vec::len)
+        .unwrap_or(total_files);
+    if kept_files == 0 || kept_files >= total_files {
+        return budgets;
+    }
+
+    fn scale(value: Option<usize>, num: usize, den: usize) -> Option<usize> {
+        value.map(|v| {
+            let scaled = (v as u128 * num as u128).div_ceil(den as u128);
+            scaled.max(1) as usize
+        })
+    }
+
+    Budgets {
+        byte_budget: scale(budgets.byte_budget, kept_files, total_files),
+        char_budget: scale(budgets.char_budget, kept_files, total_files),
+        line_budget: scale(budgets.line_budget, kept_files, total_files),
+    }
+}
+
 fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
     state.as_ref().is_some_and(GrepState::is_enabled) && !grep.weak
 }
@@ -101,6 +142,104 @@ fn reorder_if_strong_grep(
             reorder_priority_with_must_keep(order_build, &s.must_keep);
         }
     }
+}
+
+fn filter_fileset_without_matches(
+    order_build: &mut PriorityOrder,
+    state: &Option<GrepState>,
+) {
+    let Some(s) = state else {
+        return;
+    };
+    if !s.is_enabled() {
+        return;
+    }
+    if order_build
+        .object_type
+        .get(crate::order::ROOT_PQ_ID)
+        .is_none_or(|t| *t != ObjectType::Fileset)
+    {
+        return;
+    }
+    let Some(fileset_children) =
+        order_build.fileset_children.clone().or_else(|| {
+            order_build.children.get(crate::order::ROOT_PQ_ID).cloned()
+        })
+    else {
+        return;
+    };
+    if fileset_children.is_empty() {
+        return;
+    }
+
+    let keep_slots: Vec<bool> = fileset_children
+        .iter()
+        .map(|child| s.must_keep.get(child.0).copied().unwrap_or(false))
+        .collect();
+    if keep_slots.iter().all(|k| !*k) {
+        return;
+    }
+
+    let Some(slot_map) = compute_fileset_slot_map(order_build) else {
+        return;
+    };
+
+    order_build.by_priority.retain(|node| {
+        match slot_map.get(node.0).copied().flatten() {
+            Some(slot) => keep_slots.get(slot).copied().unwrap_or(false),
+            None => true,
+        }
+    });
+
+    let mut filtered_children: Vec<NodeId> = Vec::new();
+    for (slot, child) in fileset_children.iter().enumerate() {
+        if keep_slots.get(slot).copied().unwrap_or(false) {
+            filtered_children.push(*child);
+        }
+    }
+    order_build.fileset_children = Some(filtered_children.clone());
+    if let Some(metrics) =
+        order_build.metrics.get_mut(crate::order::ROOT_PQ_ID)
+    {
+        metrics.object_len = Some(filtered_children.len());
+    }
+}
+
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "single DFS that is clearer in one routine than split helpers"
+)]
+fn compute_fileset_slot_map(
+    order_build: &PriorityOrder,
+) -> Option<Vec<Option<usize>>> {
+    if order_build
+        .object_type
+        .get(crate::order::ROOT_PQ_ID)
+        .is_none_or(|t| *t != ObjectType::Fileset)
+    {
+        return None;
+    }
+    let children = order_build.children.get(crate::order::ROOT_PQ_ID)?;
+    if children.is_empty() {
+        return None;
+    }
+
+    let mut slots: Vec<Option<usize>> = vec![None; order_build.total_nodes];
+    for (slot, child) in children.iter().enumerate() {
+        let mut stack = vec![child.0];
+        while let Some(node_idx) = stack.pop() {
+            if slots.get(node_idx).is_some_and(Option::is_some) {
+                continue;
+            }
+            if let Some(slot_ref) = slots.get_mut(node_idx) {
+                *slot_ref = Some(slot);
+            }
+            if let Some(kids) = order_build.children.get(node_idx) {
+                stack.extend(kids.iter().map(|k| k.0));
+            }
+        }
+    }
+    Some(slots)
 }
 
 fn effective_budgets_with_grep(
@@ -155,10 +294,12 @@ fn select_best_k(
 ) -> (usize, Vec<u32>, u32) {
     let total = order_build.total_nodes;
     let lo = min_k.max(1);
+    let available = order_build.by_priority.len().max(1);
     let hi = match budgets.byte_budget {
         Some(c) => total.min(c.max(1)),
         None => total,
-    };
+    }
+    .min(available);
 
     let mut inclusion_flags: Vec<u32> = vec![0; total];
 
@@ -322,5 +463,44 @@ fn include_must_keep(
                 render_set_id,
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::order::types::NodeMetrics;
+    use crate::order::{NodeId, ObjectType};
+    use std::collections::HashMap;
+
+    #[test]
+    fn adjusts_budgets_after_fileset_filtering() {
+        let metrics = vec![NodeMetrics {
+            object_len: Some(3),
+            ..NodeMetrics::default()
+        }];
+        let order = PriorityOrder {
+            metrics,
+            nodes: Vec::new(),
+            scores: Vec::new(),
+            parent: Vec::new(),
+            children: vec![vec![NodeId(1), NodeId(2), NodeId(3)]],
+            index_in_parent_array: Vec::new(),
+            by_priority: Vec::new(),
+            total_nodes: 4,
+            object_type: vec![ObjectType::Fileset],
+            force_first_child: Vec::new(),
+            code_lines: HashMap::new(),
+            fileset_children: Some(vec![NodeId(1)]),
+        };
+        let budgets = Budgets {
+            byte_budget: Some(900),
+            char_budget: Some(600),
+            line_budget: Some(300),
+        };
+        let adjusted = adjust_budgets_for_filtered_fileset(budgets, &order);
+        assert_eq!(adjusted.byte_budget, Some(300));
+        assert_eq!(adjusted.char_budget, Some(200));
+        assert_eq!(adjusted.line_budget, Some(100));
     }
 }
