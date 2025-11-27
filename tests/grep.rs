@@ -434,6 +434,51 @@ fn grep_filtered_files_produce_identical_output() {
 }
 
 #[test]
+fn grep_ignores_filename_only_matches_in_filesets() {
+    let dir = tempdir().unwrap();
+    let matching = dir.path().join("foo.json");
+    let filename_match = dir.path().join("build_only.json");
+    std::fs::write(&matching, br#"{ "keep": "needle" }"#).unwrap();
+    // No content matches; only the filename contains the pattern.
+    std::fs::write(&filename_match, br#"{ "drop": 0 }"#).unwrap();
+
+    let base = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--grep",
+            "needle",
+            "--bytes",
+            "80",
+            "--no-sort",
+            matching.file_name().unwrap().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let with_filename_match = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--grep",
+            "needle",
+            "--bytes",
+            "80",
+            "--no-sort",
+            matching.file_name().unwrap().to_str().unwrap(),
+            filename_match.file_name().unwrap().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert_eq!(
+        base.get_output().stdout,
+        with_filename_match.get_output().stdout,
+        "filenames matching the pattern should not force files into grep output",
+    );
+}
+
+#[test]
 fn grep_highlights_for_library_calls_without_extra_config() {
     let cfg = RenderConfig {
         template: headson::OutputTemplate::Pseudo,

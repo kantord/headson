@@ -28,8 +28,8 @@ pub fn find_largest_render_under_budgets(
         return String::new();
     }
     let measure_cfg = measure_config(order_build, config);
-    let grep_state = compute_grep_state(order_build, grep);
-    filter_fileset_without_matches(order_build, &grep_state);
+    let mut grep_state = compute_grep_state(order_build, grep);
+    filter_fileset_without_matches(order_build, &mut grep_state);
     budgets = adjust_budgets_for_filtered_fileset(budgets, order_build);
     reorder_if_strong_grep(order_build, &grep_state, grep);
     let effective_budgets = effective_budgets_with_grep(
@@ -146,9 +146,9 @@ fn reorder_if_strong_grep(
 
 fn filter_fileset_without_matches(
     order_build: &mut PriorityOrder,
-    state: &Option<GrepState>,
+    state: &mut Option<GrepState>,
 ) {
-    let Some(s) = state else {
+    let Some(s) = state.as_mut() else {
         return;
     };
     if !s.is_enabled() {
@@ -172,17 +172,33 @@ fn filter_fileset_without_matches(
         return;
     }
 
-    let keep_slots: Vec<bool> = fileset_children
-        .iter()
-        .map(|child| s.must_keep.get(child.0).copied().unwrap_or(false))
-        .collect();
-    if keep_slots.iter().all(|k| !*k) {
-        return;
-    }
-
     let Some(slot_map) = compute_fileset_slot_map(order_build) else {
         return;
     };
+
+    let mut keep_slots = vec![false; fileset_children.len()];
+    for (idx, keep) in s.must_keep.iter().enumerate() {
+        if !*keep {
+            continue;
+        }
+        if let Some(slot) = slot_map.get(idx).copied().flatten() {
+            if let Some(flag) = keep_slots.get_mut(slot) {
+                *flag = true;
+            }
+        }
+    }
+
+    if !keep_slots.iter().any(|k| *k) {
+        // Fallback: consider fileset children directly in case matches were only
+        // recorded on the file root.
+        for (slot, child) in fileset_children.iter().enumerate() {
+            if s.must_keep.get(child.0).copied().unwrap_or(false) {
+                if let Some(flag) = keep_slots.get_mut(slot) {
+                    *flag = true;
+                }
+            }
+        }
+    }
 
     order_build.by_priority.retain(|node| {
         match slot_map.get(node.0).copied().flatten() {
@@ -203,6 +219,15 @@ fn filter_fileset_without_matches(
     {
         metrics.object_len = Some(filtered_children.len());
     }
+
+    for (idx, keep) in s.must_keep.iter_mut().enumerate() {
+        if let Some(slot) = slot_map.get(idx).copied().flatten() {
+            if !keep_slots.get(slot).copied().unwrap_or(false) {
+                *keep = false;
+            }
+        }
+    }
+    s.must_keep_count = s.must_keep.iter().filter(|b| **b).count();
 }
 
 #[allow(
@@ -219,7 +244,18 @@ fn compute_fileset_slot_map(
     {
         return None;
     }
-    let children = order_build.children.get(crate::order::ROOT_PQ_ID)?;
+    let Some(children) = order_build
+        .fileset_children
+        .as_deref()
+        .or_else(|| {
+            order_build
+                .children
+                .get(crate::order::ROOT_PQ_ID)
+                .map(|v| &**v)
+        })
+    else {
+        return None;
+    };
     if children.is_empty() {
         return None;
     }
