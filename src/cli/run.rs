@@ -69,11 +69,7 @@ fn run_from_stdin(
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
     cfg = budget::render_config_for_budgets(cfg, &effective);
     let budgets = effective.budgets;
-    let chosen_input = cli.input_format.unwrap_or(match cli.format {
-        OutputFormat::Yaml => InputFormat::Yaml,
-        OutputFormat::Text => InputFormat::Text,
-        OutputFormat::Json | OutputFormat::Auto => InputFormat::Json,
-    });
+    let chosen_input = cli.input_format.unwrap_or(InputFormat::Json);
     let out = match chosen_input {
         InputFormat::Json => headson::headson(
             headson::InputKind::Json(input_bytes),
