@@ -87,6 +87,10 @@ pub fn find_largest_render_under_budgets(
         render_set_id,
         &crate::RenderConfig {
             color_strategy,
+            grep_highlight: config
+                .grep_highlight
+                .clone()
+                .or_else(|| grep.regex.clone()),
             ..config.clone()
         },
     )

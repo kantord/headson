@@ -1,4 +1,7 @@
 use assert_cmd::cargo::cargo_bin_cmd;
+use headson::{
+    Budgets, GrepConfig, InputKind, PriorityConfig, RenderConfig, Style,
+};
 
 // TDD: start with expectations for strong --grep behavior.
 // Weak mode will be added later; these cover the guaranteed inclusion path.
@@ -273,5 +276,53 @@ fn grep_highlight_is_applied_once_per_value() {
     assert!(
         !stdout.contains("\u{001b}[31m\u{001b}[31mfoo"),
         "matches should be highlighted once, without nested escapes; got: {stdout:?}"
+    );
+}
+
+#[test]
+fn grep_highlights_for_library_calls_without_extra_config() {
+    let cfg = RenderConfig {
+        template: headson::OutputTemplate::Pseudo,
+        indent_unit: "  ".to_string(),
+        space: " ".to_string(),
+        newline: "\n".to_string(),
+        prefer_tail_arrays: false,
+        color_mode: headson::ColorMode::On,
+        color_enabled: true,
+        color_strategy: headson::ColorStrategy::Syntax,
+        style: Style::Default,
+        string_free_prefix_graphemes: None,
+        debug: false,
+        primary_source_name: None,
+        show_fileset_headers: true,
+        count_fileset_headers_in_budgets: false,
+        grep_highlight: None,
+    };
+    let prio = PriorityConfig::new(usize::MAX, usize::MAX);
+    let budgets = Budgets {
+        byte_budget: Some(200),
+        char_budget: None,
+        line_budget: None,
+    };
+    let grep = GrepConfig {
+        regex: Some(regex::Regex::new("needle").unwrap()),
+        weak: false,
+    };
+    let out = headson::headson(
+        InputKind::Json(br#"{"needle":1,"other":2}"#.to_vec()),
+        &cfg,
+        &prio,
+        &grep,
+        budgets,
+    )
+    .expect("render");
+    assert!(
+        out.contains("\u{001b}[31mneedle\u{001b}[39m"),
+        "library calls should auto-wire grep highlights when color is on: {out:?}"
+    );
+    // Syntax colors should be suppressed in grep mode.
+    assert!(
+        !out.contains("\u{001b}[1;34m") && !out.contains("\u{001b}[32m"),
+        "grep mode should disable syntax colors for library calls: {out:?}"
     );
 }
