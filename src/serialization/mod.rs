@@ -337,6 +337,16 @@ impl<'a> RenderScope<'a> {
                 "serialize_string called for non-string node: id={id}"
             ),
         };
+        let truncated_buf = if omitted == 0 {
+            None
+        } else {
+            let prefix = crate::utils::text::take_n_graphemes(
+                full,
+                render_prefix_graphemes,
+            );
+            Some(format!("{prefix}…"))
+        };
+        let raw_for_highlight = truncated_buf.as_deref().unwrap_or(full);
         let highlight_kind = if matches!(
             self.config.template,
             crate::serialization::types::OutputTemplate::Text
@@ -351,26 +361,15 @@ impl<'a> RenderScope<'a> {
             crate::serialization::types::OutputTemplate::Text
                 | crate::serialization::types::OutputTemplate::Code
         ) {
-            if omitted == 0 {
-                full.to_string()
-            } else {
-                let prefix = crate::utils::text::take_n_graphemes(
-                    full,
-                    render_prefix_graphemes,
-                );
-                format!("{prefix}…")
-            }
-        } else if omitted == 0 {
-            crate::utils::json::json_string(full)
+            raw_for_highlight.to_string()
         } else {
-            let prefix = crate::utils::text::take_n_graphemes(
-                full,
-                render_prefix_graphemes,
-            );
-            let truncated = format!("{prefix}…");
-            crate::utils::json::json_string(&truncated)
+            crate::utils::json::json_string(raw_for_highlight)
         };
-        self.maybe_highlight_value(Some(full), rendered, highlight_kind)
+        self.maybe_highlight_value(
+            Some(raw_for_highlight),
+            rendered,
+            highlight_kind,
+        )
     }
 
     #[allow(
@@ -398,6 +397,16 @@ impl<'a> RenderScope<'a> {
                 "serialize_string called for non-string node: id={id}"
             ),
         };
+        let truncated_buf = if omitted == 0 {
+            None
+        } else {
+            let prefix = crate::utils::text::take_n_graphemes(
+                full,
+                render_prefix_graphemes,
+            );
+            Some(format!("{prefix}…"))
+        };
+        let raw_for_highlight = truncated_buf.as_deref().unwrap_or(full);
         let highlight_kind = if matches!(
             template,
             crate::serialization::types::OutputTemplate::Text
@@ -412,26 +421,15 @@ impl<'a> RenderScope<'a> {
             crate::serialization::types::OutputTemplate::Text
                 | crate::serialization::types::OutputTemplate::Code
         ) {
-            if omitted == 0 {
-                full.to_string()
-            } else {
-                let prefix = crate::utils::text::take_n_graphemes(
-                    full,
-                    render_prefix_graphemes,
-                );
-                format!("{prefix}…")
-            }
-        } else if omitted == 0 {
-            crate::utils::json::json_string(full)
+            raw_for_highlight.to_string()
         } else {
-            let prefix = crate::utils::text::take_n_graphemes(
-                full,
-                render_prefix_graphemes,
-            );
-            let truncated = format!("{prefix}…");
-            crate::utils::json::json_string(&truncated)
+            crate::utils::json::json_string(raw_for_highlight)
         };
-        self.maybe_highlight_value(Some(full), rendered, highlight_kind)
+        self.maybe_highlight_value(
+            Some(raw_for_highlight),
+            rendered,
+            highlight_kind,
+        )
     }
 
     fn serialize_atomic(&self, id: usize) -> String {
