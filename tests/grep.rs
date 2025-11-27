@@ -3,8 +3,8 @@ use headson::{
     Budgets, GrepConfig, InputKind, PriorityConfig, RenderConfig, Style,
 };
 
-// TDD: start with expectations for strong --grep behavior.
-// Weak mode will be added later; these cover the guaranteed inclusion path.
+// Covers strong --grep behavior (guaranteed inclusion path). Weak mode
+// assertions belong in separate tests when implemented.
 
 #[test]
 fn grep_guarantees_match_even_when_budget_is_tiny() {
