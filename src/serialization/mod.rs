@@ -750,12 +750,6 @@ impl<'a> RenderScope<'a> {
     }
 
     fn maybe_highlight_value(&self, _id: usize, rendered: String) -> String {
-        if matches!(
-            self.config.style,
-            crate::serialization::types::Style::Strict
-        ) {
-            return rendered;
-        }
         match self.config.color_strategy {
             crate::serialization::types::ColorStrategy::None
             | crate::serialization::types::ColorStrategy::Syntax => rendered,

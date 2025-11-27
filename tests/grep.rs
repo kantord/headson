@@ -121,6 +121,35 @@ fn grep_highlights_matching_keys() {
 }
 
 #[test]
+fn grep_highlights_in_strict_style() {
+    let input = br#"{"foo":"needle","bar":"other"}"#.to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "--color",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--grep",
+            "needle",
+            "--no-sort",
+            "--no-header",
+        ])
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
+        "grep should highlight matches even in strict style; got: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\u{001b}[1;34m") && !stdout.contains("\u{001b}[32m"),
+        "only match highlights should be colored in strict grep mode; got: {stdout:?}"
+    );
+}
+
+#[test]
 fn grep_defaults_to_color_output() {
     let input = br#"{"k":"foo","x":"bar"}"#.to_vec();
     let assert = cargo_bin_cmd!("hson")
