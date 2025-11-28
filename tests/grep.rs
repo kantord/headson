@@ -490,7 +490,7 @@ fn grep_ignores_filename_only_matches_in_filesets() {
         "filenames matching the pattern should not force files into grep output",
     );
     assert!(
-        !with_body.contains("build_only.json"),
+        !with_body.contains("needle_only.json"),
         "filename-only matches should not be rendered or counted"
     );
 }
