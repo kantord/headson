@@ -27,7 +27,7 @@ mod order;
 mod pruner;
 mod serialization;
 mod utils;
-pub use grep::GrepConfig;
+pub use grep::{GrepConfig, GrepShow};
 pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
 pub use order::{

@@ -28,7 +28,7 @@ pub fn find_largest_render_under_budgets(
     }
     let measure_cfg = measure_config(order_build, config);
     let mut grep_state = compute_grep_state(order_build, grep);
-    filter_fileset_without_matches(order_build, &mut grep_state);
+    filter_fileset_without_matches(order_build, &mut grep_state, grep);
     reorder_if_strong_grep(order_build, &grep_state, grep);
     let effective_budgets = effective_budgets_with_grep(
         order_build,
@@ -112,11 +112,15 @@ fn reorder_if_strong_grep(
 fn filter_fileset_without_matches(
     order_build: &mut PriorityOrder,
     state: &mut Option<GrepState>,
+    grep: &GrepConfig,
 ) {
     let Some(s) = state.as_mut() else {
         return;
     };
     if !s.is_enabled() {
+        return;
+    }
+    if matches!(grep.show, crate::grep::GrepShow::All) {
         return;
     }
     if order_build

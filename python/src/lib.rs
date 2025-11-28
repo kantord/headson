@@ -140,6 +140,7 @@ fn summarize(
     let grep_cfg = GrepConfig {
         regex: grep_re,
         weak: false,
+        show: headson_core::GrepShow::Matching,
     };
     let budgets = Budgets {
         byte_budget: Some(budget),

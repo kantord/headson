@@ -382,6 +382,40 @@ fn grep_filters_out_files_without_matches_in_filesets() {
 }
 
 #[test]
+fn grep_show_all_keeps_non_matching_files_in_filesets() {
+    let dir = tempdir().unwrap();
+    let with = dir.path().join("with.json");
+    let without = dir.path().join("without.json");
+    std::fs::write(&with, br#"{"keep":"needle"}"#).unwrap();
+    std::fs::write(&without, br#"{"drop":0}"#).unwrap();
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--grep",
+            "needle",
+            "--grep-show",
+            "all",
+            "--no-sort",
+            with.file_name().unwrap().to_str().unwrap(),
+            without.file_name().unwrap().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("needle"),
+        "matching content should still be present with --grep-show=all"
+    );
+    assert!(
+        stdout.contains("without.json"),
+        "non-matching files should render when --grep-show=all"
+    );
+}
+
+#[test]
 fn grep_filtered_files_produce_identical_output() {
     // Two invocations with identical settings: one only includes matching files,
     // the other adds extra files with no matches. Outputs must be byte-for-byte equal.
@@ -496,6 +530,49 @@ fn grep_ignores_filename_only_matches_in_filesets() {
 }
 
 #[test]
+fn grep_show_matching_matches_default_behavior() {
+    let dir = tempdir().unwrap();
+    let with = dir.path().join("with.json");
+    let without = dir.path().join("without.json");
+    std::fs::write(&with, br#"{"keep":"needle"}"#).unwrap();
+    std::fs::write(&without, br#"{"drop":0}"#).unwrap();
+
+    let default = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--grep",
+            "needle",
+            "--no-sort",
+            with.file_name().unwrap().to_str().unwrap(),
+            without.file_name().unwrap().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let explicit = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--grep",
+            "needle",
+            "--grep-show",
+            "matching",
+            "--no-sort",
+            with.file_name().unwrap().to_str().unwrap(),
+            without.file_name().unwrap().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert_eq!(
+        default.get_output().stdout,
+        explicit.get_output().stdout,
+        "--grep-show=matching should mirror the default grep fileset filtering"
+    );
+}
+
+#[test]
 fn grep_does_not_shrink_global_budget_when_filtering_filesets() {
     // Adding a file with no matches should not reduce the effective global budget.
     let dir = tempdir().unwrap();
@@ -581,6 +658,7 @@ fn grep_highlights_for_library_calls_without_extra_config() {
     let grep = GrepConfig {
         regex: Some(regex::Regex::new("needle").unwrap()),
         weak: false,
+        show: headson::GrepShow::Matching,
     };
     let out = headson::headson(
         InputKind::Json(br#"{"needle":1,"other":2}"#.to_vec()),

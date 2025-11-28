@@ -162,6 +162,14 @@ pub struct Cli {
         help = "Guarantee inclusion of values (and their ancestors) matching this regex; budgets apply to everything else."
     )]
     pub grep: Option<String>,
+    #[arg(
+        long = "grep-show",
+        value_enum,
+        default_value_t = GrepShowArg::Matching,
+        requires = "grep",
+        help = "When using --grep, control fileset inclusion: matching (default) | all"
+    )]
+    pub grep_show: GrepShowArg,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -184,6 +192,12 @@ pub enum InputFormat {
     Json,
     Yaml,
     Text,
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+pub enum GrepShowArg {
+    Matching,
+    All,
 }
 
 #[allow(
@@ -269,5 +283,13 @@ pub fn build_grep_config(cli: &Cli) -> anyhow::Result<headson::GrepConfig> {
     Ok(headson::GrepConfig {
         regex: Some(regex),
         weak: false,
+        show: map_grep_show(cli.grep_show),
     })
+}
+
+fn map_grep_show(show: GrepShowArg) -> headson::GrepShow {
+    match show {
+        GrepShowArg::Matching => headson::GrepShow::Matching,
+        GrepShowArg::All => headson::GrepShow::All,
+    }
 }

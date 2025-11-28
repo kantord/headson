@@ -4,11 +4,19 @@ use crate::order::{
     NodeId, ObjectType, PriorityOrder, ROOT_PQ_ID, RankedNode,
 };
 
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+pub enum GrepShow {
+    #[default]
+    Matching,
+    All,
+}
+
 /// Grep configuration threaded through the pipeline.
 #[derive(Default)]
 pub struct GrepConfig {
     pub regex: Option<Regex>,
     pub weak: bool,
+    pub show: GrepShow,
 }
 
 pub(crate) struct GrepState {
