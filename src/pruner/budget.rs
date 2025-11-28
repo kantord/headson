@@ -105,6 +105,10 @@ fn reorder_if_strong_grep(
     }
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Fileset filtering logic is easier to follow inline"
+)]
 fn filter_fileset_without_matches(
     order_build: &mut PriorityOrder,
     state: &mut Option<GrepState>,
@@ -205,16 +209,12 @@ fn compute_fileset_slot_map(
     {
         return None;
     }
-    let Some(children) =
-        order_build.fileset_children.as_deref().or_else(|| {
-            order_build
-                .children
-                .get(crate::order::ROOT_PQ_ID)
-                .map(|v| &**v)
-        })
-    else {
-        return None;
-    };
+    let children = order_build.fileset_children.as_deref().or_else(|| {
+        order_build
+            .children
+            .get(crate::order::ROOT_PQ_ID)
+            .map(|v| &**v)
+    })?;
     if children.is_empty() {
         return None;
     }
