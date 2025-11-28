@@ -1,6 +1,8 @@
 use regex::Regex;
 
-use crate::order::{NodeId, PriorityOrder, RankedNode};
+use crate::order::{
+    NodeId, ObjectType, PriorityOrder, ROOT_PQ_ID, RankedNode,
+};
 
 /// Grep configuration threaded through the pipeline.
 #[derive(Default)]
@@ -20,7 +22,12 @@ impl GrepState {
     }
 }
 
-fn matches_ranked(node: &RankedNode, re: &Regex) -> bool {
+fn matches_ranked(
+    order: &PriorityOrder,
+    idx: usize,
+    node: &RankedNode,
+    re: &Regex,
+) -> bool {
     let value_match = match node {
         RankedNode::SplittableLeaf { value, .. } => re.is_match(value),
         RankedNode::AtomicLeaf { token, .. } => re.is_match(token),
@@ -29,7 +36,20 @@ fn matches_ranked(node: &RankedNode, re: &Regex) -> bool {
     if value_match {
         return true;
     }
-    node.key_in_object().is_some_and(|k| re.is_match(k))
+    let key_match = node.key_in_object().is_some_and(|k| re.is_match(k));
+    if !key_match {
+        return false;
+    }
+    let is_fileset_child = order
+        .object_type
+        .get(ROOT_PQ_ID)
+        .is_some_and(|t| *t == ObjectType::Fileset)
+        && order
+            .parent
+            .get(idx)
+            .and_then(|p| *p)
+            .is_some_and(|p| p.0 == ROOT_PQ_ID);
+    !is_fileset_child
 }
 
 fn mark_matches_and_ancestors(
@@ -38,7 +58,7 @@ fn mark_matches_and_ancestors(
     must_keep: &mut [bool],
 ) {
     for (idx, node) in order.nodes.iter().enumerate() {
-        if !matches_ranked(node, re) {
+        if !matches_ranked(order, idx, node, re) {
             continue;
         }
         let mut cursor = Some(NodeId(idx));
