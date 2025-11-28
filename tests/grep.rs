@@ -496,6 +496,65 @@ fn grep_ignores_filename_only_matches_in_filesets() {
 }
 
 #[test]
+fn grep_does_not_shrink_global_budget_when_filtering_filesets() {
+    // Adding a file with no matches should not reduce the effective global budget.
+    let dir = tempdir().unwrap();
+    let with_a = dir.path().join("with_a.json");
+    let with_b = dir.path().join("with_b.json");
+    let without = dir.path().join("without.json");
+    let payload = "A".repeat(400);
+    std::fs::write(&with_a, format!(r#"{{"keep":"hit","big":"{payload}"}}"#))
+        .unwrap();
+    std::fs::write(&with_b, format!(r#"{{"keep":"hit","big":"{payload}"}}"#))
+        .unwrap();
+    std::fs::write(&without, br#"{"drop":0}"#).unwrap();
+
+    let base = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--no-header",
+            "--string-cap",
+            "2000",
+            "--global-bytes",
+            "900",
+            "--grep",
+            "hit",
+            with_a.file_name().unwrap().to_str().unwrap(),
+            with_b.file_name().unwrap().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let with_extra = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--no-header",
+            "--string-cap",
+            "2000",
+            "--global-bytes",
+            "900",
+            "--grep",
+            "hit",
+            with_a.file_name().unwrap().to_str().unwrap(),
+            with_b.file_name().unwrap().to_str().unwrap(),
+            without.file_name().unwrap().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let base_out = base.get_output().stdout.clone();
+    let extra_out = with_extra.get_output().stdout.clone();
+    assert_eq!(
+        base_out, extra_out,
+        "adding non-matching files should not shrink the effective global budget"
+    );
+}
+
+#[test]
 fn grep_highlights_for_library_calls_without_extra_config() {
     let cfg = RenderConfig {
         template: headson::OutputTemplate::Pseudo,

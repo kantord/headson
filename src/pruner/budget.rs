@@ -22,7 +22,6 @@ pub fn find_largest_render_under_budgets(
     grep: &GrepConfig,
     budgets: Budgets,
 ) -> String {
-    let mut budgets = budgets;
     let total = order_build.total_nodes;
     if total == 0 {
         return String::new();
@@ -30,7 +29,6 @@ pub fn find_largest_render_under_budgets(
     let measure_cfg = measure_config(order_build, config);
     let mut grep_state = compute_grep_state(order_build, grep);
     filter_fileset_without_matches(order_build, &mut grep_state);
-    budgets = adjust_budgets_for_filtered_fileset(budgets, order_build);
     reorder_if_strong_grep(order_build, &grep_state, grep);
     let effective_budgets = effective_budgets_with_grep(
         order_build,
@@ -89,43 +87,6 @@ pub fn find_largest_render_under_budgets(
             ..config.clone()
         },
     )
-}
-
-fn adjust_budgets_for_filtered_fileset(
-    budgets: Budgets,
-    order_build: &PriorityOrder,
-) -> Budgets {
-    let Some(total_files) = order_build
-        .children
-        .get(crate::order::ROOT_PQ_ID)
-        .map(std::vec::Vec::len)
-    else {
-        return budgets;
-    };
-    if total_files == 0 {
-        return budgets;
-    }
-    let kept_files = order_build
-        .fileset_children
-        .as_ref()
-        .map(std::vec::Vec::len)
-        .unwrap_or(total_files);
-    if kept_files == 0 || kept_files >= total_files {
-        return budgets;
-    }
-
-    fn scale(value: Option<usize>, num: usize, den: usize) -> Option<usize> {
-        value.map(|v| {
-            let scaled = (v as u128 * num as u128).div_ceil(den as u128);
-            scaled.max(1) as usize
-        })
-    }
-
-    Budgets {
-        byte_budget: scale(budgets.byte_budget, kept_files, total_files),
-        char_budget: scale(budgets.char_budget, kept_files, total_files),
-        line_budget: scale(budgets.line_budget, kept_files, total_files),
-    }
 }
 
 fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
@@ -244,10 +205,8 @@ fn compute_fileset_slot_map(
     {
         return None;
     }
-    let Some(children) = order_build
-        .fileset_children
-        .as_deref()
-        .or_else(|| {
+    let Some(children) =
+        order_build.fileset_children.as_deref().or_else(|| {
             order_build
                 .children
                 .get(crate::order::ROOT_PQ_ID)
@@ -504,39 +463,5 @@ fn include_must_keep(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::order::types::NodeMetrics;
-    use crate::order::{NodeId, ObjectType};
-    use std::collections::HashMap;
-
-    #[test]
-    fn adjusts_budgets_after_fileset_filtering() {
-        let metrics = vec![NodeMetrics {
-            object_len: Some(3),
-            ..NodeMetrics::default()
-        }];
-        let order = PriorityOrder {
-            metrics,
-            nodes: Vec::new(),
-            scores: Vec::new(),
-            parent: Vec::new(),
-            children: vec![vec![NodeId(1), NodeId(2), NodeId(3)]],
-            index_in_parent_array: Vec::new(),
-            by_priority: Vec::new(),
-            total_nodes: 4,
-            object_type: vec![ObjectType::Fileset],
-            force_first_child: Vec::new(),
-            code_lines: HashMap::new(),
-            fileset_children: Some(vec![NodeId(1)]),
-        };
-        let budgets = Budgets {
-            byte_budget: Some(900),
-            char_budget: Some(600),
-            line_budget: Some(300),
-        };
-        let adjusted = adjust_budgets_for_filtered_fileset(budgets, &order);
-        assert_eq!(adjusted.byte_budget, Some(300));
-        assert_eq!(adjusted.char_budget, Some(200));
-        assert_eq!(adjusted.line_budget, Some(100));
-    }
+    // No internal tests here; behavior is covered by integration tests.
 }
