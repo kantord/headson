@@ -109,3 +109,59 @@ fn grep_show_requires_grep() {
         "stderr should mention missing --grep requirement: {err}"
     );
 }
+
+#[test]
+fn weak_grep_conflicts_with_strong_grep() {
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
+    let assert = cmd
+        .args([
+            "--no-color",
+            "--grep",
+            "foo",
+            "--weak-grep",
+            "foo",
+            "tests/fixtures/explicit/object_small.json",
+        ])
+        .assert();
+    let ok = assert.get_output().status.success();
+    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(
+        !ok,
+        "cli should fail when --grep and --weak-grep are combined"
+    );
+    assert!(
+        err.to_ascii_lowercase().contains("conflict")
+            || err.to_ascii_lowercase().contains("cannot be used together")
+            || err.to_ascii_lowercase().contains("cannot be used with"),
+        "stderr should mention conflicting grep flags: {err}"
+    );
+}
+
+#[test]
+fn grep_show_conflicts_with_weak_grep() {
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
+    let assert = cmd
+        .args([
+            "--no-color",
+            "--weak-grep",
+            "foo",
+            "--grep-show",
+            "all",
+            "tests/fixtures/explicit/object_small.json",
+        ])
+        .assert();
+    let ok = assert.get_output().status.success();
+    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(
+        !ok,
+        "cli should fail when --grep-show is used with --weak-grep"
+    );
+    let err_l = err.to_ascii_lowercase();
+    assert!(
+        err_l.contains("conflict")
+            || err_l.contains("cannot be used together")
+            || err_l.contains("cannot be used with")
+            || err_l.contains("requires"),
+        "stderr should mention grep-show is incompatible with weak-grep: {err}"
+    );
+}

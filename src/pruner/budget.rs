@@ -28,7 +28,8 @@ pub fn find_largest_render_under_budgets(
     }
     let measure_cfg = measure_config(order_build, config);
     let mut grep_state = compute_grep_state(order_build, grep);
-    if grep.show == GrepShow::Matching
+    if !grep.weak
+        && grep.show == GrepShow::Matching
         && grep.regex.is_some()
         && grep_state.is_none()
         && order_build
@@ -39,7 +40,7 @@ pub fn find_largest_render_under_budgets(
         return String::new();
     }
     filter_fileset_without_matches(order_build, &mut grep_state, grep);
-    reorder_if_strong_grep(order_build, &grep_state, grep);
+    reorder_if_grep(order_build, &grep_state);
     let effective_budgets = effective_budgets_with_grep(
         order_build,
         &measure_cfg,
@@ -103,15 +104,12 @@ fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
     state.as_ref().is_some_and(GrepState::is_enabled) && !grep.weak
 }
 
-fn reorder_if_strong_grep(
+fn reorder_if_grep(
     order_build: &mut PriorityOrder,
     state: &Option<GrepState>,
-    grep: &GrepConfig,
 ) {
-    if is_strong_grep(grep, state) {
-        if let Some(s) = state {
-            reorder_priority_with_must_keep(order_build, &s.must_keep);
-        }
+    if let Some(s) = state {
+        reorder_priority_with_must_keep(order_build, &s.must_keep);
     }
 }
 
@@ -124,6 +122,9 @@ fn filter_fileset_without_matches(
     state: &mut Option<GrepState>,
     grep: &GrepConfig,
 ) {
+    if grep.weak {
+        return;
+    }
     let Some(s) = state.as_mut() else {
         return;
     };

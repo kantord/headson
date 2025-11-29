@@ -734,3 +734,159 @@ fn grep_highlights_for_library_calls_without_extra_config() {
         "grep mode should disable syntax colors for library calls: {out:?}"
     );
 }
+
+#[test]
+fn weak_grep_does_not_expand_budget_or_guarantee_match() {
+    let input = br#"{"keep":"needle"}"#.to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--bytes",
+            "5",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--weak-grep",
+            "needle",
+        ])
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.len() <= 5,
+        "weak grep should not expand the user-provided byte budget; got len {}",
+        stdout.len()
+    );
+}
+
+#[test]
+fn weak_grep_keeps_non_matching_files_in_filesets() {
+    let dir = tempdir().unwrap();
+    let matching = dir.path().join("with.json");
+    let other = dir.path().join("without.json");
+    std::fs::write(&matching, br#"{"keep":"needle"}"#).unwrap();
+    std::fs::write(&other, br#"{"drop":0}"#).unwrap();
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--weak-grep",
+            "needle",
+            "--no-sort",
+            matching.file_name().unwrap().to_str().unwrap(),
+            other.file_name().unwrap().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("needle"),
+        "matching content should still render with weak grep"
+    );
+    assert!(
+        stdout.contains("without.json"),
+        "weak grep should not filter out files without matches"
+    );
+}
+
+#[test]
+fn weak_grep_highlights_matches_without_syntax_colors() {
+    let input = br#"{"k":"needle","x":"other"}"#.to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "-f",
+            "json",
+            "-t",
+            "default",
+            "--weak-grep",
+            "needle",
+            "--no-sort",
+            "--no-header",
+        ])
+        .env("FORCE_COLOR", "1")
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
+        "weak grep should still highlight matches when color is enabled"
+    );
+    assert!(
+        !stdout.contains("\u{001b}[1;34m") && !stdout.contains("\u{001b}[32m"),
+        "syntax colors should be suppressed in weak grep mode: {stdout:?}"
+    );
+}
+
+#[test]
+fn weak_grep_biases_sampling_toward_matches() {
+    // Object order: non-matching field first, then the match. With a tiny budget,
+    // weak grep should bias priority so the matched field is the one that survives.
+    let input = br#"{"miss":"xxxxxxxxxx","hit":"needle"}"#.to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--bytes",
+            "20",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--weak-grep",
+            "needle",
+            "--no-sort",
+        ])
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("\"hit\""),
+        "weak grep should bias sampling so the matched field is kept under tight budgets: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"miss\""),
+        "non-matching fields should be more likely to be pruned first in weak grep mode: {stdout:?}"
+    );
+    assert!(
+        stdout.len() <= 20,
+        "weak grep must still respect the user-provided budget"
+    );
+}
+
+#[test]
+fn weak_grep_fileset_with_no_matches_still_renders_and_has_no_notice() {
+    let dir = tempdir().unwrap();
+    let a = dir.path().join("a.json");
+    let b = dir.path().join("b.json");
+    std::fs::write(&a, br#"{"foo":1}"#).unwrap();
+    std::fs::write(&b, br#"{"bar":2}"#).unwrap();
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--weak-grep",
+            "NEEDLE",
+            "--no-sort",
+            a.file_name().unwrap().to_str().unwrap(),
+            b.file_name().unwrap().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(
+        !stdout.trim().is_empty(),
+        "weak grep should not drop all fileset content when no matches are found"
+    );
+    assert!(
+        !stderr.contains("No grep matches found"),
+        "weak grep should not emit the strong-grep notice when there are no matches"
+    );
+}

@@ -106,7 +106,7 @@ fn to_pyerr(e: anyhow::Error) -> PyErr {
 
 #[pyfunction]
 #[allow(clippy::too_many_arguments)] // Python API surface requires these knobs
-#[pyo3(signature = (text, *, format="auto", style="default", byte_budget=None, skew="balanced", input_format="json", grep=None))]
+#[pyo3(signature = (text, *, format="auto", style="default", byte_budget=None, skew="balanced", input_format="json", grep=None, weak_grep=None))]
 fn summarize(
     py: Python<'_>,
     text: &str,
@@ -116,16 +116,24 @@ fn summarize(
     skew: &str,
     input_format: &str,
     grep: Option<&str>,
+    weak_grep: Option<&str>,
 ) -> PyResult<String> {
-    let grep_re = if let Some(pat) = grep {
-        Some(
-            RegexBuilder::new(pat)
-                .unicode(true)
-                .build()
-                .map_err(|e| to_pyerr(e.into()))?,
-        )
-    } else {
-        None
+    let (grep_re, weak_flag) = match (grep, weak_grep) {
+        (Some(_), Some(_)) => {
+            return Err(to_pyerr(anyhow::anyhow!(
+                "--grep and --weak-grep cannot both be set"
+            )))
+        }
+        (Some(pat), None) | (None, Some(pat)) => (
+            Some(
+                RegexBuilder::new(pat)
+                    .unicode(true)
+                    .build()
+                    .map_err(|e| to_pyerr(e.into()))?,
+            ),
+            weak_grep.is_some(),
+        ),
+        (None, None) => (None, false),
     };
     let sampler = parse_skew(skew).map_err(to_pyerr)?;
     let mut cfg = render_config_with_sampler(format, style, sampler)
@@ -139,7 +147,7 @@ fn summarize(
     }
     let grep_cfg = GrepConfig {
         regex: grep_re,
-        weak: false,
+        weak: weak_flag,
         show: headson_core::GrepShow::Matching,
     };
     let budgets = Budgets {

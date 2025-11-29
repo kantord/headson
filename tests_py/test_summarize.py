@@ -186,6 +186,12 @@ def test_grep_highlights_in_python_api(monkeypatch):
     assert "\x1b" not in out
 
 
+def test_weak_grep_respects_budget_without_expansion():
+    text = '{"k":"needle"}'
+    out = headson.summarize(text, format="json", style="strict", byte_budget=5, weak_grep="needle")
+    assert len(out) <= 5
+
+
 def test_head_json_remains_strict():
     text = json.dumps(list(range(50)))
     out = headson.summarize(text, format="json", style="strict", byte_budget=30, skew="head")
