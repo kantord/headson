@@ -1,5 +1,5 @@
 use crate::grep::{
-    GrepState, compute_grep_state, reorder_priority_with_must_keep,
+    GrepShow, GrepState, compute_grep_state, reorder_priority_with_must_keep,
 };
 use crate::order::{NodeId, ObjectType};
 use crate::utils::measure::OutputStats;
@@ -28,6 +28,16 @@ pub fn find_largest_render_under_budgets(
     }
     let measure_cfg = measure_config(order_build, config);
     let mut grep_state = compute_grep_state(order_build, grep);
+    if grep.show == GrepShow::Matching
+        && grep.regex.is_some()
+        && grep_state.is_none()
+        && order_build
+            .object_type
+            .get(crate::order::ROOT_PQ_ID)
+            .is_some_and(|t| *t == ObjectType::Fileset)
+    {
+        return String::new();
+    }
     filter_fileset_without_matches(order_build, &mut grep_state, grep);
     reorder_if_strong_grep(order_build, &grep_state, grep);
     let effective_budgets = effective_budgets_with_grep(

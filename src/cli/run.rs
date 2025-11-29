@@ -159,7 +159,14 @@ fn run_from_paths(
             grep_cfg,
             budgets,
         )?;
-        return Ok((out, ignored));
+        let mut notices = ignored;
+        if grep_cfg.regex.is_some()
+            && matches!(grep_cfg.show, headson::GrepShow::Matching)
+            && out.trim().is_empty()
+        {
+            notices.push("No grep matches found".to_string());
+        }
+        return Ok((out, notices));
     }
 
     if included == 0 {

@@ -573,6 +573,62 @@ fn grep_show_matching_matches_default_behavior() {
 }
 
 #[test]
+fn grep_fileset_without_matches_renders_nothing() {
+    let dir = tempdir().unwrap();
+    let a = dir.path().join("a.json");
+    let b = dir.path().join("b.json");
+    std::fs::write(&a, br#"{"foo":1}"#).unwrap();
+    std::fs::write(&b, br#"[1,2,3]"#).unwrap();
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--grep",
+            "NEEDLE",
+            a.file_name().unwrap().to_str().unwrap(),
+            b.file_name().unwrap().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.trim().is_empty(),
+        "filesets with zero grep matches should render nothing, got: {stdout:?}"
+    );
+}
+
+#[test]
+fn grep_fileset_without_matches_emits_notice() {
+    let dir = tempdir().unwrap();
+    let a = dir.path().join("a.json");
+    let b = dir.path().join("b.json");
+    std::fs::write(&a, br#"{"foo":1}"#).unwrap();
+    std::fs::write(&b, br#"[1,2,3]"#).unwrap();
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--grep",
+            "NEEDLE",
+            a.file_name().unwrap().to_str().unwrap(),
+            b.file_name().unwrap().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(
+        stderr.contains("No grep matches found"),
+        "expected a notice about missing grep matches for fileset run: {stderr:?}"
+    );
+}
+
+#[test]
 fn grep_does_not_shrink_global_budget_when_filtering_filesets() {
     // Adding a file with no matches should not reduce the effective global budget.
     let dir = tempdir().unwrap();
