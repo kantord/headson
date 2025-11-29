@@ -208,3 +208,34 @@ fn tree_with_grep_keeps_match_highlights_and_colored_pipes() {
         "pipes should remain colored when color is enabled in grep mode: {stdout:?}"
     );
 }
+
+#[test]
+fn tree_reports_omitted_files_when_budget_drops_them() {
+    let dir = tempdir().expect("tmp");
+    for name in ["a", "b", "c", "d", "e"] {
+        write_file(&dir.path().join(format!("{name}.txt")), "line\n");
+    }
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--tree",
+            "--no-sort",
+            "-N",
+            "4",
+            "a.txt",
+            "b.txt",
+            "c.txt",
+            "d.txt",
+            "e.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("… 4 more items"),
+        "when the budget is too small for most files, tree mode should report how many items were omitted: {stdout}"
+    );
+}
