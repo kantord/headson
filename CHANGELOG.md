@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0](https://github.com/kantord/headson/compare/headson-v0.8.0...headson-v0.9.0) - 2025-11-29
+
+### Added
+
+- allow showing unmatched files in --grep mode ([#321](https://github.com/kantord/headson/pull/321))
+- implement highlighting for grep results ([#313](https://github.com/kantord/headson/pull/313))
+
+### Fixed
+
+- by default, hide files with 0 matches when using --grep ([#317](https://github.com/kantord/headson/pull/317))
+
+### Other
+
+- *(deps)* update rust crate insta to v1.44.3 ([#318](https://github.com/kantord/headson/pull/318))
+
 ## [0.8.0](https://github.com/kantord/headson/compare/headson-v0.7.29...headson-v0.8.0) - 2025-11-25
 
 ### Added
