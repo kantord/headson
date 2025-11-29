@@ -71,6 +71,9 @@ impl<'a> RenderScope<'a> {
             root.insert(&segments, rendered, self.config);
         }
         omitted.insert(Vec::<String>::new(), root_direct_omitted);
+        for key in omitted.keys().filter(|k| !k.is_empty()) {
+            root.ensure_path(key);
+        }
         root.apply_omitted_counts(&omitted, &mut Vec::new());
 
         let mut out = String::new();
@@ -303,6 +306,27 @@ impl TreeNode {
             self.children.len() - 1
         };
         self.children[idx].insert(&segments[1..], rendered, config);
+    }
+
+    fn ensure_path(&mut self, segments: &[String]) {
+        if segments.is_empty() {
+            return;
+        }
+        let head = &segments[0];
+        let mut idx = None;
+        for (i, child) in self.children.iter().enumerate() {
+            if child.name == *head {
+                idx = Some(i);
+                break;
+            }
+        }
+        let idx = idx.unwrap_or_else(|| {
+            self.children.push(Self::with_name(head.clone()));
+            self.children.len() - 1
+        });
+        if segments.len() > 1 {
+            self.children[idx].ensure_path(&segments[1..]);
+        }
     }
 
     fn apply_omitted_counts(

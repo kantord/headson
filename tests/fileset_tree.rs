@@ -242,6 +242,35 @@ fn tree_reports_omitted_files_when_budget_drops_them() {
 }
 
 #[test]
+fn tree_reports_omissions_when_every_file_is_dropped() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("dir/a.txt"), "line\n");
+    write_file(&dir.path().join("dir/b.txt"), "line\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--tree",
+            "--no-sort",
+            "-N",
+            "0",
+            "dir/a.txt",
+            "dir/b.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let expected = concat!(".\n", "└─ dir/\n", "│ ├─ … 2 more items\n", "\n",);
+    assert_eq!(
+        stdout.as_ref(),
+        expected,
+        "when all files are pruned, omission counts should still render under their folder"
+    );
+}
+
+#[test]
 fn tree_cli_snapshot_budgeted_root_omission() {
     let dir = tempdir().expect("tmp");
     for name in ["a", "b", "c", "d", "e"] {
