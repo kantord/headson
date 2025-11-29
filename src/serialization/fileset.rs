@@ -68,6 +68,11 @@ impl<'a> RenderScope<'a> {
             root.insert(&segments, rendered, self.config);
         }
         root.apply_omitted_counts(&omitted, &mut Vec::new());
+        if !root.children.is_empty() {
+            // Avoid double-reporting omissions when some children are already rendered.
+            // Root-level omission should only show when nothing was kept.
+            root.omitted = 0;
+        }
 
         let mut out = String::new();
         let indent = self.config.indent_unit.repeat(depth);
@@ -429,6 +434,30 @@ fn colorize_name(s: &str, enabled: bool) -> String {
 #[cfg(test)]
 mod tests {
     use super::TreeNode;
+    use crate::{
+        ColorMode, OutputTemplate, RenderConfig, serialization::types::Style,
+    };
+    use std::collections::HashMap;
+
+    fn render_tree_from_node(root: TreeNode, config: &RenderConfig) -> String {
+        let mut out = String::new();
+        out.push('.');
+        out.push_str(&config.newline);
+        let mut root_children = root.children;
+        let root_omitted = if root_children.is_empty() {
+            root.omitted
+        } else {
+            0
+        };
+        if root_omitted > 0 {
+            root_children.push(TreeNode::omission(root.omitted));
+        }
+        let last_idx = root_children.len().saturating_sub(1);
+        for (idx, child) in root_children.into_iter().enumerate() {
+            child.render(&mut out, "", idx == last_idx, config);
+        }
+        out
+    }
 
     #[test]
     fn collapse_carries_omitted_counts() {
@@ -447,6 +476,140 @@ mod tests {
             children.first().map(|c| c.omitted),
             Some(1),
             "child path should still carry its omission count"
+        );
+    }
+
+    #[test]
+    fn tree_reports_omitted_files_twice_bug() {
+        // This captures the current (buggy) behavior where a single omitted file is surfaced
+        // twice: once under its directory and again at the fileset root.
+        let config = RenderConfig {
+            template: OutputTemplate::Auto,
+            indent_unit: "  ".to_string(),
+            space: " ".to_string(),
+            newline: "\n".to_string(),
+            prefer_tail_arrays: false,
+            color_mode: ColorMode::Off,
+            color_enabled: false,
+            style: Style::Default,
+            string_free_prefix_graphemes: None,
+            debug: false,
+            primary_source_name: None,
+            show_fileset_headers: true,
+            fileset_tree: true,
+            count_fileset_headers_in_budgets: false,
+            grep_highlight: None,
+        };
+
+        let mut root = TreeNode::root();
+        // Include one file under dir/.
+        root.insert(
+            &["dir".to_string(), "kept.txt".to_string()],
+            "line\n".to_string(),
+            &config,
+        );
+        // Simulate omitting a sibling file under the same directory.
+        let mut counts = HashMap::new();
+        counts.insert(Vec::<String>::new(), 1); // root omission count
+        counts.insert(vec!["dir".to_string()], 1); // dir/ omission count
+        root.apply_omitted_counts(&counts, &mut Vec::new());
+
+        let out = render_tree_from_node(root, &config);
+
+        // Desired behavior: omission should be reported once under the containing folder.
+        let expected = concat!(
+            ".\n",
+            "├─ dir/\n",
+            "│ ├─ kept.txt\n",
+            "│ │ line\n",
+            "│ ├─ … 1 more items\n",
+        );
+        assert_eq!(
+            out, expected,
+            "a single omitted file currently renders two omission markers (root + dir)"
+        );
+    }
+
+    #[test]
+    fn tree_scopes_omission_to_nested_folder() {
+        let config = RenderConfig {
+            template: OutputTemplate::Auto,
+            indent_unit: "  ".to_string(),
+            space: " ".to_string(),
+            newline: "\n".to_string(),
+            prefer_tail_arrays: false,
+            color_mode: ColorMode::Off,
+            color_enabled: false,
+            style: Style::Default,
+            string_free_prefix_graphemes: None,
+            debug: false,
+            primary_source_name: None,
+            show_fileset_headers: true,
+            fileset_tree: true,
+            count_fileset_headers_in_budgets: false,
+            grep_highlight: None,
+        };
+
+        let mut root = TreeNode::root();
+        root.insert(
+            &[
+                "dir".to_string(),
+                "nested".to_string(),
+                "keep.rs".to_string(),
+            ],
+            "fn keep() {}\n".to_string(),
+            &config,
+        );
+        let mut counts = HashMap::new();
+        counts.insert(Vec::<String>::new(), 1);
+        counts.insert(vec!["dir".to_string()], 1);
+        counts.insert(vec!["dir".to_string(), "nested".to_string()], 1);
+        root.apply_omitted_counts(&counts, &mut Vec::new());
+
+        let out = render_tree_from_node(root, &config);
+        let expected = concat!(
+            ".\n",
+            "├─ dir/nested/\n",
+            "│ ├─ keep.rs\n",
+            "│ │ fn keep() {}\n",
+            "│ ├─ … 1 more items\n",
+        );
+        assert_eq!(
+            out, expected,
+            "nested omissions should be reported under their folder without duplicating at root"
+        );
+    }
+
+    #[test]
+    fn tree_root_level_omission_when_no_children_kept() {
+        let config = RenderConfig {
+            template: OutputTemplate::Auto,
+            indent_unit: "  ".to_string(),
+            space: " ".to_string(),
+            newline: "\n".to_string(),
+            prefer_tail_arrays: false,
+            color_mode: ColorMode::Off,
+            color_enabled: false,
+            style: Style::Default,
+            string_free_prefix_graphemes: None,
+            debug: false,
+            primary_source_name: None,
+            show_fileset_headers: true,
+            fileset_tree: true,
+            count_fileset_headers_in_budgets: false,
+            grep_highlight: None,
+        };
+
+        let mut root = TreeNode::root();
+        let mut counts = HashMap::new();
+        counts.insert(Vec::<String>::new(), 2);
+        root.apply_omitted_counts(&counts, &mut Vec::new());
+
+        let out = render_tree_from_node(root, &config);
+        let expected = concat!(".\n", "├─ … 2 more items\n",);
+        assert_eq!(
+            out, expected,
+            "when no files are kept, omissions should only appear once at the root"
         );
     }
 }
