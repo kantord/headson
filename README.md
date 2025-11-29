@@ -119,6 +119,14 @@ Use `--grep <REGEX>` to guarantee inclusion of values/keys/lines matching the re
 - Budgets: matches and ancestors always render; remaining budget determines what else can appear. Extremely tight budgets may show only the must-keep path.
 - Text/code: works with `-i text` and code-like files; when using `--format auto`, file extensions still decide ingest/rendering.
 
+## Tree mode
+
+Use `--tree` to render filesets as a directory tree (like `tree`) with inline structured previews instead of per-file headers. Works with grep/weak-grep; matches are shown inside the tree.
+
+- Layout: classic tree branches (`├─`, `│`, `└─`) with continuous guides; code gutters stay visible under the tree prefix.
+- Headers: `--tree` is mutually exclusive with `--no-header`; tree mode never prints `==>` headers and relies on the tree structure instead. Files are still auto-formatted per extension (`--format` must be `auto` for filesets).
+- Budgets: tree scaffolding counts toward budgets; per-file/global budgets still apply. Tight budgets can truncate file previews within the tree.
+- Sorting: respects `--no-sort`; otherwise uses the usual frecency/mtime ordering before tree grouping.
 ## Budget Modes
 
 - Bytes (`-c/--bytes`, `-C/--global-bytes`)
