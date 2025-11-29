@@ -38,14 +38,13 @@ impl<'a> RenderScope<'a> {
         let mut root = TreeNode::root();
         let mut omitted: std::collections::HashMap<Vec<String>, usize> =
             std::collections::HashMap::new();
+        let mut root_direct_omitted = 0usize;
         let mut entries: Vec<(Vec<String>, String)> = Vec::new();
         for &child_id in children_ids {
             let raw_key =
                 self.order.nodes[child_id.0].key_in_object().unwrap_or("");
             let segments = Self::split_path_segments(raw_key);
             if self.inclusion_flags[child_id.0] != self.render_set_id {
-                // Root always tracks omitted items.
-                *omitted.entry(Vec::new()).or_insert(0) += 1;
                 // Track per-folder omitted counts using directory prefixes.
                 if segments.len() > 1 {
                     let mut prefix: Vec<String> = Vec::new();
@@ -53,6 +52,9 @@ impl<'a> RenderScope<'a> {
                         prefix.push(seg.clone());
                         *omitted.entry(prefix.clone()).or_insert(0) += 1;
                     }
+                } else {
+                    // Root-level omission (no folder to pin it to).
+                    root_direct_omitted += 1;
                 }
                 continue;
             }
@@ -60,19 +62,16 @@ impl<'a> RenderScope<'a> {
                 self.fileset_render_child(child_id.0, depth, raw_key);
             entries.push((segments, rendered));
         }
-        if entries.is_empty() && omitted.is_empty() {
+        if entries.is_empty() && omitted.is_empty() && root_direct_omitted == 0
+        {
             return String::new();
         }
 
         for (segments, rendered) in entries {
             root.insert(&segments, rendered, self.config);
         }
+        omitted.insert(Vec::<String>::new(), root_direct_omitted);
         root.apply_omitted_counts(&omitted, &mut Vec::new());
-        if !root.children.is_empty() {
-            // Avoid double-reporting omissions when some children are already rendered.
-            // Root-level omission should only show when nothing was kept.
-            root.omitted = 0;
-        }
 
         let mut out = String::new();
         let indent = self.config.indent_unit.repeat(depth);
@@ -444,12 +443,7 @@ mod tests {
         out.push('.');
         out.push_str(&config.newline);
         let mut root_children = root.children;
-        let root_omitted = if root_children.is_empty() {
-            root.omitted
-        } else {
-            0
-        };
-        if root_omitted > 0 {
+        if root.omitted > 0 {
             root_children.push(TreeNode::omission(root.omitted));
         }
         let last_idx = root_children.len().saturating_sub(1);
@@ -510,7 +504,7 @@ mod tests {
         );
         // Simulate omitting a sibling file under the same directory.
         let mut counts = HashMap::new();
-        counts.insert(Vec::<String>::new(), 1); // root omission count
+        counts.insert(Vec::<String>::new(), 0); // root omission count
         counts.insert(vec!["dir".to_string()], 1); // dir/ omission count
         root.apply_omitted_counts(&counts, &mut Vec::new());
 
@@ -519,7 +513,7 @@ mod tests {
         // Desired behavior: omission should be reported once under the containing folder.
         let expected = concat!(
             ".\n",
-            "├─ dir/\n",
+            "└─ dir/\n",
             "│ ├─ kept.txt\n",
             "│ │ line\n",
             "│ ├─ … 1 more items\n",
@@ -561,7 +555,7 @@ mod tests {
             &config,
         );
         let mut counts = HashMap::new();
-        counts.insert(Vec::<String>::new(), 1);
+        counts.insert(Vec::<String>::new(), 0);
         counts.insert(vec!["dir".to_string()], 1);
         counts.insert(vec!["dir".to_string(), "nested".to_string()], 1);
         root.apply_omitted_counts(&counts, &mut Vec::new());
@@ -569,9 +563,11 @@ mod tests {
         let out = render_tree_from_node(root, &config);
         let expected = concat!(
             ".\n",
-            "├─ dir/nested/\n",
-            "│ ├─ keep.rs\n",
-            "│ │ fn keep() {}\n",
+            "└─ dir/\n",
+            "│ ├─ nested/\n",
+            "│ │ ├─ keep.rs\n",
+            "│ │ │ fn keep() {}\n",
+            "│ │ ├─ … 1 more items\n",
             "│ ├─ … 1 more items\n",
         );
         assert_eq!(

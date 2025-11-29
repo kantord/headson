@@ -52,7 +52,7 @@ pub struct Cli {
     #[arg(
         long = "tree",
         default_value_t = false,
-        conflicts_with = "no_header",
+        conflicts_with_all = ["no_header", "compact", "no_newline"],
         help = "Render filesets in a directory tree layout with inline previews"
     )]
     pub tree: bool,
