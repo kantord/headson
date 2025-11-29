@@ -1,6 +1,8 @@
 use super::RenderScope;
 use crate::ingest::format::Format;
 use crate::order::{NodeId, ObjectType, ROOT_PQ_ID};
+use crate::serialization::color::{self, ColorRole};
+use crate::serialization::types::ColorStrategy;
 use crate::serialization::types::OutputTemplate;
 
 impl<'a> RenderScope<'a> {
@@ -288,15 +290,19 @@ impl TreeNode {
             (false, true) => "└─ ",
             (true, _) | (false, false) => "├─ ",
         };
+        let color_on = !matches!(config.color_strategy(), ColorStrategy::None);
         out.push_str(prefix);
-        out.push_str(branch);
-        out.push_str(&name);
-        if content.is_none() {
-            out.push('/');
-        }
+        out.push_str(&colorize_pipe(branch, color_on));
+        let display_name = if content.is_none() {
+            format!("{name}/")
+        } else {
+            name
+        };
+        out.push_str(&colorize_name(&display_name, color_on));
         out.push_str(nl);
 
-        let child_prefix = format!("{prefix}│ ");
+        let child_prefix =
+            format!("{prefix}{} ", colorize_pipe("│", color_on));
         if let Some(lines) = content {
             for line in lines {
                 out.push_str(&child_prefix);
@@ -342,4 +348,12 @@ impl TreeNode {
         }
         (name, children, content)
     }
+}
+
+fn colorize_pipe(s: &str, enabled: bool) -> String {
+    color::color_comment(s, enabled)
+}
+
+fn colorize_name(s: &str, enabled: bool) -> String {
+    color::wrap_role(s, ColorRole::Key, enabled)
 }

@@ -148,3 +148,41 @@ fn tree_keeps_branch_connectors_for_last_child_lines() {
         "line gutters should remain aligned under the tree prefix: {stdout}"
     );
 }
+
+#[test]
+fn tree_colorizes_pipes_and_names_when_color_enabled() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("a.rs"), "fn a() {}\n");
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .env("FORCE_COLOR", "1")
+        .args(["--tree", "--no-sort", "a.rs"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("\u{001b}[90m├─ \u{001b}[0m")
+            || stdout.contains("\u{001b}[90m├─\u{001b}[0m"),
+        "branch pipes should be colored when color is enabled: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\u{001b}[1;34ma.rs\u{001b}[0m"),
+        "file name should be colored like keys: {stdout:?}"
+    );
+}
+
+#[test]
+fn tree_remains_plain_when_color_disabled() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("b.rs"), "fn b() {}\n");
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--tree", "--no-sort", "b.rs"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        !stdout.contains("\u{001b}["),
+        "no ANSI escapes should appear when color is disabled: {stdout:?}"
+    );
+}
