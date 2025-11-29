@@ -76,6 +76,7 @@ Common flags:
 - `-m, --compact`: no indentation, no spaces, no newlines
 - `--no-newline`: single line output
 - `--no-header`: suppress fileset section headers (useful when embedding output in scripts)
+- `--tree`: render filesets as a directory tree with inline previews (keeps code line numbers); uses per-file auto formatting.
 - `--no-space`: no space after `:` in objects
 - `--indent <STR>`: indentation unit (default: two spaces)
 - `--string-cap <N>`: max graphemes to consider per string (default: 500)

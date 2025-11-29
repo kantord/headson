@@ -389,6 +389,9 @@ fn measure_config(
         // section titles/summary lines remain “free” during selection.
         measure_cfg.show_fileset_headers = false;
     }
+    if config.fileset_tree {
+        measure_cfg.show_fileset_headers = false;
+    }
     measure_cfg
 }
 

@@ -123,6 +123,7 @@ fn array_tail_json_contains_last_k_values() {
         debug: false,
         primary_source_name: None,
         show_fileset_headers: true,
+        fileset_tree: false,
         count_fileset_headers_in_budgets: false,
         grep_highlight: None,
     };

@@ -134,7 +134,7 @@ fn run_from_paths(
     let input_count = included.max(1);
     let effective = budget::compute_effective(cli, input_count);
     let prio = budget::build_priority_config(cli, &effective);
-    if inputs.len() > 1 {
+    if inputs.len() > 1 || cli.tree {
         if !matches!(cli.format, OutputFormat::Auto) {
             bail!(
                 "--format cannot be customized for filesets; remove it or set to auto"

@@ -13,9 +13,54 @@ impl<'a> RenderScope<'a> {
             && self.order.object_type.get(id) == Some(&ObjectType::Fileset)
             && !self.config.newline.is_empty()
         {
+            if self.config.fileset_tree {
+                return Some(self.render_fileset_tree(depth));
+            }
             return Some(self.render_fileset_sections(depth));
         }
         None
+    }
+
+    fn render_fileset_tree(&mut self, depth: usize) -> String {
+        let Some(children_ids) = self
+            .order
+            .fileset_children
+            .as_deref()
+            .or_else(|| self.order.children.get(ROOT_PQ_ID).map(|v| &**v))
+        else {
+            return String::new();
+        };
+        let mut entries: Vec<(Vec<String>, String)> = Vec::new();
+        for &child_id in children_ids {
+            if self.inclusion_flags[child_id.0] != self.render_set_id {
+                continue;
+            }
+            let raw_key =
+                self.order.nodes[child_id.0].key_in_object().unwrap_or("");
+            let rendered =
+                self.fileset_render_child(child_id.0, depth, raw_key);
+            let segments = Self::split_path_segments(raw_key);
+            entries.push((segments, rendered));
+        }
+        if entries.is_empty() {
+            return String::new();
+        }
+
+        let mut root = TreeNode::root();
+        for (segments, rendered) in entries {
+            root.insert(&segments, rendered, &self.config);
+        }
+
+        let mut out = String::new();
+        let indent = self.config.indent_unit.repeat(depth);
+        out.push_str(&indent);
+        out.push('.');
+        out.push_str(&self.config.newline);
+        let last_idx = root.children.len().saturating_sub(1);
+        for (idx, child) in root.children.into_iter().enumerate() {
+            child.render(&mut out, &indent, idx == last_idx, &self.config);
+        }
+        out
     }
 
     fn render_fileset_sections(&mut self, depth: usize) -> String {
@@ -48,7 +93,9 @@ impl<'a> RenderScope<'a> {
     }
 
     fn should_render_fileset_headers(&self) -> bool {
-        self.config.show_fileset_headers && !self.config.newline.is_empty()
+        self.config.show_fileset_headers
+            && !self.config.newline.is_empty()
+            && !self.config.fileset_tree
     }
 
     fn render_fileset_children(
@@ -152,5 +199,143 @@ impl<'a> RenderScope<'a> {
                 }
             }
         }
+    }
+
+    fn split_path_segments(raw_key: &str) -> Vec<String> {
+        let segments: Vec<String> = raw_key
+            .split(|c| c == '/' || c == '\\')
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+            .collect();
+        if segments.is_empty() {
+            vec![raw_key.to_string()]
+        } else {
+            segments
+        }
+    }
+}
+
+struct TreeNode {
+    name: String,
+    children: Vec<TreeNode>,
+    content: Option<Vec<String>>,
+}
+
+impl TreeNode {
+    fn root() -> Self {
+        TreeNode {
+            name: ".".to_string(),
+            children: Vec::new(),
+            content: None,
+        }
+    }
+
+    fn with_name(name: String) -> Self {
+        TreeNode {
+            name,
+            children: Vec::new(),
+            content: None,
+        }
+    }
+
+    fn insert(
+        &mut self,
+        segments: &[String],
+        rendered: String,
+        config: &crate::RenderConfig,
+    ) {
+        if segments.is_empty() {
+            return;
+        }
+        let head = &segments[0];
+        if segments.len() == 1 {
+            let mut node = Self::with_name(head.clone());
+            node.content = Some(Self::render_lines(rendered, config));
+            self.children.push(node);
+            return;
+        }
+        let mut child_idx = None;
+        for (idx, child) in self.children.iter().enumerate() {
+            if child.name == *head {
+                child_idx = Some(idx);
+                break;
+            }
+        }
+        let idx = if let Some(idx) = child_idx {
+            idx
+        } else {
+            self.children.push(Self::with_name(head.clone()));
+            self.children.len() - 1
+        };
+        self.children[idx].insert(&segments[1..], rendered, config);
+    }
+
+    fn render(
+        self,
+        out: &mut String,
+        prefix: &str,
+        is_last: bool,
+        config: &crate::RenderConfig,
+    ) {
+        let (name, children, content) = self.collapse();
+        let nl = &config.newline;
+        let branch = if is_last { "└─ " } else { "├─ " };
+        out.push_str(prefix);
+        out.push_str(branch);
+        if content.is_none() {
+            out.push_str(&name);
+            out.push('/');
+            out.push_str(nl);
+        } else {
+            out.push_str(&name);
+            out.push_str(nl);
+        }
+        let child_prefix = format!(
+            "{}{}{}",
+            prefix,
+            if is_last { " " } else { "│" },
+            config.indent_unit
+        );
+        if let Some(lines) = content {
+            for line in lines {
+                out.push_str(&child_prefix);
+                out.push_str(&line);
+                out.push_str(nl);
+            }
+        }
+        let last_idx = children.len().saturating_sub(1);
+        for (idx, child) in children.into_iter().enumerate() {
+            child.render(out, &child_prefix, idx == last_idx, config);
+        }
+    }
+
+    fn render_lines(
+        rendered: String,
+        config: &crate::RenderConfig,
+    ) -> Vec<String> {
+        if config.newline.is_empty() {
+            return vec![rendered];
+        }
+        let mut lines: Vec<String> = rendered
+            .split(&config.newline)
+            .map(|s| s.to_string())
+            .collect();
+        if matches!(lines.last(), Some(s) if s.is_empty()) {
+            lines.pop();
+        }
+        lines
+    }
+
+    fn collapse(self) -> (String, Vec<TreeNode>, Option<Vec<String>>) {
+        let mut name = self.name;
+        let mut content = self.content;
+        let mut children = self.children;
+        while content.is_none() && children.len() == 1 {
+            let child = children.pop().unwrap();
+            name = format!("{name}/{}", child.name);
+            content = child.content;
+            children = child.children;
+        }
+        (name, children, content)
     }
 }
