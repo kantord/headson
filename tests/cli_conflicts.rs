@@ -83,3 +83,29 @@ fn global_lines_and_no_newline_conflict() {
         "stderr should mention argument conflict, got: {err}"
     );
 }
+
+#[test]
+fn grep_show_requires_grep() {
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
+    let assert = cmd
+        .args([
+            "--no-color",
+            "--grep-show",
+            "all",
+            "tests/fixtures/explicit/object_small.json",
+        ])
+        .assert();
+    let ok = assert.get_output().status.success();
+    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(
+        !ok,
+        "cli should fail when --grep-show is used without --grep"
+    );
+    let err_l = err.to_ascii_lowercase();
+    assert!(
+        err_l.contains("requires")
+            || err_l.contains("missing")
+            || err_l.contains("required arguments"),
+        "stderr should mention missing --grep requirement: {err}"
+    );
+}
