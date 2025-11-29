@@ -1,0 +1,7 @@
+---
+source: tests/fileset_tree.rs
+expression: stdout.as_ref()
+---
+.
+[90m├─ [0m[1;34mmain.rs[0m
+[90m│[0m 1: fn [31mmain[39m(){}

@@ -1,0 +1,9 @@
+---
+source: tests/fileset_tree.rs
+expression: stdout.as_ref()
+---
+.
+├─ a.txt
+│ line
+├─ … 4 more items
+

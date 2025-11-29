@@ -1,4 +1,5 @@
 use assert_cmd::cargo::cargo_bin_cmd;
+use insta::assert_snapshot;
 use std::{fs, path::Path};
 use tempfile::tempdir;
 
@@ -238,4 +239,52 @@ fn tree_reports_omitted_files_when_budget_drops_them() {
         stdout.contains("… 4 more items"),
         "when the budget is too small for most files, tree mode should report how many items were omitted: {stdout}"
     );
+}
+
+#[test]
+fn tree_cli_snapshot_budgeted_root_omission() {
+    let dir = tempdir().expect("tmp");
+    for name in ["a", "b", "c", "d", "e"] {
+        write_file(&dir.path().join(format!("{name}.txt")), "line\n");
+    }
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--tree",
+            "--no-sort",
+            "-N",
+            "4",
+            "a.txt",
+            "b.txt",
+            "c.txt",
+            "d.txt",
+            "e.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert_snapshot!(
+        "tree_cli_snapshot_budgeted_root_omission",
+        stdout.as_ref()
+    );
+}
+
+#[test]
+fn tree_cli_color_snapshot_with_grep() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("main.rs"), "fn main(){}\n");
+    write_file(&dir.path().join("lib.rs"), "fn helper(){}\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .env("FORCE_COLOR", "1")
+        .args(["--tree", "--no-sort", "--grep", "main", "main.rs", "lib.rs"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert_snapshot!("tree_cli_color_snapshot_with_grep", stdout.as_ref());
 }
