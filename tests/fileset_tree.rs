@@ -203,9 +203,8 @@ fn tree_with_grep_keeps_match_highlights_and_colored_pipes() {
         "grep highlight should still color the match: {stdout:?}"
     );
     assert!(
-        stdout.contains("\u{001b}[90m├─ \u{001b}[0m")
-            || stdout.contains("\u{001b}[90m├─\u{001b}[0m"),
-        "pipes should remain colored when color is enabled in grep mode: {stdout:?}"
+        !stdout.contains("\u{001b}[90m├─"),
+        "pipes should follow grep highlight-only rules (no syntax colors in tree chrome): {stdout:?}"
     );
 }
 

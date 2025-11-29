@@ -333,7 +333,10 @@ impl TreeNode {
             (false, true) => "└─ ",
             (true, _) | (false, false) => "├─ ",
         };
-        let color_on = config.color_enabled;
+        let color_on = matches!(
+            config.color_strategy(),
+            crate::serialization::types::ColorStrategy::Syntax
+        );
         out.push_str(prefix);
         out.push_str(&colorize_pipe(branch, color_on));
         let display_name = if content.is_none() {
