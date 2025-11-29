@@ -186,3 +186,25 @@ fn tree_remains_plain_when_color_disabled() {
         "no ANSI escapes should appear when color is disabled: {stdout:?}"
     );
 }
+
+#[test]
+fn tree_with_grep_keeps_match_highlights_and_colored_pipes() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("c.json"), r#"{"k":"needle","x":"other"}"#);
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .env("FORCE_COLOR", "1")
+        .args(["--tree", "--grep", "needle", "--no-sort", "c.json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
+        "grep highlight should still color the match: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\u{001b}[90m├─ \u{001b}[0m")
+            || stdout.contains("\u{001b}[90m├─\u{001b}[0m"),
+        "pipes should remain colored when color is enabled in grep mode: {stdout:?}"
+    );
+}

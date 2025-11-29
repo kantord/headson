@@ -2,7 +2,6 @@ use super::RenderScope;
 use crate::ingest::format::Format;
 use crate::order::{NodeId, ObjectType, ROOT_PQ_ID};
 use crate::serialization::color::{self, ColorRole};
-use crate::serialization::types::ColorStrategy;
 use crate::serialization::types::OutputTemplate;
 
 impl<'a> RenderScope<'a> {
@@ -290,7 +289,7 @@ impl TreeNode {
             (false, true) => "└─ ",
             (true, _) | (false, false) => "├─ ",
         };
-        let color_on = !matches!(config.color_strategy(), ColorStrategy::None);
+        let color_on = config.color_enabled;
         out.push_str(prefix);
         out.push_str(&colorize_pipe(branch, color_on));
         let display_name = if content.is_none() {
