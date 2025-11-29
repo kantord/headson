@@ -48,7 +48,7 @@ impl<'a> RenderScope<'a> {
 
         let mut root = TreeNode::root();
         for (segments, rendered) in entries {
-            root.insert(&segments, rendered, &self.config);
+            root.insert(&segments, rendered, self.config);
         }
 
         let mut out = String::new();
@@ -58,7 +58,7 @@ impl<'a> RenderScope<'a> {
         out.push_str(&self.config.newline);
         let last_idx = root.children.len().saturating_sub(1);
         for (idx, child) in root.children.into_iter().enumerate() {
-            child.render(&mut out, &indent, idx == last_idx, &self.config);
+            child.render(&mut out, &indent, idx == last_idx, self.config);
         }
         out
     }
@@ -203,9 +203,9 @@ impl<'a> RenderScope<'a> {
 
     fn split_path_segments(raw_key: &str) -> Vec<String> {
         let segments: Vec<String> = raw_key
-            .split(|c| c == '/' || c == '\\')
+            .split(['/', '\\'])
             .filter(|s| !s.is_empty())
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
             .collect();
         if segments.is_empty() {
             vec![raw_key.to_string()]
@@ -270,6 +270,10 @@ impl TreeNode {
         self.children[idx].insert(&segments[1..], rendered, config);
     }
 
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Tree render branches are simple; splitting further would hurt clarity"
+    )]
     fn render(
         self,
         out: &mut String,
@@ -279,23 +283,20 @@ impl TreeNode {
     ) {
         let (name, children, content) = self.collapse();
         let nl = &config.newline;
-        let branch = if is_last { "└─ " } else { "├─ " };
+        let is_leaf = content.is_some();
+        let branch = match (is_leaf, is_last) {
+            (false, true) => "└─ ",
+            (true, _) | (false, false) => "├─ ",
+        };
         out.push_str(prefix);
         out.push_str(branch);
+        out.push_str(&name);
         if content.is_none() {
-            out.push_str(&name);
             out.push('/');
-            out.push_str(nl);
-        } else {
-            out.push_str(&name);
-            out.push_str(nl);
         }
-        let child_prefix = format!(
-            "{}{}{}",
-            prefix,
-            if is_last { " " } else { "│" },
-            config.indent_unit
-        );
+        out.push_str(nl);
+
+        let child_prefix = format!("{prefix}│ ");
         if let Some(lines) = content {
             for line in lines {
                 out.push_str(&child_prefix);
@@ -318,7 +319,7 @@ impl TreeNode {
         }
         let mut lines: Vec<String> = rendered
             .split(&config.newline)
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
             .collect();
         if matches!(lines.last(), Some(s) if s.is_empty()) {
             lines.pop();
@@ -331,10 +332,13 @@ impl TreeNode {
         let mut content = self.content;
         let mut children = self.children;
         while content.is_none() && children.len() == 1 {
-            let child = children.pop().unwrap();
-            name = format!("{name}/{}", child.name);
-            content = child.content;
-            children = child.children;
+            if let Some(child) = children.pop() {
+                name = format!("{name}/{}", child.name);
+                content = child.content;
+                children = child.children;
+            } else {
+                break;
+            }
         }
         (name, children, content)
     }

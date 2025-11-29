@@ -43,23 +43,23 @@ fn tree_renders_nested_files_with_code_gutters() {
     let expected = concat!(
         ".\n",
         "├─ src/\n",
-        "│  ├─ main.rs\n",
-        "│  │  1: fn main() {\n",
-        "│  │  2:     println!(\"hi\");\n",
-        "│  │  3: }\n",
-        "│  └─ ingest/fileset.rs\n",
-        "│     1: pub fn merge_filesets() {}\n",
-        "│     2: fn helper() {}\n",
+        "│ ├─ main.rs\n",
+        "│ │ 1: fn main() {\n",
+        "│ │ 2:     println!(\"hi\");\n",
+        "│ │ 3: }\n",
+        "│ ├─ ingest/fileset.rs\n",
+        "│ │ 1: pub fn merge_filesets() {}\n",
+        "│ │ 2: fn helper() {}\n",
         "├─ data/users.json\n",
-        "│  {\n",
-        "│    \"users\": [\n",
-        "│      1,\n",
-        "│      2,\n",
-        "│      3\n",
-        "│    ]\n",
-        "│  }\n",
-        "└─ README.md\n",
-        "   1: headson tree preview\n",
+        "│ {\n",
+        "│   \"users\": [\n",
+        "│     1,\n",
+        "│     2,\n",
+        "│     3\n",
+        "│   ]\n",
+        "│ }\n",
+        "├─ README.md\n",
+        "│ 1: headson tree preview\n",
         "\n",
     );
     assert_eq!(stdout.as_ref(), expected);
@@ -89,9 +89,9 @@ fn tree_emits_omission_marker_under_tight_budget() {
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     let expected = concat!(
         ".\n",
-        "└─ src/lib.rs\n",
-        "   1: fn a() {}\n",
-        "   3: fn c() {}\n",
+        "├─ src/lib.rs\n",
+        "│ 1: fn a() {}\n",
+        "│ 3: fn c() {}\n",
         "\n",
     );
     assert_eq!(stdout.as_ref(), expected);
@@ -115,8 +115,8 @@ fn tree_renders_duplicate_basenames_in_distinct_dirs() {
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(
-        stdout.contains("├─ a/") && stdout.contains("└─ b/"),
-        "tree view should show both directories with proper branch glyphs: {stdout}"
+        stdout.contains("├─ a/foo.rs") && stdout.contains("├─ b/foo.rs"),
+        "tree view should show both files with tee branches: {stdout}"
     );
     assert!(
         stdout.contains("a/foo.rs") && stdout.contains("b/foo.rs"),
@@ -140,11 +140,11 @@ fn tree_keeps_branch_connectors_for_last_child_lines() {
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(
-        stdout.contains("└─ dir/only.rs"),
-        "single child should be rendered as the last branch: {stdout}"
+        stdout.contains("├─ dir/only.rs"),
+        "single child should still render with a tee branch for vertical continuity: {stdout}"
     );
     assert!(
-        stdout.contains("  1: fn main() {}"),
+        stdout.contains("│ 1: fn main() {}"),
         "line gutters should remain aligned under the tree prefix: {stdout}"
     );
 }
