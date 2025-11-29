@@ -288,3 +288,30 @@ fn tree_cli_color_snapshot_with_grep() {
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert_snapshot!("tree_cli_color_snapshot_with_grep", stdout.as_ref());
 }
+
+#[test]
+fn tree_cli_snapshot_nested_folder_omission() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("keep/root.rs"), "fn keep(){}\n");
+    write_file(&dir.path().join("omit/deep/file.rs"), "fn drop(){}\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--tree",
+            "--no-sort",
+            "-N",
+            "3",
+            "keep/root.rs",
+            "omit/deep/file.rs",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert_snapshot!(
+        "tree_cli_snapshot_nested_folder_omission",
+        stdout.as_ref()
+    );
+}
