@@ -102,6 +102,20 @@ Notes:
 - Headers: fileset sections get `==>` headers when newlines are enabled; hide them with `--no-header`. Compact and single-line modes omit headers automatically.
 - Formats: in `--format auto`, each file picks JSON/YAML/Text based on extension; unknowns fall back to Text so mixed filesets “just work.”
 
+## Grep mode
+
+Use `--grep <REGEX>` to guarantee inclusion of values/keys/lines matching the regex (ripgrep-style). Matches plus their ancestors are “free” against budgets; everything else must fit the remaining headroom.
+
+- Matching: values/lines are checked; object keys match too, except for filenames in filesets (no filename-only hits).
+- Colors: only the matching text is highlighted; syntax colors are suppressed in grep mode. Disable color entirely with `--no-color`.
+- Filesets:
+  - Default (`--grep-show=matching`): files without matches are dropped from the render and summary. If no files match at all, the output is empty and the CLI prints a notice to stderr.
+  - `--grep-show=all`: keep non-matching files in the render; only matching files are highlighted.
+  - Headers respect `--no-header` as usual.
+- Context: there are no explicit `-C/-B/-A` style flags; per-file budgets decide how much surrounding structure/lines can stay alongside the must-keep matches.
+- Budgets: matches and ancestors always render; remaining budget determines what else can appear. Extremely tight budgets may show only the must-keep path.
+- Text/code: works with `-i text` and code-like files; when using `--format auto`, file extensions still decide ingest/rendering.
+
 ## Budget Modes
 
 - Bytes (`-c/--bytes`, `-C/--global-bytes`)
