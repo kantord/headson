@@ -22,6 +22,10 @@ impl<'a> RenderScope<'a> {
         None
     }
 
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Tree assembly mixes omission tracking and rendering prep; further splitting would obscure the flow."
+    )]
     fn render_fileset_tree(&mut self, depth: usize) -> String {
         let Some(children_ids) = self
             .order
@@ -241,6 +245,9 @@ struct TreeNode {
     is_omission: bool,
 }
 
+type CollapseResult =
+    (String, Vec<TreeNode>, Option<Vec<String>>, usize, bool);
+
 impl TreeNode {
     fn root() -> Self {
         TreeNode {
@@ -376,9 +383,7 @@ impl TreeNode {
         lines
     }
 
-    fn collapse(
-        self,
-    ) -> (String, Vec<TreeNode>, Option<Vec<String>>, usize, bool) {
+    fn collapse(self) -> CollapseResult {
         let mut name = self.name;
         let mut content = self.content;
         let mut children = self.children;
