@@ -162,6 +162,7 @@ fn run_from_paths(
         let mut notices = ignored;
         if grep_cfg.regex.is_some()
             && matches!(grep_cfg.show, headson::GrepShow::Matching)
+            && !grep_cfg.weak
             && out.trim().is_empty()
         {
             notices.push("No grep matches found".to_string());

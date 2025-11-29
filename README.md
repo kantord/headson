@@ -108,10 +108,12 @@ Use `--grep <REGEX>` to guarantee inclusion of values/keys/lines matching the re
 
 - Matching: values/lines are checked; object keys match too, except for filenames in filesets (no filename-only hits).
 - Colors: only the matching text is highlighted; syntax colors are suppressed in grep mode. Disable color entirely with `--no-color`.
-- Filesets:
+- Weak grep: `--weak-grep <REGEX>` biases priority toward matches but does not guarantee inclusion, expand budgets, or filter filesets. Budgets stay exact and matches can still be pruned if they do not fit.
+- Filesets (strong `--grep` only):
   - Default (`--grep-show=matching`): files without matches are dropped from the render and summary. If no files match at all, the output is empty and the CLI prints a notice to stderr.
   - `--grep-show=all`: keep non-matching files in the render; only matching files are highlighted.
   - Headers respect `--no-header` as usual.
+- Mutual exclusion: `--grep-show` requires `--grep` and cannot be used with `--weak-grep`; `--weak-grep` cannot be combined with `--grep`.
 - Context: there are no explicit `-C/-B/-A` style flags; per-file budgets decide how much surrounding structure/lines can stay alongside the must-keep matches.
 - Budgets: matches and ancestors always render; remaining budget determines what else can appear. Extremely tight budgets may show only the must-keep path.
 - Text/code: works with `-i text` and code-like files; when using `--format auto`, file extensions still decide ingest/rendering.

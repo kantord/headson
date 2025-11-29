@@ -159,14 +159,23 @@ pub struct Cli {
     #[arg(
         long = "grep",
         value_name = "REGEX",
+        conflicts_with = "weak_grep",
         help = "Guarantee inclusion of values (and their ancestors) matching this regex; budgets apply to everything else."
     )]
     pub grep: Option<String>,
+    #[arg(
+        long = "weak-grep",
+        value_name = "REGEX",
+        conflicts_with = "grep",
+        help = "Bias priority toward regex matches without guaranteeing inclusion or expanding budgets."
+    )]
+    pub weak_grep: Option<String>,
     #[arg(
         long = "grep-show",
         value_enum,
         default_value_t = GrepShowArg::Matching,
         requires = "grep",
+        conflicts_with = "weak_grep",
         help = "When using --grep, control fileset inclusion: matching (default) | all"
     )]
     pub grep_show: GrepShowArg,
@@ -276,15 +285,24 @@ pub fn map_json_template_for_style(
 }
 
 pub fn build_grep_config(cli: &Cli) -> anyhow::Result<headson::GrepConfig> {
-    let Some(pattern) = cli.grep.as_ref() else {
-        return Ok(headson::GrepConfig::default());
+    let (regex, weak, show) = match (&cli.grep, &cli.weak_grep) {
+        (Some(pat), None) => (
+            Some(regex::RegexBuilder::new(pat).unicode(true).build()?),
+            false,
+            map_grep_show(cli.grep_show),
+        ),
+        (None, Some(pat)) => (
+            Some(regex::RegexBuilder::new(pat).unicode(true).build()?),
+            true,
+            headson::GrepShow::Matching,
+        ),
+        (None, None) => (None, false, headson::GrepShow::Matching),
+        // clap conflicts should prevent this, but keep a guard in case parsing changes.
+        (Some(_), Some(_)) => {
+            anyhow::bail!("--grep and --weak-grep cannot be used together")
+        }
     };
-    let regex = regex::RegexBuilder::new(pattern).unicode(true).build()?;
-    Ok(headson::GrepConfig {
-        regex: Some(regex),
-        weak: false,
-        show: map_grep_show(cli.grep_show),
-    })
+    Ok(headson::GrepConfig { regex, weak, show })
 }
 
 fn map_grep_show(show: GrepShowArg) -> headson::GrepShow {
