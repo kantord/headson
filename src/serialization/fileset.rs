@@ -474,9 +474,9 @@ mod tests {
     }
 
     #[test]
-    fn tree_reports_omitted_files_twice_bug() {
-        // This captures the current (buggy) behavior where a single omitted file is surfaced
-        // twice: once under its directory and again at the fileset root.
+    fn tree_reports_omitted_files_once() {
+        // Regression test: a single omitted file should not be surfaced twice
+        // (previously showed both under its directory and again at the fileset root).
         let config = RenderConfig {
             template: OutputTemplate::Auto,
             indent_unit: "  ".to_string(),
