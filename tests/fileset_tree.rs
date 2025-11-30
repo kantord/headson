@@ -1,5 +1,6 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 use insta::assert_snapshot;
+use std::collections::HashSet;
 use std::{fs, path::Path};
 use tempfile::tempdir;
 
@@ -342,5 +343,71 @@ fn tree_cli_snapshot_nested_folder_omission() {
     assert_snapshot!(
         "tree_cli_snapshot_nested_folder_omission",
         stdout.as_ref()
+    );
+}
+
+#[test]
+fn tree_omitted_folders_render_in_input_order() {
+    // With only omission markers left, the tree should stay deterministic and
+    // respect the original fileset order instead of hash-map iteration.
+    let render_once = || {
+        let files = ["a", "b", "c", "d", "e"]
+            .into_iter()
+            .map(|name| headson::FilesetInput {
+                name: format!("{name}/file.txt"),
+                bytes: b"line\n".to_vec(),
+                kind: headson::FilesetInputKind::Text { atomic_lines: true },
+            })
+            .collect();
+        let cfg = headson::RenderConfig {
+            template: headson::OutputTemplate::Auto,
+            indent_unit: "  ".to_string(),
+            space: " ".to_string(),
+            newline: "\n".to_string(),
+            prefer_tail_arrays: false,
+            color_mode: headson::ColorMode::Off,
+            color_enabled: false,
+            style: headson::Style::Default,
+            string_free_prefix_graphemes: None,
+            debug: false,
+            primary_source_name: None,
+            show_fileset_headers: true,
+            fileset_tree: true,
+            count_fileset_headers_in_budgets: false,
+            grep_highlight: None,
+        };
+        let prio = headson::PriorityConfig {
+            max_string_graphemes: 500,
+            array_max_items: 8,
+            prefer_tail_arrays: false,
+            array_bias: headson::ArrayBias::HeadMidTail,
+            array_sampler: headson::ArraySamplerStrategy::Default,
+            line_budget_only: true,
+        };
+        let grep_cfg = headson::GrepConfig::default();
+        let budgets = headson::Budgets {
+            byte_budget: None,
+            char_budget: None,
+            line_budget: Some(0),
+        };
+        headson::headson(
+            headson::InputKind::Fileset(files),
+            &cfg,
+            &prio,
+            &grep_cfg,
+            budgets,
+        )
+        .expect("render tree")
+    };
+
+    // Run multiple times to flush out nondeterministic ordering.
+    let mut variants = HashSet::new();
+    for _ in 0..8 {
+        variants.insert(render_once());
+    }
+    assert_eq!(
+        variants.len(),
+        1,
+        "tree output with only omissions should be stable; saw variants: {variants:?}"
     );
 }

@@ -38,6 +38,7 @@ impl<'a> RenderScope<'a> {
         let mut root = TreeNode::root();
         let mut omitted: std::collections::HashMap<Vec<String>, usize> =
             std::collections::HashMap::new();
+        let mut omitted_paths_in_order: Vec<Vec<String>> = Vec::new();
         let mut root_direct_omitted = 0usize;
         let mut entries: Vec<(Vec<String>, String)> = Vec::new();
         for &child_id in children_ids {
@@ -50,7 +51,11 @@ impl<'a> RenderScope<'a> {
                     let mut prefix: Vec<String> = Vec::new();
                     for seg in &segments[..segments.len() - 1] {
                         prefix.push(seg.clone());
-                        *omitted.entry(prefix.clone()).or_insert(0) += 1;
+                        let entry = omitted.entry(prefix.clone()).or_insert(0);
+                        if *entry == 0 {
+                            omitted_paths_in_order.push(prefix.clone());
+                        }
+                        *entry += 1;
                     }
                 } else {
                     // Root-level omission (no folder to pin it to).
@@ -71,8 +76,8 @@ impl<'a> RenderScope<'a> {
             root.insert(&segments, rendered, self.config);
         }
         omitted.insert(Vec::<String>::new(), root_direct_omitted);
-        for key in omitted.keys().filter(|k| !k.is_empty()) {
-            root.ensure_path(key);
+        for path in omitted_paths_in_order.iter().filter(|k| !k.is_empty()) {
+            root.ensure_path(path);
         }
         root.apply_omitted_counts(&omitted, &mut Vec::new());
 

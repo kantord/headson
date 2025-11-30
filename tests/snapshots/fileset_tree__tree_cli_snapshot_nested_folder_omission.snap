@@ -3,5 +3,9 @@ source: tests/fileset_tree.rs
 expression: stdout.as_ref()
 ---
 .
-├─ keep/root.rs
-├─ omit/deep/file.rs
+├─ keep/
+│ ├─ … 1 more items
+└─ omit/
+│ ├─ deep/
+│ │ ├─ … 1 more items
+│ ├─ … 1 more items
