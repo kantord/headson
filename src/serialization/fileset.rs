@@ -27,74 +27,18 @@ impl<'a> RenderScope<'a> {
         reason = "Tree assembly mixes omission tracking and rendering prep; further splitting would obscure the flow."
     )]
     fn render_fileset_tree(&mut self, depth: usize) -> String {
-        let Some(children_ids) = self
-            .order
-            .fileset_children
-            .as_deref()
-            .or_else(|| self.order.children.get(ROOT_PQ_ID).map(|v| &**v))
-        else {
+        let Some(children_ids) = self.fileset_children().map(|c| c.to_vec()) else {
             return String::new();
         };
-        let mut root = TreeNode::root();
-        let mut omitted: std::collections::HashMap<Vec<String>, usize> =
-            std::collections::HashMap::new();
-        let mut omitted_paths_in_order: Vec<Vec<String>> = Vec::new();
-        let mut root_direct_omitted = 0usize;
-        let mut entries: Vec<(Vec<String>, String)> = Vec::new();
-        for &child_id in children_ids {
-            let raw_key =
-                self.order.nodes[child_id.0].key_in_object().unwrap_or("");
-            let segments = Self::split_path_segments(raw_key);
-            if self.inclusion_flags[child_id.0] != self.render_set_id {
-                // Track per-folder omitted counts using directory prefixes.
-                if segments.len() > 1 {
-                    let mut prefix: Vec<String> = Vec::new();
-                    for seg in &segments[..segments.len() - 1] {
-                        prefix.push(seg.clone());
-                        let entry = omitted.entry(prefix.clone()).or_insert(0);
-                        if *entry == 0 {
-                            omitted_paths_in_order.push(prefix.clone());
-                        }
-                        *entry += 1;
-                    }
-                } else {
-                    // Root-level omission (no folder to pin it to).
-                    root_direct_omitted += 1;
-                }
-                continue;
-            }
-            let rendered =
-                self.fileset_render_child(child_id.0, depth, raw_key);
-            entries.push((segments, rendered));
-        }
-        if entries.is_empty() && omitted.is_empty() && root_direct_omitted == 0
-        {
+        let inputs = self.collect_tree_inputs(&children_ids, depth);
+        if inputs.is_empty() {
             return String::new();
         }
 
-        for (segments, rendered) in entries {
-            root.insert(&segments, rendered, self.config);
-        }
-        omitted.insert(Vec::<String>::new(), root_direct_omitted);
-        for path in omitted_paths_in_order.iter().filter(|k| !k.is_empty()) {
-            root.ensure_path(path);
-        }
-        root.apply_omitted_counts(&omitted, &mut Vec::new());
+        let mut root = TreeNode::root();
+        self.build_tree(&mut root, &inputs);
 
-        let mut out = String::new();
-        let indent = self.config.indent_unit.repeat(depth);
-        out.push_str(&indent);
-        out.push('.');
-        out.push_str(&self.config.newline);
-        let mut root_children = root.children;
-        if root.omitted > 0 {
-            root_children.push(TreeNode::omission(root.omitted));
-        }
-        let last_idx = root_children.len().saturating_sub(1);
-        for (idx, child) in root_children.into_iter().enumerate() {
-            child.render(&mut out, &indent, idx == last_idx, self.config);
-        }
-        out
+        self.render_tree_output(root, depth)
     }
 
     fn render_fileset_sections(&mut self, depth: usize) -> String {
@@ -158,6 +102,64 @@ impl<'a> RenderScope<'a> {
             out.push_str(&rendered);
         }
         kept
+    }
+
+    fn fileset_children(&self) -> Option<&[NodeId]> {
+        self.order
+            .fileset_children
+            .as_deref()
+            .or_else(|| self.order.children.get(ROOT_PQ_ID).map(|v| &**v))
+    }
+
+    fn collect_tree_inputs(
+        &mut self,
+        children_ids: &[NodeId],
+        depth: usize,
+    ) -> TreeInputs {
+        let mut inputs = TreeInputs::default();
+        for &child_id in children_ids {
+            let raw_key =
+                self.order.nodes[child_id.0].key_in_object().unwrap_or("");
+            let segments = Self::split_path_segments(raw_key);
+            if self.inclusion_flags[child_id.0] != self.render_set_id {
+                inputs.track_omission_for_path(segments);
+                continue;
+            }
+            let rendered =
+                self.fileset_render_child(child_id.0, depth, raw_key);
+            inputs.entries.push((segments, rendered));
+        }
+        inputs
+    }
+
+    fn build_tree(&self, root: &mut TreeNode, inputs: &TreeInputs) {
+        for (segments, rendered) in &inputs.entries {
+            root.insert(segments, rendered.clone(), self.config);
+        }
+        let mut omitted = inputs.omitted_map.clone();
+        omitted.insert(Vec::<String>::new(), inputs.root_direct_omitted);
+        for path in inputs.omitted_paths_in_order.iter().filter(|k| !k.is_empty())
+        {
+            root.ensure_path(path);
+        }
+        root.apply_omitted_counts(&omitted, &mut Vec::new());
+    }
+
+    fn render_tree_output(&self, root: TreeNode, depth: usize) -> String {
+        let mut out = String::new();
+        let indent = self.config.indent_unit.repeat(depth);
+        out.push_str(&indent);
+        out.push('.');
+        out.push_str(&self.config.newline);
+        let mut root_children = root.children;
+        if root.omitted > 0 {
+            root_children.push(TreeNode::omission(root.omitted));
+        }
+        let last_idx = root_children.len().saturating_sub(1);
+        for (idx, child) in root_children.into_iter().enumerate() {
+            child.render(&mut out, &indent, idx == last_idx, self.config);
+        }
+        out
     }
 
     fn render_fileset_summary(
@@ -249,6 +251,39 @@ impl<'a> RenderScope<'a> {
     }
 }
 
+#[derive(Default)]
+struct TreeInputs {
+    entries: Vec<(Vec<String>, String)>,
+    omitted_map: std::collections::HashMap<Vec<String>, usize>,
+    omitted_paths_in_order: Vec<Vec<String>>,
+    root_direct_omitted: usize,
+}
+
+impl TreeInputs {
+    fn track_omission_for_path(&mut self, segments: Vec<String>) {
+        if segments.len() > 1 {
+            let mut prefix: Vec<String> = Vec::new();
+            for seg in &segments[..segments.len() - 1] {
+                prefix.push(seg.clone());
+                let entry = self.omitted_map.entry(prefix.clone()).or_insert(0);
+                if *entry == 0 {
+                    self.omitted_paths_in_order.push(prefix.clone());
+                }
+                *entry += 1;
+            }
+        } else {
+            // Root-level omission (no folder to pin it to).
+            self.root_direct_omitted += 1;
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+            && self.omitted_map.is_empty()
+            && self.root_direct_omitted == 0
+    }
+}
+
 struct TreeNode {
     name: String,
     children: Vec<TreeNode>,
@@ -257,8 +292,13 @@ struct TreeNode {
     is_omission: bool,
 }
 
-type CollapseResult =
-    (String, Vec<TreeNode>, Option<Vec<String>>, usize, bool);
+struct CollapsedNode {
+    name: String,
+    children: Vec<TreeNode>,
+    content: Option<Vec<String>>,
+    omitted: usize,
+    is_omission: bool,
+}
 
 impl TreeNode {
     fn root() -> Self {
@@ -358,10 +398,12 @@ impl TreeNode {
         is_last: bool,
         config: &crate::RenderConfig,
     ) {
-        let (name, mut children, content, omitted, is_omission) =
-            self.collapse();
+        let collapsed = self.collapse();
+        let mut children = collapsed.children;
+        let is_leaf = collapsed.content.is_some();
+        let content = collapsed.content;
+        let omitted = collapsed.omitted;
         let nl = &config.newline;
-        let is_leaf = content.is_some();
         let branch = match (is_leaf, is_last) {
             (false, true) => "└─ ",
             (true, _) | (false, false) => "├─ ",
@@ -369,12 +411,12 @@ impl TreeNode {
         let color_on = config.color_enabled;
         out.push_str(prefix);
         out.push_str(&colorize_pipe(branch, color_on));
-        let display_name = if content.is_none() {
-            format!("{name}/")
+        let display_name = if is_leaf {
+            collapsed.name
         } else {
-            name
+            format!("{}/", collapsed.name)
         };
-        if is_omission {
+        if collapsed.is_omission {
             out.push_str(&colorize_pipe(&display_name, color_on));
         } else {
             out.push_str(&colorize_name(&display_name, color_on));
@@ -416,7 +458,7 @@ impl TreeNode {
         lines
     }
 
-    fn collapse(self) -> CollapseResult {
+    fn collapse(self) -> CollapsedNode {
         let mut name = self.name;
         let mut content = self.content;
         let mut children = self.children;
@@ -437,7 +479,13 @@ impl TreeNode {
                 break;
             }
         }
-        (name, children, content, omitted, is_omission)
+        CollapsedNode {
+            name,
+            children,
+            content,
+            omitted,
+            is_omission,
+        }
     }
 
     fn omission(count: usize) -> Self {
@@ -491,12 +539,12 @@ mod tests {
         counts.insert(vec!["a".to_string()], 1);
         root.apply_omitted_counts(&counts, &mut Vec::new());
 
-        let (name, children, content, omitted, _is_omission) = root.collapse();
-        assert_eq!(name, ".");
-        assert!(content.is_none());
-        assert_eq!(omitted, 1, "root should track omitted items");
+        let collapsed = root.collapse();
+        assert_eq!(collapsed.name, ".");
+        assert!(collapsed.content.is_none());
+        assert_eq!(collapsed.omitted, 1, "root should track omitted items");
         assert_eq!(
-            children.first().map(|c| c.omitted),
+            collapsed.children.first().map(|c| c.omitted),
             Some(1),
             "child path should still carry its omission count"
         );

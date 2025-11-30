@@ -11,6 +11,26 @@ fn write_file(path: &Path, contents: &str) {
     fs::write(path, contents).expect("write");
 }
 
+fn tree_cfg() -> headson::RenderConfig {
+    headson::RenderConfig {
+        template: headson::OutputTemplate::Auto,
+        indent_unit: "  ".to_string(),
+        space: " ".to_string(),
+        newline: "\n".to_string(),
+        prefer_tail_arrays: false,
+        color_mode: headson::ColorMode::Off,
+        color_enabled: false,
+        style: headson::Style::Default,
+        string_free_prefix_graphemes: None,
+        debug: false,
+        primary_source_name: None,
+        show_fileset_headers: true,
+        fileset_tree: true,
+        count_fileset_headers_in_budgets: false,
+        grep_highlight: None,
+    }
+}
+
 #[test]
 fn tree_renders_nested_files_with_code_gutters() {
     let dir = tempdir().expect("tmp");
@@ -359,23 +379,7 @@ fn tree_omitted_folders_render_in_input_order() {
                 kind: headson::FilesetInputKind::Text { atomic_lines: true },
             })
             .collect();
-        let cfg = headson::RenderConfig {
-            template: headson::OutputTemplate::Auto,
-            indent_unit: "  ".to_string(),
-            space: " ".to_string(),
-            newline: "\n".to_string(),
-            prefer_tail_arrays: false,
-            color_mode: headson::ColorMode::Off,
-            color_enabled: false,
-            style: headson::Style::Default,
-            string_free_prefix_graphemes: None,
-            debug: false,
-            primary_source_name: None,
-            show_fileset_headers: true,
-            fileset_tree: true,
-            count_fileset_headers_in_budgets: false,
-            grep_highlight: None,
-        };
+        let cfg = tree_cfg();
         let prio = headson::PriorityConfig {
             max_string_graphemes: 500,
             array_max_items: 8,
