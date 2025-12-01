@@ -289,7 +289,7 @@ fn min_k_for(state: &Option<GrepState>, grep: &GrepConfig) -> usize {
             .map(|s| s.must_keep_count.max(1))
             .unwrap_or(1)
     } else {
-        0
+        1
     }
 }
 
@@ -311,7 +311,7 @@ fn select_best_k(
     must_keep: Option<&[bool]>,
 ) -> (usize, Vec<u32>, u32) {
     let total = order_build.total_nodes;
-    let lo = min_k;
+    let lo = min_k.max(1);
     let available = order_build.by_priority.len().max(1);
     let hi = match budgets.byte_budget {
         Some(c) => total.min(c.max(1)),
