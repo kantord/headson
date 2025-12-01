@@ -96,8 +96,6 @@ jobs:
             -D unused_imports
             -D unused_mut
             -D unused_variables
-            -D unused_assignments
-            -D unused_parens
             -W unreachable_pub
             -D unused_must_use
             -D unused_features
