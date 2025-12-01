@@ -452,8 +452,11 @@ impl TreeNode {
             out.push_str(nl);
         }
 
-        let child_prefix =
-            format!("{prefix}{} ", colorize_pipe("│", color_on));
+        let child_prefix = if render_scaffold_lines {
+            format!("{prefix}{} ", colorize_pipe("│", color_on))
+        } else {
+            String::new()
+        };
         if let Some(lines) = content {
             for line in lines {
                 out.push_str(&child_prefix);
@@ -575,6 +578,42 @@ mod tests {
             );
         }
         out
+    }
+
+    #[test]
+    fn tree_scaffolding_is_free_when_disabled() {
+        // Measurement pass disables scaffold lines; content should render without tree pipes.
+        let config = RenderConfig {
+            template: OutputTemplate::Auto,
+            indent_unit: "  ".to_string(),
+            space: " ".to_string(),
+            newline: "\n".to_string(),
+            prefer_tail_arrays: false,
+            color_mode: ColorMode::Off,
+            color_enabled: false,
+            style: Style::Default,
+            string_free_prefix_graphemes: None,
+            debug: false,
+            primary_source_name: None,
+            show_fileset_headers: true,
+            fileset_tree: true,
+            count_fileset_headers_in_budgets: false,
+            grep_highlight: None,
+        };
+
+        let mut root = TreeNode::root();
+        root.insert(
+            &["a.txt".to_string()],
+            "line one\nline two\n".to_string(),
+            &config,
+        );
+
+        let out = render_tree_from_node(root, &config, false);
+        let expected = concat!("line one\n", "line two\n");
+        assert_eq!(
+            out, expected,
+            "scaffolding should not be included when render_scaffold_lines is false"
+        );
     }
 
     #[test]

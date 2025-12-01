@@ -113,6 +113,7 @@ fn tree_emits_omission_marker_under_tight_budget() {
         ".\n",
         "├─ src/lib.rs\n",
         "│ 1: fn a() {}\n",
+        "│ 2: fn b() {}\n",
         "│ 3: fn c() {}\n",
         "│ 5: fn e() {}\n",
         "\n",
