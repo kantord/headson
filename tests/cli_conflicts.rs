@@ -207,6 +207,24 @@ fn tree_conflicts_with_no_newline() {
 }
 
 #[test]
+fn tree_rejected_for_stdin() {
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
+    let assert = cmd.args(["--tree"]).write_stdin("{}").assert();
+    let ok = assert.get_output().status.success();
+    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(
+        !ok,
+        "cli should fail when --tree is used without explicit file inputs (stdin mode)"
+    );
+    let err_l = err.to_ascii_lowercase();
+    assert!(
+        err_l.contains("tree")
+            && (err_l.contains("stdin") || err_l.contains("input")),
+        "stderr should mention tree mode requires file inputs, got: {err}"
+    );
+}
+
+#[test]
 fn grep_show_conflicts_with_weak_grep() {
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
