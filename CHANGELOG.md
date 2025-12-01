@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0](https://github.com/kantord/headson/compare/headson-v0.9.0...headson-v0.10.0) - 2025-12-01
+
+### Added
+
+- add --tree flag ([#326](https://github.com/kantord/headson/pull/326))
+
 ## [0.9.0](https://github.com/kantord/headson/compare/headson-v0.8.0...headson-v0.9.0) - 2025-11-29
 
 ### Added
