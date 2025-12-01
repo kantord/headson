@@ -425,6 +425,9 @@ impl TreeNode {
         let content = collapsed.content;
         let omitted = collapsed.omitted;
         let nl = &config.newline;
+        // Tree scaffolding (pipes/names) keeps syntax coloring even in
+        // highlight-only grep mode. Those glyphs never receive grep highlights,
+        // so this avoids double-highlighting concerns while preserving legibility.
         let color_on = config.color_enabled;
         if render_scaffold_lines {
             let branch = match (is_leaf, is_last) {
