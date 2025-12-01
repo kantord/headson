@@ -15,6 +15,7 @@ API
   - `weak_grep`: optional regex to *bias* priority toward matches without guaranteeing inclusion or expanding budgets. Cannot be combined with `grep`. Budgets remain exact; files are not filtered.
   - Notes:
     - For single inputs, `format="auto"` maps to the JSON family; set `format="yaml"` to emit YAML.
+    - Filesets/tree layout is CLI-only; the Python binding renders one logical input buffer at a time and always uses inline content (no `tree`/header mode).
 
 Examples:
 

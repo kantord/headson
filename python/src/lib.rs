@@ -55,6 +55,9 @@ fn render_config_with_sampler(
     let prefer_tail_arrays = matches!(sampler, ArraySamplerStrategy::Tail);
     let color_mode = ColorMode::Off;
     let color_enabled = false;
+    // Python bindings operate on a single logical input (no fileset/tree mode).
+    // Keep the per-file header behavior on (for symmetry with CLI defaults)
+    // but explicitly disable tree layouts, which are CLI-only.
     Ok(RenderConfig {
         template: t,
         indent_unit,
@@ -108,6 +111,7 @@ fn to_pyerr(e: anyhow::Error) -> PyErr {
 #[pyfunction]
 #[allow(clippy::too_many_arguments)] // Python API surface requires these knobs
 #[pyo3(signature = (text, *, format="auto", style="default", byte_budget=None, skew="balanced", input_format="json", grep=None, weak_grep=None))]
+/// Summarize a single logical input buffer. Fileset/tree output is CLI-only.
 fn summarize(
     py: Python<'_>,
     text: &str,
