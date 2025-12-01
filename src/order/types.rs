@@ -27,6 +27,32 @@ impl PriorityConfig {
             line_budget_only: false,
         }
     }
+
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "Priority tuning bundles several independent knobs"
+    )]
+    pub fn for_budget(
+        max_string_graphemes: usize,
+        per_file_budget: usize,
+        prefer_tail_arrays: bool,
+        array_sampler: ArraySamplerStrategy,
+        line_budget_only: bool,
+    ) -> Self {
+        let array_max_items = if line_budget_only {
+            usize::MAX
+        } else {
+            (per_file_budget / 2).max(1)
+        };
+        Self {
+            max_string_graphemes,
+            array_max_items,
+            prefer_tail_arrays,
+            array_bias: ArrayBias::HeadMidTail,
+            array_sampler,
+            line_budget_only,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

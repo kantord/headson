@@ -1,4 +1,5 @@
-use regex::Regex;
+use anyhow::Result;
+use regex::{Regex, RegexBuilder};
 
 use crate::order::{
     NodeId, ObjectType, PriorityOrder, ROOT_PQ_ID, RankedNode,
@@ -17,6 +18,33 @@ pub struct GrepConfig {
     pub regex: Option<Regex>,
     pub weak: bool,
     pub show: GrepShow,
+}
+
+pub fn build_grep_config(
+    grep: Option<&str>,
+    weak_grep: Option<&str>,
+    grep_show: GrepShow,
+) -> Result<GrepConfig> {
+    match (grep, weak_grep) {
+        (Some(_), Some(_)) => {
+            anyhow::bail!("--grep and --weak-grep cannot be used together")
+        }
+        (Some(pat), None) => Ok(GrepConfig {
+            regex: Some(RegexBuilder::new(pat).unicode(true).build()?),
+            weak: false,
+            show: grep_show,
+        }),
+        (None, Some(pat)) => Ok(GrepConfig {
+            regex: Some(RegexBuilder::new(pat).unicode(true).build()?),
+            weak: true,
+            show: GrepShow::Matching,
+        }),
+        (None, None) => Ok(GrepConfig {
+            regex: None,
+            weak: false,
+            show: GrepShow::Matching,
+        }),
+    }
 }
 
 pub(crate) struct GrepState {

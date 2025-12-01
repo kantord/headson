@@ -235,7 +235,7 @@ pub fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
     let template = match cli.format {
         OutputFormat::Auto => headson::OutputTemplate::Auto,
         OutputFormat::Json => {
-            map_json_template_for_style(map_style(cli.style))
+            headson::map_json_template_for_style(map_style(cli.style))
         }
         OutputFormat::Yaml => headson::OutputTemplate::Yaml,
         OutputFormat::Text => headson::OutputTemplate::Text,
@@ -284,38 +284,7 @@ pub fn map_style(s: StyleArg) -> headson::Style {
     }
 }
 
-pub fn map_json_template_for_style(
-    style: headson::Style,
-) -> headson::OutputTemplate {
-    match style {
-        headson::Style::Strict => headson::OutputTemplate::Json,
-        headson::Style::Default => headson::OutputTemplate::Pseudo,
-        headson::Style::Detailed => headson::OutputTemplate::Js,
-    }
-}
-
-pub fn build_grep_config(cli: &Cli) -> anyhow::Result<headson::GrepConfig> {
-    let (regex, weak, show) = match (&cli.grep, &cli.weak_grep) {
-        (Some(pat), None) => (
-            Some(regex::RegexBuilder::new(pat).unicode(true).build()?),
-            false,
-            map_grep_show(cli.grep_show),
-        ),
-        (None, Some(pat)) => (
-            Some(regex::RegexBuilder::new(pat).unicode(true).build()?),
-            true,
-            headson::GrepShow::Matching,
-        ),
-        (None, None) => (None, false, headson::GrepShow::Matching),
-        // clap conflicts should prevent this, but keep a guard in case parsing changes.
-        (Some(_), Some(_)) => {
-            anyhow::bail!("--grep and --weak-grep cannot be used together")
-        }
-    };
-    Ok(headson::GrepConfig { regex, weak, show })
-}
-
-fn map_grep_show(show: GrepShowArg) -> headson::GrepShow {
+pub(crate) fn map_grep_show(show: GrepShowArg) -> headson::GrepShow {
     match show {
         GrepShowArg::Matching => headson::GrepShow::Matching,
         GrepShowArg::All => headson::GrepShow::All,

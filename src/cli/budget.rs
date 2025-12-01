@@ -1,4 +1,4 @@
-use headson::{ArrayBias, ArraySamplerStrategy, PriorityConfig, RenderConfig};
+use headson::{ArraySamplerStrategy, PriorityConfig, RenderConfig};
 
 use crate::Cli;
 
@@ -121,23 +121,18 @@ pub(crate) fn build_priority_config(
     cli: &Cli,
     effective: &EffectiveBudgets,
 ) -> PriorityConfig {
-    let array_max_items = if effective.line_only {
-        usize::MAX
+    let sampler = if cli.tail {
+        ArraySamplerStrategy::Tail
+    } else if cli.head {
+        ArraySamplerStrategy::Head
     } else {
-        (effective.per_file_for_priority / 2).max(1)
+        ArraySamplerStrategy::Default
     };
-    PriorityConfig {
-        max_string_graphemes: cli.string_cap,
-        array_max_items,
-        prefer_tail_arrays: cli.tail,
-        array_bias: ArrayBias::HeadMidTail,
-        array_sampler: if cli.tail {
-            ArraySamplerStrategy::Tail
-        } else if cli.head {
-            ArraySamplerStrategy::Head
-        } else {
-            ArraySamplerStrategy::Default
-        },
-        line_budget_only: effective.line_only,
-    }
+    PriorityConfig::for_budget(
+        cli.string_cap,
+        effective.per_file_for_priority,
+        cli.tail,
+        sampler,
+        effective.line_only,
+    )
 }

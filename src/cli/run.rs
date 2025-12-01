@@ -10,7 +10,6 @@ use ignore::{WalkBuilder, overrides::OverrideBuilder};
 
 use crate::cli::args::{
     Cli, InputFormat, OutputFormat, get_render_config_from,
-    map_json_template_for_style,
 };
 use crate::cli::budget;
 use crate::sorting::sort_paths_for_fileset;
@@ -21,7 +20,11 @@ pub(crate) type IgnoreNotices = Vec<String>;
 
 pub(crate) fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
     let mut render_cfg = get_render_config_from(cli);
-    let grep_cfg = crate::cli::args::build_grep_config(cli)?;
+    let grep_cfg = headson::build_grep_config(
+        cli.grep.as_deref(),
+        cli.weak_grep.as_deref(),
+        crate::cli::args::map_grep_show(cli.grep_show),
+    )?;
     render_cfg.grep_highlight = grep_cfg.regex.clone();
     let resolved_inputs = resolve_inputs(cli)?;
     if resolved_inputs.is_empty() {
@@ -73,38 +76,14 @@ fn run_from_stdin(
     cfg = budget::render_config_for_budgets(cfg, &effective);
     let budgets = effective.budgets;
     let chosen_input = cli.input_format.unwrap_or(InputFormat::Json);
-    let out = match chosen_input {
-        InputFormat::Json => headson::headson(
-            headson::InputKind::Json(input_bytes),
-            &cfg,
-            &prio,
-            grep_cfg,
-            budgets,
-        )?,
-        InputFormat::Yaml => headson::headson(
-            headson::InputKind::Yaml(input_bytes),
-            &cfg,
-            &prio,
-            grep_cfg,
-            budgets,
-        )?,
-        InputFormat::Text => headson::headson(
-            headson::InputKind::Text {
-                bytes: input_bytes,
-                mode: if matches!(cfg.template, headson::OutputTemplate::Code)
-                {
-                    headson::TextMode::CodeLike
-                } else {
-                    headson::TextMode::Plain
-                },
-            },
-            &cfg,
-            &prio,
-            grep_cfg,
-            budgets,
-        )?,
-    };
-    Ok(out)
+    render_single_input(
+        chosen_input,
+        input_bytes,
+        &cfg,
+        &prio,
+        grep_cfg,
+        budgets,
+    )
 }
 
 #[allow(
@@ -203,60 +182,42 @@ fn run_from_paths(
     cfg.primary_source_name = Some(name);
     cfg = budget::render_config_for_budgets(cfg, &effective);
     let budgets = effective.budgets;
-    let out = match chosen_input {
-        InputFormat::Json => headson::headson(
-            headson::InputKind::Json(bytes),
-            &cfg,
-            &prio,
-            grep_cfg,
-            budgets,
-        )?,
-        InputFormat::Yaml => headson::headson(
-            headson::InputKind::Yaml(bytes),
-            &cfg,
-            &prio,
-            grep_cfg,
-            budgets,
-        )?,
-        InputFormat::Text => {
-            let is_code = headson::extensions::is_code_like_name(&lower);
-            if is_code && matches!(cli.format, OutputFormat::Auto) {
-                #[allow(
-                    clippy::redundant_clone,
-                    reason = "code branch requires its own config copy; other paths reuse the original"
-                )]
-                let mut cfg_code = cfg.clone();
-                cfg_code.template = headson::OutputTemplate::Code;
-                headson::headson(
-                    headson::InputKind::Text {
-                        bytes,
-                        mode: headson::TextMode::CodeLike,
-                    },
-                    &cfg_code,
-                    &prio,
-                    grep_cfg,
-                    budgets,
-                )?
-            } else {
-                headson::headson(
-                    headson::InputKind::Text {
-                        bytes,
-                        mode: if matches!(
-                            cfg.template,
-                            headson::OutputTemplate::Code
-                        ) {
-                            headson::TextMode::CodeLike
-                        } else {
-                            headson::TextMode::Plain
-                        },
-                    },
-                    &cfg,
-                    &prio,
-                    grep_cfg,
-                    budgets,
-                )?
-            }
+    let out = if let InputFormat::Text = chosen_input {
+        let is_code = headson::extensions::is_code_like_name(&lower);
+        if is_code && matches!(cli.format, OutputFormat::Auto) {
+            #[allow(
+                clippy::redundant_clone,
+                reason = "code branch requires its own config copy; other paths reuse the original"
+            )]
+            let mut cfg_code = cfg.clone();
+            cfg_code.template = headson::OutputTemplate::Code;
+            render_single_input(
+                chosen_input,
+                bytes,
+                &cfg_code,
+                &prio,
+                grep_cfg,
+                budgets,
+            )?
+        } else {
+            render_single_input(
+                chosen_input,
+                bytes,
+                &cfg,
+                &prio,
+                grep_cfg,
+                budgets,
+            )?
         }
+    } else {
+        render_single_input(
+            chosen_input,
+            bytes,
+            &cfg,
+            &prio,
+            grep_cfg,
+            budgets,
+        )?
     };
     Ok((out, ignored))
 }
@@ -470,13 +431,54 @@ fn collect_from_walker(
     Ok(())
 }
 
+fn render_single_input(
+    input_format: InputFormat,
+    bytes: Vec<u8>,
+    cfg: &headson::RenderConfig,
+    prio: &headson::PriorityConfig,
+    grep_cfg: &headson::GrepConfig,
+    budgets: headson::Budgets,
+) -> Result<String> {
+    let text_mode = if matches!(cfg.template, headson::OutputTemplate::Code) {
+        headson::TextMode::CodeLike
+    } else {
+        headson::TextMode::Plain
+    };
+    match input_format {
+        InputFormat::Json => headson::headson(
+            headson::InputKind::Json(bytes),
+            cfg,
+            prio,
+            grep_cfg,
+            budgets,
+        ),
+        InputFormat::Yaml => headson::headson(
+            headson::InputKind::Yaml(bytes),
+            cfg,
+            prio,
+            grep_cfg,
+            budgets,
+        ),
+        InputFormat::Text => headson::headson(
+            headson::InputKind::Text {
+                bytes,
+                mode: text_mode,
+            },
+            cfg,
+            prio,
+            grep_cfg,
+            budgets,
+        ),
+    }
+}
+
 fn resolve_effective_template_for_stdin(
     fmt: OutputFormat,
     style: headson::Style,
 ) -> headson::OutputTemplate {
     match fmt {
         OutputFormat::Auto | OutputFormat::Json => {
-            map_json_template_for_style(style)
+            headson::map_json_template_for_style(style)
         }
         OutputFormat::Yaml => headson::OutputTemplate::Yaml,
         OutputFormat::Text => headson::OutputTemplate::Text,
@@ -489,14 +491,14 @@ fn resolve_effective_template_for_single(
     lower_name: &str,
 ) -> headson::OutputTemplate {
     match fmt {
-        OutputFormat::Json => map_json_template_for_style(style),
+        OutputFormat::Json => headson::map_json_template_for_style(style),
         OutputFormat::Yaml => headson::OutputTemplate::Yaml,
         OutputFormat::Text => headson::OutputTemplate::Text,
         OutputFormat::Auto => {
             if lower_name.ends_with(".yaml") || lower_name.ends_with(".yml") {
                 headson::OutputTemplate::Yaml
             } else if lower_name.ends_with(".json") {
-                map_json_template_for_style(style)
+                headson::map_json_template_for_style(style)
             } else {
                 // Unknown extension: prefer text template.
                 headson::OutputTemplate::Text

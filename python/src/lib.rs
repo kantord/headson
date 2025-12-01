@@ -1,12 +1,12 @@
 use anyhow::{bail, Result};
 use headson_core::{
-    ArraySamplerStrategy, Budgets, ColorMode, GrepConfig, InputKind,
-    OutputTemplate, PriorityConfig, RenderConfig, Style,
+    build_grep_config, map_json_template_for_style, ArraySamplerStrategy,
+    Budgets, ColorMode, InputKind, OutputTemplate, PriorityConfig,
+    RenderConfig, Style,
 };
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
-use regex::RegexBuilder;
 
 fn to_style(s: &str) -> Result<Style> {
     match s.to_ascii_lowercase().as_str() {
@@ -17,14 +17,6 @@ fn to_style(s: &str) -> Result<Style> {
             "unknown style: {} (expected 'strict' | 'default' | 'detailed')",
             other
         ),
-    }
-}
-
-fn map_json_template_for_style(style: Style) -> OutputTemplate {
-    match style {
-        Style::Strict => OutputTemplate::Json,
-        Style::Default => OutputTemplate::Pseudo,
-        Style::Detailed => OutputTemplate::Js,
     }
 }
 
@@ -94,14 +86,13 @@ fn priority_config(
     sampler: ArraySamplerStrategy,
 ) -> PriorityConfig {
     let prefer_tail_arrays = matches!(sampler, ArraySamplerStrategy::Tail);
-    PriorityConfig {
-        max_string_graphemes: 500,
-        array_max_items: (per_file_budget / 2).max(1),
+    PriorityConfig::for_budget(
+        500,
+        per_file_budget,
         prefer_tail_arrays,
-        array_bias: headson_core::ArrayBias::HeadMidTail,
-        array_sampler: sampler,
-        line_budget_only: false,
-    }
+        sampler,
+        false,
+    )
 }
 
 fn to_pyerr(e: anyhow::Error) -> PyErr {
@@ -123,23 +114,6 @@ fn summarize(
     grep: Option<&str>,
     weak_grep: Option<&str>,
 ) -> PyResult<String> {
-    let (grep_re, weak_flag) = match (grep, weak_grep) {
-        (Some(_), Some(_)) => {
-            return Err(to_pyerr(anyhow::anyhow!(
-                "--grep and --weak-grep cannot both be set"
-            )))
-        }
-        (Some(pat), None) | (None, Some(pat)) => (
-            Some(
-                RegexBuilder::new(pat)
-                    .unicode(true)
-                    .build()
-                    .map_err(|e| to_pyerr(e.into()))?,
-            ),
-            weak_grep.is_some(),
-        ),
-        (None, None) => (None, false),
-    };
     let sampler = parse_skew(skew).map_err(to_pyerr)?;
     let mut cfg = render_config_with_sampler(format, style, sampler)
         .map_err(to_pyerr)?;
@@ -147,14 +121,12 @@ fn summarize(
     let per_file_for_priority = budget.max(1);
     let prio = priority_config(per_file_for_priority, sampler);
     let input = text.as_bytes().to_vec();
-    if let Some(re) = &grep_re {
+    let grep_cfg =
+        build_grep_config(grep, weak_grep, headson_core::GrepShow::Matching)
+            .map_err(to_pyerr)?;
+    if let Some(re) = &grep_cfg.regex {
         cfg.grep_highlight = Some(re.clone());
     }
-    let grep_cfg = GrepConfig {
-        regex: grep_re,
-        weak: weak_flag,
-        show: headson_core::GrepShow::Matching,
-    };
     let budgets = Budgets {
         byte_budget: Some(budget),
         char_budget: None,

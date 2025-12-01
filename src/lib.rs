@@ -27,6 +27,7 @@ mod order;
 mod pruner;
 mod serialization;
 mod utils;
+pub use grep::build_grep_config;
 pub use grep::{GrepConfig, GrepShow};
 pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
@@ -34,6 +35,7 @@ pub use order::{
     NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
 };
 pub use utils::extensions;
+pub use utils::templates::map_json_template_for_style;
 
 pub use pruner::budget::{Budgets, find_largest_render_under_budgets};
 pub use serialization::color::resolve_color_enabled;
