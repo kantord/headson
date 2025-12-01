@@ -114,11 +114,12 @@ fn tree_emits_omission_marker_under_tight_budget() {
         "├─ src/lib.rs\n",
         "│ 1: fn a() {}\n",
         "│ 3: fn c() {}\n",
+        "│ 5: fn e() {}\n",
         "\n",
     );
     assert_eq!(stdout.as_ref(), expected);
     assert!(
-        !stdout.contains("fn e"),
+        !stdout.contains("fn d"),
         "budget should truncate file content in tree mode"
     );
 }
@@ -257,7 +258,7 @@ fn tree_reports_omitted_files_when_budget_drops_them() {
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(
-        stdout.contains("… 4 more items"),
+        stdout.contains("… 2 more items"),
         "when the budget is too small for most files, tree mode should report how many items were omitted: {stdout}"
     );
 }
@@ -288,6 +289,37 @@ fn tree_reports_omissions_when_every_file_is_dropped() {
         stdout.as_ref(),
         expected,
         "when all files are pruned, omission counts should still render under their folder"
+    );
+}
+
+#[test]
+fn tree_respects_line_budget_by_dropping_all_content() {
+    // With a line budget of 1, no file content should be rendered; instead only
+    // an omission marker should appear (tree scaffolding is treated as header-like).
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("a.txt"), "line\n");
+    write_file(&dir.path().join("b.txt"), "line\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--tree",
+            "--no-sort",
+            "-N",
+            "1",
+            "a.txt",
+            "b.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let expected = concat!(".\n", "├─ … 2 more items\n", "\n",);
+    assert_eq!(
+        stdout.as_ref(),
+        expected,
+        "line budget should drop all file content and surface a single omission marker"
     );
 }
 

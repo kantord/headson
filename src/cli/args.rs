@@ -267,7 +267,9 @@ pub fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         string_free_prefix_graphemes: None,
         debug: cli.debug,
         primary_source_name: None,
-        show_fileset_headers: !cli.no_header && !cli.tree,
+        // In tree mode this flag controls whether scaffolding counts toward budgets;
+        // CLI already forbids --tree with --no-header.
+        show_fileset_headers: !cli.no_header,
         fileset_tree: cli.tree,
         count_fileset_headers_in_budgets: cli.count_headers,
         grep_highlight: None,

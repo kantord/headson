@@ -5,5 +5,8 @@ expression: stdout.as_ref()
 .
 ├─ a.txt
 │ line
-├─ … 4 more items
-
+├─ b.txt
+│ line
+├─ c.txt
+│ line
+├─ … 2 more items

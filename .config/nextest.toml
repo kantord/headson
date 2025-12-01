@@ -1,0 +1,4 @@
+[profile.default]
+# Cap individual test wall time to 2 seconds to catch hangs quickly.
+test-timeout = "2s"
+

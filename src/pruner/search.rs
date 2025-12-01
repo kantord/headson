@@ -10,6 +10,9 @@ pub(crate) fn binary_search_max(
             best = Some(mid);
             lo = mid.saturating_add(1);
         } else {
+            if mid == 0 {
+                break;
+            }
             hi = mid.saturating_sub(1);
         }
     }

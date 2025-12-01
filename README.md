@@ -125,7 +125,7 @@ Use `--tree` to render filesets as a directory tree (like `tree`) with inline st
 
 - Layout: classic tree branches (`├─`, `│`, `└─`) with continuous guides; code gutters stay visible under the tree prefix.
 - Headers: `--tree` is mutually exclusive with `--no-header`; tree mode never prints `==>` headers and relies on the tree structure instead. Files are still auto-formatted per extension (`--format` must be `auto` for filesets).
-- Budgets: tree scaffolding counts toward budgets; per-file/global budgets still apply. Tight budgets can truncate file previews within the tree, and entire files may be omitted under tiny global line budgets—omitted entries are reported as `… N more items` on the relevant folder/root.
+- Budgets: tree scaffolding is treated like headers (free unless you set `--count-headers`); per-file/global budgets still apply to file content and omission markers. Tight budgets can truncate file previews within the tree, and entire files may be omitted under tiny global line budgets—omitted entries are reported as `… N more items` on the relevant folder/root.
 - Sorting: respects `--no-sort`; otherwise uses the usual frecency/mtime ordering before tree grouping.
 ## Budget Modes
 

@@ -281,7 +281,7 @@ fn min_k_for(state: &Option<GrepState>, grep: &GrepConfig) -> usize {
             .map(|s| s.must_keep_count.max(1))
             .unwrap_or(1)
     } else {
-        1
+        0
     }
 }
 
@@ -303,7 +303,7 @@ fn select_best_k(
     must_keep: Option<&[bool]>,
 ) -> (usize, Vec<u32>, u32) {
     let total = order_build.total_nodes;
-    let lo = min_k.max(1);
+    let lo = min_k;
     let available = order_build.by_priority.len().max(1);
     let hi = match budgets.byte_budget {
         Some(c) => total.min(c.max(1)),
@@ -381,15 +381,17 @@ fn measure_config(
         .is_some_and(|t| *t == crate::order::ObjectType::Fileset);
     let mut measure_cfg = config.clone();
     measure_cfg.color_enabled = false;
-    if config.show_fileset_headers
+    if config.fileset_tree {
+        // Treat tree scaffolding as header-like: count it only when the caller
+        // opts in via count_fileset_headers_in_budgets.
+        measure_cfg.show_fileset_headers =
+            config.count_fileset_headers_in_budgets;
+    } else if config.show_fileset_headers
         && root_is_fileset
         && !config.count_fileset_headers_in_budgets
     {
         // Budgets are for content; measure without fileset headers so
         // section titles/summary lines remain “free” during selection.
-        measure_cfg.show_fileset_headers = false;
-    }
-    if config.fileset_tree {
         measure_cfg.show_fileset_headers = false;
     }
     measure_cfg
