@@ -24,15 +24,15 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
     let grep_cfg = crate::cli::args::build_grep_config(cli)?;
     render_cfg.grep_highlight = grep_cfg.regex.clone();
     let resolved_inputs = resolve_inputs(cli)?;
-    if resolved_inputs.is_empty() && cli.tree {
-        bail!("--tree requires file inputs; stdin mode is not supported");
-    }
     if resolved_inputs.is_empty() {
         if !cli.globs.is_empty() {
             return Ok((
                 String::new(),
                 vec!["No files matched provided globs".to_string()],
             ));
+        }
+        if cli.tree {
+            bail!("--tree requires file inputs; stdin mode is not supported");
         }
         Ok((run_from_stdin(cli, &render_cfg, &grep_cfg)?, Vec::new()))
     } else {

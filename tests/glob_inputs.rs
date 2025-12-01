@@ -181,3 +181,30 @@ fn glob_with_no_matches_emits_notice_instead_of_blocking_on_stdin() {
         "expected notice about unmatched globs: {err:?}"
     );
 }
+
+#[test]
+fn tree_glob_with_no_matches_still_emits_notice() {
+    // Regression test: --tree used to bail out early when glob expansion found
+    // no files, instead of emitting the usual notice and exiting successfully.
+    let tmp = tempfile::tempdir().expect("tmpdir");
+    let root = tmp.path();
+
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
+    let assert = cmd
+        .current_dir(root)
+        .args(["--no-color", "--tree", "-g", "*.json"])
+        .assert();
+
+    let ok = assert.get_output().status.success();
+    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(
+        ok,
+        "tree mode with an unmatched glob should still succeed: {err}"
+    );
+    assert_eq!(out, "\n", "stdout should stay empty: {out:?}");
+    assert!(
+        err.contains("No files matched"),
+        "expected notice about unmatched globs: {err:?}"
+    );
+}
