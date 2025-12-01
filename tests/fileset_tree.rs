@@ -234,6 +234,38 @@ fn tree_with_grep_keeps_match_highlights_and_colored_pipes() {
 }
 
 #[test]
+fn tree_with_grep_reports_non_matching_files() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("a.txt"), "miss\n");
+    write_file(&dir.path().join("b.txt"), "miss\n");
+    write_file(&dir.path().join("c.txt"), "hit\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--tree",
+            "--no-sort",
+            "--grep",
+            "hit",
+            "a.txt",
+            "b.txt",
+            "c.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let expected =
+        concat!(".\n", "├─ c.txt\n", "│ hit\n", "├─ … 2 more items\n", "\n",);
+    assert_eq!(
+        stdout.as_ref(),
+        expected,
+        "tree mode should summarize non-matching files with an omission marker"
+    );
+}
+
+#[test]
 fn tree_reports_omitted_files_when_budget_drops_them() {
     let dir = tempdir().expect("tmp");
     for name in ["a", "b", "c", "d", "e"] {

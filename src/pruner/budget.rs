@@ -39,7 +39,12 @@ pub fn find_largest_render_under_budgets(
     {
         return String::new();
     }
-    filter_fileset_without_matches(order_build, &mut grep_state, grep);
+    filter_fileset_without_matches(
+        order_build,
+        &mut grep_state,
+        grep,
+        config.fileset_tree,
+    );
     reorder_if_grep(order_build, &grep_state);
     let effective_budgets = effective_budgets_with_grep(
         order_build,
@@ -121,6 +126,7 @@ fn filter_fileset_without_matches(
     order_build: &mut PriorityOrder,
     state: &mut Option<GrepState>,
     grep: &GrepConfig,
+    keep_fileset_children_for_tree: bool,
 ) {
     if grep.weak {
         return;
@@ -187,17 +193,19 @@ fn filter_fileset_without_matches(
         }
     });
 
-    let mut filtered_children: Vec<NodeId> = Vec::new();
-    for (slot, child) in fileset_children.iter().enumerate() {
-        if keep_slots.get(slot).copied().unwrap_or(false) {
-            filtered_children.push(*child);
+    if !keep_fileset_children_for_tree {
+        let mut filtered_children: Vec<NodeId> = Vec::new();
+        for (slot, child) in fileset_children.iter().enumerate() {
+            if keep_slots.get(slot).copied().unwrap_or(false) {
+                filtered_children.push(*child);
+            }
         }
-    }
-    order_build.fileset_children = Some(filtered_children.clone());
-    if let Some(metrics) =
-        order_build.metrics.get_mut(crate::order::ROOT_PQ_ID)
-    {
-        metrics.object_len = Some(filtered_children.len());
+        order_build.fileset_children = Some(filtered_children.clone());
+        if let Some(metrics) =
+            order_build.metrics.get_mut(crate::order::ROOT_PQ_ID)
+        {
+            metrics.object_len = Some(filtered_children.len());
+        }
     }
 
     for (idx, keep) in s.must_keep.iter_mut().enumerate() {
