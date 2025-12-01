@@ -1,4 +1,4 @@
 [profile.default]
-# Cap individual test wall time to 2 seconds to catch hangs quickly.
-test-timeout = "2s"
-
+# Cap individual test wall time to 5 seconds to catch hangs quickly while
+# leaving room for heavier integration/e2e runs on slower machines.
+test-timeout = "5s"

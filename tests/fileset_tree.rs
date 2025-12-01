@@ -357,6 +357,49 @@ fn tree_respects_line_budget_by_dropping_all_content() {
 }
 
 #[test]
+fn tree_budget_omissions_append_after_kept_files() {
+    // With a tight byte budget, keep the first file (truncated) and ensure the
+    // root-level omission marker for the remaining files appears at the end.
+    let dir = tempdir().expect("tmp");
+    write_file(
+        &dir.path().join("big1.txt"),
+        "aaaa\naaaa\naaaa\naaaa\naaaa\n",
+    );
+    write_file(&dir.path().join("small1.txt"), "bbbb\n");
+    write_file(&dir.path().join("small2.txt"), "cccc\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--tree",
+            "--no-sort",
+            "-N",
+            "3",
+            "big1.txt",
+            "small1.txt",
+            "small2.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let expected = concat!(
+        ".\n",
+        "├─ big1.txt\n",
+        "│ aaaa\n",
+        "│ …\n",
+        "├─ … 2 more items\n",
+        "\n",
+    );
+    assert_eq!(
+        stdout.as_ref(),
+        expected,
+        "root-level omission marker should be merged and appear after kept content"
+    );
+}
+
+#[test]
 fn tree_cli_snapshot_budgeted_root_omission() {
     let dir = tempdir().expect("tmp");
     for name in ["a", "b", "c", "d", "e"] {
