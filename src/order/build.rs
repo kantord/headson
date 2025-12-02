@@ -101,6 +101,23 @@ fn interleave_fileset_priority(
     *by_priority = new_order;
 }
 
+#[derive(Default)]
+struct DuplicateCounts {
+    global: HashMap<String, usize>,
+    per_file: Option<Vec<HashMap<String, usize>>>,
+}
+
+impl DuplicateCounts {
+    fn count_for(&self, token: &str, slot: Option<usize>) -> usize {
+        if let Some(per_file) = &self.per_file {
+            if let Some(s) = slot.and_then(|s| per_file.get(s)) {
+                return *s.get(token).unwrap_or(&0);
+            }
+        }
+        *self.global.get(token).unwrap_or(&0)
+    }
+}
+
 #[derive(Clone)]
 struct Entry {
     score: u128,
@@ -155,7 +172,7 @@ struct Scope<'a> {
     arena_to_pq: &'a mut Vec<Option<usize>>,
     node_slots: &'a mut Vec<Option<usize>>,
     arena_slots: Option<&'a [Option<usize>]>,
-    duplicate_counts: &'a std::collections::HashMap<String, usize>,
+    duplicate_counts: &'a DuplicateCounts,
 }
 
 impl<'a> Scope<'a> {
@@ -200,10 +217,13 @@ impl<'a> Scope<'a> {
             return None;
         }
         if let Some(token) = child_node.atomic_token.as_ref() {
-            if let Some(count) = self.duplicate_counts.get(token.trim()) {
-                if *count > 1 {
-                    score = score.saturating_add(CODE_DUPLICATE_LINE_PENALTY);
-                }
+            let slot = self.arena_slots.and_then(|slots| {
+                slots.get(child_arena_id).copied().flatten()
+            });
+            let dup_count =
+                self.duplicate_counts.count_for(token.trim(), slot);
+            if dup_count > 1 {
+                score = score.saturating_add(CODE_DUPLICATE_LINE_PENALTY);
             }
         }
         if matches!(
@@ -688,7 +708,9 @@ pub fn build_order(
     arena: &JsonTreeArena,
     config: &PriorityConfig,
 ) -> Result<PriorityOrder> {
-    let duplicate_counts = compute_duplicate_line_counts(arena);
+    let fileset_slots = compute_fileset_slots(arena);
+    let duplicate_counts =
+        compute_duplicate_line_counts(arena, fileset_slots.as_deref());
     let mut next_pq_id: usize = 0;
     let mut nodes: Vec<RankedNode> = Vec::new();
     let mut scores: Vec<u128> = Vec::new();
@@ -701,7 +723,6 @@ pub fn build_order(
     let mut index_in_parent_array: Vec<Option<usize>> = Vec::new();
     let mut force_first_child: Vec<bool> = Vec::new();
     let mut arena_to_pq: Vec<Option<usize>> = vec![None; arena.nodes.len()];
-    let fileset_slots = compute_fileset_slots(arena);
     let mut node_slots: Vec<Option<usize>> = Vec::new();
 
     // Seed root from arena
@@ -829,19 +850,46 @@ pub fn build_order(
 
 fn compute_duplicate_line_counts(
     arena: &JsonTreeArena,
-) -> std::collections::HashMap<String, usize> {
+    slots: Option<&[Option<usize>]>,
+) -> DuplicateCounts {
     use std::collections::HashMap;
-    let mut counts: HashMap<String, usize> = HashMap::new();
-    for node in &arena.nodes {
-        if let Some(token) = node.atomic_token.as_ref() {
-            let norm = token.trim();
-            if norm.is_empty() {
-                continue;
+    let mut global: HashMap<String, usize> = HashMap::new();
+    let mut per_file: Option<Vec<HashMap<String, usize>>> = None;
+    if let Some(slot_map) = slots {
+        let file_count = arena
+            .nodes
+            .get(arena.root_id)
+            .map(|n| n.children_len)
+            .unwrap_or(0);
+        per_file = Some(vec![HashMap::new(); file_count]);
+        for (idx, node) in arena.nodes.iter().enumerate() {
+            if let Some(token) = node.atomic_token.as_ref() {
+                let norm = token.trim();
+                if norm.is_empty() {
+                    continue;
+                }
+                *global.entry(norm.to_string()).or_insert(0) += 1;
+                if let Some(slot) = slot_map.get(idx).copied().flatten() {
+                    if let Some(vec) = per_file.as_mut() {
+                        if let Some(map) = vec.get_mut(slot) {
+                            *map.entry(norm.to_string()).or_insert(0) += 1;
+                        }
+                    }
+                }
             }
-            *counts.entry(norm.to_string()).or_insert(0) += 1;
+        }
+    } else {
+        for node in &arena.nodes {
+            if let Some(token) = node.atomic_token.as_ref() {
+                let norm = token.trim();
+                if norm.is_empty() {
+                    continue;
+                }
+                *global.entry(norm.to_string()).or_insert(0) += 1;
+            }
         }
     }
-    counts
+    DuplicateCounts { global, per_file }
 }
 
 #[cfg(test)]
@@ -888,8 +936,8 @@ mod tests {
     }
 
     #[test]
-    fn duplicate_lines_penalized_across_fileset() {
-        // Two files share "dup"; each has a unique line. Unique lines should outrank the shared duplicate.
+    fn duplicate_lines_not_penalized_across_fileset() {
+        // Two files share "dup"; each has a unique line. Cross-file duplicates should not be demoted.
         let mut cfg = PriorityConfig::new(usize::MAX, 5);
         cfg.line_budget_only = false;
         let arena = crate::ingest::fileset::build_fileset_root(vec![
@@ -937,8 +985,8 @@ mod tests {
             .and_then(|v| v.first().copied())
             .unwrap_or(usize::MAX);
         assert!(
-            unique_pos_a < dup_pos && unique_pos_b < dup_pos,
-            "expected per-file unique lines to outrank shared duplicate: ua={unique_pos_a}, ub={unique_pos_b}, dup={dup_pos}"
+            dup_pos < unique_pos_a && dup_pos < unique_pos_b,
+            "expected cross-file duplicate to appear before uniques (no cross-file penalty): dup={dup_pos}, ua={unique_pos_a}, ub={unique_pos_b}"
         );
     }
 

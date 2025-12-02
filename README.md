@@ -89,6 +89,7 @@ Notes:
 - Multiple inputs:
   - With newlines enabled, file sections are rendered with human‑readable headers (pass `--no-header` to suppress them). In compact/single‑line modes, headers are omitted.
   - Order: inputs are sorted by git frecency (via frecenfile) when available, then by mtime; pass `--no-sort` to keep the original input order without repo scanning.
+  - Fairness: fileset nodes are interleaved round‑robin during selection so tight budgets don’t starve later files.
 - In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
   - Unknown extensions are treated as Text (raw lines) — safe for logs and `.txt` files.
   - `--global-bytes` may truncate or omit entire files to respect the total budget.
@@ -127,6 +128,7 @@ Use `--tree` to render filesets as a directory tree (like `tree`) with inline st
 - Headers: `--tree` is mutually exclusive with `--no-header`; tree mode never prints `==>` headers and relies on the tree structure instead. Files are still auto-formatted per extension (`--format` must be `auto` for filesets).
 - Budgets: tree scaffolding is treated like headers (free unless you set `--count-headers`); per-file/global budgets still apply to file content and omission markers. Tight budgets can truncate file previews within the tree, and entire files may be omitted under tiny global line budgets—omitted entries are reported as `… N more items` on the relevant folder/root.
 - Sorting: respects `--no-sort`; otherwise uses the usual frecency/mtime ordering before tree grouping.
+- Fairness: file contents are interleaved round‑robin in the priority order so later files still surface under tight budgets.
 ## Budget Modes
 
 - Bytes (`-c/--bytes`, `-C/--global-bytes`)

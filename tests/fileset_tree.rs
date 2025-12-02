@@ -400,6 +400,38 @@ fn tree_budget_omissions_append_after_kept_files() {
 }
 
 #[test]
+fn tree_keeps_identical_files_under_tight_line_budget() {
+    // Regression: cross-file duplicate penalties should not starve identical files.
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("a.py"), "def foo():\n    pass\n");
+    write_file(&dir.path().join("b.py"), "def foo():\n    pass\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--tree",
+            "--no-sort",
+            "-n",
+            "2",
+            "a.py",
+            "b.py",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("├─ a.py") && stdout.contains("│ 1: def foo():"),
+        "first identical file should render its first line under tight line budget: {stdout}"
+    );
+    assert!(
+        stdout.contains("├─ b.py") && stdout.contains("│ 1: def foo():"),
+        "second identical file should also render content despite duplicate lines: {stdout}"
+    );
+}
+
+#[test]
 fn tree_cli_snapshot_budgeted_root_omission() {
     let dir = tempdir().expect("tmp");
     for name in ["a", "b", "c", "d", "e"] {

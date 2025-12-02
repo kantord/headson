@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::ops::Not;
 
 use crate::order::{ObjectType, PriorityOrder, ROOT_PQ_ID, RankedNode};
 
@@ -30,6 +31,10 @@ pub(crate) struct DumpDbg<'a> {
     constrained_by: Vec<&'a str>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     priority: Vec<PriorityNodeDbg>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fileset: Option<Vec<FilesetItemDbg>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    excluded_after_top_k: Option<Vec<PriorityNodeDbg>>,
 }
 
 #[derive(Serialize)]
@@ -129,6 +134,15 @@ struct PriorityNodeDbg {
     kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     key_in_object: Option<String>,
+}
+
+#[derive(Serialize)]
+struct FilesetItemDbg {
+    name: String,
+    included: bool,
+    content_included: usize,
+    content_total: usize,
+    rendered_empty: bool,
 }
 
 fn template_str_for_root(
@@ -447,6 +461,115 @@ fn build_priority_dump(
         .collect()
 }
 
+fn build_excluded_after_top_k(
+    order: &PriorityOrder,
+    inclusion_flags: &[u32],
+    render_id: u32,
+    treat_atomic_as_string: bool,
+    sample_size: usize,
+) -> Vec<PriorityNodeDbg> {
+    order
+        .by_priority
+        .iter()
+        .enumerate()
+        .filter_map(|(rank, node_id)| {
+            let pid = node_id.0;
+            let included = inclusion_flags
+                .get(pid)
+                .is_some_and(|flag| *flag == render_id);
+            if included {
+                return None;
+            }
+            let node = &order.nodes[pid];
+            let atomic_token = match node {
+                RankedNode::AtomicLeaf { token, .. } => Some(token.as_str()),
+                _ => None,
+            };
+            let kind = kind_str(node, atomic_token, treat_atomic_as_string);
+            let key =
+                node.key_in_object().map(std::string::ToString::to_string);
+            let score = order.scores.get(pid).copied().unwrap_or_default();
+            Some(PriorityNodeDbg {
+                rank,
+                id: pid,
+                score,
+                included: false,
+                kind,
+                key_in_object: key,
+            })
+        })
+        .take(sample_size)
+        .collect()
+}
+
+fn count_renderable_subtree(
+    order: &PriorityOrder,
+    inclusion_flags: &[u32],
+    render_id: u32,
+    id: usize,
+) -> (usize, usize) {
+    let mut total = 0usize;
+    let mut included = 0usize;
+    let node = &order.nodes[id];
+    let renderable = !matches!(node, RankedNode::LeafPart { .. });
+    if renderable {
+        total = total.saturating_add(1);
+        if inclusion_flags
+            .get(id)
+            .is_some_and(|flag| *flag == render_id)
+        {
+            included = included.saturating_add(1);
+        }
+    }
+    if let Some(children) = order.children.get(id) {
+        for child in children {
+            let (t, i) = count_renderable_subtree(
+                order,
+                inclusion_flags,
+                render_id,
+                child.0,
+            );
+            total = total.saturating_add(t);
+            included = included.saturating_add(i);
+        }
+    }
+    (total, included)
+}
+
+fn build_fileset_summary(
+    order: &PriorityOrder,
+    inclusion_flags: &[u32],
+    render_id: u32,
+) -> Option<Vec<FilesetItemDbg>> {
+    if order.object_type.get(ROOT_PQ_ID) != Some(&ObjectType::Fileset) {
+        return None;
+    }
+    let children = order
+        .fileset_children
+        .as_deref()
+        .or_else(|| order.children.get(ROOT_PQ_ID).map(|v| &**v))
+        .unwrap_or_default();
+    let mut out = Vec::new();
+    for child in children {
+        let cid = child.0;
+        let key = order.nodes[cid].key_in_object().unwrap_or("").to_string();
+        let included_root = inclusion_flags
+            .get(cid)
+            .is_some_and(|flag| *flag == render_id);
+        let (total, included) =
+            count_renderable_subtree(order, inclusion_flags, render_id, cid);
+        let rendered_empty = included_root && included == 0;
+        out.push(FilesetItemDbg {
+            name: key,
+            included: included_root,
+            content_included: included,
+            content_total: total,
+            rendered_empty,
+        });
+    }
+    Some(out)
+}
+
 #[allow(
     clippy::unwrap_used,
     reason = "Debug mode should panic on serialization errors to surface bugs"
@@ -490,6 +613,14 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
         render_id,
         treat_atomic_as_string,
     );
+    let excluded_after_top_k = build_excluded_after_top_k(
+        order,
+        inclusion_flags,
+        render_id,
+        treat_atomic_as_string,
+        12,
+    );
+    let fileset = build_fileset_summary(order, inclusion_flags, render_id);
     let dump = DumpDbg {
         root,
         counts: CountsDbg {
@@ -517,6 +648,11 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
         output_stats,
         constrained_by,
         priority: priority_dump,
+        fileset,
+        excluded_after_top_k: excluded_after_top_k
+            .is_empty()
+            .not()
+            .then_some(excluded_after_top_k),
     };
     serde_json::to_string_pretty(&dump).unwrap()
 }
