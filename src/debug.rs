@@ -502,6 +502,10 @@ fn build_excluded_after_top_k(
         .collect()
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Debug helper keeps traversal + accounting together for clarity"
+)]
 fn count_renderable_subtree(
     order: &PriorityOrder,
     inclusion_flags: &[u32],

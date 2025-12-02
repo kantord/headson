@@ -848,6 +848,10 @@ pub fn build_order(
     })
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Counting global and per-file duplicates together keeps slot logic local"
+)]
 fn compute_duplicate_line_counts(
     arena: &JsonTreeArena,
     slots: Option<&[Option<usize>]>,
