@@ -24,6 +24,22 @@ DEBUG (normalized):
     "omitted_children": 0,
     "total_nodes": 0
   },
+  "fileset": [
+    {
+      "content_included": 2,
+      "content_total": 2,
+      "included": true,
+      "name": "a.json",
+      "rendered_empty": false
+    },
+    {
+      "content_included": 2,
+      "content_total": 2,
+      "included": true,
+      "name": "b.yaml",
+      "rendered_empty": false
+    }
+  ],
   "output_stats": {
     "bytes": 49,
     "chars": 0,
