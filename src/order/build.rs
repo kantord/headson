@@ -210,6 +210,7 @@ impl<'a> Scope<'a> {
         if !parent_is_code_array {
             return Some(score);
         }
+        let mut dup_count = 0usize;
         if self.config.line_budget_only
             && child_kind == NodeKind::Array
             && code_array_is_brace_only(self.arena, child_arena_id)
@@ -220,8 +221,7 @@ impl<'a> Scope<'a> {
             let slot = self.arena_slots.and_then(|slots| {
                 slots.get(child_arena_id).copied().flatten()
             });
-            let dup_count =
-                self.duplicate_counts.count_for(token.trim(), slot);
+            dup_count = self.duplicate_counts.count_for(token.trim(), slot);
             if dup_count > 1 {
                 score = score.saturating_add(CODE_DUPLICATE_LINE_PENALTY);
             }
@@ -231,7 +231,7 @@ impl<'a> Scope<'a> {
             NodeKind::Null | NodeKind::Bool | NodeKind::Number
         ) {
             if let Some(token) = child_node.atomic_token.as_ref() {
-                if code_line_length_extreme(token) {
+                if dup_count > 1 && code_line_length_extreme(token) {
                     score = score.saturating_add(CODE_EXTREME_LINE_PENALTY);
                 }
                 if code_line_is_brace_only(token) {
