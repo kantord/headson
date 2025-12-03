@@ -10,6 +10,9 @@ pub struct Budgets {
     pub byte_budget: Option<usize>,
     pub char_budget: Option<usize>,
     pub line_budget: Option<usize>,
+    pub per_slot_byte_budget: Option<usize>,
+    pub per_slot_char_budget: Option<usize>,
+    pub per_slot_line_budget: Option<usize>,
 }
 
 #[allow(
@@ -26,7 +29,21 @@ pub fn find_largest_render_under_budgets(
     if total == 0 {
         return String::new();
     }
-    let measure_cfg = measure_config(order_build, config);
+    let mut measure_cfg = measure_config(order_build, config);
+    let has_per_slot = budgets.per_slot_byte_budget.is_some()
+        || budgets.per_slot_char_budget.is_some()
+        || budgets.per_slot_line_budget.is_some();
+    let root_is_fileset = order_build
+        .object_type
+        .get(crate::order::ROOT_PQ_ID)
+        .is_some_and(|t| *t == ObjectType::Fileset);
+    if root_is_fileset
+        && has_per_slot
+        && config.count_fileset_headers_in_budgets
+    {
+        measure_cfg.show_fileset_headers = config.show_fileset_headers;
+        measure_cfg.count_fileset_headers_in_budgets = true;
+    }
     let mut grep_state = compute_grep_state(order_build, grep);
     if !grep.weak
         && grep.show == GrepShow::Matching
@@ -46,6 +63,18 @@ pub fn find_largest_render_under_budgets(
         config.fileset_tree,
     );
     reorder_if_grep(order_build, &grep_state);
+    let need_slots = (budgets.per_slot_byte_budget.is_some()
+        || budgets.per_slot_char_budget.is_some()
+        || budgets.per_slot_line_budget.is_some())
+        && order_build
+            .object_type
+            .get(crate::order::ROOT_PQ_ID)
+            .is_some_and(|t| *t == ObjectType::Fileset);
+    let slot_map_owned = if need_slots {
+        compute_fileset_slot_map(order_build)
+    } else {
+        None
+    };
     let effective_budgets = effective_budgets_with_grep(
         order_build,
         &measure_cfg,
@@ -61,6 +90,7 @@ pub fn find_largest_render_under_budgets(
         effective_budgets,
         min_k,
         must_keep_slice,
+        slot_map_owned.as_deref(),
     );
 
     crate::serialization::prepare_render_set_top_k_and_ancestors(
@@ -91,7 +121,7 @@ pub fn find_largest_render_under_budgets(
         );
     }
 
-    crate::serialization::render_from_render_set(
+    let mut rendered = crate::serialization::render_from_render_set(
         order_build,
         &inclusion_flags,
         render_set_id,
@@ -103,6 +133,22 @@ pub fn find_largest_render_under_budgets(
             ..config.clone()
         },
     )
+    ;
+    let root_is_fileset = order_build
+        .object_type
+        .get(crate::order::ROOT_PQ_ID)
+        .is_some_and(|t| *t == crate::order::ObjectType::Fileset);
+    if !root_is_fileset {
+        if let Some(cap) = budgets.per_slot_line_budget.or(budgets.line_budget)
+        {
+            #[cfg(debug_assertions)]
+            {
+                eprintln!("clamp_lines cap={cap}, before_len={}", rendered.len());
+            }
+            rendered = clamp_lines(rendered, cap);
+        }
+    }
+    rendered
 }
 
 fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
@@ -309,6 +355,7 @@ fn select_best_k(
     budgets: Budgets,
     min_k: usize,
     must_keep: Option<&[bool]>,
+    slot_map: Option<&[Option<usize>]>,
 ) -> (usize, Vec<u32>, u32) {
     let total = order_build.total_nodes;
     let lo = min_k.max(1);
@@ -323,7 +370,17 @@ fn select_best_k(
 
     let mut render_set_id: u32 = 1;
     let mut best_k: Option<usize> = None;
-    let measure_chars = budgets.char_budget.is_some();
+    let measure_chars =
+        budgets.char_budget.is_some() || budgets.per_slot_char_budget.is_some();
+    let slot_count = slot_map.and_then(|m| {
+        m.iter()
+            .filter_map(|s| *s)
+            .max()
+            .map(|max_slot| max_slot + 1)
+    });
+    let measure_per_slot = budgets.per_slot_byte_budget.is_some()
+        || budgets.per_slot_char_budget.is_some()
+        || budgets.per_slot_line_budget.is_some();
     let _ = crate::pruner::search::binary_search_max(lo, hi, |mid| {
         let current_render_id = render_set_id;
         crate::serialization::prepare_render_set_top_k_and_ancestors(
@@ -346,14 +403,51 @@ fn select_best_k(
             current_render_id,
             measure_cfg,
         );
-        let stats =
+        let total_stats =
             crate::utils::measure::count_output_stats(&s, measure_chars);
-        let fits_bytes = budgets.byte_budget.is_none_or(|c| stats.bytes <= c);
-        let fits_chars = budgets.char_budget.is_none_or(|c| stats.chars <= c);
+        let per_slot_stats = if measure_per_slot {
+            if let Some(count) = slot_count {
+                Some(measure_slots(
+                    order_build,
+                    &inclusion_flags,
+                    current_render_id,
+                    slot_map.unwrap_or(&[]),
+                    measure_cfg,
+                    measure_chars,
+                    count,
+                ))
+            } else {
+                // No slot map (single input); fall back to total stats as the single slot.
+                Some(vec![total_stats])
+            }
+        } else {
+            None
+        };
+        let fits_bytes = budgets
+            .byte_budget
+            .is_none_or(|c| total_stats.bytes <= c);
+        let fits_chars = budgets
+            .char_budget
+            .is_none_or(|c| total_stats.chars <= c);
         let fits_lines =
-            budgets.line_budget.is_none_or(|cap| stats.lines <= cap);
+            budgets.line_budget.is_none_or(|cap| total_stats.lines <= cap);
+        let per_slot_fits = if let Some(per) = per_slot_stats.as_ref() {
+            per.iter().all(|slot_stats| {
+                budgets
+                    .per_slot_byte_budget
+                    .is_none_or(|c| slot_stats.bytes <= c)
+                    && budgets
+                        .per_slot_char_budget
+                        .is_none_or(|c| slot_stats.chars <= c)
+                    && budgets
+                        .per_slot_line_budget
+                        .is_none_or(|c| slot_stats.lines <= c)
+            })
+        } else {
+            true
+        };
         render_set_id = render_set_id.wrapping_add(1).max(1);
-        if fits_bytes && fits_chars && fits_lines {
+        if fits_bytes && fits_chars && fits_lines && per_slot_fits {
             best_k = Some(mid);
             true
         } else {
@@ -439,6 +533,9 @@ fn add_budgets(budgets: Budgets, extra: OutputStats) -> Budgets {
         line_budget: budgets
             .line_budget
             .map(|l| l.saturating_add(extra.lines)),
+        per_slot_byte_budget: budgets.per_slot_byte_budget,
+        per_slot_char_budget: budgets.per_slot_char_budget,
+        per_slot_line_budget: budgets.per_slot_line_budget,
     }
 }
 
@@ -487,6 +584,74 @@ fn include_must_keep(
             );
         }
     }
+}
+
+fn clamp_lines(rendered: String, cap: usize) -> String {
+    if cap == 0 {
+        return String::new();
+    }
+    let trimmed = rendered.trim_end_matches('\n');
+    let lines: Vec<&str> = trimmed.lines().take(cap).collect();
+    if lines.is_empty() {
+        return String::new();
+    }
+    let mut out = lines.join("\n");
+    // Normalize to a single trailing newline.
+    out.push('\n');
+    out
+}
+
+fn measure_slots(
+    order_build: &PriorityOrder,
+    inclusion_flags: &[u32],
+    render_id: u32,
+    slot_map: &[Option<usize>],
+    measure_cfg: &RenderConfig,
+    measure_chars: bool,
+    slot_count: usize,
+) -> Vec<crate::utils::measure::OutputStats> {
+    if slot_count == 0 {
+        return Vec::new();
+    }
+    // Only filesets have slot maps; if the root is not a fileset, return empty.
+    if order_build
+        .object_type
+        .get(crate::order::ROOT_PQ_ID)
+        .is_none_or(|t| *t != crate::order::ObjectType::Fileset)
+    {
+        return Vec::new();
+    }
+    let mut out: Vec<crate::utils::measure::OutputStats> = vec![
+        crate::utils::measure::OutputStats {
+            bytes: 0,
+            chars: 0,
+            lines: 0
+        };
+        slot_count
+    ];
+    for slot in 0..slot_count {
+        let mut filtered = inclusion_flags.to_vec();
+        for (idx, flag) in filtered.iter_mut().enumerate() {
+            if *flag != render_id {
+                continue;
+            }
+            if idx == crate::order::ROOT_PQ_ID {
+                continue;
+            }
+            if slot_map.get(idx).copied().flatten() != Some(slot) {
+                *flag = 0;
+            }
+        }
+        let rendered = crate::serialization::render_from_render_set(
+            order_build,
+            &filtered,
+            render_id,
+            &RenderConfig { ..measure_cfg.clone() },
+        );
+        out[slot] =
+            crate::utils::measure::count_output_stats(&rendered, measure_chars);
+    }
+    out
 }
 
 #[cfg(test)]

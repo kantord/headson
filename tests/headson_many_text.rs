@@ -46,6 +46,9 @@ fn headson_many_text_smoke() {
             byte_budget: Some(10_000),
             char_budget: None,
             line_budget: None,
+            per_slot_byte_budget: Some(10_000),
+            per_slot_char_budget: None,
+            per_slot_line_budget: None,
         },
     )
     .unwrap();

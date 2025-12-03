@@ -32,11 +32,28 @@ pub(crate) fn compute_effective(
     let effective_lines = effective_lines(cli, input_count);
     let byte_budget =
         compute_byte_budget(any_bytes, any_lines, any_chars, effective_bytes);
+    // Per-slot caps should match the explicit per-file caps, not scale by
+    // input_count. For bytes, prefer the user-provided per-file value when set;
+    // otherwise fall back to the default bytes-per-input when no global caps
+    // are involved. For lines/chars, just forward the per-file flags.
+    let per_slot_byte_budget = if cli.bytes.is_some() {
+        cli.bytes
+    } else if any_bytes {
+        Some(DEFAULT_BYTES_PER_INPUT)
+    } else if any_lines || any_chars {
+        None
+    } else {
+        Some(DEFAULT_BYTES_PER_INPUT)
+    };
+    let per_slot_line_budget = cli.lines;
 
     let budgets = headson::Budgets {
         byte_budget,
         char_budget: if any_chars { effective_chars } else { None },
         line_budget: effective_lines,
+        per_slot_byte_budget,
+        per_slot_char_budget: cli.chars,
+        per_slot_line_budget,
     };
 
     let chosen_global =

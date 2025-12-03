@@ -14,7 +14,11 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let (output, ignore_notices) = crate::cli::run::run(&cli)?;
-    println!("{output}");
+    if output.ends_with('\n') {
+        print!("{output}");
+    } else {
+        println!("{output}");
+    }
 
     for notice in ignore_notices {
         eprintln!("{notice}");
