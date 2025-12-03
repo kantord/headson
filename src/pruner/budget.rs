@@ -139,6 +139,36 @@ pub fn find_largest_render_under_budgets(
         {
             rendered = clamp_lines(&rendered, cap);
         }
+    } else {
+        if measure_cfg.fileset_tree {
+            // Tree renderer currently emits a trailing newline; print an extra
+            // blank line to match CLI tree expectations.
+            rendered.push('\n');
+        } else if let Some(cap) =
+            budgets.per_slot_byte_budget.filter(|c| *c >= 3)
+        {
+            rendered = clamp_fileset_sections_by_bytes(&rendered, cap);
+        }
+        let fileset_len = order_build
+            .fileset_children
+            .as_ref()
+            .map(|v| v.len())
+            .or_else(|| {
+                order_build
+                    .children
+                    .get(crate::order::ROOT_PQ_ID)
+                    .map(|v| v.len())
+            })
+            .unwrap_or(0);
+        if config.show_fileset_headers
+            && !rendered.contains("more files")
+            && !rendered.contains("==>")
+            && fileset_len > 0
+        {
+            rendered.push_str("==> ");
+            rendered.push_str(&fileset_len.to_string());
+            rendered.push_str(" more files <==\n");
+        }
     }
     rendered
 }
@@ -596,6 +626,90 @@ fn clamp_lines(rendered: &str, cap: usize) -> String {
     out
 }
 
+fn strip_fileset_summaries(rendered: &str) -> String {
+    let lines: Vec<&str> = rendered
+        .lines()
+        .filter(|line| !line.contains(" more files <=="))
+        .collect();
+    let had_trailing_newline = rendered.ends_with('\n');
+    if lines.is_empty() {
+        return String::new();
+    }
+    let mut out = lines.join("\n");
+    if had_trailing_newline {
+        out.push('\n');
+    }
+    out
+}
+
+fn truncate_to_bytes(s: &str, cap: usize) -> String {
+    if cap == 0 {
+        return String::new();
+    }
+    let mut truncated = String::new();
+    for (idx, ch) in s.char_indices() {
+        if idx >= cap {
+            break;
+        }
+        truncated.push(ch);
+    }
+    truncated
+}
+
+fn clamp_fileset_sections_by_bytes(rendered: &str, cap: usize) -> String {
+    if cap == 0 {
+        return String::new();
+    }
+    let mut out = String::new();
+    let mut current: Vec<String> = Vec::new();
+    let mut saw_section_or_summary = false;
+
+    let finalize = |section: &mut Vec<String>, out: &mut String| {
+        if section.is_empty() {
+            return;
+        }
+        let mut built = section.join("\n");
+        if rendered.ends_with('\n') {
+            built.push('\n');
+        }
+        if built.len() > cap {
+            built = truncate_to_bytes(&built, cap);
+        }
+        out.push_str(&built);
+        section.clear();
+    };
+
+    for line in rendered.lines() {
+        if line.starts_with("==> ") && line.ends_with(" <==") {
+            saw_section_or_summary = true;
+            finalize(&mut current, &mut out);
+            current.push(line.to_string());
+            continue;
+        }
+        if line.starts_with("==> ") && line.ends_with(" more files <==") {
+            saw_section_or_summary = true;
+            finalize(&mut current, &mut out);
+            out.push_str(line);
+            out.push('\n');
+            continue;
+        }
+        if !current.is_empty() {
+            current.push(line.to_string());
+        }
+    }
+    finalize(&mut current, &mut out);
+
+    if !saw_section_or_summary {
+        return rendered.to_string();
+    }
+
+    if out.is_empty() && !rendered.is_empty() {
+        return truncate_to_bytes(rendered, cap);
+    }
+
+    out
+}
+
 #[allow(
     clippy::cognitive_complexity,
     clippy::needless_range_loop,
@@ -651,10 +765,19 @@ fn measure_slots(
                 ..measure_cfg.clone()
             },
         );
-        out[slot] = crate::utils::measure::count_output_stats(
-            &rendered,
+        let filtered_rendered = strip_fileset_summaries(&rendered);
+        let mut slot_stats = crate::utils::measure::count_output_stats(
+            &filtered_rendered,
             measure_chars,
         );
+        if slot_count > 1 && measure_cfg.show_fileset_headers {
+            slot_stats.bytes = slot_stats.bytes.saturating_add(1);
+            slot_stats.lines = slot_stats.lines.saturating_add(1);
+            if measure_chars {
+                slot_stats.chars = slot_stats.chars.saturating_add(1);
+            }
+        }
+        out[slot] = slot_stats;
     }
     out
 }
