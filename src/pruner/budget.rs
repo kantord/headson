@@ -17,6 +17,7 @@ pub struct Budgets {
 
 #[allow(
     clippy::cognitive_complexity,
+    clippy::too_many_lines,
     reason = "Top-level orchestrator; splitting would obscure the budget/search flow"
 )]
 pub fn find_largest_render_under_budgets(
@@ -132,20 +133,11 @@ pub fn find_largest_render_under_budgets(
                 .or_else(|| grep.regex.clone()),
             ..config.clone()
         },
-    )
-    ;
-    let root_is_fileset = order_build
-        .object_type
-        .get(crate::order::ROOT_PQ_ID)
-        .is_some_and(|t| *t == crate::order::ObjectType::Fileset);
+    );
     if !root_is_fileset {
         if let Some(cap) = budgets.per_slot_line_budget.or(budgets.line_budget)
         {
-            #[cfg(debug_assertions)]
-            {
-                eprintln!("clamp_lines cap={cap}, before_len={}", rendered.len());
-            }
-            rendered = clamp_lines(rendered, cap);
+            rendered = clamp_lines(&rendered, cap);
         }
     }
     rendered
@@ -349,6 +341,10 @@ fn must_keep_slice<'a>(
         .and_then(|s| s.is_enabled().then_some(s.must_keep.as_slice()))
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Search closure is easier to read inline than split helpers"
+)]
 fn select_best_k(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
@@ -370,8 +366,8 @@ fn select_best_k(
 
     let mut render_set_id: u32 = 1;
     let mut best_k: Option<usize> = None;
-    let measure_chars =
-        budgets.char_budget.is_some() || budgets.per_slot_char_budget.is_some();
+    let measure_chars = budgets.char_budget.is_some()
+        || budgets.per_slot_char_budget.is_some();
     let slot_count = slot_map.and_then(|m| {
         m.iter()
             .filter_map(|s| *s)
@@ -423,14 +419,13 @@ fn select_best_k(
         } else {
             None
         };
-        let fits_bytes = budgets
-            .byte_budget
-            .is_none_or(|c| total_stats.bytes <= c);
-        let fits_chars = budgets
-            .char_budget
-            .is_none_or(|c| total_stats.chars <= c);
-        let fits_lines =
-            budgets.line_budget.is_none_or(|cap| total_stats.lines <= cap);
+        let fits_bytes =
+            budgets.byte_budget.is_none_or(|c| total_stats.bytes <= c);
+        let fits_chars =
+            budgets.char_budget.is_none_or(|c| total_stats.chars <= c);
+        let fits_lines = budgets
+            .line_budget
+            .is_none_or(|cap| total_stats.lines <= cap);
         let per_slot_fits = if let Some(per) = per_slot_stats.as_ref() {
             per.iter().all(|slot_stats| {
                 budgets
@@ -586,7 +581,7 @@ fn include_must_keep(
     }
 }
 
-fn clamp_lines(rendered: String, cap: usize) -> String {
+fn clamp_lines(rendered: &str, cap: usize) -> String {
     if cap == 0 {
         return String::new();
     }
@@ -601,6 +596,12 @@ fn clamp_lines(rendered: String, cap: usize) -> String {
     out
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    clippy::needless_range_loop,
+    clippy::too_many_arguments,
+    reason = "Slot-by-slot measurement is clearer as a single routine"
+)]
 fn measure_slots(
     order_build: &PriorityOrder,
     inclusion_flags: &[u32],
@@ -646,10 +647,14 @@ fn measure_slots(
             order_build,
             &filtered,
             render_id,
-            &RenderConfig { ..measure_cfg.clone() },
+            &RenderConfig {
+                ..measure_cfg.clone()
+            },
         );
-        out[slot] =
-            crate::utils::measure::count_output_stats(&rendered, measure_chars);
+        out[slot] = crate::utils::measure::count_output_stats(
+            &rendered,
+            measure_chars,
+        );
     }
     out
 }

@@ -2,13 +2,18 @@ use assert_cmd::cargo::cargo_bin_cmd;
 use std::collections::HashMap;
 use std::fs;
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Test helper stays clearer as a single pass parser"
+)]
 fn parse_fileset_sections(output: &str) -> HashMap<String, String> {
     let mut sections: HashMap<String, String> = HashMap::new();
     let mut current: Option<String> = None;
     let mut buf = String::new();
     for line in output.lines() {
-        if let Some(name) =
-            line.strip_prefix("==> ").and_then(|rest| rest.strip_suffix(" <=="))
+        if let Some(name) = line
+            .strip_prefix("==> ")
+            .and_then(|rest| rest.strip_suffix(" <=="))
         {
             if let Some(key) = current.take() {
                 sections.insert(key, buf.clone());
@@ -60,18 +65,16 @@ fn fileset_respects_per_file_byte_cap() {
         .current_dir(tmp.path())
         .assert()
         .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+    let out =
+        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
     let sections = parse_fileset_sections(&out);
     let big_key = big_path.to_string_lossy().to_string();
     let small_key = small_path.to_string_lossy().to_string();
 
-    let big_len = sections
-        .get(&big_key)
-        .map(|s| s.len())
-        .unwrap_or_default();
+    let big_len = sections.get(&big_key).map(String::len).unwrap_or_default();
     let small_len = sections
         .get(&small_key)
-        .map(|s| s.len())
+        .map(String::len)
         .unwrap_or_default();
 
     assert!(
@@ -109,7 +112,8 @@ fn fileset_respects_per_file_line_cap_with_counted_headers() {
         .current_dir(tmp.path())
         .assert()
         .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+    let out =
+        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
     let lines = out.lines().count();
     assert!(
         lines <= 4,
