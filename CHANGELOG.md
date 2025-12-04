@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1](https://github.com/kantord/headson/compare/headson-v0.10.0...headson-v0.10.1) - 2025-12-04
+
+### Fixed
+
+- stop cross-file duplicate penalty starving filesets ([#334](https://github.com/kantord/headson/pull/334))
+
+### Other
+
+- deduplicate helpers ([#329](https://github.com/kantord/headson/pull/329))
+
 ## [0.10.0](https://github.com/kantord/headson/compare/headson-v0.9.0...headson-v0.10.0) - 2025-12-01
 
 ### Added
