@@ -396,6 +396,10 @@ fn fits_per_slot(
     clippy::cognitive_complexity,
     reason = "Single-pass fileset walk; inlining keeps the budget flow readable."
 )]
+#[allow(
+    clippy::too_many_lines,
+    reason = "Single-pass walk reads clearer in one function."
+)]
 fn sinkhole_priority_order(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
@@ -442,14 +446,12 @@ fn sinkhole_priority_order(
         ) {
             continue;
         }
-        let _is_must_keep =
-            must_keep.and_then(|m| m.get(nid)).copied().unwrap_or(false);
         let slot = slot_map.get(nid).and_then(|s| *s);
         let mut delta =
             node_budget_cost(order_build, nid, measure_chars, newline_len);
         let is_must_keep =
             must_keep.and_then(|m| m.get(nid)).copied().unwrap_or(false);
-        let mut header_added = false;
+        let mut header_stats: Option<OutputStats> = None;
         if charge_headers {
             if let Some(slot_idx) = slot {
                 if !header_charged.get(slot_idx).copied().unwrap_or(false) {
@@ -466,19 +468,34 @@ fn sinkhole_priority_order(
                             stats.chars =
                                 stats.chars.saturating_add(newline_len);
                         }
-                        delta.bytes = delta.bytes.saturating_add(stats.bytes);
-                        delta.chars = delta.chars.saturating_add(stats.chars);
-                        delta.lines = delta.lines.saturating_add(stats.lines);
-                        header_added = true;
+                        header_stats = Some(stats);
                     }
                 }
             }
         }
 
         if let Some(slot_idx) = slot {
-            if !is_must_keep
-                && !fits_per_slot(&usage[slot_idx], &delta, budgets)
-            {
+            if is_must_keep {
+                if let Some(h) = header_stats {
+                    usage[slot_idx].bytes =
+                        usage[slot_idx].bytes.saturating_add(h.bytes);
+                    usage[slot_idx].chars =
+                        usage[slot_idx].chars.saturating_add(h.chars);
+                    usage[slot_idx].lines =
+                        usage[slot_idx].lines.saturating_add(h.lines);
+                    if let Some(hc) = header_charged.get_mut(slot_idx) {
+                        *hc = true;
+                    }
+                }
+                filtered.push(*node_id);
+                continue;
+            }
+            if let Some(h) = header_stats.take() {
+                delta.bytes = delta.bytes.saturating_add(h.bytes);
+                delta.chars = delta.chars.saturating_add(h.chars);
+                delta.lines = delta.lines.saturating_add(h.lines);
+            }
+            if !fits_per_slot(&usage[slot_idx], &delta, budgets) {
                 continue;
             }
             usage[slot_idx].bytes =
@@ -487,7 +504,7 @@ fn sinkhole_priority_order(
                 usage[slot_idx].chars.saturating_add(delta.chars);
             usage[slot_idx].lines =
                 usage[slot_idx].lines.saturating_add(delta.lines);
-            if header_added {
+            if header_stats.is_some() {
                 if let Some(hc) = header_charged.get_mut(slot_idx) {
                     *hc = true;
                 }
