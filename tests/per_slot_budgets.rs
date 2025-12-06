@@ -141,6 +141,153 @@ fn per_file_line_budget_respected_with_strong_grep() {
 }
 
 #[test]
+fn per_file_line_budget_respected_without_headers() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.txt", "a1\na2\n");
+    write_file(&dir, "b.txt", "b1\nb2\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--no-header",
+            "-n",
+            "1",
+            "a.txt",
+            "b.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        !stdout.contains("==>"),
+        "headers should be suppressed with --no-header: {stdout}"
+    );
+    assert!(
+        stdout.contains("a1"),
+        "first file should still emit one line under per-file line budget: {stdout}"
+    );
+    assert!(
+        stdout.contains("b1"),
+        "second file should emit one line under per-file line budget: {stdout}"
+    );
+    assert!(
+        !stdout.contains("a2") && !stdout.contains("b2"),
+        "content beyond the per-file cap should be omitted: {stdout}"
+    );
+}
+
+#[test]
+fn per_file_grep_multiple_hits_are_not_dropped() {
+    let dir = tempdir().expect("tmp");
+    write_file(
+        &dir,
+        "match.py",
+        "def f():\n    return 1\n    return 2\n    return 3\n    x = 1\n",
+    );
+    write_file(&dir, "other.py", "def g():\n    pass\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--grep",
+            "return",
+            "--grep-show",
+            "all",
+            "-n",
+            "1",
+            "match.py",
+            "other.py",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.matches("return").count() >= 3,
+        "all matching lines should be kept even when per-file cap is tight: {stdout}"
+    );
+    assert!(
+        stdout.contains("==> other.py <=="),
+        "non-matching file should still surface under --grep-show all: {stdout}"
+    );
+    assert!(
+        !stdout.contains("pass"),
+        "non-matching content should remain filtered under per-file cap: {stdout}"
+    );
+}
+
+#[test]
+fn per_file_byte_budget_counts_headers() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.txt", "aaaaaa\nbbbbbb\n");
+    write_file(&dir, "b.txt", "cccccc\ndddddd\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--no-sort", "--bytes", "12", "a.txt", "b.txt"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("==> a.txt <=="),
+        "header should consume from the per-file byte budget but still render: {stdout}"
+    );
+    assert!(
+        stdout.contains("==> b.txt <=="),
+        "second header should also render under the per-file byte cap: {stdout}"
+    );
+    assert!(
+        !stdout.contains("bbbbbb") && !stdout.contains("dddddd"),
+        "tails should be truncated once the per-file byte budget is hit: {stdout}"
+    );
+}
+
+#[test]
+fn global_line_budget_does_not_override_per_slot_cap() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.txt", "a1\na2\na3\na4\n");
+    write_file(&dir, "b.txt", "b1\nb2\nb3\nb4\n");
+    write_file(&dir, "c.txt", "c1\nc2\nc3\nc4\n");
+    write_file(&dir, "d.txt", "d1\nd2\nd3\nd4\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "-n",
+            "2",
+            "--global-lines",
+            "50",
+            "a.txt",
+            "b.txt",
+            "c.txt",
+            "d.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    for prefix in ["a", "b", "c", "d"] {
+        assert!(
+            stdout.contains(&format!("{prefix}1"))
+                && stdout.contains(&format!("{prefix}2")),
+            "each file should keep two lines under per-file cap: {stdout}"
+        );
+        assert!(
+            !stdout.contains(&format!("{prefix}3")),
+            "per-file line cap should bind even when global budget is larger: {stdout}"
+        );
+    }
+}
+
+#[test]
 fn per_file_line_budget_does_not_drop_small_files() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "a.txt", "a1\na2\n");
