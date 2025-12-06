@@ -411,7 +411,6 @@ fn sinkhole_priority_order(
     let mut slot_map = compute_fileset_slot_map(order_build)?;
     propagate_slots_from_parents(&mut slot_map, order_build);
     let slot_count = slot_map.iter().flatten().max().map(|s| *s + 1)?;
-
     let mut usage: Vec<OutputStats> = vec![
         OutputStats {
             bytes: 0,
@@ -422,33 +421,18 @@ fn sinkhole_priority_order(
     ];
     let mut filtered: Vec<NodeId> =
         Vec::with_capacity(order_build.by_priority.len());
+    let charge_headers = measure_cfg.show_fileset_headers
+        && !measure_cfg.newline.is_empty()
+        && !measure_cfg.fileset_tree;
+    let header_names = if charge_headers {
+        fileset_slot_names(order_build)
+    } else {
+        None
+    };
+    let mut header_charged: Vec<bool> = vec![false; slot_count];
     let measure_chars = budgets.char_budget.is_some()
         || budgets.per_slot_char_budget.is_some();
     let newline_len = measure_cfg.newline.len();
-
-    if measure_cfg.show_fileset_headers
-        && !measure_cfg.newline.is_empty()
-        && !measure_cfg.fileset_tree
-    {
-        if let Some(names) = fileset_slot_names(order_build) {
-            for (slot, name) in names.into_iter().enumerate() {
-                let mut stats = count_output_stats(
-                    &format!("==> {name} <=="),
-                    measure_chars,
-                );
-                stats.lines = stats.lines.max(1);
-                stats.bytes = stats.bytes.saturating_add(newline_len);
-                if measure_chars {
-                    stats.chars = stats.chars.saturating_add(newline_len);
-                }
-                if let Some(current) = usage.get_mut(slot) {
-                    current.bytes = current.bytes.saturating_add(stats.bytes);
-                    current.chars = current.chars.saturating_add(stats.chars);
-                    current.lines = current.lines.saturating_add(stats.lines);
-                }
-            }
-        }
-    }
 
     for node_id in order_build.by_priority.iter() {
         let nid = node_id.0;
@@ -461,10 +445,40 @@ fn sinkhole_priority_order(
         let _is_must_keep =
             must_keep.and_then(|m| m.get(nid)).copied().unwrap_or(false);
         let slot = slot_map.get(nid).and_then(|s| *s);
+        let mut delta =
+            node_budget_cost(order_build, nid, measure_chars, newline_len);
+        let is_must_keep =
+            must_keep.and_then(|m| m.get(nid)).copied().unwrap_or(false);
+        let mut header_added = false;
+        if charge_headers {
+            if let Some(slot_idx) = slot {
+                if !header_charged.get(slot_idx).copied().unwrap_or(false) {
+                    if let Some(name) =
+                        header_names.as_ref().and_then(|n| n.get(slot_idx))
+                    {
+                        let mut stats = count_output_stats(
+                            &format!("==> {name} <=="),
+                            measure_chars,
+                        );
+                        stats.lines = stats.lines.max(1);
+                        stats.bytes = stats.bytes.saturating_add(newline_len);
+                        if measure_chars {
+                            stats.chars =
+                                stats.chars.saturating_add(newline_len);
+                        }
+                        delta.bytes = delta.bytes.saturating_add(stats.bytes);
+                        delta.chars = delta.chars.saturating_add(stats.chars);
+                        delta.lines = delta.lines.saturating_add(stats.lines);
+                        header_added = true;
+                    }
+                }
+            }
+        }
+
         if let Some(slot_idx) = slot {
-            let delta =
-                node_budget_cost(order_build, nid, measure_chars, newline_len);
-            if !fits_per_slot(&usage[slot_idx], &delta, budgets) {
+            if !is_must_keep
+                && !fits_per_slot(&usage[slot_idx], &delta, budgets)
+            {
                 continue;
             }
             usage[slot_idx].bytes =
@@ -473,6 +487,11 @@ fn sinkhole_priority_order(
                 usage[slot_idx].chars.saturating_add(delta.chars);
             usage[slot_idx].lines =
                 usage[slot_idx].lines.saturating_add(delta.lines);
+            if header_added {
+                if let Some(hc) = header_charged.get_mut(slot_idx) {
+                    *hc = true;
+                }
+            }
         }
         filtered.push(*node_id);
     }
@@ -524,6 +543,10 @@ fn must_keep_slice<'a>(
         .and_then(|s| s.is_enabled().then_some(s.must_keep.as_slice()))
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Budget search is clearer as a single routine."
+)]
 fn select_best_k(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
@@ -532,7 +555,7 @@ fn select_best_k(
     must_keep: Option<&[bool]>,
 ) -> (usize, Vec<u32>, u32, Option<Vec<NodeId>>) {
     let total = order_build.total_nodes;
-    let lo = min_k.max(1);
+    let base_lo = if must_keep.is_some() { 1 } else { min_k.max(1) };
     let sinkhole_order =
         sinkhole_priority_order(order_build, measure_cfg, &budgets, must_keep);
     let selection_order_ref = sinkhole_order
@@ -547,7 +570,7 @@ fn select_best_k(
     } else {
         selection_order_ref.len().max(1)
     };
-    let capped_lo = lo.min(available);
+    let capped_lo = base_lo.min(available);
     let hi = match budgets.byte_budget {
         Some(c) => total.min(c.max(1)),
         None => total,
@@ -563,12 +586,15 @@ fn select_best_k(
     let measure_chars = budgets.char_budget.is_some()
         || budgets.per_slot_char_budget.is_some();
     let use_sinkhole = sinkhole_order.is_some();
-    let per_slot_active = budgets.per_slot_byte_budget.is_some()
-        || budgets.per_slot_char_budget.is_some()
-        || budgets.per_slot_line_budget.is_some();
-    let apply_must_keep =
-        must_keep.is_some() && (!use_sinkhole || !per_slot_active);
-    let effective_min_k = if apply_must_keep { lo } else { 1 };
+    let budgets_for_search = if let Some(flags) = must_keep {
+        let mk =
+            measure_must_keep(order_build, measure_cfg, flags, measure_chars);
+        subtract_must_keep_from_budgets(budgets, mk)
+    } else {
+        budgets
+    };
+    let apply_must_keep = must_keep.is_some();
+    let effective_min_k = if apply_must_keep { effective_lo } else { 1 };
     let _ = crate::pruner::search::binary_search_max(
         effective_lo.max(effective_min_k),
         effective_hi,
@@ -609,12 +635,15 @@ fn select_best_k(
             );
             let stats =
                 crate::utils::measure::count_output_stats(&s, measure_chars);
-            let fits_bytes =
-                budgets.byte_budget.is_none_or(|c| stats.bytes <= c);
-            let fits_chars =
-                budgets.char_budget.is_none_or(|c| stats.chars <= c);
-            let fits_lines =
-                budgets.line_budget.is_none_or(|cap| stats.lines <= cap);
+            let fits_bytes = budgets_for_search
+                .byte_budget
+                .is_none_or(|c| stats.bytes <= c);
+            let fits_chars = budgets_for_search
+                .char_budget
+                .is_none_or(|c| stats.chars <= c);
+            let fits_lines = budgets_for_search
+                .line_budget
+                .is_none_or(|cap| stats.lines <= cap);
             render_set_id = render_set_id.wrapping_add(1).max(1);
             if fits_bytes && fits_chars && fits_lines {
                 best_k = Some(mid);
@@ -710,6 +739,26 @@ fn measure_must_keep(
     crate::utils::measure::count_output_stats(&rendered, measure_chars)
 }
 
+fn subtract_must_keep_from_budgets(
+    budgets: Budgets,
+    must_keep: OutputStats,
+) -> Budgets {
+    Budgets {
+        byte_budget: budgets
+            .byte_budget
+            .map(|b| b.saturating_sub(must_keep.bytes)),
+        char_budget: budgets
+            .char_budget
+            .map(|c| c.saturating_sub(must_keep.chars)),
+        line_budget: budgets
+            .line_budget
+            .map(|l| l.saturating_sub(must_keep.lines)),
+        per_slot_byte_budget: budgets.per_slot_byte_budget,
+        per_slot_char_budget: budgets.per_slot_char_budget,
+        per_slot_line_budget: budgets.per_slot_line_budget,
+    }
+}
+
 fn add_budgets(budgets: Budgets, extra: OutputStats) -> Budgets {
     Budgets {
         byte_budget: budgets
@@ -718,11 +767,9 @@ fn add_budgets(budgets: Budgets, extra: OutputStats) -> Budgets {
         char_budget: budgets
             .char_budget
             .map(|c| c.saturating_add(extra.chars)),
-        line_budget: if budgets.per_slot_line_budget.is_some() {
-            budgets.line_budget
-        } else {
-            budgets.line_budget.map(|l| l.saturating_add(extra.lines))
-        },
+        line_budget: budgets
+            .line_budget
+            .map(|l| l.saturating_add(extra.lines)),
         // Per-slot budgets stay fixed; must-keep items can exceed the cap but
         // should not expand the allowance for unrelated nodes in that slot.
         per_slot_byte_budget: budgets.per_slot_byte_budget,
@@ -883,9 +930,19 @@ fn mark_sinkhole_top_k_and_ancestors(
 }
 
 fn counts_toward_k(order_build: &PriorityOrder, node_idx: usize) -> bool {
+    let is_fileset_child = order_build
+        .parent
+        .get(node_idx)
+        .and_then(|p| *p)
+        .is_some_and(|p| p.0 == ROOT_PQ_ID)
+        && order_build
+            .object_type
+            .get(ROOT_PQ_ID)
+            .is_some_and(|t| *t == ObjectType::Fileset);
     match order_build.nodes.get(node_idx) {
         Some(crate::RankedNode::SplittableLeaf { .. })
         | Some(crate::RankedNode::AtomicLeaf { .. }) => true,
+        _ if is_fileset_child => true,
         _ => order_build
             .children
             .get(node_idx)

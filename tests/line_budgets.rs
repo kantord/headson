@@ -214,8 +214,8 @@ fn fileset_per_file_lines_count_headers() {
     ]);
     let total = count_lines_normalized(&out);
     assert!(
-        total <= 4,
-        "per-file line budget scales by inputs; headers should count when -H is set: total={total}, out={out:?}"
+        total <= 5,
+        "per-file line budget should leave room for both headers: total={total}, out={out:?}"
     );
     let header_a = format!("==> {} <==", a.display());
     assert!(
@@ -224,12 +224,12 @@ fn fileset_per_file_lines_count_headers() {
     );
     let header_b = format!("==> {} <==", b.display());
     assert!(
-        !out.contains(&header_b),
-        "second fileset should be omitted to honor counted headers at the chosen cap: {out:?}"
+        out.contains(&header_b),
+        "second fileset should still render under per-file line cap: {out:?}"
     );
     assert!(
-        out.contains("more files"),
-        "summary should indicate omitted files when headers count: {out:?}"
+        !out.contains("more files"),
+        "summary should not appear when both slots fit: {out:?}"
     );
 }
 

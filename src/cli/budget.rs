@@ -31,8 +31,6 @@ pub(crate) fn compute_effective(
     let effective_chars = effective_chars(cli, input_count);
     let effective_lines = if let Some(g) = cli.global_lines {
         Some(g)
-    } else if cli.count_headers {
-        cli.lines.map(|n| n.saturating_mul(input_count))
     } else if input_count == 1 {
         cli.lines
     } else {
@@ -42,9 +40,11 @@ pub(crate) fn compute_effective(
     let byte_budget =
         compute_byte_budget(any_bytes, any_lines, any_chars, effective_bytes);
 
+    let char_budget = if any_chars { effective_chars } else { None };
+
     let budgets = headson::Budgets {
         byte_budget,
-        char_budget: if any_chars { effective_chars } else { None },
+        char_budget,
         line_budget: effective_lines,
         per_slot_byte_budget: cli.bytes,
         per_slot_char_budget: cli.chars,
