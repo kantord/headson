@@ -458,15 +458,13 @@ fn sinkhole_priority_order(
         ) {
             continue;
         }
-        let is_must_keep =
+        let _is_must_keep =
             must_keep.and_then(|m| m.get(nid)).copied().unwrap_or(false);
         let slot = slot_map.get(nid).and_then(|s| *s);
         if let Some(slot_idx) = slot {
             let delta =
                 node_budget_cost(order_build, nid, measure_chars, newline_len);
-            if !is_must_keep
-                && !fits_per_slot(&usage[slot_idx], &delta, budgets)
-            {
+            if !fits_per_slot(&usage[slot_idx], &delta, budgets) {
                 continue;
             }
             usage[slot_idx].bytes =
@@ -565,8 +563,14 @@ fn select_best_k(
     let measure_chars = budgets.char_budget.is_some()
         || budgets.per_slot_char_budget.is_some();
     let use_sinkhole = sinkhole_order.is_some();
+    let per_slot_active = budgets.per_slot_byte_budget.is_some()
+        || budgets.per_slot_char_budget.is_some()
+        || budgets.per_slot_line_budget.is_some();
+    let apply_must_keep =
+        must_keep.is_some() && (!use_sinkhole || !per_slot_active);
+    let effective_min_k = if apply_must_keep { lo } else { 1 };
     let _ = crate::pruner::search::binary_search_max(
-        effective_lo,
+        effective_lo.max(effective_min_k),
         effective_hi,
         |mid| {
             let current_render_id = render_set_id;
@@ -588,12 +592,14 @@ fn select_best_k(
                 );
             }
             if let Some(flags) = must_keep {
-                include_must_keep(
-                    order_build,
-                    &mut inclusion_flags,
-                    current_render_id,
-                    flags,
-                );
+                if apply_must_keep {
+                    include_must_keep(
+                        order_build,
+                        &mut inclusion_flags,
+                        current_render_id,
+                        flags,
+                    );
+                }
             }
             let s = crate::serialization::render_from_render_set(
                 order_build,
@@ -712,18 +718,16 @@ fn add_budgets(budgets: Budgets, extra: OutputStats) -> Budgets {
         char_budget: budgets
             .char_budget
             .map(|c| c.saturating_add(extra.chars)),
-        line_budget: budgets
-            .line_budget
-            .map(|l| l.saturating_add(extra.lines)),
-        per_slot_byte_budget: budgets
-            .per_slot_byte_budget
-            .map(|b| b.saturating_add(extra.bytes)),
-        per_slot_char_budget: budgets
-            .per_slot_char_budget
-            .map(|c| c.saturating_add(extra.chars)),
-        per_slot_line_budget: budgets
-            .per_slot_line_budget
-            .map(|l| l.saturating_add(extra.lines)),
+        line_budget: if budgets.per_slot_line_budget.is_some() {
+            budgets.line_budget
+        } else {
+            budgets.line_budget.map(|l| l.saturating_add(extra.lines))
+        },
+        // Per-slot budgets stay fixed; must-keep items can exceed the cap but
+        // should not expand the allowance for unrelated nodes in that slot.
+        per_slot_byte_budget: budgets.per_slot_byte_budget,
+        per_slot_char_budget: budgets.per_slot_char_budget,
+        per_slot_line_budget: budgets.per_slot_line_budget,
     }
 }
 
@@ -844,24 +848,24 @@ fn mark_sinkhole_top_k_and_ancestors(
     }
     let mut counted = 0;
     for &id in sinkhole_order.iter() {
-        crate::utils::graph::mark_node_and_ancestors(
-            order_build,
-            id,
-            inclusion_flags,
-            render_id,
-        );
-        if matches!(
-            order_build.nodes.get(id.0),
-            Some(crate::RankedNode::SplittableLeaf { .. })
-        ) {
-            include_string_descendants(
+        if counts_toward_k(order_build, id.0) {
+            crate::utils::graph::mark_node_and_ancestors(
                 order_build,
-                id.0,
+                id,
                 inclusion_flags,
                 render_id,
             );
-        }
-        if counts_toward_k(order_build, id.0) {
+            if matches!(
+                order_build.nodes.get(id.0),
+                Some(crate::RankedNode::SplittableLeaf { .. })
+            ) {
+                include_string_descendants(
+                    order_build,
+                    id.0,
+                    inclusion_flags,
+                    render_id,
+                );
+            }
             counted += 1;
             if counted >= top_k {
                 break;
