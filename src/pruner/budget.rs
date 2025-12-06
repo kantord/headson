@@ -637,22 +637,6 @@ fn include_must_keep(
     }
 }
 
-fn clear_subtree_flags(
-    order: &PriorityOrder,
-    idx: usize,
-    flags: &mut [u32],
-    render_id: u32,
-) {
-    if flags.get(idx).copied() == Some(render_id) {
-        flags[idx] = 0;
-    }
-    if let Some(children) = order.children.get(idx) {
-        for child in children {
-            clear_subtree_flags(order, child.0, flags, render_id);
-        }
-    }
-}
-
 fn trim_inclusion_for_slots(
     order_build: &PriorityOrder,
     inclusion_flags: &mut [u32],
@@ -680,12 +664,52 @@ fn trim_inclusion_for_slots(
         );
         return (total_stats, None);
     }
+    let rendered = crate::serialization::render_from_render_set(
+        order_build,
+        inclusion_flags,
+        render_id,
+        measure_cfg,
+    );
+    let total_stats = crate::utils::measure::count_output_stats(
+        &rendered,
+        measure_chars,
+    );
+    let per_slot_stats = measure_slots(
+        order_build,
+        inclusion_flags,
+        render_id,
+        slot_map,
+        measure_cfg,
+        measure_chars,
+        slot_count,
+    );
+    let mut overfull: Vec<usize> = Vec::new();
+    for (slot, stats) in per_slot_stats.iter().enumerate() {
+        if budgets
+            .per_slot_byte_budget
+            .is_some_and(|c| stats.bytes > c)
+            || budgets
+                .per_slot_char_budget
+                .is_some_and(|c| stats.chars > c)
+            || budgets
+                .per_slot_line_budget
+                .is_some_and(|c| stats.lines > c)
+        {
+            overfull.push(slot);
+        }
+    }
+    if overfull.is_empty() {
+        return (total_stats, Some(per_slot_stats));
+    }
+    // Remove all nodes from overfull slots (except must-keep), then measure once more.
+    let max_iterations = order_build.total_nodes.min(64);
     let mut iterations = 0usize;
+    let inclusion_flags_local = inclusion_flags;
     loop {
         iterations = iterations.saturating_add(1);
         let rendered = crate::serialization::render_from_render_set(
             order_build,
-            inclusion_flags,
+            inclusion_flags_local,
             render_id,
             measure_cfg,
         );
@@ -695,7 +719,7 @@ fn trim_inclusion_for_slots(
         );
         let per_slot_stats = measure_slots(
             order_build,
-            inclusion_flags,
+            inclusion_flags_local,
             render_id,
             slot_map,
             measure_cfg,
@@ -717,35 +741,31 @@ fn trim_inclusion_for_slots(
                 overfull.push(slot);
             }
         }
-        if overfull.is_empty() {
+        if overfull.is_empty() || iterations >= max_iterations {
             return (total_stats, Some(per_slot_stats));
         }
         let mut removed = false;
         for node in order_build.by_priority.iter().rev() {
             let idx = node.0;
-            if inclusion_flags.get(idx).copied() != Some(render_id) {
+            if inclusion_flags_local.get(idx).copied() != Some(render_id) {
                 continue;
             }
-            if let Some(slot) = slot_map.get(idx).copied().flatten() {
-                if !overfull.contains(&slot) {
+            let Some(slot) = slot_map.get(idx).copied().flatten() else {
+                continue;
+            };
+            if !overfull.contains(&slot) {
+                continue;
+            }
+            if let Some(mk) = must_keep {
+                if mk.get(idx).copied().unwrap_or(false) {
                     continue;
                 }
-                if let Some(mk) = must_keep {
-                    if mk.get(idx).copied().unwrap_or(false) {
-                        continue;
-                    }
-                }
-                clear_subtree_flags(
-                    order_build,
-                    idx,
-                    inclusion_flags,
-                    render_id,
-                );
-                removed = true;
-                break;
             }
+            inclusion_flags_local[idx] = 0;
+            removed = true;
+            break;
         }
-        if !removed || iterations > order_build.total_nodes {
+        if !removed {
             return (total_stats, Some(per_slot_stats));
         }
     }
