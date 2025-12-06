@@ -139,3 +139,30 @@ fn per_file_line_budget_respected_with_strong_grep() {
         "non-matching tail content should stay filtered under the per-file cap: {stdout}"
     );
 }
+
+#[test]
+fn per_file_line_budget_does_not_drop_small_files() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.txt", "a1\na2\n");
+    write_file(&dir, "b.txt", "b1\nb2\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--no-sort", "-n", "5", "a.txt", "b.txt"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("a1\na2"),
+        "small file should render fully when under per-file line budget: {stdout}"
+    );
+    assert!(
+        stdout.contains("b1\nb2"),
+        "second small file should also render fully: {stdout}"
+    );
+    assert!(
+        !stdout.contains("…"),
+        "no omission markers expected when under budget: {stdout}"
+    );
+}

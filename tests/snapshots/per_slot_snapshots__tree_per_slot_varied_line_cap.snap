@@ -1,0 +1,25 @@
+---
+source: tests/per_slot_snapshots.rs
+assertion_line: 90
+expression: normalize(out)
+---
+.
+└─ tests/fixtures/tree_per_slot_varied/
+│ ├─ d.txt
+│ │ d1
+│ │ d2
+│ ├─ c.txt
+│ │ c1
+│ │ c2
+│ │ c3
+│ │ …
+│ ├─ b.txt
+│ │ b1
+│ │ b2
+│ │ b3
+│ │ …
+│ ├─ a.txt
+│ │ a1
+│ │ a3
+│ │ a5
+│ │ …

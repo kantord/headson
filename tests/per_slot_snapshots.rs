@@ -66,6 +66,42 @@ fn snapshot_tree_per_slot_line_cap() {
 }
 
 #[test]
+fn snapshot_tree_per_slot_under_cap() {
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--tree",
+            "--glob",
+            "tests/fixtures/tree_per_slot/*.txt",
+            "-n",
+            "5",
+        ])
+        .assert()
+        .success();
+    let out =
+        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+    assert_snapshot!("tree_per_slot_under_cap", normalize(&out));
+}
+
+#[test]
+fn snapshot_tree_per_slot_varied_line_cap() {
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--tree",
+            "--glob",
+            "tests/fixtures/tree_per_slot_varied/*.txt",
+            "-n",
+            "3",
+        ])
+        .assert()
+        .success();
+    let out =
+        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+    assert_snapshot!("tree_per_slot_varied_line_cap", normalize(&out));
+}
+
+#[test]
 fn snapshot_multibyte_chars_and_bytes_per_slot() {
     let assert = cargo_bin_cmd!("hson")
         .args([
