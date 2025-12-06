@@ -29,7 +29,23 @@ pub(crate) fn compute_effective(
 
     let effective_bytes = effective_bytes(cli, input_count);
     let effective_chars = effective_chars(cli, input_count);
-    let effective_lines = effective_lines(cli, input_count);
+    let effective_lines = match (cli.global_lines, cli.lines) {
+        (Some(g), Some(n)) => Some(g.min(n.saturating_mul(input_count))),
+        (Some(g), None) => Some(g),
+        (None, Some(n)) => Some(n.saturating_mul(input_count)),
+        (None, None) => None,
+    }
+    .map(|lines| {
+        if cli.global_lines.is_none()
+            && cli.lines.is_some()
+            && !cli.count_headers
+        {
+            lines.saturating_add(input_count)
+        } else {
+            lines
+        }
+    });
+
     let byte_budget =
         compute_byte_budget(any_bytes, any_lines, any_chars, effective_bytes);
 
@@ -37,6 +53,9 @@ pub(crate) fn compute_effective(
         byte_budget,
         char_budget: if any_chars { effective_chars } else { None },
         line_budget: effective_lines,
+        per_slot_byte_budget: cli.bytes,
+        per_slot_char_budget: cli.chars,
+        per_slot_line_budget: cli.lines,
     };
 
     let chosen_global =
@@ -61,15 +80,6 @@ fn effective_bytes(cli: &Cli, input_count: usize) -> usize {
 
 fn effective_chars(cli: &Cli, input_count: usize) -> Option<usize> {
     cli.chars.map(|n| n.saturating_mul(input_count))
-}
-
-fn effective_lines(cli: &Cli, input_count: usize) -> Option<usize> {
-    match (cli.global_lines, cli.lines) {
-        (Some(g), Some(n)) => Some(g.min(n.saturating_mul(input_count))),
-        (Some(g), None) => Some(g),
-        (None, Some(n)) => Some(n.saturating_mul(input_count)),
-        (None, None) => None,
-    }
 }
 
 fn compute_byte_budget(

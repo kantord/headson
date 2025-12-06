@@ -85,6 +85,9 @@ environments:
             byte_budget: Some(4096),
             char_budget: None,
             line_budget: None,
+            per_slot_byte_budget: None,
+            per_slot_char_budget: None,
+            per_slot_line_budget: None,
         },
     )
     .expect("render fileset");

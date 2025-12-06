@@ -711,6 +711,9 @@ fn grep_highlights_for_library_calls_without_extra_config() {
         byte_budget: Some(200),
         char_budget: None,
         line_budget: None,
+        per_slot_byte_budget: None,
+        per_slot_char_budget: None,
+        per_slot_line_budget: None,
     };
     let grep = GrepConfig {
         regex: Some(regex::Regex::new("needle").unwrap()),

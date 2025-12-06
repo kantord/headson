@@ -533,6 +533,9 @@ fn tree_omitted_folders_render_in_input_order() {
             byte_budget: None,
             char_budget: None,
             line_budget: Some(0),
+            per_slot_byte_budget: None,
+            per_slot_char_budget: None,
+            per_slot_line_budget: Some(0),
         };
         headson::headson(
             headson::InputKind::Fileset(files),

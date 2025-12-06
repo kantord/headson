@@ -131,6 +131,9 @@ fn summarize(
         byte_budget: Some(budget),
         char_budget: None,
         line_budget: None,
+        per_slot_byte_budget: None,
+        per_slot_char_budget: None,
+        per_slot_line_budget: None,
     };
     let text_mode = if matches!(cfg.template, OutputTemplate::Code) {
         headson_core::TextMode::CodeLike

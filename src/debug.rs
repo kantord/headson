@@ -16,6 +16,9 @@ struct BudgetsDbg {
     bytes: Option<usize>,
     chars: Option<usize>,
     lines: Option<usize>,
+    per_slot_bytes: Option<usize>,
+    per_slot_chars: Option<usize>,
+    per_slot_lines: Option<usize>,
 }
 
 #[derive(Serialize)]
@@ -637,6 +640,9 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
             bytes: budgets.byte_budget,
             chars: budgets.char_budget,
             lines: budgets.line_budget,
+            per_slot_bytes: budgets.per_slot_byte_budget,
+            per_slot_chars: budgets.per_slot_char_budget,
+            per_slot_lines: budgets.per_slot_line_budget,
         },
         selection: SelectionDbg { top_k },
         renderer: RendererDbg {

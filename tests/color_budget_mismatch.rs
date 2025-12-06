@@ -61,6 +61,9 @@ fn colored_and_plain_outputs_should_match_after_stripping() {
         byte_budget: Some(budget),
         char_budget: None,
         line_budget: None,
+        per_slot_byte_budget: None,
+        per_slot_char_budget: None,
+        per_slot_line_budget: None,
     };
     let grep = headson::GrepConfig::default();
 

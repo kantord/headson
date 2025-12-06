@@ -522,6 +522,9 @@ mod tests {
                 byte_budget: Some(100),
                 char_budget: None,
                 line_budget: None,
+                per_slot_byte_budget: None,
+                per_slot_char_budget: None,
+                per_slot_line_budget: None,
             },
         )
         .unwrap();
@@ -550,6 +553,9 @@ mod tests {
                 byte_budget: Some(20),
                 char_budget: None,
                 line_budget: None,
+                per_slot_byte_budget: None,
+                per_slot_char_budget: None,
+                per_slot_line_budget: None,
             },
         )
         .unwrap();
