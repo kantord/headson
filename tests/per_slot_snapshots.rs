@@ -64,3 +64,23 @@ fn snapshot_tree_per_slot_line_cap() {
         String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
     assert_snapshot!("tree_per_slot_line_cap", normalize(&out));
 }
+
+#[test]
+fn snapshot_multibyte_chars_and_bytes_per_slot() {
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--bytes",
+            "6",
+            "--chars",
+            "6",
+            "tests/fixtures/bytes_chars/emoji.json",
+            "tests/fixtures/bytes_chars/long.txt",
+        ])
+        .assert()
+        .success();
+    let out =
+        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+    assert_snapshot!("multibyte_chars_and_bytes_per_slot", normalize(&out));
+}

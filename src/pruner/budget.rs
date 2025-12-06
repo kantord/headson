@@ -933,15 +933,30 @@ fn mark_sinkhole_top_k_and_ancestors(
                     .get(ROOT_PQ_ID)
                     .is_some_and(|t| *t == ObjectType::Fileset);
             if parent_is_fileset_root {
-                if let Some(best_child) =
-                    best_priority_child(order_build, id.0, &priority_index)
-                {
-                    crate::utils::graph::mark_node_and_ancestors(
-                        order_build,
-                        best_child,
-                        inclusion_flags,
-                        render_id,
-                    );
+                let has_child_included = order_build
+                    .children
+                    .get(id.0)
+                    .map(|kids| {
+                        kids.iter().any(|kid| {
+                            inclusion_flags
+                                .get(kid.0)
+                                .copied()
+                                .unwrap_or_default()
+                                == render_id
+                        })
+                    })
+                    .unwrap_or(false);
+                if !has_child_included {
+                    if let Some(best_child) =
+                        best_priority_child(order_build, id.0, &priority_index)
+                    {
+                        crate::utils::graph::mark_node_and_ancestors(
+                            order_build,
+                            best_child,
+                            inclusion_flags,
+                            render_id,
+                        );
+                    }
                 }
             }
             if matches!(

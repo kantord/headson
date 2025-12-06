@@ -1,0 +1,10 @@
+---
+source: tests/per_slot_snapshots.rs
+assertion_line: 85
+expression: normalize(&out)
+---
+==> tests/fixtures/bytes_chars/long.txt <==
+…
+
+
+==> 1 more files <==
