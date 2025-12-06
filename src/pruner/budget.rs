@@ -274,6 +274,10 @@ fn compute_fileset_slot_map(
     Some(slots)
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Small parent walk; splitting would obscure the simple loop."
+)]
 fn propagate_slots_from_parents(
     slots: &mut [Option<usize>],
     order_build: &PriorityOrder,
@@ -347,11 +351,6 @@ fn node_budget_cost(
             stats.lines = stats.lines.max(1);
             stats
         }
-        Some(crate::RankedNode::LeafPart { .. }) => OutputStats {
-            bytes: 0,
-            chars: 0,
-            lines: 0,
-        },
         _ => OutputStats {
             bytes: 0,
             chars: 0,
@@ -384,6 +383,10 @@ fn fits_per_slot(
     true
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Single-pass fileset walk; inlining keeps the budget flow readable."
+)]
 fn sinkhole_priority_order(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
@@ -396,15 +399,9 @@ fn sinkhole_priority_order(
     {
         return None;
     }
-    let Some(slot_map) = compute_fileset_slot_map(order_build) else {
-        return None;
-    };
-    let mut slot_map = slot_map;
+    let mut slot_map = compute_fileset_slot_map(order_build)?;
     propagate_slots_from_parents(&mut slot_map, order_build);
-    let slot_count = slot_map.iter().flatten().max().map(|s| *s + 1);
-    let Some(slot_count) = slot_count else {
-        return None;
-    };
+    let slot_count = slot_map.iter().flatten().max().map(|s| *s + 1)?;
 
     let mut usage: Vec<OutputStats> = vec![
         OutputStats {
@@ -540,8 +537,7 @@ fn select_best_k(
         "expected sinkhole order for fileset with per-slot budgets"
     );
     let selection_order_ref = sinkhole_order
-        .as_ref()
-        .map(|v| &**v)
+        .as_deref()
         .unwrap_or(&order_build.by_priority);
     let available = if let Some(order) = sinkhole_order.as_ref() {
         order
@@ -808,6 +804,10 @@ fn enforce_force_first_child_custom(
     }
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Top-level render-set marking; splitting would add indirection."
+)]
 fn mark_sinkhole_top_k_and_ancestors(
     order_build: &PriorityOrder,
     sinkhole_order: &[NodeId],
@@ -862,7 +862,7 @@ fn counts_toward_k(order_build: &PriorityOrder, node_idx: usize) -> bool {
         _ => order_build
             .children
             .get(node_idx)
-            .map(|c| c.is_empty())
+            .map(Vec::is_empty)
             .unwrap_or(true),
     }
 }
