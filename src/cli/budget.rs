@@ -33,17 +33,21 @@ pub(crate) fn compute_effective(
     let byte_budget =
         compute_byte_budget(any_bytes, any_lines, any_chars, effective_bytes);
     // Per-slot caps should match the explicit per-file caps, not scale by
-    // input_count. For bytes, prefer the user-provided per-file value when set;
-    // otherwise fall back to the default bytes-per-input when no global caps
-    // are involved. For lines/chars, just forward the per-file flags.
-    let per_slot_byte_budget = if cli.bytes.is_some() {
-        cli.bytes
-    } else if any_bytes {
-        Some(DEFAULT_BYTES_PER_INPUT)
-    } else if any_lines || any_chars {
-        None
-    } else {
-        Some(DEFAULT_BYTES_PER_INPUT)
+    // input_count. For bytes, prefer the user-provided per-file value when set.
+    // If only a global cap is provided, leave the per-slot cap unset so the
+    // full global budget can be used. When no budgets are provided at all,
+    // fall back to the default bytes-per-input. For lines/chars, just forward
+    // the per-file flags.
+    let per_slot_byte_budget = match (cli.bytes, cli.global_bytes) {
+        (Some(per_file), _) => Some(per_file),
+        (None, Some(_global)) => None,
+        (None, None) => {
+            if any_lines || any_chars {
+                None
+            } else {
+                Some(DEFAULT_BYTES_PER_INPUT)
+            }
+        }
     };
     let per_slot_line_budget = cli.lines;
 

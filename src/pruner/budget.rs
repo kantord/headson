@@ -85,7 +85,7 @@ pub fn find_largest_render_under_budgets(
     );
     let min_k = min_k_for(&grep_state, grep);
     let must_keep_slice = must_keep_slice(&grep_state, grep);
-    let (k, mut inclusion_flags, render_set_id) = select_best_k(
+    let selection = select_best_k(
         order_build,
         &measure_cfg,
         effective_budgets,
@@ -93,13 +93,8 @@ pub fn find_largest_render_under_budgets(
         must_keep_slice,
         slot_map_owned.as_deref(),
     );
-
-    crate::serialization::prepare_render_set_top_k_and_ancestors(
-        order_build,
-        k,
-        &mut inclusion_flags,
-        render_set_id,
-    );
+    let mut inclusion_flags = selection.inclusion_flags;
+    let render_set_id = selection.render_set_id;
     if let Some(state) = &grep_state {
         if !grep.weak && state.is_enabled() {
             include_must_keep(
@@ -118,7 +113,7 @@ pub fn find_largest_render_under_budgets(
             render_set_id,
             config,
             budgets,
-            k,
+            selection.top_k,
         );
     }
 
@@ -160,14 +155,32 @@ pub fn find_largest_render_under_budgets(
                     .map(|v| v.len())
             })
             .unwrap_or(0);
+        let included_files = slot_map_owned.as_ref().map(|map| {
+            let mut slots = std::collections::HashSet::new();
+            for (idx, flag) in inclusion_flags.iter().enumerate() {
+                if *flag != render_set_id {
+                    continue;
+                }
+                if let Some(slot) = map.get(idx).and_then(|s| *s) {
+                    slots.insert(slot);
+                }
+            }
+            slots
+        });
+        let included_count =
+            included_files.as_ref().map(|s| s.len()).unwrap_or_default();
+        let omitted = fileset_len.saturating_sub(included_count);
         if config.show_fileset_headers
             && !rendered.contains("more files")
             && !rendered.contains("==>")
             && fileset_len > 0
+            && included_count > 0
         {
-            rendered.push_str("==> ");
-            rendered.push_str(&fileset_len.to_string());
-            rendered.push_str(" more files <==\n");
+            if omitted > 0 {
+                rendered.push_str("==> ");
+                rendered.push_str(&omitted.to_string());
+                rendered.push_str(" more files <==\n");
+            }
         }
     }
     rendered
@@ -375,6 +388,12 @@ fn must_keep_slice<'a>(
     clippy::cognitive_complexity,
     reason = "Search closure is easier to read inline than split helpers"
 )]
+struct SelectionResult {
+    top_k: usize,
+    render_set_id: u32,
+    inclusion_flags: Vec<u32>,
+}
+
 fn select_best_k(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
@@ -382,7 +401,7 @@ fn select_best_k(
     min_k: usize,
     must_keep: Option<&[bool]>,
     slot_map: Option<&[Option<usize>]>,
-) -> (usize, Vec<u32>, u32) {
+) -> SelectionResult {
     let total = order_build.total_nodes;
     let lo = min_k.max(1);
     let available = order_build.by_priority.len().max(1);
@@ -396,6 +415,8 @@ fn select_best_k(
 
     let mut render_set_id: u32 = 1;
     let mut best_k: Option<usize> = None;
+    let mut best_flags: Option<Vec<u32>> = None;
+    let mut best_render_id: u32 = render_set_id;
     let measure_chars = budgets.char_budget.is_some()
         || budgets.per_slot_char_budget.is_some();
     let slot_count = slot_map.and_then(|m| {
@@ -423,31 +444,30 @@ fn select_best_k(
                 flags,
             );
         }
-        let s = crate::serialization::render_from_render_set(
-            order_build,
-            &inclusion_flags,
-            current_render_id,
-            measure_cfg,
-        );
-        let total_stats =
-            crate::utils::measure::count_output_stats(&s, measure_chars);
-        let per_slot_stats = if measure_per_slot {
-            if let Some(count) = slot_count {
-                Some(measure_slots(
-                    order_build,
-                    &inclusion_flags,
-                    current_render_id,
-                    slot_map.unwrap_or(&[]),
-                    measure_cfg,
-                    measure_chars,
-                    count,
-                ))
-            } else {
-                // No slot map (single input); fall back to total stats as the single slot.
-                Some(vec![total_stats])
-            }
+        let (total_stats, per_slot_stats) = if measure_per_slot
+            && slot_count.unwrap_or(0) > 0
+        {
+            trim_inclusion_for_slots(
+                order_build,
+                &mut inclusion_flags,
+                current_render_id,
+                slot_map.unwrap_or(&[]),
+                slot_count.unwrap_or(0),
+                measure_cfg,
+                &budgets,
+                measure_chars,
+                must_keep,
+            )
         } else {
-            None
+            let s = crate::serialization::render_from_render_set(
+                order_build,
+                &inclusion_flags,
+                current_render_id,
+                measure_cfg,
+            );
+            let total_stats =
+                crate::utils::measure::count_output_stats(&s, measure_chars);
+            (total_stats, None)
         };
         let fits_bytes =
             budgets.byte_budget.is_none_or(|c| total_stats.bytes <= c);
@@ -474,13 +494,19 @@ fn select_best_k(
         render_set_id = render_set_id.wrapping_add(1).max(1);
         if fits_bytes && fits_chars && fits_lines && per_slot_fits {
             best_k = Some(mid);
+            best_flags = Some(inclusion_flags.clone());
+            best_render_id = current_render_id;
             true
         } else {
             false
         }
     });
     let k = best_k.unwrap_or(lo);
-    (k, inclusion_flags, render_set_id)
+    SelectionResult {
+        top_k: k,
+        render_set_id: best_render_id,
+        inclusion_flags: best_flags.unwrap_or(inclusion_flags),
+    }
 }
 
 pub(crate) fn constrained_dimensions(
@@ -607,6 +633,120 @@ fn include_must_keep(
                 inclusion_flags,
                 render_set_id,
             );
+        }
+    }
+}
+
+fn clear_subtree_flags(
+    order: &PriorityOrder,
+    idx: usize,
+    flags: &mut [u32],
+    render_id: u32,
+) {
+    if flags.get(idx).copied() == Some(render_id) {
+        flags[idx] = 0;
+    }
+    if let Some(children) = order.children.get(idx) {
+        for child in children {
+            clear_subtree_flags(order, child.0, flags, render_id);
+        }
+    }
+}
+
+fn trim_inclusion_for_slots(
+    order_build: &PriorityOrder,
+    inclusion_flags: &mut [u32],
+    render_id: u32,
+    slot_map: &[Option<usize>],
+    slot_count: usize,
+    measure_cfg: &RenderConfig,
+    budgets: &Budgets,
+    measure_chars: bool,
+    must_keep: Option<&[bool]>,
+) -> (
+    crate::utils::measure::OutputStats,
+    Option<Vec<crate::utils::measure::OutputStats>>,
+) {
+    if slot_count == 0 {
+        let rendered = crate::serialization::render_from_render_set(
+            order_build,
+            inclusion_flags,
+            render_id,
+            measure_cfg,
+        );
+        let total_stats = crate::utils::measure::count_output_stats(
+            &rendered,
+            measure_chars,
+        );
+        return (total_stats, None);
+    }
+    let mut iterations = 0usize;
+    loop {
+        iterations = iterations.saturating_add(1);
+        let rendered = crate::serialization::render_from_render_set(
+            order_build,
+            inclusion_flags,
+            render_id,
+            measure_cfg,
+        );
+        let total_stats = crate::utils::measure::count_output_stats(
+            &rendered,
+            measure_chars,
+        );
+        let per_slot_stats = measure_slots(
+            order_build,
+            inclusion_flags,
+            render_id,
+            slot_map,
+            measure_cfg,
+            measure_chars,
+            slot_count,
+        );
+        let mut overfull: Vec<usize> = Vec::new();
+        for (slot, stats) in per_slot_stats.iter().enumerate() {
+            if budgets
+                .per_slot_byte_budget
+                .is_some_and(|c| stats.bytes > c)
+                || budgets
+                    .per_slot_char_budget
+                    .is_some_and(|c| stats.chars > c)
+                || budgets
+                    .per_slot_line_budget
+                    .is_some_and(|c| stats.lines > c)
+            {
+                overfull.push(slot);
+            }
+        }
+        if overfull.is_empty() {
+            return (total_stats, Some(per_slot_stats));
+        }
+        let mut removed = false;
+        for node in order_build.by_priority.iter().rev() {
+            let idx = node.0;
+            if inclusion_flags.get(idx).copied() != Some(render_id) {
+                continue;
+            }
+            if let Some(slot) = slot_map.get(idx).copied().flatten() {
+                if !overfull.contains(&slot) {
+                    continue;
+                }
+                if let Some(mk) = must_keep {
+                    if mk.get(idx).copied().unwrap_or(false) {
+                        continue;
+                    }
+                }
+                clear_subtree_flags(
+                    order_build,
+                    idx,
+                    inclusion_flags,
+                    render_id,
+                );
+                removed = true;
+                break;
+            }
+        }
+        if !removed || iterations > order_build.total_nodes {
+            return (total_stats, Some(per_slot_stats));
         }
     }
 }
