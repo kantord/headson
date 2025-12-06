@@ -29,22 +29,15 @@ pub(crate) fn compute_effective(
 
     let effective_bytes = effective_bytes(cli, input_count);
     let effective_chars = effective_chars(cli, input_count);
-    let effective_lines = match (cli.global_lines, cli.lines) {
-        (Some(g), Some(n)) => Some(g.min(n.saturating_mul(input_count))),
-        (Some(g), None) => Some(g),
-        (None, Some(n)) => Some(n.saturating_mul(input_count)),
-        (None, None) => None,
-    }
-    .map(|lines| {
-        if cli.global_lines.is_none()
-            && cli.lines.is_some()
-            && !cli.count_headers
-        {
-            lines.saturating_add(input_count)
-        } else {
-            lines
-        }
-    });
+    let effective_lines = if let Some(g) = cli.global_lines {
+        Some(g)
+    } else if cli.count_headers {
+        cli.lines.map(|n| n.saturating_mul(input_count))
+    } else if input_count == 1 {
+        cli.lines
+    } else {
+        None
+    };
 
     let byte_budget =
         compute_byte_budget(any_bytes, any_lines, any_chars, effective_bytes);

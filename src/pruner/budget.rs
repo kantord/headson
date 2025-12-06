@@ -351,11 +351,17 @@ fn node_budget_cost(
             stats.lines = stats.lines.max(1);
             stats
         }
-        _ => OutputStats {
-            bytes: 0,
-            chars: 0,
-            lines: 0,
-        },
+        _ => {
+            let mut stats = OutputStats {
+                bytes: newline_len,
+                chars: 0,
+                lines: 0,
+            };
+            if measure_chars {
+                stats.chars = newline_len;
+            }
+            stats
+        }
     }
 }
 
@@ -393,6 +399,10 @@ fn sinkhole_priority_order(
     budgets: &Budgets,
     must_keep: Option<&[bool]>,
 ) -> Option<Vec<NodeId>> {
+    if measure_cfg.fileset_tree {
+        // Tree rendering builds its own scaffold; rely on the default ordering.
+        return None;
+    }
     if budgets.per_slot_byte_budget.is_none()
         && budgets.per_slot_char_budget.is_none()
         && budgets.per_slot_line_budget.is_none()
@@ -525,17 +535,6 @@ fn select_best_k(
     let lo = min_k.max(1);
     let sinkhole_order =
         sinkhole_priority_order(order_build, measure_cfg, &budgets, must_keep);
-    let expect_sinkhole = (budgets.per_slot_byte_budget.is_some()
-        || budgets.per_slot_char_budget.is_some()
-        || budgets.per_slot_line_budget.is_some())
-        && order_build
-            .object_type
-            .get(crate::order::ROOT_PQ_ID)
-            .is_some_and(|t| *t == ObjectType::Fileset);
-    debug_assert!(
-        !expect_sinkhole || sinkhole_order.is_some(),
-        "expected sinkhole order for fileset with per-slot budgets"
-    );
     let selection_order_ref = sinkhole_order
         .as_deref()
         .unwrap_or(&order_build.by_priority);

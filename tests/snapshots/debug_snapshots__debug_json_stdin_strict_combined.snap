@@ -15,7 +15,10 @@ DEBUG (normalized):
   "budgets_effective": {
     "bytes": 200,
     "chars": null,
-    "lines": null
+    "lines": null,
+    "per_slot_bytes": 200,
+    "per_slot_chars": null,
+    "per_slot_lines": null
   },
   "counts": {
     "included": 0,
