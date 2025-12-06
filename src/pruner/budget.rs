@@ -910,6 +910,10 @@ fn mark_sinkhole_top_k_and_ancestors(
     if top_k == 0 {
         return;
     }
+    let priority_index = build_priority_index_from_order(
+        &order_build.by_priority,
+        order_build.total_nodes,
+    );
     let mut counted = 0;
     for &id in sinkhole_order.iter() {
         if counts_toward_k(order_build, id.0) {
@@ -919,6 +923,27 @@ fn mark_sinkhole_top_k_and_ancestors(
                 inclusion_flags,
                 render_id,
             );
+            let parent_is_fileset_root = order_build
+                .parent
+                .get(id.0)
+                .and_then(|p| *p)
+                .is_some_and(|p| p.0 == ROOT_PQ_ID)
+                && order_build
+                    .object_type
+                    .get(ROOT_PQ_ID)
+                    .is_some_and(|t| *t == ObjectType::Fileset);
+            if parent_is_fileset_root {
+                if let Some(best_child) =
+                    best_priority_child(order_build, id.0, &priority_index)
+                {
+                    crate::utils::graph::mark_node_and_ancestors(
+                        order_build,
+                        best_child,
+                        inclusion_flags,
+                        render_id,
+                    );
+                }
+            }
             if matches!(
                 order_build.nodes.get(id.0),
                 Some(crate::RankedNode::SplittableLeaf { .. })
@@ -941,7 +966,7 @@ fn mark_sinkhole_top_k_and_ancestors(
             order_build,
             inclusion_flags,
             render_id,
-            sinkhole_order,
+            &order_build.by_priority,
         );
     }
 }

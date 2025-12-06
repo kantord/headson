@@ -1,0 +1,19 @@
+---
+source: tests/per_slot_snapshots.rs
+assertion_line: 45
+expression: normalize(out)
+---
+==> tests/fixtures/mixed_headers/a.json <==
+{
+  "a": 1
+  …
+}
+
+==> tests/fixtures/mixed_headers/b.yaml <==
+items: []
+# …
+
+
+==> tests/fixtures/mixed_headers/c.txt <==
+…
+…

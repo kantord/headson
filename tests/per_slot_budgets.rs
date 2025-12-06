@@ -80,7 +80,7 @@ fn per_file_byte_budget_prevents_starvation() {
             "--no-color",
             "--no-sort",
             "--bytes",
-            "5",
+            "8",
             "long.txt",
             "short.txt",
         ])
@@ -99,5 +99,43 @@ fn per_file_byte_budget_prevents_starvation() {
     assert!(
         stdout.contains("x\n"),
         "short file should retain content under per-file byte cap: {stdout}"
+    );
+}
+
+#[test]
+fn per_file_line_budget_respected_with_strong_grep() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.py", "def f():\n    return 1\n");
+    write_file(&dir, "b.py", "def g():\n    pass\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--grep",
+            "return",
+            "--grep-show",
+            "all",
+            "-n",
+            "1",
+            "a.py",
+            "b.py",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("return 1"),
+        "matching file should include the return line even under per-file cap: {stdout}"
+    );
+    assert!(
+        stdout.contains("==> b.py <=="),
+        "non-matching file should still render its header with --grep-show: {stdout}"
+    );
+    assert!(
+        !stdout.contains("pass"),
+        "non-matching tail content should stay filtered under the per-file cap: {stdout}"
     );
 }
