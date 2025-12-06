@@ -30,6 +30,7 @@ pub fn find_largest_render_under_budgets(
         return String::new();
     }
     let measure_cfg = measure_config(order_build, config);
+    let search_budgets = adjust_tree_budgets(budgets, &measure_cfg);
     let mut grep_state = compute_grep_state(order_build, grep);
     if !grep.weak
         && grep.show == GrepShow::Matching
@@ -53,7 +54,7 @@ pub fn find_largest_render_under_budgets(
         order_build,
         &measure_cfg,
         grep,
-        budgets,
+        search_budgets,
         &grep_state,
     );
     let min_k = min_k_for(&grep_state, grep);
@@ -66,6 +67,7 @@ pub fn find_largest_render_under_budgets(
             min_k,
             must_keep_slice,
         );
+    inclusion_flags.fill(0);
 
     if let Some(order) = sinkhole_order.as_ref() {
         mark_sinkhole_top_k_and_ancestors(
@@ -74,6 +76,7 @@ pub fn find_largest_render_under_budgets(
             k,
             &mut inclusion_flags,
             render_set_id,
+            !config.fileset_tree,
         );
     } else {
         crate::serialization::prepare_render_set_top_k_and_ancestors(
@@ -399,10 +402,6 @@ fn sinkhole_priority_order(
     budgets: &Budgets,
     must_keep: Option<&[bool]>,
 ) -> Option<Vec<NodeId>> {
-    if measure_cfg.fileset_tree {
-        // Tree rendering builds its own scaffold; rely on the default ordering.
-        return None;
-    }
     if budgets.per_slot_byte_budget.is_none()
         && budgets.per_slot_char_budget.is_none()
         && budgets.per_slot_line_budget.is_none()
@@ -427,7 +426,10 @@ fn sinkhole_priority_order(
         || budgets.per_slot_char_budget.is_some();
     let newline_len = measure_cfg.newline.len();
 
-    if measure_cfg.show_fileset_headers && !measure_cfg.newline.is_empty() {
+    if measure_cfg.show_fileset_headers
+        && !measure_cfg.newline.is_empty()
+        && !measure_cfg.fileset_tree
+    {
         if let Some(names) = fileset_slot_names(order_build) {
             for (slot, name) in names.into_iter().enumerate() {
                 let mut stats = count_output_stats(
@@ -575,6 +577,7 @@ fn select_best_k(
                     mid,
                     &mut inclusion_flags,
                     current_render_id,
+                    true,
                 );
             } else {
                 crate::serialization::prepare_render_set_top_k_and_ancestors(
@@ -645,8 +648,9 @@ fn measure_config(
     let mut measure_cfg = config.clone();
     measure_cfg.color_enabled = false;
     if config.fileset_tree {
-        // Treat tree scaffolding as header-like: count it only when the caller
-        // opts in via count_fileset_headers_in_budgets.
+        // In tree mode, show_fileset_headers controls whether scaffold lines
+        // (pipes/gutters) render; respect the budget flag so scaffold can stay
+        // “free” when headers are excluded from budgets.
         measure_cfg.show_fileset_headers =
             config.count_fileset_headers_in_budgets;
     } else if config.show_fileset_headers
@@ -658,6 +662,23 @@ fn measure_config(
         measure_cfg.show_fileset_headers = false;
     }
     measure_cfg
+}
+
+fn adjust_tree_budgets(budgets: Budgets, cfg: &RenderConfig) -> Budgets {
+    if !cfg.fileset_tree || cfg.count_fileset_headers_in_budgets {
+        return budgets;
+    }
+    let slack = cfg.indent_unit.len().saturating_mul(4)
+        + cfg.newline.len().saturating_mul(4)
+        + 8;
+    Budgets {
+        byte_budget: budgets.byte_budget.map(|b| b.saturating_add(slack)),
+        char_budget: budgets.char_budget,
+        line_budget: budgets.line_budget,
+        per_slot_byte_budget: budgets.per_slot_byte_budget,
+        per_slot_char_budget: budgets.per_slot_char_budget,
+        per_slot_line_budget: budgets.per_slot_line_budget,
+    }
 }
 
 fn measure_must_keep(
@@ -813,6 +834,7 @@ fn mark_sinkhole_top_k_and_ancestors(
     top_k: usize,
     inclusion_flags: &mut Vec<u32>,
     render_id: u32,
+    apply_force_first_child: bool,
 ) {
     if inclusion_flags.len() < order_build.total_nodes {
         inclusion_flags.resize(order_build.total_nodes, 0);
@@ -846,12 +868,14 @@ fn mark_sinkhole_top_k_and_ancestors(
             }
         }
     }
-    enforce_force_first_child_custom(
-        order_build,
-        inclusion_flags,
-        render_id,
-        sinkhole_order,
-    );
+    if apply_force_first_child {
+        enforce_force_first_child_custom(
+            order_build,
+            inclusion_flags,
+            render_id,
+            sinkhole_order,
+        );
+    }
 }
 
 fn counts_toward_k(order_build: &PriorityOrder, node_idx: usize) -> bool {
