@@ -88,6 +88,25 @@ fn per_file_line_budget_zero_with_counted_headers_outputs_nothing() {
 }
 
 #[test]
+fn per_file_line_budget_zero_without_headers_outputs_nothing() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.txt", "a1\na2\n");
+    write_file(&dir, "b.txt", "b1\nb2\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--no-sort", "-n", "0", "a.txt", "b.txt"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.trim().is_empty(),
+        "per-file line budget of zero without headers should emit nothing: {stdout}"
+    );
+}
+
+#[test]
 fn per_file_byte_budget_prevents_starvation() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "long.txt", "abcdefg\nhijklmn\n");
@@ -295,13 +314,16 @@ fn global_line_budget_does_not_override_per_slot_cap() {
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     for prefix in ["a", "b", "c", "d"] {
         assert!(
-            stdout.contains(&format!("{prefix}1"))
-                && stdout.contains(&format!("{prefix}2")),
-            "each file should keep two lines under per-file cap: {stdout}"
+            stdout.contains(&format!("{prefix}1")),
+            "each file should keep at least the first line under per-file cap: {stdout}"
         );
         assert!(
-            !stdout.contains(&format!("{prefix}3")),
-            "per-file line cap should bind even when global budget is larger: {stdout}"
+            !stdout.contains(&format!("{prefix}2")),
+            "second line should be trimmed when omission marker must fit under the per-file cap: {stdout}"
+        );
+        assert!(
+            stdout.contains("…"),
+            "truncation marker should still appear while respecting per-file cap: {stdout}"
         );
     }
 }

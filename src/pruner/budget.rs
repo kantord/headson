@@ -116,7 +116,6 @@ pub fn find_largest_render_under_budgets(
     }
 
     if per_slot_caps_active
-        && config.count_fileset_headers_in_budgets
         && effective_budgets
             .per_slot_line_budget
             .is_some_and(|cap| cap == 0)
@@ -500,14 +499,6 @@ fn per_slot_render_fits(
             &slot_measure_cfg,
         );
         let stats = count_output_stats(&rendered, measure_chars);
-        let has_slot_node =
-            scratch_flags.iter().enumerate().any(|(idx, flag)| {
-                *flag == render_id
-                    && slot_map_ref
-                        .get(idx)
-                        .and_then(|s| *s)
-                        .is_some_and(|s| s == slot_idx)
-            });
         if budgets
             .per_slot_byte_budget
             .is_some_and(|cap| stats.bytes > cap)
@@ -520,17 +511,10 @@ fn per_slot_render_fits(
         {
             return false;
         }
-        if budgets.per_slot_line_budget.is_some_and(|cap| {
-            let allowance = if has_slot_node
-                && !measure_cfg.fileset_tree
-                && !measure_cfg.count_fileset_headers_in_budgets
-            {
-                cap.saturating_add(1)
-            } else {
-                cap
-            };
-            stats.lines > allowance
-        }) {
+        if budgets
+            .per_slot_line_budget
+            .is_some_and(|cap| stats.lines > cap)
+        {
             return false;
         }
     }
@@ -1189,39 +1173,23 @@ fn ensure_fileset_headers_for_empty_slots(
         if has_slot_node {
             continue;
         }
-        if count_headers_in_budgets {
-            let header_stats = if let Some(name) =
-                header_names.as_ref().and_then(|n| n.get(slot_idx))
-            {
-                let mut stats = count_output_stats(
-                    &format!("==> {name} <=="),
-                    measure_chars,
-                );
-                stats.lines = stats.lines.max(1);
-                stats.bytes = stats.bytes.saturating_add(newline_len);
-                if measure_chars {
-                    stats.chars = stats.chars.saturating_add(newline_len);
-                }
-                stats
-            } else {
-                OutputStats {
-                    bytes: newline_len,
-                    chars: if measure_chars { newline_len } else { 0 },
-                    lines: 1,
-                }
-            };
-            if budgets
-                .per_slot_byte_budget
-                .is_some_and(|cap| header_stats.bytes > cap)
-                || budgets
-                    .per_slot_char_budget
-                    .is_some_and(|cap| header_stats.chars > cap)
-                || budgets
-                    .per_slot_line_budget
-                    .is_some_and(|cap| header_stats.lines > cap)
-            {
-                continue;
-            }
+        if budgets.per_slot_line_budget.is_some_and(|cap| cap == 0)
+            || budgets.per_slot_byte_budget.is_some_and(|cap| cap == 0)
+            || budgets.per_slot_char_budget.is_some_and(|cap| cap == 0)
+        {
+            continue;
+        }
+        if count_headers_in_budgets
+            && header_stats_for_slot(
+                slot_idx,
+                &header_names,
+                measure_chars,
+                newline_len,
+                budgets,
+            )
+            .is_none()
+        {
+            continue;
         }
         if let Some(file_node) = fileset_children.get(slot_idx) {
             crate::utils::graph::mark_node_and_ancestors(
@@ -1246,6 +1214,46 @@ fn ensure_fileset_headers_for_empty_slots(
             }
         }
     }
+}
+
+fn header_stats_for_slot(
+    slot_idx: usize,
+    header_names: &Option<Vec<String>>,
+    measure_chars: bool,
+    newline_len: usize,
+    budgets: &Budgets,
+) -> Option<OutputStats> {
+    let header_stats = if let Some(name) =
+        header_names.as_ref().and_then(|n| n.get(slot_idx))
+    {
+        let mut stats =
+            count_output_stats(&format!("==> {name} <=="), measure_chars);
+        stats.lines = stats.lines.max(1);
+        stats.bytes = stats.bytes.saturating_add(newline_len);
+        if measure_chars {
+            stats.chars = stats.chars.saturating_add(newline_len);
+        }
+        stats
+    } else {
+        OutputStats {
+            bytes: newline_len,
+            chars: if measure_chars { newline_len } else { 0 },
+            lines: 1,
+        }
+    };
+    if budgets
+        .per_slot_byte_budget
+        .is_some_and(|cap| header_stats.bytes > cap)
+        || budgets
+            .per_slot_char_budget
+            .is_some_and(|cap| header_stats.chars > cap)
+        || budgets
+            .per_slot_line_budget
+            .is_some_and(|cap| header_stats.lines > cap)
+    {
+        return None;
+    }
+    Some(header_stats)
 }
 
 fn counts_toward_k(order_build: &PriorityOrder, node_idx: usize) -> bool {
