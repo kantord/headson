@@ -225,6 +225,8 @@ impl<'a> RenderScope<'a> {
     ) -> String {
         if self.config.count_fileset_headers_in_budgets
             && !self.node_has_included_descendants(child_id)
+            && !self.node_is_included_leaf(child_id)
+            && self.node_has_children(child_id)
         {
             // When headers consume the entire per-file budget, skip rendering
             // a body/omission marker so we don't exceed the caller’s cap.
@@ -281,6 +283,29 @@ impl<'a> RenderScope<'a> {
             }
         }
         false
+    }
+
+    fn node_has_children(&self, node_idx: usize) -> bool {
+        self.order
+            .children
+            .get(node_idx)
+            .map(|c| !c.is_empty())
+            .unwrap_or(false)
+    }
+
+    fn node_is_included_leaf(&self, node_idx: usize) -> bool {
+        self.inclusion_flags
+            .get(node_idx)
+            .copied()
+            .is_some_and(|flag| flag == self.render_set_id)
+            && matches!(
+                self.order.nodes.get(node_idx),
+                Some(
+                    crate::RankedNode::AtomicLeaf { .. }
+                        | crate::RankedNode::SplittableLeaf { .. }
+                        | crate::RankedNode::LeafPart { .. }
+                )
+            )
     }
 
     fn split_path_segments(raw_key: &str) -> Vec<String> {

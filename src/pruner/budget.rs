@@ -1179,18 +1179,21 @@ fn ensure_fileset_headers_for_empty_slots(
         {
             continue;
         }
-        if count_headers_in_budgets
-            && header_stats_for_slot(
-                slot_idx,
-                &header_names,
-                measure_chars,
-                newline_len,
-                budgets,
-            )
-            .is_none()
-        {
+        let header_stats = header_stats_for_slot(
+            slot_idx,
+            &header_names,
+            measure_chars,
+            newline_len,
+            budgets,
+        );
+        if count_headers_in_budgets && header_stats.is_none() {
             continue;
         }
+        let header_stats = header_stats.unwrap_or(OutputStats {
+            bytes: 0,
+            chars: 0,
+            lines: 0,
+        });
         if let Some(file_node) = fileset_children.get(slot_idx) {
             crate::utils::graph::mark_node_and_ancestors(
                 order_build,
@@ -1204,6 +1207,26 @@ fn ensure_fileset_headers_for_empty_slots(
                     file_node.0,
                     &priority_index,
                 ) {
+                    crate::utils::graph::mark_node_and_ancestors(
+                        order_build,
+                        best_child,
+                        inclusion_flags,
+                        render_id,
+                    );
+                }
+            } else if let Some(best_child) =
+                best_priority_child(order_build, file_node.0, &priority_index)
+            {
+                let mut delta = node_budget_cost(
+                    order_build,
+                    best_child.0,
+                    measure_chars,
+                    newline_len,
+                );
+                if delta.lines == 0 {
+                    delta.lines = 1;
+                }
+                if fits_per_slot(&header_stats, &delta, budgets) {
                     crate::utils::graph::mark_node_and_ancestors(
                         order_build,
                         best_child,

@@ -96,6 +96,37 @@ fn per_file_line_budget_one_with_counted_headers_emits_no_ellipsis() {
 }
 
 #[test]
+fn per_file_line_budget_leaves_room_for_minimal_bodies() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.json", "{}\n");
+    write_file(&dir, "b.yaml", "{}\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "-H",
+            "-n",
+            "2",
+            "a.json",
+            "b.yaml",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("==> a.json <==\n{}\n"),
+        "JSON body should still render when header + body fit under per-file cap: {stdout}"
+    );
+    assert!(
+        stdout.contains("==> b.yaml <==\n{}\n"),
+        "YAML body should also render under the same per-file cap: {stdout}"
+    );
+}
+
+#[test]
 fn per_file_line_budget_zero_with_counted_headers_outputs_nothing() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "a.txt", "a1\na2\n");
