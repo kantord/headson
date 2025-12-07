@@ -110,10 +110,11 @@ pub(crate) fn render_config_for_budgets(
     mut cfg: RenderConfig,
     effective: &EffectiveBudgets,
 ) -> RenderConfig {
-    if effective.budgets.byte_budget.is_none()
+    let line_only_mode = effective.budgets.byte_budget.is_none()
         && effective.budgets.char_budget.is_none()
-        && effective.budgets.line_budget.is_some()
-    {
+        && (effective.budgets.line_budget.is_some()
+            || effective.budgets.per_slot_line_budget.is_some());
+    if line_only_mode {
         cfg.string_free_prefix_graphemes =
             Some(LINE_ONLY_FREE_PREFIX_GRAPHEMES);
     }

@@ -110,6 +110,7 @@ pub fn find_largest_render_under_budgets(
             order_build,
             render_set_id,
             &mut inclusion_flags,
+            config.count_fileset_headers_in_budgets,
         );
     }
 
@@ -498,7 +499,10 @@ fn per_slot_render_fits(
             return false;
         }
         if budgets.per_slot_line_budget.is_some_and(|cap| {
-            let allowance = if has_slot_node && !measure_cfg.fileset_tree {
+            let allowance = if has_slot_node
+                && !measure_cfg.fileset_tree
+                && !measure_cfg.count_fileset_headers_in_budgets
+            {
                 cap.saturating_add(1)
             } else {
                 cap
@@ -1166,6 +1170,7 @@ fn ensure_fileset_headers_for_empty_slots(
     order_build: &PriorityOrder,
     render_id: u32,
     inclusion_flags: &mut Vec<u32>,
+    count_headers_in_budgets: bool,
 ) {
     let Some(slot_map) = compute_fileset_slot_map(order_build) else {
         return;
@@ -1208,15 +1213,19 @@ fn ensure_fileset_headers_for_empty_slots(
                 inclusion_flags,
                 render_id,
             );
-            if let Some(best_child) =
-                best_priority_child(order_build, file_node.0, &priority_index)
-            {
-                crate::utils::graph::mark_node_and_ancestors(
+            if !count_headers_in_budgets {
+                if let Some(best_child) = best_priority_child(
                     order_build,
-                    best_child,
-                    inclusion_flags,
-                    render_id,
-                );
+                    file_node.0,
+                    &priority_index,
+                ) {
+                    crate::utils::graph::mark_node_and_ancestors(
+                        order_build,
+                        best_child,
+                        inclusion_flags,
+                        render_id,
+                    );
+                }
             }
         }
     }

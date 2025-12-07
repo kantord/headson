@@ -1,12 +1,13 @@
 ---
 source: tests/per_slot_snapshots.rs
+assertion_line: 65
 expression: normalize(&out)
 ---
 .
 └─ tests/fixtures/tree_per_slot/
 │ ├─ a.txt
-│ │ …
+│ │ a1
 │ │ …
 │ ├─ b.txt
-│ │ …
+│ │ b1
 │ │ …

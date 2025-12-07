@@ -313,3 +313,34 @@ fn per_file_line_budget_does_not_drop_small_files() {
         "no omission markers expected when under budget: {stdout}"
     );
 }
+
+#[test]
+fn per_file_line_budget_keeps_string_prefix_in_line_only_mode() {
+    let dir = tempdir().expect("tmp");
+    write_file(
+        &dir,
+        "a.json",
+        &format!("{{\"long\":\"{}\"}}", "A".repeat(400)),
+    );
+    write_file(
+        &dir,
+        "b.json",
+        &format!("{{\"long\":\"{}\"}}", "B".repeat(400)),
+    );
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--no-sort", "-n", "1", "a.json", "b.json"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("AAAAA"),
+        "line-only per-file cap should still show a string prefix: {stdout}"
+    );
+    assert!(
+        stdout.contains("BBBBB"),
+        "line-only per-file cap should show a prefix for each slot: {stdout}"
+    );
+}
