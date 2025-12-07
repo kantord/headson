@@ -103,6 +103,7 @@ Notes:
 - Sorting: inputs are pre-sorted by git frecency (frecenfile) with last-modified-time fallback so recently touched files appear first. Pass `--no-sort` to preserve the order you provided and skip repo scanning.
 - Headers: fileset sections get `==>` headers when newlines are enabled; hide them with `--no-header`. Compact and single-line modes omit headers automatically.
 - Formats: in `--format auto`, each file picks JSON/YAML/Text based on extension; unknowns fall back to Text so mixed filesets “just work.”
+- Per-file caps: omission markers count toward per-file line budgets; a per-file line cap of zero suppresses file bodies (only headers render if they’re counted).
 
 ## Grep mode
 
