@@ -223,6 +223,13 @@ impl<'a> RenderScope<'a> {
         depth: usize,
         raw_key: &str,
     ) -> String {
+        if self.config.count_fileset_headers_in_budgets
+            && !self.node_has_included_descendants(child_id)
+        {
+            // When headers consume the entire per-file budget, skip rendering
+            // a body/omission marker so we don't exceed the caller’s cap.
+            return String::new();
+        }
         if matches!(self.config.template, OutputTemplate::Auto) {
             let template = self.fileset_template_for(raw_key);
             return self.render_node_to_string_with_template(
@@ -254,6 +261,26 @@ impl<'a> RenderScope<'a> {
                 }
             }
         }
+    }
+
+    fn node_has_included_descendants(&self, node_idx: usize) -> bool {
+        let mut stack: Vec<usize> = self
+            .order
+            .children
+            .get(node_idx)
+            .map(|kids| kids.iter().map(|k| k.0).collect())
+            .unwrap_or_default();
+        while let Some(idx) = stack.pop() {
+            if self.inclusion_flags.get(idx).copied()
+                == Some(self.render_set_id)
+            {
+                return true;
+            }
+            if let Some(kids) = self.order.children.get(idx) {
+                stack.extend(kids.iter().map(|k| k.0));
+            }
+        }
+        false
     }
 
     fn split_path_segments(raw_key: &str) -> Vec<String> {
