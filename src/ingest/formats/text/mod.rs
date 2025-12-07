@@ -77,7 +77,6 @@ impl TextArenaBuilder {
         children: Vec<usize>,
         child_orig_indices: Option<Vec<usize>>,
         bias_override: Option<ArrayBias>,
-        force_first_line: bool,
     ) -> usize {
         let id = self.push_default();
         let children_start = self.arena.children.len();
@@ -89,7 +88,6 @@ impl TextArenaBuilder {
         n.children_len = children_len;
         n.array_len = Some(children_len);
         n.array_bias_override = bias_override;
-        n.force_first_line = force_first_line;
         if let Some(orig) = child_orig_indices {
             let start = self.arena.arr_indices.len();
             self.arena.arr_indices.extend(orig);
@@ -119,7 +117,6 @@ impl TextArenaBuilder {
             n.children_len = total;
             n.array_len = Some(total);
             n.array_bias_override = bias_override;
-            n.force_first_line = false;
             n.arr_indices_start = 0;
             n.arr_indices_len = 0;
             return id;
@@ -138,7 +135,6 @@ impl TextArenaBuilder {
         n.children_len = kept;
         n.array_len = Some(total);
         n.array_bias_override = bias_override;
-        n.force_first_line = false;
         // Always store original indices for child arrays to enable global line numbering
         let start = self.arena.arr_indices.len();
         self.arena.arr_indices.extend(idxs.into_iter().take(kept));
@@ -395,13 +391,7 @@ fn push_code_tnode(
     } else {
         Some(ArrayBias::HeadTail)
     };
-    let force_first = depth == 0 && !n.text.trim().is_empty();
-    builder.push_array_with_children(
-        kids,
-        Some(origs),
-        bias_override,
-        force_first,
-    )
+    builder.push_array_with_children(kids, Some(origs), bias_override)
 }
 
 fn transcribe_code_tree(
