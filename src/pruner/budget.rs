@@ -80,7 +80,6 @@ pub fn find_largest_render_under_budgets(
             k,
             &mut inclusion_flags,
             render_set_id,
-            !config.fileset_tree,
             per_slot_caps_active,
         );
     } else {
@@ -774,7 +773,6 @@ fn select_best_k(
                     mid,
                     &mut inclusion_flags,
                     current_render_id,
-                    true,
                     per_slot_caps_active,
                 );
             } else {
@@ -1004,43 +1002,6 @@ fn build_priority_index_from_order(
     priority_index
 }
 
-fn enforce_force_first_child_custom(
-    order_build: &PriorityOrder,
-    inclusion_flags: &mut [u32],
-    render_id: u32,
-    priority_order: &[NodeId],
-) {
-    let priority_index = build_priority_index_from_order(
-        priority_order,
-        order_build.total_nodes,
-    );
-
-    for (idx, force) in order_build.force_first_child.iter().enumerate() {
-        if !force_child_parent_included(
-            inclusion_flags,
-            render_id,
-            *force,
-            idx,
-        ) {
-            continue;
-        }
-        let Some(best_child) =
-            best_priority_child(order_build, idx, &priority_index)
-        else {
-            continue;
-        };
-        if inclusion_flags[best_child.0] == render_id {
-            continue;
-        }
-        crate::utils::graph::mark_node_and_ancestors(
-            order_build,
-            best_child,
-            inclusion_flags,
-            render_id,
-        );
-    }
-}
-
 #[allow(
     clippy::cognitive_complexity,
     clippy::too_many_arguments,
@@ -1053,7 +1014,6 @@ fn mark_sinkhole_top_k_and_ancestors(
     top_k: usize,
     inclusion_flags: &mut Vec<u32>,
     render_id: u32,
-    apply_force_first_child: bool,
     per_slot_caps_active: bool,
 ) {
     if inclusion_flags.len() < order_build.total_nodes {
@@ -1152,14 +1112,6 @@ fn mark_sinkhole_top_k_and_ancestors(
             }
         }
     }
-    if apply_force_first_child {
-        enforce_force_first_child_custom(
-            order_build,
-            inclusion_flags,
-            render_id,
-            &order_build.by_priority,
-        );
-    }
 }
 
 #[allow(
@@ -1251,17 +1203,6 @@ fn counts_toward_k(order_build: &PriorityOrder, node_idx: usize) -> bool {
             .map(Vec::is_empty)
             .unwrap_or(true),
     }
-}
-
-fn force_child_parent_included(
-    inclusion_flags: &[u32],
-    render_id: u32,
-    force: bool,
-    idx: usize,
-) -> bool {
-    let included =
-        inclusion_flags.get(idx).copied().unwrap_or_default() == render_id;
-    force && included
 }
 
 fn best_priority_child(

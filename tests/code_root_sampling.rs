@@ -334,16 +334,23 @@ fn fileset_code_line_numbers_remain_plain() {
 }
 
 #[test]
-fn fileset_code_small_budget_keeps_each_file_nonempty() {
+fn fileset_code_small_budget_lists_all_files() {
     let out = run_large_code_fileset_small_budget();
     let counts = fileset_section_line_counts(&out);
-    let missing: Vec<String> = counts
-        .into_iter()
-        .filter_map(|(name, count)| if count == 0 { Some(name) } else { None })
+    let seen: Vec<String> = counts.into_iter().map(|(name, _)| name).collect();
+    let missing: Vec<String> = CODE_FILESET_PATHS
+        .iter()
+        .filter_map(|path| {
+            if seen.iter().any(|name| name.ends_with(path)) {
+                None
+            } else {
+                Some((*path).to_string())
+            }
+        })
         .collect();
     assert!(
         missing.is_empty(),
-        "expected every fileset section to include at least one line, missing: {missing:?}\n{out}"
+        "expected a section header for every file even under tight budgets, missing headers for: {missing:?}\n{out}"
     );
 }
 

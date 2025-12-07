@@ -834,76 +834,6 @@ fn escape_json_fragment(s: &str) -> String {
     quoted[1..quoted.len() - 1].to_string()
 }
 
-/// Prepare a render set by including the first `top_k` nodes by priority
-/// and all of their ancestors so the output remains structurally valid.
-fn enforce_force_first_child(
-    order_build: &PriorityOrder,
-    inclusion_flags: &mut [u32],
-    render_id: u32,
-) {
-    let priority_index = build_priority_index(order_build);
-
-    for (idx, force) in order_build.force_first_child.iter().enumerate() {
-        if !force_child_parent_included(
-            inclusion_flags,
-            render_id,
-            *force,
-            idx,
-        ) {
-            continue;
-        }
-        let Some(best_child) =
-            best_priority_child(order_build, idx, &priority_index)
-        else {
-            continue;
-        };
-        if inclusion_flags[best_child.0] == render_id {
-            continue;
-        }
-        crate::utils::graph::mark_node_and_ancestors(
-            order_build,
-            best_child,
-            inclusion_flags,
-            render_id,
-        );
-    }
-}
-
-fn build_priority_index(order_build: &PriorityOrder) -> Vec<usize> {
-    let mut priority_index = vec![usize::MAX; order_build.total_nodes];
-    for (idx, nid) in order_build.by_priority.iter().enumerate() {
-        if let Some(slot) = priority_index.get_mut(nid.0) {
-            *slot = idx;
-        }
-    }
-    priority_index
-}
-
-fn force_child_parent_included(
-    inclusion_flags: &[u32],
-    render_id: u32,
-    force: bool,
-    idx: usize,
-) -> bool {
-    let included =
-        inclusion_flags.get(idx).copied().unwrap_or_default() == render_id;
-    force && included
-}
-
-fn best_priority_child(
-    order_build: &PriorityOrder,
-    parent_idx: usize,
-    priority_index: &[usize],
-) -> Option<NodeId> {
-    let children = order_build.children.get(parent_idx)?;
-    children
-        .iter()
-        .min_by_key(|cid| {
-            priority_index.get(cid.0).copied().unwrap_or(usize::MAX)
-        })
-        .copied()
-}
-
 pub fn prepare_render_set_top_k_and_ancestors(
     order_build: &PriorityOrder,
     top_k: usize,
@@ -920,7 +850,6 @@ pub fn prepare_render_set_top_k_and_ancestors(
         inclusion_flags,
         render_id,
     );
-    enforce_force_first_child(order_build, inclusion_flags, render_id);
 }
 
 /// Render using a previously prepared render set (inclusion flags matching `render_id`).
@@ -1915,7 +1844,7 @@ mod tests {
     }
 
     #[test]
-    fn force_child_prefers_highest_priority_child() {
+    fn force_child_hooks_removed() {
         // Parent has two children; child with PQ id 2 has higher global priority
         // than child with PQ id 1, but force-first-child currently pulls the
         // first listed child. This captures the undesired behavior.
@@ -1956,14 +1885,14 @@ mod tests {
             &order, 1, &mut flags, render_id,
         );
         assert_eq!(
-            flags.get(2).copied().unwrap_or_default(),
-            render_id,
-            "expected highest-priority child to be pulled in alongside force-first parent"
-        );
-        assert_ne!(
             flags.get(1).copied().unwrap_or_default(),
-            render_id,
-            "lower-priority first child should not be forced when a higher-priority sibling exists"
+            0,
+            "force-first hooks removed: children should not be added when only the parent is selected"
+        );
+        assert_eq!(
+            flags.get(2).copied().unwrap_or_default(),
+            0,
+            "force-first hooks removed: higher-priority siblings should also remain unselected"
         );
     }
 }

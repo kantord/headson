@@ -1,6 +1,5 @@
 ---
 source: tests/per_slot_snapshots.rs
-assertion_line: 83
 expression: normalize(&out)
 ---
 .
@@ -8,13 +7,13 @@ expression: normalize(&out)
 │ ├─ d.txt
 │ │ d1
 │ │ d2
-│ ├─ c.txt
-│ │ c1
-│ │ c2
-│ │ …
 │ ├─ b.txt
 │ │ b1
 │ │ b2
+│ │ …
+│ ├─ c.txt
+│ │ c1
+│ │ c2
 │ │ …
 │ ├─ a.txt
 │ │ a1
