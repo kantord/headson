@@ -109,8 +109,31 @@ pub fn find_largest_render_under_budgets(
             order_build,
             render_set_id,
             &mut inclusion_flags,
+            &effective_budgets,
+            &measure_cfg,
             config.count_fileset_headers_in_budgets,
         );
+    }
+
+    if per_slot_caps_active
+        && config.count_fileset_headers_in_budgets
+        && effective_budgets
+            .per_slot_line_budget
+            .is_some_and(|cap| cap == 0)
+    {
+        if let Some(slot_map) = compute_fileset_slot_map(order_build) {
+            let has_included_slot =
+                inclusion_flags.iter().enumerate().any(|(idx, flag)| {
+                    *flag == render_set_id
+                        && slot_map
+                            .get(idx)
+                            .and_then(|s| *s)
+                            .is_some_and(|_| true)
+                });
+            if !has_included_slot {
+                return String::new();
+            }
+        }
     }
 
     if config.debug {
@@ -1122,6 +1145,8 @@ fn ensure_fileset_headers_for_empty_slots(
     order_build: &PriorityOrder,
     render_id: u32,
     inclusion_flags: &mut Vec<u32>,
+    budgets: &Budgets,
+    measure_cfg: &RenderConfig,
     count_headers_in_budgets: bool,
 ) {
     let Some(slot_map) = compute_fileset_slot_map(order_build) else {
@@ -1146,6 +1171,10 @@ fn ensure_fileset_headers_for_empty_slots(
     if inclusion_flags.len() < order_build.total_nodes {
         inclusion_flags.resize(order_build.total_nodes, 0);
     }
+    let measure_chars = budgets.char_budget.is_some()
+        || budgets.per_slot_char_budget.is_some();
+    let header_names = fileset_slot_names(order_build);
+    let newline_len = measure_cfg.newline.len();
     for slot_idx in 0..slot_count {
         let has_slot_node =
             inclusion_flags.iter().enumerate().any(|(idx, flag)| {
@@ -1157,6 +1186,40 @@ fn ensure_fileset_headers_for_empty_slots(
             });
         if has_slot_node {
             continue;
+        }
+        if count_headers_in_budgets {
+            let header_stats = if let Some(name) =
+                header_names.as_ref().and_then(|n| n.get(slot_idx))
+            {
+                let mut stats = count_output_stats(
+                    &format!("==> {name} <=="),
+                    measure_chars,
+                );
+                stats.lines = stats.lines.max(1);
+                stats.bytes = stats.bytes.saturating_add(newline_len);
+                if measure_chars {
+                    stats.chars = stats.chars.saturating_add(newline_len);
+                }
+                stats
+            } else {
+                OutputStats {
+                    bytes: newline_len,
+                    chars: if measure_chars { newline_len } else { 0 },
+                    lines: 1,
+                }
+            };
+            if budgets
+                .per_slot_byte_budget
+                .is_some_and(|cap| header_stats.bytes > cap)
+                || budgets
+                    .per_slot_char_budget
+                    .is_some_and(|cap| header_stats.chars > cap)
+                || budgets
+                    .per_slot_line_budget
+                    .is_some_and(|cap| header_stats.lines > cap)
+            {
+                continue;
+            }
         }
         if let Some(file_node) = fileset_children.get(slot_idx) {
             crate::utils::graph::mark_node_and_ancestors(

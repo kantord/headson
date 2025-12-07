@@ -69,6 +69,25 @@ fn per_file_line_budget_counts_headers() {
 }
 
 #[test]
+fn per_file_line_budget_zero_with_counted_headers_outputs_nothing() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.txt", "a1\na2\n");
+    write_file(&dir, "b.txt", "b1\nb2\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--no-sort", "-H", "-n", "0", "a.txt", "b.txt"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.trim().is_empty(),
+        "per-file line budget of zero with counted headers should emit nothing: {stdout}"
+    );
+}
+
+#[test]
 fn per_file_byte_budget_prevents_starvation() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "long.txt", "abcdefg\nhijklmn\n");
