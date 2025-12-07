@@ -99,7 +99,7 @@ Notes:
 
 ### Working with multiple files
 
-- Budgets: per-file caps (`--bytes`/`--chars`/`--lines`) apply to each input; global caps (`--global-*`) constrain the combined output. Default byte budget scales by input count when no globals are set.
+- Budgets: per-file caps (`--bytes`/`--chars`/`--lines`) apply to each input; global caps (`--global-*`) constrain the combined output when set. Default byte/char budgets scale by input count when no globals are set; line caps stay per-file unless you pass `--global-lines`.
 - Sorting: inputs are pre-sorted by git frecency (frecenfile) with last-modified-time fallback so recently touched files appear first. Pass `--no-sort` to preserve the order you provided and skip repo scanning.
 - Headers: fileset sections get `==>` headers when newlines are enabled; hide them with `--no-header`. Compact and single-line modes omit headers automatically.
 - Formats: in `--format auto`, each file picks JSON/YAML/Text based on extension; unknowns fall back to Text so mixed filesets “just work.”
@@ -127,8 +127,8 @@ Use `--tree` to render filesets as a directory tree (like `tree`) with inline st
 
 - Layout: classic tree branches (`├─`, `│`, `└─`) with continuous guides; code gutters stay visible under the tree prefix.
 - Headers: `--tree` is mutually exclusive with `--no-header`; tree mode never prints `==>` headers and relies on the tree structure instead. Files are still auto-formatted per extension (`--format` must be `auto` for filesets).
-- Budgets: tree scaffolding is treated like headers (free unless you set `--count-headers`); per-file/global budgets still apply to file content and omission markers. Tight budgets can truncate file previews within the tree, and entire files may be omitted under tiny global line budgets—omitted entries are reported as `… N more items` on the relevant folder/root. When scaffold is free, the final output can exceed the requested caps by the tree gutters/indentation; set `--count-headers` if those characters must be bounded.
-- Empty sections: under very small per-file/global caps, files or code blocks may render only their header/tree entry with no body; omission markers appear only when at least one child fits. This is expected when nothing fits beneath the budget.
+- Budgets: tree scaffolding is treated like headers (free unless you set `--count-headers`); per-file budgets always apply to file content and omission markers, and global caps apply only when provided. Tight budgets can truncate file previews within the tree, and entire files may be omitted under tiny global line budgets—omitted entries are reported as `… N more items` on the relevant folder/root. When scaffold is free, the final output can exceed the requested caps by the tree gutters/indentation; set `--count-headers` if those characters must be bounded.
+- Empty sections: under very small per-file caps (or a tiny global cap, if set), files or code blocks may render only their header/tree entry with no body; omission markers appear only when at least one child fits. This is expected when nothing fits beneath the budget.
 - Sorting: respects `--no-sort`; otherwise uses the usual frecency/mtime ordering before tree grouping.
 - Fairness: file contents are interleaved round‑robin in the priority order so later files still surface under tight budgets.
 ## Budget Modes
@@ -144,7 +144,7 @@ Use `--tree` to render filesets as a directory tree (like `tree`) with inline st
 - Lines (`-n/--lines`, `-N/--global-lines`)
   - Caps the number of lines in the output.
   - Incompatible with `--no-newline`.
-  - Multiple inputs: defaults to `<LINES> * number_of_inputs`; `--global-lines` caps the total.
+  - Multiple inputs: `<LINES>` is enforced per file; add `--global-lines` if you also need an aggregate cap.
   - Fileset headers, blank separators, and summary lines do not count toward the line cap by default; only actual content lines are considered. Pass `-H/--count-headers` to include headers/summaries in the line budget.
 
 - Interactions and precedence

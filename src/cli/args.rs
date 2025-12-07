@@ -23,7 +23,7 @@ pub struct Cli {
         short = 'n',
         long = "lines",
         value_name = "LINES",
-        help = "Per-file line budget (adds up across files if --global-lines not set). Fileset headers/summary lines do not consume this budget."
+        help = "Per-file line budget. Pass --global-lines to also cap the total across inputs. Fileset headers/summary lines do not consume this budget."
     )]
     pub lines: Option<usize>,
     #[arg(
