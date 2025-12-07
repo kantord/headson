@@ -682,7 +682,9 @@ fn effective_budgets_with_grep(
             || budgets.per_slot_char_budget.is_some(),
     );
     // Expand the budgets to cover must-keep matches; the search phase will subtract
-    // this cost so caps apply only to non-matching content.
+    // this cost so caps apply only to non-matching content. Per-slot caps remain
+    // as-is; later selection still forces must-keep matches even if they exceed a
+    // per-file cap, matching the “strong grep makes matches free” contract.
     add_budgets(budgets, cost)
 }
 
