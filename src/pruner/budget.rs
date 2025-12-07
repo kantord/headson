@@ -31,7 +31,6 @@ pub fn find_largest_render_under_budgets(
         return String::new();
     }
     let measure_cfg = measure_config(order_build, config);
-    let search_budgets = adjust_tree_budgets(budgets, &measure_cfg);
     let mut grep_state = compute_grep_state(order_build, grep);
     if !grep.weak
         && grep.show == GrepShow::Matching
@@ -55,7 +54,7 @@ pub fn find_largest_render_under_budgets(
         order_build,
         &measure_cfg,
         grep,
-        search_budgets,
+        budgets,
         &grep_state,
     );
     let min_k = min_k_for(&grep_state, grep);
@@ -877,23 +876,6 @@ fn measure_config(
         measure_cfg.show_fileset_headers = false;
     }
     measure_cfg
-}
-
-fn adjust_tree_budgets(budgets: Budgets, cfg: &RenderConfig) -> Budgets {
-    if !cfg.fileset_tree || cfg.count_fileset_headers_in_budgets {
-        return budgets;
-    }
-    let slack = cfg.indent_unit.len().saturating_mul(4)
-        + cfg.newline.len().saturating_mul(4)
-        + 8;
-    Budgets {
-        byte_budget: budgets.byte_budget.map(|b| b.saturating_add(slack)),
-        char_budget: budgets.char_budget,
-        line_budget: budgets.line_budget,
-        per_slot_byte_budget: budgets.per_slot_byte_budget,
-        per_slot_char_budget: budgets.per_slot_char_budget,
-        per_slot_line_budget: budgets.per_slot_line_budget,
-    }
 }
 
 fn measure_must_keep(
