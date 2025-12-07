@@ -53,8 +53,9 @@ fn snapshot_tree_per_slot_line_cap() {
         .args([
             "--no-color",
             "--tree",
-            "--glob",
-            "tests/fixtures/tree_per_slot/*.txt",
+            "--no-sort",
+            "tests/fixtures/tree_per_slot/a.txt",
+            "tests/fixtures/tree_per_slot/b.txt",
             "-n",
             "1",
         ])
@@ -71,8 +72,11 @@ fn snapshot_tree_per_slot_varied_line_cap() {
         .args([
             "--no-color",
             "--tree",
-            "--glob",
-            "tests/fixtures/tree_per_slot_varied/*.txt",
+            "--no-sort",
+            "tests/fixtures/tree_per_slot_varied/a.txt",
+            "tests/fixtures/tree_per_slot_varied/b.txt",
+            "tests/fixtures/tree_per_slot_varied/c.txt",
+            "tests/fixtures/tree_per_slot_varied/d.txt",
             "-n",
             "3",
         ])

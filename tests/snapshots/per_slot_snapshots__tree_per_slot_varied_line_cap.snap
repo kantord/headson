@@ -4,18 +4,18 @@ expression: normalize(&out)
 ---
 .
 └─ tests/fixtures/tree_per_slot_varied/
-│ ├─ d.txt
-│ │ d1
-│ │ d2
-│ ├─ c.txt
-│ │ c1
-│ │ c2
+│ ├─ a.txt
+│ │ a1
+│ │ a3
 │ │ …
 │ ├─ b.txt
 │ │ b1
 │ │ b2
 │ │ …
-│ ├─ a.txt
-│ │ a1
-│ │ a3
+│ ├─ c.txt
+│ │ c1
+│ │ c2
 │ │ …
+│ ├─ d.txt
+│ │ d1
+│ │ d2
