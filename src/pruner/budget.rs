@@ -101,6 +101,17 @@ pub fn find_largest_render_under_budgets(
             );
         }
     }
+    if per_slot_caps_active
+        && budgets.byte_budget.is_none()
+        && budgets.char_budget.is_none()
+        && budgets.line_budget.is_none()
+    {
+        ensure_fileset_headers_for_empty_slots(
+            order_build,
+            render_set_id,
+            &mut inclusion_flags,
+        );
+    }
 
     if config.debug {
         crate::debug::emit_render_debug(
@@ -397,6 +408,93 @@ fn fits_per_slot(
     true
 }
 
+fn per_slot_render_fits(
+    order_build: &PriorityOrder,
+    measure_cfg: &RenderConfig,
+    budgets: &Budgets,
+    slot_map: &Option<Vec<Option<usize>>>,
+    slot_count: Option<usize>,
+    inclusion_flags: &[u32],
+    render_id: u32,
+    measure_chars: bool,
+    scratch_flags: &mut Vec<u32>,
+) -> bool {
+    let Some(map) = slot_map.as_ref() else {
+        return true;
+    };
+    let Some(count) = slot_count else {
+        return true;
+    };
+    if scratch_flags.len() < inclusion_flags.len() {
+        scratch_flags.resize(inclusion_flags.len(), 0);
+    }
+    for slot_idx in 0..count {
+        for (idx, flag) in inclusion_flags.iter().enumerate() {
+            if *flag != render_id {
+                scratch_flags[idx] = 0;
+                continue;
+            }
+            let node_slot = map.get(idx).and_then(|s| *s);
+            if node_slot.is_some_and(|s| s != slot_idx) {
+                scratch_flags[idx] = 0;
+            } else {
+                scratch_flags[idx] = render_id;
+            }
+        }
+        let slot_measure_cfg = if measure_cfg.fileset_tree {
+            let mut cfg = measure_cfg.clone();
+            // Measure content-only for per-slot fit in tree mode so scaffold does not
+            // dominate the per-file budget; final render still uses tree scaffold.
+            cfg.fileset_tree = false;
+            cfg.show_fileset_headers = false;
+            cfg
+        } else {
+            measure_cfg.clone()
+        };
+        let rendered = crate::serialization::render_from_render_set(
+            order_build,
+            scratch_flags,
+            render_id,
+            &slot_measure_cfg,
+        );
+        let stats = count_output_stats(&rendered, measure_chars);
+        let has_slot_node = scratch_flags.iter().enumerate().any(|(idx, flag)| {
+            *flag == render_id
+                && slot_map
+                    .as_ref()
+                    .and_then(|map| map.get(idx))
+                    .and_then(|s| *s)
+                    .is_some_and(|s| s == slot_idx)
+        });
+        if budgets
+            .per_slot_byte_budget
+            .is_some_and(|cap| stats.bytes > cap)
+        {
+            return false;
+        }
+        if budgets
+            .per_slot_char_budget
+            .is_some_and(|cap| stats.chars > cap)
+        {
+            return false;
+        }
+        if budgets
+            .per_slot_line_budget
+            .is_some_and(|cap| {
+                let allowance = if has_slot_node && !measure_cfg.fileset_tree {
+                    cap.saturating_add(1)
+                } else {
+                    cap
+                };
+                stats.lines > allowance
+            })
+        {
+            return false;
+        }
+    }
+    true
+}
+
 #[allow(
     clippy::cognitive_complexity,
     reason = "Single-pass fileset walk; inlining keeps the budget flow readable."
@@ -580,7 +678,11 @@ fn select_best_k(
     must_keep: Option<&[bool]>,
 ) -> (usize, Vec<u32>, u32, Option<Vec<NodeId>>) {
     let total = order_build.total_nodes;
-    let base_lo = if must_keep.is_some() { 1 } else { min_k.max(1) };
+    let allow_zero = must_keep.is_none()
+        && (budgets.per_slot_byte_budget.is_some()
+            || budgets.per_slot_char_budget.is_some()
+            || budgets.per_slot_line_budget.is_some());
+    let base_lo = if allow_zero { 0 } else if must_keep.is_some() { 1 } else { min_k.max(1) };
     let sinkhole_order =
         sinkhole_priority_order(order_build, measure_cfg, &budgets, must_keep);
     let selection_order_ref = sinkhole_order
@@ -605,6 +707,7 @@ fn select_best_k(
     let effective_hi = hi.max(effective_lo);
 
     let mut inclusion_flags: Vec<u32> = vec![0; total];
+    let mut per_slot_flags: Vec<u32> = Vec::new();
 
     let mut render_set_id: u32 = 1;
     let mut best_k: Option<usize> = None;
@@ -614,6 +717,14 @@ fn select_best_k(
     let per_slot_caps_active = budgets.per_slot_byte_budget.is_some()
         || budgets.per_slot_char_budget.is_some()
         || budgets.per_slot_line_budget.is_some();
+    let slot_map = if per_slot_caps_active {
+        compute_fileset_slot_map(order_build)
+    } else {
+        None
+    };
+    let slot_count = slot_map
+        .as_ref()
+        .and_then(|map| map.iter().flatten().max().map(|s| *s + 1));
     let search_budgets_excluding_must_keep = if let Some(flags) = must_keep {
         let mk =
             measure_must_keep(order_build, measure_cfg, flags, measure_chars);
@@ -624,7 +735,7 @@ fn select_best_k(
         budgets
     };
     let apply_must_keep = must_keep.is_some();
-    let effective_min_k = if apply_must_keep { effective_lo } else { 1 };
+    let effective_min_k = if apply_must_keep { effective_lo } else { 0 };
     let _ = crate::pruner::search::binary_search_max(
         effective_lo.max(effective_min_k),
         effective_hi,
@@ -675,8 +786,23 @@ fn select_best_k(
             let fits_lines = search_budgets_excluding_must_keep
                 .line_budget
                 .is_none_or(|cap| stats.lines <= cap);
+            let fits_per_slot = if per_slot_caps_active {
+                per_slot_render_fits(
+                    order_build,
+                    measure_cfg,
+                    &search_budgets_excluding_must_keep,
+                    &slot_map,
+                    slot_count,
+                    &inclusion_flags,
+                    current_render_id,
+                    measure_chars,
+                    &mut per_slot_flags,
+                )
+            } else {
+                true
+            };
             render_set_id = render_set_id.wrapping_add(1).max(1);
-            if fits_bytes && fits_chars && fits_lines {
+            if fits_bytes && fits_chars && fits_lines && fits_per_slot {
                 best_k = Some(mid);
                 true
             } else {
@@ -1024,6 +1150,59 @@ fn mark_sinkhole_top_k_and_ancestors(
             render_id,
             &order_build.by_priority,
         );
+    }
+}
+
+fn ensure_fileset_headers_for_empty_slots(
+    order_build: &PriorityOrder,
+    render_id: u32,
+    inclusion_flags: &mut Vec<u32>,
+) {
+    let Some(slot_map) = compute_fileset_slot_map(order_build) else {
+        return;
+    };
+    let slot_count = slot_map.iter().flatten().max().map(|s| *s + 1).unwrap_or(0);
+    if slot_count == 0 {
+        return;
+    }
+    let priority_index =
+        build_priority_index_from_order(&order_build.by_priority, order_build.total_nodes);
+    let children = order_build
+        .fileset_children
+        .as_deref()
+        .or_else(|| order_build.children.get(ROOT_PQ_ID).map(|v| &**v));
+    let Some(fileset_children) = children else {
+        return;
+    };
+    if inclusion_flags.len() < order_build.total_nodes {
+        inclusion_flags.resize(order_build.total_nodes, 0);
+    }
+    for slot_idx in 0..slot_count {
+        let has_slot_node = inclusion_flags
+            .iter()
+            .enumerate()
+            .any(|(idx, flag)| *flag == render_id && slot_map.get(idx).and_then(|s| *s).is_some_and(|s| s == slot_idx));
+        if has_slot_node {
+            continue;
+        }
+        if let Some(file_node) = fileset_children.get(slot_idx) {
+            crate::utils::graph::mark_node_and_ancestors(
+                order_build,
+                *file_node,
+                inclusion_flags,
+                render_id,
+            );
+            if let Some(best_child) =
+                best_priority_child(order_build, file_node.0, &priority_index)
+            {
+                crate::utils::graph::mark_node_and_ancestors(
+                    order_build,
+                    best_child,
+                    inclusion_flags,
+                    render_id,
+                );
+            }
+        }
     }
 }
 

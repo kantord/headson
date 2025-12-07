@@ -212,6 +212,37 @@ fn tree_remains_plain_when_color_disabled() {
 }
 
 #[test]
+fn tree_respects_per_file_line_budget() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("a.txt"), "a1\na2\na3\n");
+    write_file(&dir.path().join("b.txt"), "b1\nb2\nb3\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--no-sort", "--tree", "-n", "2", "a.txt", "b.txt"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("├─ a.txt"),
+        "first file should appear in tree: {stdout}"
+    );
+    assert!(
+        stdout.contains("├─ b.txt"),
+        "second file should appear in tree: {stdout}"
+    );
+    assert!(
+        stdout.contains("a1") && stdout.contains("b1"),
+        "each file should keep head content under per-file cap: {stdout}"
+    );
+    assert!(
+        !stdout.contains("a2") && !stdout.contains("b2"),
+        "content beyond the per-file line budget should be omitted: {stdout}"
+    );
+}
+
+#[test]
 fn tree_with_grep_keeps_match_highlights_and_colored_pipes() {
     let dir = tempdir().expect("tmp");
     write_file(&dir.path().join("c.json"), r#"{"k":"needle","x":"other"}"#);
