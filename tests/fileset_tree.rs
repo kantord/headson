@@ -219,7 +219,15 @@ fn tree_respects_per_file_line_budget() {
 
     let assert = cargo_bin_cmd!("hson")
         .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "--tree", "-n", "2", "a.txt", "b.txt"])
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--tree",
+            "-n",
+            "2",
+            "a.txt",
+            "b.txt",
+        ])
         .assert()
         .success();
 

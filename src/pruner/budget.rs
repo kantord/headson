@@ -17,6 +17,7 @@ pub struct Budgets {
 
 #[allow(
     clippy::cognitive_complexity,
+    clippy::too_many_lines,
     reason = "Top-level orchestrator; splitting would obscure the budget/search flow"
 )]
 pub fn find_largest_render_under_budgets(
@@ -408,6 +409,11 @@ fn fits_per_slot(
     true
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    clippy::too_many_arguments,
+    reason = "Per-slot render check needs the full context; splitting would hide the budget wiring"
+)]
 fn per_slot_render_fits(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
@@ -424,7 +430,7 @@ fn per_slot_render_fits(
     // measurement reflects only charged content; when headers count, keep the
     // tree scaffold so gutters and headers consume budget. Final output still
     // uses the caller’s render config.
-    let Some(map) = slot_map.as_ref() else {
+    let Some(slot_map_ref) = slot_map.as_ref() else {
         return true;
     };
     let Some(count) = slot_count else {
@@ -439,7 +445,7 @@ fn per_slot_render_fits(
                 scratch_flags[idx] = 0;
                 continue;
             }
-            let node_slot = map.get(idx).and_then(|s| *s);
+            let node_slot = slot_map_ref.get(idx).and_then(|s| *s);
             if node_slot.is_some_and(|s| s != slot_idx) {
                 scratch_flags[idx] = 0;
             } else {
@@ -469,14 +475,14 @@ fn per_slot_render_fits(
             &slot_measure_cfg,
         );
         let stats = count_output_stats(&rendered, measure_chars);
-        let has_slot_node = scratch_flags.iter().enumerate().any(|(idx, flag)| {
-            *flag == render_id
-                && slot_map
-                    .as_ref()
-                    .and_then(|map| map.get(idx))
-                    .and_then(|s| *s)
-                    .is_some_and(|s| s == slot_idx)
-        });
+        let has_slot_node =
+            scratch_flags.iter().enumerate().any(|(idx, flag)| {
+                *flag == render_id
+                    && slot_map_ref
+                        .get(idx)
+                        .and_then(|s| *s)
+                        .is_some_and(|s| s == slot_idx)
+            });
         if budgets
             .per_slot_byte_budget
             .is_some_and(|cap| stats.bytes > cap)
@@ -489,17 +495,14 @@ fn per_slot_render_fits(
         {
             return false;
         }
-        if budgets
-            .per_slot_line_budget
-            .is_some_and(|cap| {
-                let allowance = if has_slot_node && !measure_cfg.fileset_tree {
-                    cap.saturating_add(1)
-                } else {
-                    cap
-                };
-                stats.lines > allowance
-            })
-        {
+        if budgets.per_slot_line_budget.is_some_and(|cap| {
+            let allowance = if has_slot_node && !measure_cfg.fileset_tree {
+                cap.saturating_add(1)
+            } else {
+                cap
+            };
+            stats.lines > allowance
+        }) {
             return false;
         }
     }
@@ -693,7 +696,13 @@ fn select_best_k(
         && (budgets.per_slot_byte_budget.is_some()
             || budgets.per_slot_char_budget.is_some()
             || budgets.per_slot_line_budget.is_some());
-    let base_lo = if allow_zero { 0 } else if must_keep.is_some() { 1 } else { min_k.max(1) };
+    let base_lo = if allow_zero {
+        0
+    } else if must_keep.is_some() {
+        1
+    } else {
+        min_k.max(1)
+    };
     let sinkhole_order =
         sinkhole_priority_order(order_build, measure_cfg, &budgets, must_keep);
     let selection_order_ref = sinkhole_order
@@ -1164,6 +1173,10 @@ fn mark_sinkhole_top_k_and_ancestors(
     }
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Single walk over render flags; splitting would obscure the slot/header handling."
+)]
 fn ensure_fileset_headers_for_empty_slots(
     order_build: &PriorityOrder,
     render_id: u32,
@@ -1172,12 +1185,15 @@ fn ensure_fileset_headers_for_empty_slots(
     let Some(slot_map) = compute_fileset_slot_map(order_build) else {
         return;
     };
-    let slot_count = slot_map.iter().flatten().max().map(|s| *s + 1).unwrap_or(0);
+    let slot_count =
+        slot_map.iter().flatten().max().map(|s| *s + 1).unwrap_or(0);
     if slot_count == 0 {
         return;
     }
-    let priority_index =
-        build_priority_index_from_order(&order_build.by_priority, order_build.total_nodes);
+    let priority_index = build_priority_index_from_order(
+        &order_build.by_priority,
+        order_build.total_nodes,
+    );
     let children = order_build
         .fileset_children
         .as_deref()
@@ -1189,10 +1205,14 @@ fn ensure_fileset_headers_for_empty_slots(
         inclusion_flags.resize(order_build.total_nodes, 0);
     }
     for slot_idx in 0..slot_count {
-        let has_slot_node = inclusion_flags
-            .iter()
-            .enumerate()
-            .any(|(idx, flag)| *flag == render_id && slot_map.get(idx).and_then(|s| *s).is_some_and(|s| s == slot_idx));
+        let has_slot_node =
+            inclusion_flags.iter().enumerate().any(|(idx, flag)| {
+                *flag == render_id
+                    && slot_map
+                        .get(idx)
+                        .and_then(|s| *s)
+                        .is_some_and(|s| s == slot_idx)
+            });
         if has_slot_node {
             continue;
         }
