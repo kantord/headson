@@ -39,6 +39,44 @@ fn per_file_line_budget_respected() {
 }
 
 #[test]
+fn per_file_line_budget_keeps_context_with_strong_grep() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.txt", "alpha\nneedle1\nbeta\nneedle2\ngamma\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--grep",
+            "needle",
+            "--grep-show",
+            "all",
+            "-n",
+            "3",
+            "a.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("alpha")
+            && stdout.contains("beta")
+            && stdout.contains("gamma"),
+        "per-file line cap should apply to non-matching context when grep makes matches free: {stdout}"
+    );
+    assert!(
+        stdout.contains("needle1") && stdout.contains("needle2"),
+        "strong grep should still force matches even if they exceed the cap: {stdout}"
+    );
+    assert!(
+        !stdout.contains('…'),
+        "all non-matching context should fit under the per-file cap once matches are free: {stdout}"
+    );
+}
+
+#[test]
 fn per_file_line_budget_counts_headers() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "a.txt", "a1\na2\n");

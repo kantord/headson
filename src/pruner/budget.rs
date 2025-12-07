@@ -447,6 +447,7 @@ fn per_slot_render_fits(
     render_id: u32,
     measure_chars: bool,
     scratch_flags: &mut Vec<u32>,
+    must_keep: Option<&[bool]>,
 ) -> bool {
     // Render each slot to enforce per-file caps. When tree scaffold is free
     // (headers not counted), we temporarily render without the tree so the
@@ -462,6 +463,7 @@ fn per_slot_render_fits(
     if scratch_flags.len() < inclusion_flags.len() {
         scratch_flags.resize(inclusion_flags.len(), 0);
     }
+    let mut must_keep_flags: Vec<u32> = Vec::new();
     for slot_idx in 0..count {
         for (idx, flag) in inclusion_flags.iter().enumerate() {
             if *flag != render_id {
@@ -473,6 +475,18 @@ fn per_slot_render_fits(
                 scratch_flags[idx] = 0;
             } else {
                 scratch_flags[idx] = render_id;
+            }
+            if let Some(mk) = must_keep {
+                if must_keep_flags.len() < inclusion_flags.len() {
+                    must_keep_flags.resize(inclusion_flags.len(), 0);
+                }
+                if mk.get(idx).copied().unwrap_or(false)
+                    && node_slot.is_some_and(|s| s == slot_idx)
+                {
+                    must_keep_flags[idx] = render_id;
+                } else if let Some(flag_slot) = must_keep_flags.get_mut(idx) {
+                    *flag_slot = 0;
+                }
             }
         }
         let slot_measure_cfg = if measure_cfg.fileset_tree
@@ -498,22 +512,34 @@ fn per_slot_render_fits(
             &slot_measure_cfg,
         );
         let stats = count_output_stats(&rendered, measure_chars);
-        if budgets
-            .per_slot_byte_budget
-            .is_some_and(|cap| stats.bytes > cap)
-        {
+        let mk_stats = if !must_keep_flags.is_empty() {
+            let rendered_mk = crate::serialization::render_from_render_set(
+                order_build,
+                &must_keep_flags,
+                render_id,
+                &slot_measure_cfg,
+            );
+            count_output_stats(&rendered_mk, measure_chars)
+        } else {
+            OutputStats {
+                bytes: 0,
+                chars: 0,
+                lines: 0,
+            }
+        };
+        if budgets.per_slot_byte_budget.is_some_and(|cap| {
+            stats.bytes > cap.saturating_add(mk_stats.bytes)
+        }) {
             return false;
         }
-        if budgets
-            .per_slot_char_budget
-            .is_some_and(|cap| stats.chars > cap)
-        {
+        if budgets.per_slot_char_budget.is_some_and(|cap| {
+            stats.chars > cap.saturating_add(mk_stats.chars)
+        }) {
             return false;
         }
-        if budgets
-            .per_slot_line_budget
-            .is_some_and(|cap| stats.lines > cap)
-        {
+        if budgets.per_slot_line_budget.is_some_and(|cap| {
+            stats.lines > cap.saturating_add(mk_stats.lines)
+        }) {
             return false;
         }
     }
@@ -758,15 +784,17 @@ fn select_best_k(
     let slot_count = slot_map
         .as_ref()
         .and_then(|map| map.iter().flatten().max().map(|s| *s + 1));
-    let search_budgets_excluding_must_keep = if let Some(flags) = must_keep {
-        let mk =
-            measure_must_keep(order_build, measure_cfg, flags, measure_chars);
-        // Matches were already added to the effective budget upstream so they are “free”;
-        // subtract them here so the search only constrains non-matching content.
-        subtract_must_keep_from_budgets(budgets, mk)
-    } else {
-        budgets
-    };
+    let must_keep_stats = must_keep.map(|flags| {
+        measure_must_keep(order_build, measure_cfg, flags, measure_chars)
+    });
+    let search_budgets_excluding_must_keep =
+        if let Some(mk) = must_keep_stats.as_ref() {
+            // Matches were already added to the effective budget upstream so they are “free”;
+            // subtract them here so the search only constrains non-matching content.
+            subtract_must_keep_from_budgets(budgets, *mk)
+        } else {
+            budgets
+        };
     let apply_must_keep = must_keep.is_some();
     let effective_min_k = if apply_must_keep { effective_lo } else { 0 };
     let _ = crate::pruner::search::binary_search_max(
@@ -806,8 +834,13 @@ fn select_best_k(
                 current_render_id,
                 measure_cfg,
             );
-            let stats =
+            let mut stats =
                 crate::utils::measure::count_output_stats(&s, measure_chars);
+            if let Some(mk) = must_keep_stats.as_ref() {
+                stats.bytes = stats.bytes.saturating_sub(mk.bytes);
+                stats.chars = stats.chars.saturating_sub(mk.chars);
+                stats.lines = stats.lines.saturating_sub(mk.lines);
+            }
             let fits_bytes = search_budgets_excluding_must_keep
                 .byte_budget
                 .is_none_or(|c| stats.bytes <= c);
@@ -828,6 +861,7 @@ fn select_best_k(
                     current_render_id,
                     measure_chars,
                     &mut per_slot_flags,
+                    if apply_must_keep { must_keep } else { None },
                 )
             } else {
                 true

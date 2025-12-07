@@ -1,11 +1,12 @@
 ---
 source: tests/per_slot_snapshots.rs
-assertion_line: 27
 expression: normalize(&out)
 ---
 ==> tests/fixtures/code/sample.py <==
+ 5: def compute(n: int) -> int:
 12:     return total
 
 
 ==> tests/fixtures/code/sample.ts <==
+ 5: function compute(n: number): number {
 14:   return total;
