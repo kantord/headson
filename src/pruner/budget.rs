@@ -68,6 +68,10 @@ pub fn find_largest_render_under_budgets(
             must_keep_slice,
         );
     inclusion_flags.fill(0);
+    let per_slot_caps_active =
+        effective_budgets.per_slot_byte_budget.is_some()
+            || effective_budgets.per_slot_char_budget.is_some()
+            || effective_budgets.per_slot_line_budget.is_some();
 
     if let Some(order) = sinkhole_order.as_ref() {
         mark_sinkhole_top_k_and_ancestors(
@@ -77,6 +81,7 @@ pub fn find_largest_render_under_budgets(
             &mut inclusion_flags,
             render_set_id,
             !config.fileset_tree,
+            per_slot_caps_active,
         );
     } else {
         crate::serialization::prepare_render_set_top_k_and_ancestors(
@@ -562,6 +567,7 @@ fn must_keep_slice<'a>(
 
 #[allow(
     clippy::cognitive_complexity,
+    clippy::too_many_lines,
     reason = "Budget search is clearer as a single routine."
 )]
 fn select_best_k(
@@ -603,6 +609,9 @@ fn select_best_k(
     let measure_chars = budgets.char_budget.is_some()
         || budgets.per_slot_char_budget.is_some();
     let use_sinkhole = sinkhole_order.is_some();
+    let per_slot_caps_active = budgets.per_slot_byte_budget.is_some()
+        || budgets.per_slot_char_budget.is_some()
+        || budgets.per_slot_line_budget.is_some();
     let budgets_for_search = if let Some(flags) = must_keep {
         let mk =
             measure_must_keep(order_build, measure_cfg, flags, measure_chars);
@@ -625,6 +634,7 @@ fn select_best_k(
                     &mut inclusion_flags,
                     current_render_id,
                     true,
+                    per_slot_caps_active,
                 );
             } else {
                 crate::serialization::prepare_render_set_top_k_and_ancestors(
@@ -894,6 +904,8 @@ fn enforce_force_first_child_custom(
 
 #[allow(
     clippy::cognitive_complexity,
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
     reason = "Top-level render-set marking; splitting would add indirection."
 )]
 fn mark_sinkhole_top_k_and_ancestors(
@@ -903,6 +915,7 @@ fn mark_sinkhole_top_k_and_ancestors(
     inclusion_flags: &mut Vec<u32>,
     render_id: u32,
     apply_force_first_child: bool,
+    per_slot_caps_active: bool,
 ) {
     if inclusion_flags.len() < order_build.total_nodes {
         inclusion_flags.resize(order_build.total_nodes, 0);
@@ -915,6 +928,11 @@ fn mark_sinkhole_top_k_and_ancestors(
         order_build.total_nodes,
     );
     let mut counted = 0;
+    let slot_map = if per_slot_caps_active {
+        compute_fileset_slot_map(order_build)
+    } else {
+        None
+    };
     for &id in sinkhole_order.iter() {
         if counts_toward_k(order_build, id.0) {
             crate::utils::graph::mark_node_and_ancestors(
@@ -933,6 +951,25 @@ fn mark_sinkhole_top_k_and_ancestors(
                     .get(ROOT_PQ_ID)
                     .is_some_and(|t| *t == ObjectType::Fileset);
             if parent_is_fileset_root {
+                if per_slot_caps_active {
+                    if let Some(slot_map) = slot_map.as_ref() {
+                        let slot = slot_map.get(id.0).and_then(|s| *s);
+                        let slot_has_included = slot.is_some_and(|slot_idx| {
+                            inclusion_flags.iter().enumerate().any(
+                                |(idx, flag)| {
+                                    *flag == render_id
+                                        && slot_map
+                                            .get(idx)
+                                            .and_then(|s| *s)
+                                            .is_some_and(|s| s == slot_idx)
+                                },
+                            )
+                        });
+                        if !slot_has_included {
+                            continue;
+                        }
+                    }
+                }
                 let has_child_included = order_build
                     .children
                     .get(id.0)

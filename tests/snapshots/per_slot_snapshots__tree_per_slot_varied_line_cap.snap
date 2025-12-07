@@ -1,7 +1,6 @@
 ---
 source: tests/per_slot_snapshots.rs
-assertion_line: 90
-expression: normalize(out)
+expression: normalize(&out)
 ---
 .
 └─ tests/fixtures/tree_per_slot_varied/
