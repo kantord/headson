@@ -176,7 +176,6 @@ pub struct PriorityOrder {
     pub by_priority: Vec<NodeId>, // ids sorted by ascending priority (PQ ids)
     pub total_nodes: usize,
     pub object_type: Vec<ObjectType>,
-    pub force_first_child: Vec<bool>,
     pub code_lines: HashMap<usize, Arc<Vec<String>>>,
     // For filesets, preserve the ingest order of top-level children so rendering
     // can respect pre-sorting heuristics (e.g., frecency).

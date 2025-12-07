@@ -1875,7 +1875,6 @@ mod tests {
             by_priority: vec![NodeId(0), NodeId(2), NodeId(1)], // child 2 outranks child 1
             total_nodes: 3,
             object_type: vec![ObjectType::Object; 3],
-            force_first_child: vec![true, false, false],
             code_lines: HashMap::new(),
             fileset_children: None,
         };

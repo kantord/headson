@@ -168,7 +168,6 @@ struct Scope<'a> {
     safety_cap: usize,
     object_type: &'a mut Vec<ObjectType>,
     index_in_parent_array: &'a mut Vec<Option<usize>>,
-    force_first_child: &'a mut Vec<bool>,
     arena_to_pq: &'a mut Vec<Option<usize>>,
     node_slots: &'a mut Vec<Option<usize>>,
     arena_slots: Option<&'a [Option<usize>]>,
@@ -264,13 +263,6 @@ impl<'a> Scope<'a> {
         // Children created from parsing regular JSON are standard objects/arrays/etc.
         // If child is an object, default to Object type.
         self.object_type.push(ObjectType::Object);
-        let force = common
-            .arena_index
-            .and_then(|idx| {
-                self.arena.nodes.get(idx).map(|n| n.force_first_line)
-            })
-            .unwrap_or(false);
-        self.force_first_child.push(force);
         self.children[id].push(NodeId(child_priority_index));
         if let Some(arena_idx) = common.arena_index {
             if arena_idx >= self.arena_to_pq.len() {
@@ -721,7 +713,6 @@ pub fn build_order(
     let mut object_type: Vec<ObjectType> = Vec::new();
     let mut heap: BinaryHeap<Reverse<Entry>> = BinaryHeap::new();
     let mut index_in_parent_array: Vec<Option<usize>> = Vec::new();
-    let mut force_first_child: Vec<bool> = Vec::new();
     let mut arena_to_pq: Vec<Option<usize>> = vec![None; arena.nodes.len()];
     let mut node_slots: Vec<Option<usize>> = Vec::new();
 
@@ -767,7 +758,6 @@ pub fn build_order(
         ObjectType::Object
     };
     object_type.push(root_ot);
-    force_first_child.push(arena.nodes[root_ar].force_first_line);
     if root_ar >= arena_to_pq.len() {
         arena_to_pq.resize(root_ar + 1, None);
     }
@@ -794,7 +784,6 @@ pub fn build_order(
             safety_cap: SAFETY_CAP,
             object_type: &mut object_type,
             index_in_parent_array: &mut index_in_parent_array,
-            force_first_child: &mut force_first_child,
             arena_to_pq: &mut arena_to_pq,
             node_slots: &mut node_slots,
             arena_slots: fileset_slots.as_deref(),
@@ -842,7 +831,6 @@ pub fn build_order(
         by_priority: order,
         total_nodes: total,
         object_type,
-        force_first_child,
         code_lines,
         fileset_children,
     })
