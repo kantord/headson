@@ -146,6 +146,7 @@ Use `--tree` to render filesets as a directory tree (like `tree`) with inline st
   - Incompatible with `--no-newline`.
   - Multiple inputs: `<LINES>` is enforced per file; add `--global-lines` if you also need an aggregate cap.
   - Fileset headers, blank separators, and summary lines do not count toward the line cap by default; only actual content lines are considered. Pass `-H/--count-headers` to include headers/summaries in the line budget.
+  - Tiny caps may yield omission markers instead of bodies (e.g., `…` for text/code, `{…}`/`[…]` for objects/arrays); a single-line file still renders when it fits.
 
 - Interactions and precedence
   - All active budgets are enforced simultaneously. The render must satisfy all of: bytes (if set), chars (if set), and lines (if set). The strictest cap wins.

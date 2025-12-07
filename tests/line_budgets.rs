@@ -112,6 +112,28 @@ fn text_lines_cap_with_omission() {
 }
 
 #[test]
+fn text_single_line_fits_under_cap() {
+    use std::fs;
+    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let p = tmp.path().join("single.txt");
+    fs::write(&p, "onlyline\n").unwrap();
+    let out = run(&["-i", "text", "-f", "text", "-n", "1", p.to_str().unwrap()]);
+    assert!(
+        out.contains("onlyline"),
+        "single-line file should render its line under a one-line cap: {out:?}"
+    );
+    let lines = count_non_header_lines(&out);
+    assert!(
+        lines == 1,
+        "expected exactly one content line under the cap: {out:?}"
+    );
+    assert!(
+        !out.contains('…'),
+        "should not need an omission marker when content fits: {out:?}"
+    );
+}
+
+#[test]
 fn combined_char_and_line_caps() {
     let p = "tests/fixtures/explicit/string_escaping.json";
     // Enforce both: small byte cap and small line cap
