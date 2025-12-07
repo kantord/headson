@@ -13,6 +13,7 @@ pub struct EffectiveBudgets {
     // Final budgets passed to the renderer/search.
     pub budgets: headson::Budgets,
     // Per-file budget used to size priority heuristics (e.g., array_max_items in PriorityConfig).
+    // Ignored when line_only is true (line-only mode lifts array caps entirely).
     pub per_file_for_priority: usize,
     // Whether only line caps are active (no bytes); used to lift array limits and string trimming
     // during ordering and render prep so structure survives in line-only mode.
@@ -55,7 +56,13 @@ pub(crate) fn compute_effective(
 
     let chosen_global =
         compute_global_cap(any_bytes, effective_bytes, effective_chars);
-    let per_file_for_priority = (chosen_global / input_count.max(1)).max(1);
+    // In line-only mode, PriorityConfig lifts array limits entirely; make that
+    // explicit by using usize::MAX instead of a byte/char-derived heuristic.
+    let per_file_for_priority = if any_lines && !any_bytes {
+        usize::MAX
+    } else {
+        (chosen_global / input_count.max(1)).max(1)
+    };
 
     EffectiveBudgets {
         budgets,
