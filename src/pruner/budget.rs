@@ -541,6 +541,8 @@ fn effective_budgets_with_grep(
         budgets.char_budget.is_some()
             || budgets.per_slot_char_budget.is_some(),
     );
+    // Expand the budgets to cover must-keep matches; the search phase will subtract
+    // this cost so caps apply only to non-matching content.
     add_budgets(budgets, cost)
 }
 
@@ -612,9 +614,11 @@ fn select_best_k(
     let per_slot_caps_active = budgets.per_slot_byte_budget.is_some()
         || budgets.per_slot_char_budget.is_some()
         || budgets.per_slot_line_budget.is_some();
-    let budgets_for_search = if let Some(flags) = must_keep {
+    let search_budgets_excluding_must_keep = if let Some(flags) = must_keep {
         let mk =
             measure_must_keep(order_build, measure_cfg, flags, measure_chars);
+        // Matches were already added to the effective budget upstream so they are “free”;
+        // subtract them here so the search only constrains non-matching content.
         subtract_must_keep_from_budgets(budgets, mk)
     } else {
         budgets
@@ -662,13 +666,13 @@ fn select_best_k(
             );
             let stats =
                 crate::utils::measure::count_output_stats(&s, measure_chars);
-            let fits_bytes = budgets_for_search
+            let fits_bytes = search_budgets_excluding_must_keep
                 .byte_budget
                 .is_none_or(|c| stats.bytes <= c);
-            let fits_chars = budgets_for_search
+            let fits_chars = search_budgets_excluding_must_keep
                 .char_budget
                 .is_none_or(|c| stats.chars <= c);
-            let fits_lines = budgets_for_search
+            let fits_lines = search_budgets_excluding_must_keep
                 .line_budget
                 .is_none_or(|cap| stats.lines <= cap);
             render_set_id = render_set_id.wrapping_add(1).max(1);
