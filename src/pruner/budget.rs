@@ -414,6 +414,9 @@ fn fits_per_slot(
     clippy::too_many_arguments,
     reason = "Per-slot render check needs the full context; splitting would hide the budget wiring"
 )]
+/// Render each fileset slot independently to enforce per-slot budgets, optionally
+/// measuring without tree scaffold when headers are free so the charged content
+/// matches what the budget cares about.
 fn per_slot_render_fits(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
