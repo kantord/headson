@@ -2,6 +2,10 @@
 source: tests/mixed_headers.rs
 expression: normalized
 ---
+==> tests/fixtures/mixed_headers/a.json <==
 
 
-==> 3 more files <==
+==> tests/fixtures/mixed_headers/b.yaml <==
+
+
+==> tests/fixtures/mixed_headers/c.txt <==

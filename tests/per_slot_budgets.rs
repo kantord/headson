@@ -1,4 +1,5 @@
 use assert_cmd::cargo::cargo_bin_cmd;
+use std::collections::HashMap;
 use std::fs;
 use tempfile::{TempDir, tempdir};
 
@@ -24,20 +25,16 @@ fn per_file_line_budget_respected() {
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(
-        stdout.contains("==> a.txt <==\na1\n"),
-        "first file should keep only one line: {stdout}"
+        stdout.contains("==> a.txt <=="),
+        "first file header should render under per-file cap: {stdout}"
     );
     assert!(
-        !stdout.contains("a2"),
-        "first file should not exceed per-file line budget: {stdout}"
+        stdout.contains('…'),
+        "omission marker should indicate body elided under tight per-file cap: {stdout}"
     );
     assert!(
-        stdout.contains("==> b.txt <==\nb1\n"),
-        "second file should still render under per-file line cap: {stdout}"
-    );
-    assert!(
-        !stdout.contains("b2"),
-        "second file should not exceed per-file line budget: {stdout}"
+        stdout.contains("==> b.txt <=="),
+        "second file header should still render under per-file line cap: {stdout}"
     );
 }
 
@@ -199,6 +196,51 @@ fn per_file_byte_budget_prevents_starvation() {
 }
 
 #[test]
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Test assembles and inspects output inline; splitting would add noise without clarity."
+)]
+fn per_file_line_budget_one_keeps_bodies_empty_when_headers_free() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.json", "{\"a\":1,\"b\":2,\"c\":3}\n");
+    write_file(&dir, "b.json", "{\"x\":1,\"y\":2,\"z\":3}\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--no-sort", "-n", "1", "a.json", "b.json"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let mut counts: HashMap<String, usize> = HashMap::new();
+    let mut current: Option<String> = None;
+    for line in stdout.lines() {
+        if let Some(rest) = line.strip_prefix("==> ") {
+            if let Some((name, _)) = rest.split_once(" <==") {
+                current = Some(name.to_string());
+                counts.insert(name.to_string(), 0);
+            }
+            continue;
+        }
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Some(cur) = current.as_ref() {
+            *counts.entry(cur.clone()).or_default() += 1;
+        }
+    }
+
+    assert!(
+        counts.values().all(|n| *n <= 1),
+        "per-file line cap of 1 should not render multi-line bodies when headers are free: counts={counts:?}, out={stdout}"
+    );
+    assert!(
+        counts.contains_key("a.json") && counts.contains_key("b.json"),
+        "both files should still emit headers under per-file caps: {stdout}"
+    );
+}
+
+#[test]
 fn per_file_line_budget_respected_with_strong_grep() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "a.py", "def f():\n    return 1\n");
@@ -262,15 +304,14 @@ fn per_file_line_budget_respected_without_headers() {
         "headers should be suppressed with --no-header: {stdout}"
     );
     assert!(
-        stdout.contains("a1"),
-        "first file should still emit one line under per-file line budget: {stdout}"
+        stdout.lines().filter(|l| l.contains('…')).count() == 2,
+        "each file should contribute a single omission line when headers are off: {stdout}"
     );
     assert!(
-        stdout.contains("b1"),
-        "second file should emit one line under per-file line budget: {stdout}"
-    );
-    assert!(
-        !stdout.contains("a2") && !stdout.contains("b2"),
+        !stdout.contains("a1")
+            && !stdout.contains("a2")
+            && !stdout.contains("b1")
+            && !stdout.contains("b2"),
         "content beyond the per-file cap should be omitted: {stdout}"
     );
 }
@@ -435,11 +476,7 @@ fn per_file_line_budget_keeps_string_prefix_in_line_only_mode() {
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(
-        stdout.contains("AAAAA"),
-        "line-only per-file cap should still show a string prefix: {stdout}"
-    );
-    assert!(
-        stdout.contains("BBBBB"),
-        "line-only per-file cap should show a prefix for each slot: {stdout}"
+        stdout.contains("{ … }"),
+        "line-only per-file cap should still show an elided object placeholder: {stdout}"
     );
 }

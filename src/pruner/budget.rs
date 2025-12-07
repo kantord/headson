@@ -80,7 +80,6 @@ pub fn find_largest_render_under_budgets(
             k,
             &mut inclusion_flags,
             render_set_id,
-            per_slot_caps_active,
         );
     } else {
         crate::serialization::prepare_render_set_top_k_and_ancestors(
@@ -782,7 +781,6 @@ fn select_best_k(
                     mid,
                     &mut inclusion_flags,
                     current_render_id,
-                    per_slot_caps_active,
                 );
             } else {
                 crate::serialization::prepare_render_set_top_k_and_ancestors(
@@ -998,19 +996,6 @@ fn include_must_keep(
     }
 }
 
-fn build_priority_index_from_order(
-    order: &[NodeId],
-    total_nodes: usize,
-) -> Vec<usize> {
-    let mut priority_index = vec![usize::MAX; total_nodes];
-    for (idx, nid) in order.iter().enumerate() {
-        if let Some(slot) = priority_index.get_mut(nid.0) {
-            *slot = idx;
-        }
-    }
-    priority_index
-}
-
 #[allow(
     clippy::cognitive_complexity,
     clippy::too_many_arguments,
@@ -1023,7 +1008,6 @@ fn mark_sinkhole_top_k_and_ancestors(
     top_k: usize,
     inclusion_flags: &mut Vec<u32>,
     render_id: u32,
-    per_slot_caps_active: bool,
 ) {
     if inclusion_flags.len() < order_build.total_nodes {
         inclusion_flags.resize(order_build.total_nodes, 0);
@@ -1031,16 +1015,7 @@ fn mark_sinkhole_top_k_and_ancestors(
     if top_k == 0 {
         return;
     }
-    let priority_index = build_priority_index_from_order(
-        &order_build.by_priority,
-        order_build.total_nodes,
-    );
     let mut counted = 0;
-    let slot_map = if per_slot_caps_active {
-        compute_fileset_slot_map(order_build)
-    } else {
-        None
-    };
     for &id in sinkhole_order.iter() {
         if counts_toward_k(order_build, id.0) {
             crate::utils::graph::mark_node_and_ancestors(
@@ -1049,61 +1024,6 @@ fn mark_sinkhole_top_k_and_ancestors(
                 inclusion_flags,
                 render_id,
             );
-            let parent_is_fileset_root = order_build
-                .parent
-                .get(id.0)
-                .and_then(|p| *p)
-                .is_some_and(|p| p.0 == ROOT_PQ_ID)
-                && order_build
-                    .object_type
-                    .get(ROOT_PQ_ID)
-                    .is_some_and(|t| *t == ObjectType::Fileset);
-            if parent_is_fileset_root {
-                if per_slot_caps_active {
-                    if let Some(slot_map) = slot_map.as_ref() {
-                        let slot = slot_map.get(id.0).and_then(|s| *s);
-                        let slot_has_included = slot.is_some_and(|slot_idx| {
-                            inclusion_flags.iter().enumerate().any(
-                                |(idx, flag)| {
-                                    *flag == render_id
-                                        && slot_map
-                                            .get(idx)
-                                            .and_then(|s| *s)
-                                            .is_some_and(|s| s == slot_idx)
-                                },
-                            )
-                        });
-                        if !slot_has_included {
-                            continue;
-                        }
-                    }
-                }
-                let has_child_included = order_build
-                    .children
-                    .get(id.0)
-                    .map(|kids| {
-                        kids.iter().any(|kid| {
-                            inclusion_flags
-                                .get(kid.0)
-                                .copied()
-                                .unwrap_or_default()
-                                == render_id
-                        })
-                    })
-                    .unwrap_or(false);
-                if !has_child_included {
-                    if let Some(best_child) =
-                        best_priority_child(order_build, id.0, &priority_index)
-                    {
-                        crate::utils::graph::mark_node_and_ancestors(
-                            order_build,
-                            best_child,
-                            inclusion_flags,
-                            render_id,
-                        );
-                    }
-                }
-            }
             if matches!(
                 order_build.nodes.get(id.0),
                 Some(crate::RankedNode::SplittableLeaf { .. })
@@ -1143,10 +1063,6 @@ fn ensure_fileset_headers_for_empty_slots(
     if slot_count == 0 {
         return;
     }
-    let priority_index = build_priority_index_from_order(
-        &order_build.by_priority,
-        order_build.total_nodes,
-    );
     let children = order_build
         .fileset_children
         .as_deref()
@@ -1189,11 +1105,6 @@ fn ensure_fileset_headers_for_empty_slots(
         if count_headers_in_budgets && header_stats.is_none() {
             continue;
         }
-        let header_stats = header_stats.unwrap_or(OutputStats {
-            bytes: 0,
-            chars: 0,
-            lines: 0,
-        });
         if let Some(file_node) = fileset_children.get(slot_idx) {
             crate::utils::graph::mark_node_and_ancestors(
                 order_build,
@@ -1201,40 +1112,6 @@ fn ensure_fileset_headers_for_empty_slots(
                 inclusion_flags,
                 render_id,
             );
-            if !count_headers_in_budgets {
-                if let Some(best_child) = best_priority_child(
-                    order_build,
-                    file_node.0,
-                    &priority_index,
-                ) {
-                    crate::utils::graph::mark_node_and_ancestors(
-                        order_build,
-                        best_child,
-                        inclusion_flags,
-                        render_id,
-                    );
-                }
-            } else if let Some(best_child) =
-                best_priority_child(order_build, file_node.0, &priority_index)
-            {
-                let mut delta = node_budget_cost(
-                    order_build,
-                    best_child.0,
-                    measure_chars,
-                    newline_len,
-                );
-                if delta.lines == 0 {
-                    delta.lines = 1;
-                }
-                if fits_per_slot(&header_stats, &delta, budgets) {
-                    crate::utils::graph::mark_node_and_ancestors(
-                        order_build,
-                        best_child,
-                        inclusion_flags,
-                        render_id,
-                    );
-                }
-            }
         }
     }
 }
@@ -1299,20 +1176,6 @@ fn counts_toward_k(order_build: &PriorityOrder, node_idx: usize) -> bool {
             .map(Vec::is_empty)
             .unwrap_or(true),
     }
-}
-
-fn best_priority_child(
-    order_build: &PriorityOrder,
-    parent_idx: usize,
-    priority_index: &[usize],
-) -> Option<NodeId> {
-    let children = order_build.children.get(parent_idx)?;
-    children
-        .iter()
-        .min_by_key(|cid| {
-            priority_index.get(cid.0).copied().unwrap_or(usize::MAX)
-        })
-        .copied()
 }
 
 #[cfg(test)]
