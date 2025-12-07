@@ -1,11 +1,11 @@
 ---
 source: tests/per_slot_snapshots.rs
-assertion_line: 125
-expression: normalize(out)
+expression: normalize(&out)
 ---
 .
-└─ tests/fixtures/chars_vs_bytes/
-│ ├─ emoji.txt
-│ │ 😀😀😀😀😀
-│ ├─ ascii.txt
-│ │ …
+└─ tests/
+│ ├─ fixtures/
+│ │ ├─ chars_vs_bytes/
+│ │ │ ├─ … 2 more items
+│ │ ├─ … 2 more items
+│ ├─ … 2 more items

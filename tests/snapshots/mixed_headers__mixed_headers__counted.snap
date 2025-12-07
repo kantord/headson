@@ -1,16 +1,7 @@
---- 
-source: tests/mixed_headers.rs
-expression: out
 ---
-==> tests/fixtures/mixed_headers/a.json <==
-{
-  "a": 1
-  …
-}
-
-==> tests/fixtures/mixed_headers/b.yaml <==
-items: []
-# …
+source: tests/mixed_headers.rs
+expression: normalized
+---
 
 
-==> 1 more files <==
+==> 3 more files <==

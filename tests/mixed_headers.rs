@@ -38,7 +38,7 @@ fn headers_free_by_default_under_char_cap() {
 fn headers_count_under_char_cap_with_flag() {
     let out = run(&[
         "-u",
-        "50",
+        "80",
         "-H",
         &fixture_path("a.json"),
         &fixture_path("b.yaml"),

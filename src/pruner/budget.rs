@@ -419,6 +419,11 @@ fn per_slot_render_fits(
     measure_chars: bool,
     scratch_flags: &mut Vec<u32>,
 ) -> bool {
+    // Render each slot to enforce per-file caps. When tree scaffold is free
+    // (headers not counted), we temporarily render without the tree so the
+    // measurement reflects only charged content; when headers count, keep the
+    // tree scaffold so gutters and headers consume budget. Final output still
+    // uses the caller’s render config.
     let Some(map) = slot_map.as_ref() else {
         return true;
     };
@@ -441,7 +446,13 @@ fn per_slot_render_fits(
                 scratch_flags[idx] = render_id;
             }
         }
-        let slot_measure_cfg = if measure_cfg.fileset_tree {
+        let slot_measure_cfg = if measure_cfg.fileset_tree
+            && measure_cfg.count_fileset_headers_in_budgets
+        {
+            // When headers/scaffold count toward budgets, measure with the tree
+            // scaffold enabled so gutters are charged.
+            measure_cfg.clone()
+        } else if measure_cfg.fileset_tree {
             let mut cfg = measure_cfg.clone();
             // Measure content-only for per-slot fit in tree mode so scaffold does not
             // dominate the per-file budget; final render still uses tree scaffold.
