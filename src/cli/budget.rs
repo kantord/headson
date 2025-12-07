@@ -29,6 +29,8 @@ pub(crate) fn compute_effective(
 
     let effective_bytes = effective_bytes(cli, input_count);
     let effective_chars = effective_chars(cli, input_count);
+    // For lines, use per-file caps only unless the user explicitly provides a
+    // global cap; multi-file runs omit an implicit aggregate line budget.
     let effective_lines = if let Some(g) = cli.global_lines {
         Some(g)
     } else if input_count == 1 {
