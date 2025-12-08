@@ -468,7 +468,8 @@ pub fn parse_text_one_with_mode(
 mod tests {
     use super::ARRAY_NO_SAMPLING_THRESHOLD;
     use crate::{
-        Budgets, GrepConfig, InputKind, PriorityConfig, RenderConfig,
+        Budget, BudgetKind, Budgets, GrepConfig, InputKind, PriorityConfig,
+        RenderConfig,
         serialization::types::{OutputTemplate, Style},
     };
     use unicode_segmentation::UnicodeSegmentation;
@@ -509,12 +510,11 @@ mod tests {
             &prio,
             &grep,
             Budgets {
-                byte_budget: Some(100),
-                char_budget: None,
-                line_budget: None,
-                per_slot_byte_budget: None,
-                per_slot_char_budget: None,
-                per_slot_line_budget: None,
+                global: Some(Budget {
+                    kind: BudgetKind::Bytes,
+                    cap: 100,
+                }),
+                per_slot: None,
             },
         )
         .unwrap();
@@ -540,12 +540,11 @@ mod tests {
             &prio,
             &grep,
             Budgets {
-                byte_budget: Some(20),
-                char_budget: None,
-                line_budget: None,
-                per_slot_byte_budget: None,
-                per_slot_char_budget: None,
-                per_slot_line_budget: None,
+                global: Some(Budget {
+                    kind: BudgetKind::Bytes,
+                    cap: 20,
+                }),
+                per_slot: None,
             },
         )
         .unwrap();

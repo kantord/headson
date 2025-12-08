@@ -5,14 +5,125 @@ use crate::order::{NodeId, ObjectType, ROOT_PQ_ID};
 use crate::utils::measure::{OutputStats, count_output_stats};
 use crate::{GrepConfig, PriorityOrder, RenderConfig};
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum BudgetKind {
+    Bytes,
+    Chars,
+    Lines,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct Budget {
+    pub kind: BudgetKind,
+    pub cap: usize,
+}
+
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Budgets {
-    pub byte_budget: Option<usize>,
-    pub char_budget: Option<usize>,
-    pub line_budget: Option<usize>,
-    pub per_slot_byte_budget: Option<usize>,
-    pub per_slot_char_budget: Option<usize>,
-    pub per_slot_line_budget: Option<usize>,
+    pub global: Option<Budget>,
+    pub per_slot: Option<Budget>,
+}
+
+impl Budget {
+    fn add_stats(self, stats: &OutputStats) -> Self {
+        let delta = match self.kind {
+            BudgetKind::Bytes => stats.bytes,
+            BudgetKind::Chars => stats.chars,
+            BudgetKind::Lines => stats.lines,
+        };
+        Self {
+            cap: self.cap.saturating_add(delta),
+            ..self
+        }
+    }
+
+    fn subtract_stats(self, stats: &OutputStats) -> Self {
+        let delta = match self.kind {
+            BudgetKind::Bytes => stats.bytes,
+            BudgetKind::Chars => stats.chars,
+            BudgetKind::Lines => stats.lines,
+        };
+        Self {
+            cap: self.cap.saturating_sub(delta),
+            ..self
+        }
+    }
+
+    fn exceeds(&self, stats: &OutputStats) -> bool {
+        match self.kind {
+            BudgetKind::Bytes => stats.bytes > self.cap,
+            BudgetKind::Chars => stats.chars > self.cap,
+            BudgetKind::Lines => stats.lines > self.cap,
+        }
+    }
+}
+
+impl Budgets {
+    pub fn measure_chars(&self) -> bool {
+        matches!(
+            self.global,
+            Some(Budget {
+                kind: BudgetKind::Chars,
+                ..
+            })
+        ) || matches!(
+            self.per_slot,
+            Some(Budget {
+                kind: BudgetKind::Chars,
+                ..
+            })
+        )
+    }
+
+    pub fn measure_lines(&self) -> bool {
+        matches!(
+            self.global,
+            Some(Budget {
+                kind: BudgetKind::Lines,
+                ..
+            })
+        ) || matches!(
+            self.per_slot,
+            Some(Budget {
+                kind: BudgetKind::Lines,
+                ..
+            })
+        )
+    }
+
+    pub fn per_slot_active(&self) -> bool {
+        self.per_slot.is_some()
+    }
+
+    pub fn global_active(&self) -> bool {
+        self.global.is_some()
+    }
+
+    pub fn per_slot_kind(&self) -> Option<BudgetKind> {
+        self.per_slot.map(|b| b.kind)
+    }
+
+    pub fn global_kind(&self) -> Option<BudgetKind> {
+        self.global.map(|b| b.kind)
+    }
+
+    pub fn per_slot_cap_for(&self, kind: BudgetKind) -> Option<usize> {
+        match self.per_slot {
+            Some(b) if b.kind == kind => Some(b.cap),
+            _ => None,
+        }
+    }
+
+    pub fn global_cap_for(&self, kind: BudgetKind) -> Option<usize> {
+        match self.global {
+            Some(b) if b.kind == kind => Some(b.cap),
+            _ => None,
+        }
+    }
+
+    pub fn per_slot_zero_cap(&self) -> bool {
+        matches!(self.per_slot, Some(b) if b.cap == 0)
+    }
 }
 
 #[allow(
@@ -68,10 +179,7 @@ pub fn find_largest_render_under_budgets(
             must_keep_slice,
         );
     inclusion_flags.fill(0);
-    let per_slot_caps_active =
-        effective_budgets.per_slot_byte_budget.is_some()
-            || effective_budgets.per_slot_char_budget.is_some()
-            || effective_budgets.per_slot_line_budget.is_some();
+    let per_slot_caps_active = effective_budgets.per_slot_active();
 
     if let Some(order) = sinkhole_order.as_ref() {
         mark_sinkhole_top_k_and_ancestors(
@@ -99,11 +207,7 @@ pub fn find_largest_render_under_budgets(
             );
         }
     }
-    if per_slot_caps_active
-        && budgets.byte_budget.is_none()
-        && budgets.char_budget.is_none()
-        && budgets.line_budget.is_none()
-    {
+    if per_slot_caps_active && budgets.global.is_none() {
         ensure_fileset_headers_for_empty_slots(
             order_build,
             render_set_id,
@@ -115,9 +219,7 @@ pub fn find_largest_render_under_budgets(
     }
 
     if per_slot_caps_active
-        && effective_budgets
-            .per_slot_line_budget
-            .is_some_and(|cap| cap == 0)
+        && matches!(effective_budgets.per_slot, Some(Budget { cap: 0, .. }))
     {
         if let Some(slot_map) = compute_fileset_slot_map(order_build) {
             let has_included_slot =
@@ -410,23 +512,15 @@ fn fits_per_slot(
     delta: &OutputStats,
     budgets: &Budgets,
 ) -> bool {
-    let bytes_cap = budgets.per_slot_byte_budget;
-    let chars_cap = budgets.per_slot_char_budget;
-    let lines_cap = budgets.per_slot_line_budget;
-
-    let would_bytes = current.bytes.saturating_add(delta.bytes);
-    if bytes_cap.is_some_and(|cap| would_bytes > cap) {
-        return false;
-    }
-    let would_chars = current.chars.saturating_add(delta.chars);
-    if chars_cap.is_some_and(|cap| would_chars > cap) {
-        return false;
-    }
-    let would_lines = current.lines.saturating_add(delta.lines);
-    if lines_cap.is_some_and(|cap| would_lines > cap) {
-        return false;
-    }
-    true
+    let Some(cap) = budgets.per_slot else {
+        return true;
+    };
+    let would = match cap.kind {
+        BudgetKind::Bytes => current.bytes.saturating_add(delta.bytes),
+        BudgetKind::Chars => current.chars.saturating_add(delta.chars),
+        BudgetKind::Lines => current.lines.saturating_add(delta.lines),
+    };
+    would <= cap.cap
 }
 
 #[allow(
@@ -527,20 +621,15 @@ fn per_slot_render_fits(
                 lines: 0,
             }
         };
-        if budgets.per_slot_byte_budget.is_some_and(|cap| {
-            stats.bytes > cap.saturating_add(mk_stats.bytes)
-        }) {
-            return false;
-        }
-        if budgets.per_slot_char_budget.is_some_and(|cap| {
-            stats.chars > cap.saturating_add(mk_stats.chars)
-        }) {
-            return false;
-        }
-        if budgets.per_slot_line_budget.is_some_and(|cap| {
-            stats.lines > cap.saturating_add(mk_stats.lines)
-        }) {
-            return false;
+        if let Some(cap) = budgets.per_slot {
+            let (charged, mk) = match cap.kind {
+                BudgetKind::Bytes => (stats.bytes, mk_stats.bytes),
+                BudgetKind::Chars => (stats.chars, mk_stats.chars),
+                BudgetKind::Lines => (stats.lines, mk_stats.lines),
+            };
+            if charged > cap.cap.saturating_add(mk) {
+                return false;
+            }
         }
     }
     true
@@ -560,10 +649,7 @@ fn sinkhole_priority_order(
     budgets: &Budgets,
     must_keep: Option<&[bool]>,
 ) -> Option<Vec<NodeId>> {
-    if budgets.per_slot_byte_budget.is_none()
-        && budgets.per_slot_char_budget.is_none()
-        && budgets.per_slot_line_budget.is_none()
-    {
+    if budgets.per_slot.is_none() {
         return None;
     }
     let mut slot_map = compute_fileset_slot_map(order_build)?;
@@ -588,8 +674,7 @@ fn sinkhole_priority_order(
         None
     };
     let mut header_charged: Vec<bool> = vec![false; slot_count];
-    let measure_chars = budgets.char_budget.is_some()
-        || budgets.per_slot_char_budget.is_some();
+    let measure_chars = budgets.measure_chars();
     let newline_len = measure_cfg.newline.len();
 
     for node_id in order_build.by_priority.iter() {
@@ -687,8 +772,7 @@ fn effective_budgets_with_grep(
         order_build,
         measure_cfg,
         &s.must_keep,
-        budgets.char_budget.is_some()
-            || budgets.per_slot_char_budget.is_some(),
+        budgets.measure_chars(),
     );
     // Expand the budgets to cover must-keep matches; the search phase will subtract
     // this cost so caps apply only to non-matching content. Per-slot caps remain
@@ -731,10 +815,7 @@ fn select_best_k(
     must_keep: Option<&[bool]>,
 ) -> (usize, Vec<u32>, u32, Option<Vec<NodeId>>) {
     let total = order_build.total_nodes;
-    let allow_zero = must_keep.is_none()
-        && (budgets.per_slot_byte_budget.is_some()
-            || budgets.per_slot_char_budget.is_some()
-            || budgets.per_slot_line_budget.is_some());
+    let allow_zero = must_keep.is_none() && budgets.per_slot.is_some();
     let base_lo = if allow_zero {
         0
     } else if must_keep.is_some() {
@@ -757,9 +838,12 @@ fn select_best_k(
         selection_order_ref.len().max(1)
     };
     let capped_lo = base_lo.min(available);
-    let hi = match budgets.byte_budget {
-        Some(c) => total.min(c.max(1)),
-        None => total,
+    let hi = match budgets.global {
+        Some(Budget {
+            kind: BudgetKind::Bytes,
+            cap,
+        }) => total.min(cap.max(1)),
+        _ => total,
     }
     .min(available);
     let effective_lo = capped_lo;
@@ -770,12 +854,9 @@ fn select_best_k(
 
     let mut render_set_id: u32 = 1;
     let mut best_k: Option<usize> = None;
-    let measure_chars = budgets.char_budget.is_some()
-        || budgets.per_slot_char_budget.is_some();
+    let measure_chars = budgets.measure_chars();
     let use_sinkhole = sinkhole_order.is_some();
-    let per_slot_caps_active = budgets.per_slot_byte_budget.is_some()
-        || budgets.per_slot_char_budget.is_some()
-        || budgets.per_slot_line_budget.is_some();
+    let per_slot_caps_active = budgets.per_slot.is_some();
     let slot_map = if per_slot_caps_active {
         compute_fileset_slot_map(order_build)
     } else {
@@ -841,33 +922,35 @@ fn select_best_k(
                 stats.chars = stats.chars.saturating_sub(mk.chars);
                 stats.lines = stats.lines.saturating_sub(mk.lines);
             }
-            let fits_bytes = search_budgets_excluding_must_keep
-                .byte_budget
-                .is_none_or(|c| stats.bytes <= c);
-            let fits_chars = search_budgets_excluding_must_keep
-                .char_budget
-                .is_none_or(|c| stats.chars <= c);
-            let fits_lines = search_budgets_excluding_must_keep
-                .line_budget
-                .is_none_or(|cap| stats.lines <= cap);
+            let fits_global = search_budgets_excluding_must_keep
+                .global
+                .map(|b| !b.exceeds(&stats))
+                .unwrap_or(true);
             let fits_per_slot = if per_slot_caps_active {
-                per_slot_render_fits(
-                    order_build,
-                    measure_cfg,
-                    &search_budgets_excluding_must_keep,
-                    &slot_map,
-                    slot_count,
-                    &inclusion_flags,
-                    current_render_id,
-                    measure_chars,
-                    &mut per_slot_flags,
-                    if apply_must_keep { must_keep } else { None },
-                )
+                if slot_map.is_none() {
+                    search_budgets_excluding_must_keep
+                        .per_slot
+                        .map(|b| !b.exceeds(&stats))
+                        .unwrap_or(true)
+                } else {
+                    per_slot_render_fits(
+                        order_build,
+                        measure_cfg,
+                        &search_budgets_excluding_must_keep,
+                        &slot_map,
+                        slot_count,
+                        &inclusion_flags,
+                        current_render_id,
+                        measure_chars,
+                        &mut per_slot_flags,
+                        if apply_must_keep { must_keep } else { None },
+                    )
+                }
             } else {
                 true
             };
             render_set_id = render_set_id.wrapping_add(1).max(1);
-            if fits_bytes && fits_chars && fits_lines && fits_per_slot {
+            if fits_global && fits_per_slot {
                 best_k = Some(mid);
                 true
             } else {
@@ -883,15 +966,26 @@ pub(crate) fn constrained_dimensions(
     budgets: Budgets,
     stats: &crate::utils::measure::OutputStats,
 ) -> Vec<&'static str> {
-    let checks = [
-        (budgets.byte_budget.map(|b| stats.bytes >= b), "bytes"),
-        (budgets.char_budget.map(|c| stats.chars >= c), "chars"),
-        (budgets.line_budget.map(|l| stats.lines >= l), "lines"),
-    ];
-    checks
-        .iter()
-        .filter_map(|(cond, name)| cond.unwrap_or(false).then_some(*name))
-        .collect()
+    let mut dims: Vec<&'static str> = Vec::new();
+    if let Some(b) = budgets.global {
+        if b.exceeds(stats) {
+            dims.push(match b.kind {
+                BudgetKind::Bytes => "bytes",
+                BudgetKind::Chars => "chars",
+                BudgetKind::Lines => "lines",
+            });
+        }
+    }
+    if let Some(b) = budgets.per_slot {
+        if b.exceeds(stats) {
+            dims.push(match b.kind {
+                BudgetKind::Bytes => "per-file bytes",
+                BudgetKind::Chars => "per-file chars",
+                BudgetKind::Lines => "per-file lines",
+            });
+        }
+    }
+    dims
 }
 
 fn measure_config(
@@ -949,37 +1043,17 @@ fn subtract_must_keep_from_budgets(
     must_keep: OutputStats,
 ) -> Budgets {
     Budgets {
-        byte_budget: budgets
-            .byte_budget
-            .map(|b| b.saturating_sub(must_keep.bytes)),
-        char_budget: budgets
-            .char_budget
-            .map(|c| c.saturating_sub(must_keep.chars)),
-        line_budget: budgets
-            .line_budget
-            .map(|l| l.saturating_sub(must_keep.lines)),
-        per_slot_byte_budget: budgets.per_slot_byte_budget,
-        per_slot_char_budget: budgets.per_slot_char_budget,
-        per_slot_line_budget: budgets.per_slot_line_budget,
+        global: budgets.global.map(|b| b.subtract_stats(&must_keep)),
+        per_slot: budgets.per_slot,
     }
 }
 
 fn add_budgets(budgets: Budgets, extra: OutputStats) -> Budgets {
     Budgets {
-        byte_budget: budgets
-            .byte_budget
-            .map(|b| b.saturating_add(extra.bytes)),
-        char_budget: budgets
-            .char_budget
-            .map(|c| c.saturating_add(extra.chars)),
-        line_budget: budgets
-            .line_budget
-            .map(|l| l.saturating_add(extra.lines)),
+        global: budgets.global.map(|b| b.add_stats(&extra)),
         // Per-slot budgets stay fixed; must-keep items can exceed the cap but
         // should not expand the allowance for unrelated nodes in that slot.
-        per_slot_byte_budget: budgets.per_slot_byte_budget,
-        per_slot_char_budget: budgets.per_slot_char_budget,
-        per_slot_line_budget: budgets.per_slot_line_budget,
+        per_slot: budgets.per_slot,
     }
 }
 
@@ -1107,8 +1181,7 @@ fn ensure_fileset_headers_for_empty_slots(
     if inclusion_flags.len() < order_build.total_nodes {
         inclusion_flags.resize(order_build.total_nodes, 0);
     }
-    let measure_chars = budgets.char_budget.is_some()
-        || budgets.per_slot_char_budget.is_some();
+    let measure_chars = budgets.measure_chars();
     let header_names = fileset_slot_names(order_build);
     let newline_len = measure_cfg.newline.len();
     for slot_idx in 0..slot_count {
@@ -1123,10 +1196,7 @@ fn ensure_fileset_headers_for_empty_slots(
         if has_slot_node {
             continue;
         }
-        if budgets.per_slot_line_budget.is_some_and(|cap| cap == 0)
-            || budgets.per_slot_byte_budget.is_some_and(|cap| cap == 0)
-            || budgets.per_slot_char_budget.is_some_and(|cap| cap == 0)
-        {
+        if matches!(budgets.per_slot, Some(Budget { cap: 0, .. })) {
             continue;
         }
         let header_stats = header_stats_for_slot(
@@ -1175,17 +1245,15 @@ fn header_stats_for_slot(
             lines: 1,
         }
     };
-    if budgets
-        .per_slot_byte_budget
-        .is_some_and(|cap| header_stats.bytes > cap)
-        || budgets
-            .per_slot_char_budget
-            .is_some_and(|cap| header_stats.chars > cap)
-        || budgets
-            .per_slot_line_budget
-            .is_some_and(|cap| header_stats.lines > cap)
-    {
-        return None;
+    if let Some(cap) = budgets.per_slot {
+        let exceeds = match cap.kind {
+            BudgetKind::Bytes => header_stats.bytes > cap.cap,
+            BudgetKind::Chars => header_stats.chars > cap.cap,
+            BudgetKind::Lines => header_stats.lines > cap.cap,
+        };
+        if exceeds {
+            return None;
+        }
     }
     Some(header_stats)
 }

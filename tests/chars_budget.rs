@@ -5,18 +5,6 @@ fn run_cli(input: &str, args: &[&str]) -> Assert {
     cmd.arg("--no-color").args(args).write_stdin(input).assert()
 }
 
-fn count_lines_normalized(s: &str) -> usize {
-    if s.is_empty() {
-        return 0;
-    }
-    let trimmed = s.strip_suffix('\n').unwrap_or(s);
-    if trimmed.is_empty() {
-        0
-    } else {
-        trimmed.as_bytes().iter().filter(|&&b| b == b'\n').count() + 1
-    }
-}
-
 fn count_chars_normalized(s: &str) -> usize {
     s.trim_end_matches('\n').chars().count()
 }
@@ -113,12 +101,14 @@ fn colored_vs_plain_match_after_stripping_under_char_budget() {
     let prio = headson::PriorityConfig::new(usize::MAX, usize::MAX);
 
     let budgets = headson::Budgets {
-        byte_budget: None,
-        char_budget: Some(50),
-        line_budget: None,
-        per_slot_byte_budget: None,
-        per_slot_char_budget: Some(50),
-        per_slot_line_budget: None,
+        global: Some(headson::Budget {
+            kind: headson::BudgetKind::Chars,
+            cap: 50,
+        }),
+        per_slot: Some(headson::Budget {
+            kind: headson::BudgetKind::Chars,
+            cap: 50,
+        }),
     };
     let grep = headson::GrepConfig::default();
 
@@ -140,38 +130,25 @@ fn colored_vs_plain_match_after_stripping_under_char_budget() {
     .expect("colored render under char budget");
 
     // Ensure char budget enforced on uncolored output
-    assert!(plain.chars().count() <= budgets.char_budget.unwrap());
+    assert!(plain.chars().count() <= budgets.global.unwrap().cap);
     // Stripping ANSI from colored should match plain logical content
     let colored_stripped = strip_ansi(&colored);
     assert_eq!(plain, colored_stripped);
 }
 
 #[test]
-fn combined_chars_and_lines_caps_enforced() {
+fn combined_chars_and_lines_caps_rejected() {
     let p = "tests/fixtures/explicit/object_small.json";
     let content = std::fs::read_to_string(p).expect("read fixture");
-    // Case A: line cap is binding
-    let out_a = run_cli(
+    let assert = run_cli(
         &content,
         &["-f", "json", "-t", "default", "-n", "2", "-u", "100000"],
-    ) // huge char cap
-    .success();
-    let s_a = String::from_utf8_lossy(&out_a.get_output().stdout).into_owned();
+    ) // conflicting per-file metrics
+    .failure();
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
     assert!(
-        count_lines_normalized(&s_a) <= 2,
-        "line cap failed: {s_a:?}"
-    );
-
-    // Case B: char cap is binding
-    let out_b = run_cli(
-        &content,
-        &["-f", "json", "-t", "default", "-n", "100", "-u", "60"],
-    ) // small char cap
-    .success();
-    let s_b = String::from_utf8_lossy(&out_b.get_output().stdout).into_owned();
-    assert!(
-        count_chars_normalized(&s_b) <= 60,
-        "char cap failed: {s_b:?}"
+        stderr.contains("only one per-file budget"),
+        "expected conflict error for mixed per-file metrics: {stderr}"
     );
 }
 

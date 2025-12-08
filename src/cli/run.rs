@@ -19,6 +19,7 @@ type InputEntries = Vec<InputEntry>;
 pub(crate) type IgnoreNotices = Vec<String>;
 
 pub(crate) fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
+    budget::validate(cli)?;
     let mut render_cfg = get_render_config_from(cli);
     let grep_cfg = headson::build_grep_config(
         cli.grep.as_deref(),

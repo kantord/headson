@@ -100,6 +100,7 @@ Notes:
 ### Working with multiple files
 
 - Budgets: per-file caps (`--bytes`/`--chars`/`--lines`) apply to each input; global caps (`--global-*`) constrain the combined output when set. Default byte/char budgets scale by input count when no globals are set; line caps stay per-file unless you pass `--global-lines`.
+- One metric per level: pick at most one per-file budget flag (`--bytes` | `--chars` | `--lines`) and at most one global flag (`--global-bytes` | `--global-lines`). Mixing per-file and global kinds is allowed (e.g., per-file lines + global bytes); conflicting flags error.
 - Sorting: inputs are pre-sorted by git frecency (frecenfile) with last-modified-time fallback so recently touched files appear first. Pass `--no-sort` to preserve the order you provided and skip repo scanning.
 - Headers: fileset sections get `==>` headers when newlines are enabled; hide them with `--no-header`. Compact and single-line modes omit headers automatically.
 - Formats: in `--format auto`, each file picks JSON/YAML/Text based on extension; unknowns fall back to Text so mixed filesets “just work.”

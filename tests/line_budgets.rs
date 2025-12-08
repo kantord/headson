@@ -117,7 +117,8 @@ fn text_single_line_fits_under_cap() {
     let tmp = tempfile::tempdir_in(".").expect("tmp");
     let p = tmp.path().join("single.txt");
     fs::write(&p, "onlyline\n").unwrap();
-    let out = run(&["-i", "text", "-f", "text", "-n", "1", p.to_str().unwrap()]);
+    let out =
+        run(&["-i", "text", "-f", "text", "-n", "1", p.to_str().unwrap()]);
     assert!(
         out.contains("onlyline"),
         "single-line file should render its line under a one-line cap: {out:?}"
@@ -136,16 +137,27 @@ fn text_single_line_fits_under_cap() {
 #[test]
 fn combined_char_and_line_caps() {
     let p = "tests/fixtures/explicit/string_escaping.json";
-    // Enforce both: small byte cap and small line cap
-    let out = run(&["-f", "json", "-t", "default", "-n", "2", "-c", "60", p]);
-    let lines = count_lines_normalized(&out);
-    assert!(lines <= 2, "line cap failed: {out:?}");
-    let trimmed_len = out.trim_end_matches('\n').len();
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--no-sort",
+            "-f",
+            "json",
+            "-t",
+            "default",
+            "-n",
+            "2",
+            "-c",
+            "60",
+            p,
+        ])
+        .assert()
+        .failure();
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
     assert!(
-        trimmed_len <= 60,
-        "byte cap failed: len={trimmed_len} > 60, out={out:?}",
+        stderr.contains("only one per-file budget"),
+        "expected conflict error for mixed per-file metrics: {stderr}"
     );
-    assert_snapshot!("json_pseudo_lines2_chars60", out);
 }
 
 #[test]

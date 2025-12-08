@@ -137,12 +137,11 @@ fn array_tail_json_contains_last_k_values() {
         &prio,
         &grep,
         headson::Budgets {
-            byte_budget: Some(10_000),
-            char_budget: None,
-            line_budget: None,
-            per_slot_byte_budget: None,
-            per_slot_char_budget: None,
-            per_slot_line_budget: None,
+            global: Some(headson::Budget {
+                kind: headson::BudgetKind::Bytes,
+                cap: 10_000,
+            }),
+            per_slot: None,
         },
     )
     .expect("render");

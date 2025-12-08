@@ -93,10 +93,10 @@ fn snapshot_multibyte_chars_and_bytes_per_slot() {
         .args([
             "--no-color",
             "--no-sort",
-            "--bytes",
-            "6",
             "--chars",
             "6",
+            "--global-bytes",
+            "12",
             "tests/fixtures/bytes_chars/emoji.json",
             "tests/fixtures/bytes_chars/long.txt",
         ])
@@ -116,7 +116,7 @@ fn snapshot_multibyte_chars_tighter_than_bytes() {
             "--tree",
             "--chars",
             "12",
-            "--bytes",
+            "--global-bytes",
             "100",
             "tests/fixtures/chars_vs_bytes/emoji.txt",
             "tests/fixtures/chars_vs_bytes/ascii.txt",

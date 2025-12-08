@@ -1,8 +1,8 @@
 use anyhow::{bail, Result};
 use headson_core::{
     build_grep_config, map_json_template_for_style, ArraySamplerStrategy,
-    Budgets, ColorMode, InputKind, OutputTemplate, PriorityConfig,
-    RenderConfig, Style,
+    Budget, BudgetKind, Budgets, ColorMode, InputKind, OutputTemplate,
+    PriorityConfig, RenderConfig, Style,
 };
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
@@ -128,12 +128,11 @@ fn summarize(
         cfg.grep_highlight = Some(re.clone());
     }
     let budgets = Budgets {
-        byte_budget: Some(budget),
-        char_budget: None,
-        line_budget: None,
-        per_slot_byte_budget: None,
-        per_slot_char_budget: None,
-        per_slot_line_budget: None,
+        global: Some(Budget {
+            kind: BudgetKind::Bytes,
+            cap: budget,
+        }),
+        per_slot: None,
     };
     let text_mode = if matches!(cfg.template, OutputTemplate::Code) {
         headson_core::TextMode::CodeLike

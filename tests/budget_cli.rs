@@ -1,0 +1,73 @@
+use std::fs;
+
+fn temp_file(contents: &str) -> tempfile::NamedTempFile {
+    let f = tempfile::NamedTempFile::new().expect("tempfile");
+    fs::write(f.path(), contents).expect("write tmp file");
+    f
+}
+
+#[test]
+fn rejects_conflicting_per_file_metrics() {
+    let file = temp_file("hello");
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--no-sort",
+            "-n",
+            "5",
+            "-u",
+            "100",
+            file.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure();
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(
+        stderr.contains("only one per-file budget"),
+        "stderr should mention conflicting per-file metrics: {stderr}"
+    );
+}
+
+#[test]
+fn rejects_conflicting_global_metrics() {
+    let file = temp_file("hello");
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--no-sort",
+            "-C",
+            "100",
+            "-N",
+            "5",
+            file.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure();
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(
+        stderr.contains("only one global budget"),
+        "stderr should mention conflicting global metrics: {stderr}"
+    );
+}
+
+#[test]
+fn allows_mixed_levels() {
+    let file = temp_file("line one\nline two\nline three");
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--no-sort",
+            "-n",
+            "2",
+            "-C",
+            "80",
+            file.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.lines().filter(|l| !l.is_empty()).count() <= 2,
+        "per-file line cap should hold even with global bytes: {stdout:?}"
+    );
+}

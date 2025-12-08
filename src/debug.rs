@@ -13,12 +13,27 @@ struct CountsDbg {
 
 #[derive(Serialize)]
 struct BudgetsDbg {
-    bytes: Option<usize>,
-    chars: Option<usize>,
-    lines: Option<usize>,
-    per_slot_bytes: Option<usize>,
-    per_slot_chars: Option<usize>,
-    per_slot_lines: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    global: Option<BudgetEntryDbg>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    per_slot: Option<BudgetEntryDbg>,
+}
+
+#[derive(Serialize, Copy, Clone)]
+struct BudgetEntryDbg {
+    kind: &'static str,
+    cap: usize,
+}
+
+fn budget_entry_dbg(b: Option<crate::Budget>) -> Option<BudgetEntryDbg> {
+    b.map(|budget| BudgetEntryDbg {
+        kind: match budget.kind {
+            crate::BudgetKind::Bytes => "bytes",
+            crate::BudgetKind::Chars => "chars",
+            crate::BudgetKind::Lines => "lines",
+        },
+        cap: budget.cap,
+    })
 }
 
 #[derive(Serialize)]
@@ -234,7 +249,7 @@ pub(crate) fn emit_render_debug(
     );
     let stats = crate::utils::measure::count_output_stats(
         &measured,
-        budgets.char_budget.is_some(),
+        budgets.measure_chars(),
     );
     let constrained_by =
         crate::pruner::budget::constrained_dimensions(budgets, &stats);
@@ -637,12 +652,8 @@ pub(crate) fn build_render_debug_json(args: RenderDebugArgs) -> String {
         },
         template: template_str_for_root(order, cfg),
         budgets_effective: BudgetsDbg {
-            bytes: budgets.byte_budget,
-            chars: budgets.char_budget,
-            lines: budgets.line_budget,
-            per_slot_bytes: budgets.per_slot_byte_budget,
-            per_slot_chars: budgets.per_slot_char_budget,
-            per_slot_lines: budgets.per_slot_line_budget,
+            global: budget_entry_dbg(budgets.global),
+            per_slot: budget_entry_dbg(budgets.per_slot),
         },
         selection: SelectionDbg { top_k },
         renderer: RendererDbg {

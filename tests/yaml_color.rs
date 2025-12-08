@@ -54,12 +54,11 @@ fn yaml_coloring_applies_and_strips_to_plain() {
 
     let budget = 10_000usize;
     let budgets = headson::Budgets {
-        byte_budget: Some(budget),
-        char_budget: None,
-        line_budget: None,
-        per_slot_byte_budget: None,
-        per_slot_char_budget: None,
-        per_slot_line_budget: None,
+        global: Some(headson::Budget {
+            kind: headson::BudgetKind::Bytes,
+            cap: budget,
+        }),
+        per_slot: None,
     };
     let grep = headson::GrepConfig::default();
     let plain = headson::headson(

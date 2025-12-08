@@ -569,12 +569,14 @@ fn tree_omitted_folders_render_in_input_order() {
         };
         let grep_cfg = headson::GrepConfig::default();
         let budgets = headson::Budgets {
-            byte_budget: None,
-            char_budget: None,
-            line_budget: Some(0),
-            per_slot_byte_budget: None,
-            per_slot_char_budget: None,
-            per_slot_line_budget: Some(0),
+            global: Some(headson::Budget {
+                kind: headson::BudgetKind::Lines,
+                cap: 0,
+            }),
+            per_slot: Some(headson::Budget {
+                kind: headson::BudgetKind::Lines,
+                cap: 0,
+            }),
         };
         headson::headson(
             headson::InputKind::Fileset(files),

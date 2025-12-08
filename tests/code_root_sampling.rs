@@ -59,8 +59,6 @@ fn run_large_code_huge_budget() -> String {
             "--no-color",
             "-c",
             "1000000",
-            "-n",
-            "1000000",
             "-f",
             "auto",
             "tests/fixtures/code/big_sample.py",
