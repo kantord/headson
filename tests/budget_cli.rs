@@ -71,3 +71,43 @@ fn allows_mixed_levels() {
         "per-file line cap should hold even with global bytes: {stdout:?}"
     );
 }
+
+#[test]
+fn global_bytes_too_small_yields_empty() {
+    let file = temp_file(r#"{"a":1}"#);
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--no-sort",
+            "-C",
+            "1",
+            file.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.trim().is_empty(),
+        "outputs should be empty when the global byte budget cannot fit any content: {stdout:?}"
+    );
+}
+
+#[test]
+fn global_lines_zero_yields_empty() {
+    let file = temp_file("hello\nworld\n");
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--no-sort",
+            "-N",
+            "0",
+            file.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.trim().is_empty(),
+        "outputs should be empty when the global line budget is zero: {stdout:?}"
+    );
+}

@@ -141,6 +141,10 @@ pub fn find_largest_render_under_budgets(
     if total == 0 {
         return String::new();
     }
+    let root_is_fileset = order_build
+        .object_type
+        .get(crate::order::ROOT_PQ_ID)
+        .is_some_and(|t| *t == ObjectType::Fileset);
     let measure_cfg = measure_config(order_build, config);
     let mut grep_state = compute_grep_state(order_build, grep);
     if !grep.weak
@@ -178,6 +182,13 @@ pub fn find_largest_render_under_budgets(
             min_k,
             must_keep_slice,
         );
+    if k == 0
+        && must_keep_slice.is_none()
+        && !effective_budgets.per_slot_active()
+        && !root_is_fileset
+    {
+        return String::new();
+    }
     inclusion_flags.fill(0);
     let per_slot_caps_active = effective_budgets.per_slot_active();
 
@@ -958,7 +969,7 @@ fn select_best_k(
             }
         },
     );
-    let k = best_k.unwrap_or(effective_lo);
+    let k = best_k.unwrap_or(if apply_must_keep { effective_lo } else { 0 });
     (k, inclusion_flags, render_set_id, sinkhole_order)
 }
 
