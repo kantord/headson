@@ -230,7 +230,13 @@ pub fn find_largest_render_under_budgets(
     }
 
     if per_slot_caps_active
-        && matches!(effective_budgets.per_slot, Some(Budget { cap: 0, .. }))
+        && matches!(
+            effective_budgets.per_slot,
+            Some(Budget {
+                kind: BudgetKind::Lines,
+                cap: 0
+            })
+        )
     {
         if let Some(slot_map) = compute_fileset_slot_map(order_build) {
             let has_included_slot =
@@ -244,6 +250,9 @@ pub fn find_largest_render_under_budgets(
             if !has_included_slot {
                 return String::new();
             }
+        }
+        if !root_is_fileset {
+            return String::new();
         }
     }
 

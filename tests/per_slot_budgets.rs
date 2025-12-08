@@ -200,6 +200,24 @@ fn per_file_line_budget_zero_without_headers_outputs_nothing() {
 }
 
 #[test]
+fn per_file_line_budget_zero_single_input_outputs_nothing() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "only.txt", "line1\nline2\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--no-sort", "-n", "0", "only.txt"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.trim().is_empty(),
+        "single input should be fully suppressed when per-file line cap is zero: {stdout}"
+    );
+}
+
+#[test]
 fn per_file_byte_budget_prevents_starvation() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "long.txt", "abcdefg\nhijklmn\n");
