@@ -588,12 +588,6 @@ fn sinkhole_priority_order(
     budgets: &Budgets,
     must_keep: Option<&[bool]>,
 ) -> Option<Vec<NodeId>> {
-    // When strong grep is active, skip the sinkhole pre-pass so must-keep nodes
-    // stay free from any approximate per-slot accounting. The measured render
-    // path enforces caps with the correct must-keep adjustments.
-    if must_keep.is_some() {
-        return None;
-    }
     let _ = budgets.per_slot?;
     let mut slot_map = compute_fileset_slot_map(order_build)?;
     propagate_slots_from_parents(&mut slot_map, order_build);
@@ -892,6 +886,25 @@ fn select_best_k(
                 })
                 .unwrap_or(true)
             {
+                if let Some(map) = slot_map.as_ref() {
+                    slot_stats = Some(compute_slot_stats_by_render(
+                        order_build,
+                        &inclusion_flags,
+                        current_render_id,
+                        measure_cfg,
+                        map,
+                        measure_chars,
+                    ));
+                }
+            }
+            if per_slot_caps_active
+                && measure_cfg.count_fileset_headers_in_budgets
+                && slot_stats.is_some()
+                && slot_map.is_some()
+            {
+                // Recompute per-slot stats using a slot-scoped render so counted headers
+                // are charged even when the main recorder missed them (fileset headers are
+                // assembled outside the normal Out/recorder path).
                 if let Some(map) = slot_map.as_ref() {
                     slot_stats = Some(compute_slot_stats_by_render(
                         order_build,

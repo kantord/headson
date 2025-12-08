@@ -552,6 +552,60 @@ fn strong_grep_matches_do_not_exhaust_per_file_cap() {
 }
 
 #[test]
+fn counted_headers_respect_per_file_line_cap_under_strong_grep() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.txt", "pre\nmatch\nmid\npost\n");
+    write_file(&dir, "b.txt", "other\n");
+
+    let stdout = run_grep_with_counted_headers(&dir);
+    assert_headers_and_match_present(&stdout);
+    assert!(
+        stdout.contains("\npre\n"),
+        "one non-matching line should remain under the per-file cap once the header is counted: {stdout}"
+    );
+    assert!(
+        !stdout.contains("\nmid\n") && !stdout.contains("\npost\n"),
+        "additional non-matching lines should be dropped when the per-file cap is already consumed by header + one line: {stdout}"
+    );
+}
+
+fn run_grep_with_counted_headers(dir: &TempDir) -> String {
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "-H",
+            "-n",
+            "2",
+            "--grep",
+            "match",
+            "--grep-show",
+            "all",
+            "b.txt",
+            "a.txt",
+        ])
+        .assert()
+        .success();
+    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+}
+
+fn assert_headers_and_match_present(stdout: &str) {
+    assert!(
+        stdout.contains("==> a.txt <=="),
+        "header should render under counted per-file cap: {stdout}"
+    );
+    assert!(
+        stdout.contains("==> b.txt <=="),
+        "second header should also render under counted per-file cap: {stdout}"
+    );
+    assert!(
+        stdout.contains("match"),
+        "strong grep should still force the matching line even if it exceeds the cap: {stdout}"
+    );
+}
+
+#[test]
 fn per_file_line_budget_two_with_headers_free_still_truncates_body() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "a.txt", "a1\na2\na3\n");
