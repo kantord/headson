@@ -550,3 +550,61 @@ fn strong_grep_matches_do_not_exhaust_per_file_cap() {
         "all matching lines should remain even if they exceed the per-file cap: {stdout}"
     );
 }
+
+#[test]
+fn per_file_line_budget_two_with_headers_free_still_truncates_body() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.txt", "a1\na2\na3\n");
+    write_file(&dir, "b.txt", "b1\nb2\nb3\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--no-sort", "-n", "2", "a.txt", "b.txt"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("==> a.txt <==\na1\n…\n"),
+        "free headers with per-file line cap 2 should allow one body line then ellipsis for a.txt: {stdout}"
+    );
+    assert!(
+        stdout.contains("==> b.txt <==\nb1\n…\n"),
+        "free headers with per-file line cap 2 should allow one body line then ellipsis for b.txt: {stdout}"
+    );
+    assert!(
+        !stdout.contains("\na2\n") && !stdout.contains("\nb2\n"),
+        "second lines should be trimmed under the per-file cap: {stdout}"
+    );
+}
+
+#[test]
+fn per_file_line_budget_three_with_counted_headers_emits_ellipsis() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.txt", "a1\na2\na3\n");
+    write_file(&dir, "b.txt", "b1\nb2\nb3\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--no-sort", "-H", "-n", "6", "a.txt", "b.txt"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("==> a.txt <==\na1\n…\n"),
+        "counted header + cap 6 should leave room for one body line then ellipsis for a.txt: {stdout}"
+    );
+    assert!(
+        stdout.contains("==> b.txt <==\nb1\n…\n"),
+        "counted header + cap 6 should leave room for one body line then ellipsis for b.txt: {stdout}"
+    );
+    assert!(
+        !stdout.contains("\na2\n") && !stdout.contains("\nb2\n"),
+        "remaining body lines should be elided once cap is reached: {stdout}"
+    );
+    assert!(
+        stdout.lines().filter(|l| l.contains('…')).count() == 2,
+        "each file should contribute one omission marker under the counted-header cap: {stdout}"
+    );
+}

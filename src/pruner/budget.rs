@@ -443,6 +443,56 @@ fn propagate_slots_from_parents(
     }
 }
 
+fn slot_measure_config(measure_cfg: &RenderConfig) -> RenderConfig {
+    if measure_cfg.fileset_tree && measure_cfg.count_fileset_headers_in_budgets
+    {
+        measure_cfg.clone()
+    } else if measure_cfg.fileset_tree {
+        let mut cfg = measure_cfg.clone();
+        cfg.fileset_tree = false;
+        cfg.show_fileset_headers = false;
+        cfg
+    } else {
+        measure_cfg.clone()
+    }
+}
+
+fn compute_slot_stats_by_render(
+    order_build: &PriorityOrder,
+    base_flags: &[u32],
+    render_id: u32,
+    measure_cfg: &RenderConfig,
+    slot_map: &[Option<usize>],
+    slot_count: usize,
+    measure_chars: bool,
+) -> Vec<OutputStats> {
+    let mut scratch_flags: Vec<u32> = vec![0; base_flags.len()];
+    let mut out: Vec<OutputStats> = Vec::with_capacity(slot_count);
+    let slot_cfg = slot_measure_config(measure_cfg);
+    for slot_idx in 0..slot_count {
+        for (idx, flag) in base_flags.iter().enumerate() {
+            let node_slot = slot_map.get(idx).and_then(|s| *s);
+            if *flag != render_id {
+                scratch_flags[idx] = 0;
+                continue;
+            }
+            if node_slot.is_some_and(|s| s != slot_idx) {
+                scratch_flags[idx] = 0;
+            } else {
+                scratch_flags[idx] = render_id;
+            }
+        }
+        let rendered = crate::serialization::render_from_render_set(
+            order_build,
+            &scratch_flags,
+            render_id,
+            &slot_cfg,
+        );
+        out.push(count_output_stats(&rendered, measure_chars));
+    }
+    out
+}
+
 fn fileset_slot_names(order_build: &PriorityOrder) -> Option<Vec<String>> {
     let children = order_build
         .fileset_children
@@ -521,118 +571,6 @@ fn fits_per_slot(
         BudgetKind::Lines => current.lines.saturating_add(delta.lines),
     };
     would <= cap.cap
-}
-
-#[allow(
-    clippy::cognitive_complexity,
-    clippy::too_many_arguments,
-    reason = "Per-slot render check needs the full context; splitting would hide the budget wiring"
-)]
-/// Render each fileset slot independently to enforce per-slot budgets, optionally
-/// measuring without tree scaffold when headers are free so the charged content
-/// matches what the budget cares about.
-fn per_slot_render_fits(
-    order_build: &PriorityOrder,
-    measure_cfg: &RenderConfig,
-    budgets: &Budgets,
-    slot_map: &Option<Vec<Option<usize>>>,
-    slot_count: Option<usize>,
-    inclusion_flags: &[u32],
-    render_id: u32,
-    measure_chars: bool,
-    scratch_flags: &mut Vec<u32>,
-    must_keep: Option<&[bool]>,
-) -> bool {
-    // Render each slot to enforce per-file caps. When tree scaffold is free
-    // (headers not counted), we temporarily render without the tree so the
-    // measurement reflects only charged content; when headers count, keep the
-    // tree scaffold so gutters and headers consume budget. Final output still
-    // uses the caller’s render config.
-    let Some(slot_map_ref) = slot_map.as_ref() else {
-        return true;
-    };
-    let Some(count) = slot_count else {
-        return true;
-    };
-    if scratch_flags.len() < inclusion_flags.len() {
-        scratch_flags.resize(inclusion_flags.len(), 0);
-    }
-    let mut must_keep_flags: Vec<u32> = Vec::new();
-    for slot_idx in 0..count {
-        for (idx, flag) in inclusion_flags.iter().enumerate() {
-            if *flag != render_id {
-                scratch_flags[idx] = 0;
-                continue;
-            }
-            let node_slot = slot_map_ref.get(idx).and_then(|s| *s);
-            if node_slot.is_some_and(|s| s != slot_idx) {
-                scratch_flags[idx] = 0;
-            } else {
-                scratch_flags[idx] = render_id;
-            }
-            if let Some(mk) = must_keep {
-                if must_keep_flags.len() < inclusion_flags.len() {
-                    must_keep_flags.resize(inclusion_flags.len(), 0);
-                }
-                if mk.get(idx).copied().unwrap_or(false)
-                    && node_slot.is_some_and(|s| s == slot_idx)
-                {
-                    must_keep_flags[idx] = render_id;
-                } else if let Some(flag_slot) = must_keep_flags.get_mut(idx) {
-                    *flag_slot = 0;
-                }
-            }
-        }
-        let slot_measure_cfg = if measure_cfg.fileset_tree
-            && measure_cfg.count_fileset_headers_in_budgets
-        {
-            // When headers/scaffold count toward budgets, measure with the tree
-            // scaffold enabled so gutters are charged.
-            measure_cfg.clone()
-        } else if measure_cfg.fileset_tree {
-            let mut cfg = measure_cfg.clone();
-            // Measure content-only for per-slot fit in tree mode so scaffold does not
-            // dominate the per-file budget; final render still uses tree scaffold.
-            cfg.fileset_tree = false;
-            cfg.show_fileset_headers = false;
-            cfg
-        } else {
-            measure_cfg.clone()
-        };
-        let rendered = crate::serialization::render_from_render_set(
-            order_build,
-            scratch_flags,
-            render_id,
-            &slot_measure_cfg,
-        );
-        let stats = count_output_stats(&rendered, measure_chars);
-        let mk_stats = if !must_keep_flags.is_empty() {
-            let rendered_mk = crate::serialization::render_from_render_set(
-                order_build,
-                &must_keep_flags,
-                render_id,
-                &slot_measure_cfg,
-            );
-            count_output_stats(&rendered_mk, measure_chars)
-        } else {
-            OutputStats {
-                bytes: 0,
-                chars: 0,
-                lines: 0,
-            }
-        };
-        if let Some(cap) = budgets.per_slot {
-            let (charged, mk) = match cap.kind {
-                BudgetKind::Bytes => (stats.bytes, mk_stats.bytes),
-                BudgetKind::Chars => (stats.chars, mk_stats.chars),
-                BudgetKind::Lines => (stats.lines, mk_stats.lines),
-            };
-            if charged > cap.cap.saturating_add(mk) {
-                return false;
-            }
-        }
-    }
-    true
 }
 
 #[allow(
@@ -854,7 +792,6 @@ fn select_best_k(
     let effective_hi = hi.max(effective_lo);
 
     let mut inclusion_flags: Vec<u32> = vec![0; total];
-    let mut per_slot_flags: Vec<u32> = Vec::new();
 
     let mut render_set_id: u32 = 1;
     let mut best_k: Option<usize> = None;
@@ -869,9 +806,19 @@ fn select_best_k(
     let slot_count = slot_map
         .as_ref()
         .and_then(|map| map.iter().flatten().max().map(|s| *s + 1));
-    let must_keep_stats = must_keep.map(|flags| {
-        measure_must_keep(order_build, measure_cfg, flags, measure_chars)
-    });
+    let (must_keep_stats, must_keep_slot_stats) =
+        if let Some(flags) = must_keep {
+            let (mk, mk_slots) = measure_must_keep_with_slots(
+                order_build,
+                measure_cfg,
+                flags,
+                measure_chars,
+                slot_map.as_deref(),
+            );
+            (Some(mk), mk_slots)
+        } else {
+            (None, None)
+        };
     let search_budgets_excluding_must_keep =
         if let Some(mk) = must_keep_stats.as_ref() {
             // Matches were already added to the effective budget upstream so they are “free”;
@@ -913,12 +860,21 @@ fn select_best_k(
                     );
                 }
             }
-            let s = crate::serialization::render_from_render_set(
-                order_build,
-                &inclusion_flags,
-                current_render_id,
-                measure_cfg,
-            );
+            let mut recorder = slot_count.map(|n| {
+                crate::serialization::output::SlotStatsRecorder::new(
+                    n,
+                    measure_chars,
+                )
+            });
+            let (s, mut slot_stats) =
+                crate::serialization::render_from_render_set_with_slots(
+                    order_build,
+                    &inclusion_flags,
+                    current_render_id,
+                    measure_cfg,
+                    slot_map.as_deref(),
+                    recorder.take(),
+                );
             let mut stats =
                 crate::utils::measure::count_output_stats(&s, measure_chars);
             if let Some(mk) = must_keep_stats.as_ref() {
@@ -926,29 +882,58 @@ fn select_best_k(
                 stats.chars = stats.chars.saturating_sub(mk.chars);
                 stats.lines = stats.lines.saturating_sub(mk.lines);
             }
+            if slot_stats
+                .as_ref()
+                .map(|stats| {
+                    stats
+                        .iter()
+                        .all(|s| s.bytes == 0 && s.chars == 0 && s.lines == 0)
+                })
+                .unwrap_or(true)
+            {
+                if let (Some(map), Some(count)) =
+                    (slot_map.as_ref(), slot_count)
+                {
+                    slot_stats = Some(compute_slot_stats_by_render(
+                        order_build,
+                        &inclusion_flags,
+                        current_render_id,
+                        measure_cfg,
+                        map,
+                        count,
+                        measure_chars,
+                    ));
+                }
+            }
             let fits_global = search_budgets_excluding_must_keep
                 .global
                 .map(|b| !b.exceeds(&stats))
                 .unwrap_or(true);
             let fits_per_slot = if per_slot_caps_active {
-                if slot_map.is_none() {
-                    search_budgets_excluding_must_keep
-                        .per_slot
-                        .map(|b| !b.exceeds(&stats))
-                        .unwrap_or(true)
+                if let Some(cap) = budgets.per_slot {
+                    if let Some(slot_stats_vec) = slot_stats {
+                        slot_stats_vec.iter().enumerate().all(|(idx, st)| {
+                            let mk_slot = must_keep_slot_stats
+                                .as_ref()
+                                .and_then(|mk| mk.get(idx));
+                            let charged = match cap.kind {
+                                BudgetKind::Bytes => st.bytes.saturating_sub(
+                                    mk_slot.map(|m| m.bytes).unwrap_or(0),
+                                ),
+                                BudgetKind::Chars => st.chars.saturating_sub(
+                                    mk_slot.map(|m| m.chars).unwrap_or(0),
+                                ),
+                                BudgetKind::Lines => st.lines.saturating_sub(
+                                    mk_slot.map(|m| m.lines).unwrap_or(0),
+                                ),
+                            };
+                            charged <= cap.cap
+                        })
+                    } else {
+                        !cap.exceeds(&stats)
+                    }
                 } else {
-                    per_slot_render_fits(
-                        order_build,
-                        measure_cfg,
-                        &search_budgets_excluding_must_keep,
-                        &slot_map,
-                        slot_count,
-                        &inclusion_flags,
-                        current_render_id,
-                        measure_chars,
-                        &mut per_slot_flags,
-                        if apply_must_keep { must_keep } else { None },
-                    )
+                    true
                 }
             } else {
                 true
@@ -1028,6 +1013,23 @@ fn measure_must_keep(
     must_keep: &[bool],
     measure_chars: bool,
 ) -> OutputStats {
+    measure_must_keep_with_slots(
+        order_build,
+        measure_cfg,
+        must_keep,
+        measure_chars,
+        None,
+    )
+    .0
+}
+
+fn measure_must_keep_with_slots(
+    order_build: &PriorityOrder,
+    measure_cfg: &RenderConfig,
+    must_keep: &[bool],
+    measure_chars: bool,
+    slot_map: Option<&[Option<usize>]>,
+) -> (OutputStats, Option<Vec<OutputStats>>) {
     let mut inclusion_flags: Vec<u32> = vec![0; order_build.total_nodes];
     let render_set_id: u32 = 1;
     include_must_keep(
@@ -1036,13 +1038,49 @@ fn measure_must_keep(
         render_set_id,
         must_keep,
     );
-    let rendered = crate::serialization::render_from_render_set(
-        order_build,
-        &inclusion_flags,
-        render_set_id,
-        measure_cfg,
-    );
-    crate::utils::measure::count_output_stats(&rendered, measure_chars)
+    let mut recorder = slot_map.map(|slots| {
+        let max_slot = slots.iter().flatten().max().map(|s| *s).unwrap_or(0);
+        crate::serialization::output::SlotStatsRecorder::new(
+            max_slot.saturating_add(1),
+            measure_chars,
+        )
+    });
+    let (rendered, mut slot_stats) =
+        crate::serialization::render_from_render_set_with_slots(
+            order_build,
+            &inclusion_flags,
+            render_set_id,
+            measure_cfg,
+            slot_map,
+            recorder.take(),
+        );
+    if slot_stats
+        .as_ref()
+        .map(|stats| {
+            stats
+                .iter()
+                .all(|s| s.bytes == 0 && s.chars == 0 && s.lines == 0)
+        })
+        .unwrap_or(true)
+    {
+        if let Some(map) = slot_map.as_ref() {
+            if let Some(count) = map.iter().flatten().max().map(|s| *s + 1) {
+                slot_stats = Some(compute_slot_stats_by_render(
+                    order_build,
+                    &inclusion_flags,
+                    render_set_id,
+                    measure_cfg,
+                    map,
+                    count,
+                    measure_chars,
+                ));
+            }
+        }
+    }
+    (
+        crate::utils::measure::count_output_stats(&rendered, measure_chars),
+        slot_stats,
+    )
 }
 
 fn subtract_must_keep_from_budgets(

@@ -30,6 +30,7 @@ pub(crate) struct RenderScope<'a> {
     line_number_width: Option<usize>,
     code_highlight_cache: HashMap<usize, Arc<Vec<String>>>,
     grep_highlight: Option<Regex>,
+    slot_map: Option<&'a [Option<usize>]>,
 }
 
 impl<'a> RenderScope<'a> {
@@ -108,6 +109,11 @@ impl<'a> RenderScope<'a> {
             acc.resize(idx + 1, None);
         }
         acc[idx] = Some(text.to_string());
+    }
+
+    fn slot_for(&self, node_id: usize) -> Option<usize> {
+        self.slot_map
+            .and_then(|slots| slots.get(node_id).copied().flatten())
     }
 
     fn collect_code_lines(
@@ -447,6 +453,7 @@ impl<'a> RenderScope<'a> {
         inline: bool,
         out: &mut Out<'_>,
     ) {
+        out.set_current_slot(self.slot_for(id));
         match &self.order.nodes[id] {
             RankedNode::Array { .. } => {
                 self.write_array(id, depth, inline, out)
@@ -859,6 +866,60 @@ pub fn render_from_render_set(
     render_id: u32,
     config: &crate::RenderConfig,
 ) -> String {
+    render_from_render_set_with_slots(
+        order_build,
+        inclusion_flags,
+        render_id,
+        config,
+        None,
+        None,
+    )
+    .0
+}
+
+pub fn render_from_render_set_with_slots(
+    order_build: &PriorityOrder,
+    inclusion_flags: &[u32],
+    render_id: u32,
+    config: &crate::RenderConfig,
+    slot_map: Option<&[Option<usize>]>,
+    recorder: Option<crate::serialization::output::SlotStatsRecorder>,
+) -> (String, Option<Vec<crate::utils::measure::OutputStats>>) {
+    let needs_separate_slot_render =
+        recorder.is_some() && slot_map.is_some() && config.fileset_tree;
+    if needs_separate_slot_render {
+        // Render the user-facing tree output without a recorder, then render a
+        // secondary pass without tree scaffolding (when scaffold is free) to
+        // gather per-slot stats that match budget accounting.
+        let (rendered, _) = render_from_render_set_with_slots(
+            order_build,
+            inclusion_flags,
+            render_id,
+            &crate::RenderConfig {
+                debug: config.debug,
+                grep_highlight: config.grep_highlight.clone(),
+                ..config.clone()
+            },
+            slot_map,
+            None,
+        );
+        let mut slot_measure_cfg = config.clone();
+        if slot_measure_cfg.fileset_tree
+            && !slot_measure_cfg.count_fileset_headers_in_budgets
+        {
+            slot_measure_cfg.fileset_tree = false;
+            slot_measure_cfg.show_fileset_headers = false;
+        }
+        let (_, slot_stats) = render_from_render_set_with_slots(
+            order_build,
+            inclusion_flags,
+            render_id,
+            &slot_measure_cfg,
+            slot_map,
+            recorder,
+        );
+        return (rendered, slot_stats);
+    }
     let root_id = ROOT_PQ_ID;
     // Compute optional global line-number width when numbering is enabled for text.
     fn digits(mut n: usize) -> usize {
@@ -939,11 +1000,14 @@ pub fn render_from_render_set(
         line_number_width,
         code_highlight_cache: HashMap::new(),
         grep_highlight: config.grep_highlight.clone(),
+        slot_map,
     };
     let mut s = String::new();
-    let mut out = Out::new(&mut s, config, line_number_width);
+    let mut out =
+        Out::new_with_recorder(&mut s, config, line_number_width, recorder);
     scope.write_node(root_id, 0, false, &mut out);
-    s
+    let slot_stats = out.into_slot_stats();
+    (s, slot_stats)
 }
 
 /// Convenience: prepare the render set for `top_k` nodes and render in one call.
@@ -1663,6 +1727,7 @@ mod tests {
             line_number_width: None,
             code_highlight_cache: HashMap::new(),
             grep_highlight: None,
+            slot_map: None,
         };
         // Atomic leaves never report omitted counts.
         let none = scope.omitted_for(crate::order::ROOT_PQ_ID, 0);

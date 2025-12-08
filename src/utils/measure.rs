@@ -17,7 +17,7 @@ fn count_lines_from_bytes(b: &[u8]) -> usize {
     lines
 }
 
-fn count_line_breaks(b: &[u8]) -> usize {
+pub(crate) fn count_line_breaks(b: &[u8]) -> usize {
     let mut breaks = 0usize;
     let mut i = 0usize;
     while i < b.len() {
@@ -40,7 +40,7 @@ fn count_line_breaks(b: &[u8]) -> usize {
     breaks
 }
 
-fn ends_with_break(b: &[u8]) -> bool {
+pub(crate) fn ends_with_break(b: &[u8]) -> bool {
     b.ends_with(b"\n") || (b.ends_with(b"\r") && !b.ends_with(b"\r\n"))
 }
 
