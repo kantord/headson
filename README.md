@@ -151,6 +151,7 @@ Use `--tree` to render filesets as a directory tree (like `tree`) with inline st
 
 - Interactions and precedence
   - All active budgets are enforced simultaneously. The render must satisfy all of: bytes (if set), chars (if set), and lines (if set). The strictest cap wins.
+  - Outputs are never completely empty: even under zero budgets, the renderer keeps at least one structural/logical node (often an omission marker) so callers always get a minimal, well-formed preview.
   - When only lines are specified, no implicit byte cap applies. When neither lines nor chars are specified, a 500‑byte default applies.
 
 Quick one‑liners:
