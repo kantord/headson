@@ -890,13 +890,41 @@ pub fn render_from_render_set_with_slots(
     slot_map: Option<&[Option<usize>]>,
     recorder: Option<crate::serialization::output::SlotStatsRecorder>,
 ) -> (String, Option<Vec<crate::utils::measure::OutputStats>>) {
-    let needs_separate_slot_render =
-        recorder.is_some() && slot_map.is_some() && config.fileset_tree;
+    render_from_render_set_with_slots_impl(
+        order_build,
+        inclusion_flags,
+        render_id,
+        config,
+        slot_map,
+        recorder,
+        true,
+    )
+}
+
+#[allow(
+    clippy::cognitive_complexity,
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    reason = "Renderer + measurement pass need shared branching; splitting would obscure the budget logic."
+)]
+fn render_from_render_set_with_slots_impl(
+    order_build: &PriorityOrder,
+    inclusion_flags: &[u32],
+    render_id: u32,
+    config: &crate::RenderConfig,
+    slot_map: Option<&[Option<usize>]>,
+    recorder: Option<crate::serialization::output::SlotStatsRecorder>,
+    allow_separate_slot_render: bool,
+) -> (String, Option<Vec<crate::utils::measure::OutputStats>>) {
+    let needs_separate_slot_render = allow_separate_slot_render
+        && recorder.is_some()
+        && slot_map.is_some()
+        && config.fileset_tree;
     if needs_separate_slot_render {
         // Render the user-facing tree output without a recorder, then render a
         // secondary pass without tree scaffolding (when scaffold is free) to
         // gather per-slot stats that match budget accounting.
-        let (rendered, _) = render_from_render_set_with_slots(
+        let (rendered, _) = render_from_render_set_with_slots_impl(
             order_build,
             inclusion_flags,
             render_id,
@@ -907,6 +935,7 @@ pub fn render_from_render_set_with_slots(
             },
             slot_map,
             None,
+            false,
         );
         let mut slot_measure_cfg = config.clone();
         if slot_measure_cfg.fileset_tree
@@ -915,13 +944,14 @@ pub fn render_from_render_set_with_slots(
             slot_measure_cfg.fileset_tree = false;
             slot_measure_cfg.show_fileset_headers = false;
         }
-        let (_, slot_stats) = render_from_render_set_with_slots(
+        let (_, slot_stats) = render_from_render_set_with_slots_impl(
             order_build,
             inclusion_flags,
             render_id,
             &slot_measure_cfg,
             slot_map,
             recorder,
+            false,
         );
         return (rendered, slot_stats);
     }

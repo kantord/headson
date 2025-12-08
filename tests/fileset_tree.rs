@@ -126,6 +126,34 @@ fn tree_emits_omission_marker_under_tight_budget() {
 }
 
 #[test]
+fn tree_counted_headers_with_per_file_cap_completes() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("a.txt"), "one\n");
+    write_file(&dir.path().join("b.txt"), "two\nthree\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--tree",
+            "--no-sort",
+            "-H",
+            "-n",
+            "1",
+            "a.txt",
+            "b.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("a.txt") && stdout.contains("b.txt"),
+        "tree output should mention both files even when headers are counted: {stdout}"
+    );
+}
+
+#[test]
 fn tree_renders_duplicate_basenames_in_distinct_dirs() {
     let dir = tempdir().expect("tmp");
     write_file(&dir.path().join("a/foo.rs"), "fn a() {}\n");
