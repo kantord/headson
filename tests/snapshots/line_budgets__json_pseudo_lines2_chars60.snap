@@ -1,6 +1,0 @@
----
-source: tests/line_budgets.rs
-expression: out
----
-"quote \" and backslash \\ and newline \n and tab \t and…"
-

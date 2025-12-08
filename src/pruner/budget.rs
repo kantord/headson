@@ -649,6 +649,12 @@ fn sinkhole_priority_order(
     budgets: &Budgets,
     must_keep: Option<&[bool]>,
 ) -> Option<Vec<NodeId>> {
+    // When strong grep is active, skip the sinkhole pre-pass so must-keep nodes
+    // stay free from any approximate per-slot accounting. The measured render
+    // path enforces caps with the correct must-keep adjustments.
+    if must_keep.is_some() {
+        return None;
+    }
     let _ = budgets.per_slot?;
     let mut slot_map = compute_fileset_slot_map(order_build)?;
     propagate_slots_from_parents(&mut slot_map, order_build);

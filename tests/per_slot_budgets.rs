@@ -518,3 +518,35 @@ fn per_file_line_budget_keeps_string_prefix_in_line_only_mode() {
         "line-only per-file cap should still show an elided object placeholder: {stdout}"
     );
 }
+
+#[test]
+fn strong_grep_matches_do_not_exhaust_per_file_cap() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "log.txt", "pre\nmatch one\nmiddle\nmatch two\npost\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--grep",
+            "match",
+            "--grep-show",
+            "all",
+            "-n",
+            "2",
+            "log.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("pre") && stdout.contains("post"),
+        "non-matching context should still appear when strong grep makes matches free: {stdout}"
+    );
+    assert!(
+        stdout.contains("match one") && stdout.contains("match two"),
+        "all matching lines should remain even if they exceed the per-file cap: {stdout}"
+    );
+}
