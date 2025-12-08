@@ -877,6 +877,11 @@ pub fn render_from_render_set(
     .0
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    clippy::too_many_lines,
+    reason = "Renderer needs the pre-pass/tree special-casing in one place to keep budget accounting clear."
+)]
 pub fn render_from_render_set_with_slots(
     order_build: &PriorityOrder,
     inclusion_flags: &[u32],

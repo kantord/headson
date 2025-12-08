@@ -463,10 +463,11 @@ fn compute_slot_stats_by_render(
     render_id: u32,
     measure_cfg: &RenderConfig,
     slot_map: &[Option<usize>],
-    slot_count: usize,
     measure_chars: bool,
 ) -> Vec<OutputStats> {
     let mut scratch_flags: Vec<u32> = vec![0; base_flags.len()];
+    let slot_count =
+        slot_map.iter().flatten().max().map(|s| *s + 1).unwrap_or(0);
     let mut out: Vec<OutputStats> = Vec::with_capacity(slot_count);
     let slot_cfg = slot_measure_config(measure_cfg);
     for slot_idx in 0..slot_count {
@@ -884,23 +885,20 @@ fn select_best_k(
             }
             if slot_stats
                 .as_ref()
-                .map(|stats| {
-                    stats
-                        .iter()
-                        .all(|s| s.bytes == 0 && s.chars == 0 && s.lines == 0)
+                .map(|slot_vec| {
+                    slot_vec.iter().all(|stat| {
+                        stat.bytes == 0 && stat.chars == 0 && stat.lines == 0
+                    })
                 })
                 .unwrap_or(true)
             {
-                if let (Some(map), Some(count)) =
-                    (slot_map.as_ref(), slot_count)
-                {
+                if let Some(map) = slot_map.as_ref() {
                     slot_stats = Some(compute_slot_stats_by_render(
                         order_build,
                         &inclusion_flags,
                         current_render_id,
                         measure_cfg,
                         map,
-                        count,
                         measure_chars,
                     ));
                 }
@@ -1039,7 +1037,7 @@ fn measure_must_keep_with_slots(
         must_keep,
     );
     let mut recorder = slot_map.map(|slots| {
-        let max_slot = slots.iter().flatten().max().map(|s| *s).unwrap_or(0);
+        let max_slot = slots.iter().flatten().max().copied().unwrap_or(0);
         crate::serialization::output::SlotStatsRecorder::new(
             max_slot.saturating_add(1),
             measure_chars,
@@ -1064,17 +1062,14 @@ fn measure_must_keep_with_slots(
         .unwrap_or(true)
     {
         if let Some(map) = slot_map.as_ref() {
-            if let Some(count) = map.iter().flatten().max().map(|s| *s + 1) {
-                slot_stats = Some(compute_slot_stats_by_render(
-                    order_build,
-                    &inclusion_flags,
-                    render_set_id,
-                    measure_cfg,
-                    map,
-                    count,
-                    measure_chars,
-                ));
-            }
+            slot_stats = Some(compute_slot_stats_by_render(
+                order_build,
+                &inclusion_flags,
+                render_set_id,
+                measure_cfg,
+                map,
+                measure_chars,
+            ));
         }
     }
     (
