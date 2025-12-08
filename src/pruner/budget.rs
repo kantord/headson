@@ -649,9 +649,7 @@ fn sinkhole_priority_order(
     budgets: &Budgets,
     must_keep: Option<&[bool]>,
 ) -> Option<Vec<NodeId>> {
-    if budgets.per_slot.is_none() {
-        return None;
-    }
+    let _ = budgets.per_slot?;
     let mut slot_map = compute_fileset_slot_map(order_build)?;
     propagate_slots_from_parents(&mut slot_map, order_build);
     let slot_count = slot_map.iter().flatten().max().map(|s| *s + 1)?;
@@ -969,23 +967,26 @@ pub(crate) fn constrained_dimensions(
     let mut dims: Vec<&'static str> = Vec::new();
     if let Some(b) = budgets.global {
         if b.exceeds(stats) {
-            dims.push(match b.kind {
-                BudgetKind::Bytes => "bytes",
-                BudgetKind::Chars => "chars",
-                BudgetKind::Lines => "lines",
-            });
+            dims.push(kind_str(b.kind, false));
         }
     }
     if let Some(b) = budgets.per_slot {
         if b.exceeds(stats) {
-            dims.push(match b.kind {
-                BudgetKind::Bytes => "per-file bytes",
-                BudgetKind::Chars => "per-file chars",
-                BudgetKind::Lines => "per-file lines",
-            });
+            dims.push(kind_str(b.kind, true));
         }
     }
     dims
+}
+
+fn kind_str(kind: BudgetKind, per_slot: bool) -> &'static str {
+    match (kind, per_slot) {
+        (BudgetKind::Bytes, false) => "bytes",
+        (BudgetKind::Chars, false) => "chars",
+        (BudgetKind::Lines, false) => "lines",
+        (BudgetKind::Bytes, true) => "per-file bytes",
+        (BudgetKind::Chars, true) => "per-file chars",
+        (BudgetKind::Lines, true) => "per-file lines",
+    }
 }
 
 fn measure_config(
@@ -1220,6 +1221,10 @@ fn ensure_fileset_headers_for_empty_slots(
     }
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Header measurement includes conditional branches for caps/kinds; splitting would obscure the budget logic."
+)]
 fn header_stats_for_slot(
     slot_idx: usize,
     header_names: &Option<Vec<String>>,

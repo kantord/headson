@@ -24,6 +24,10 @@ pub struct EffectiveBudgets {
     pub line_only: bool,
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Validation + default wiring is clearer in one routine; splitting would scatter the budget rules."
+)]
 pub(crate) fn compute_effective(
     cli: &Cli,
     input_count: usize,
@@ -145,40 +149,37 @@ pub(crate) fn validate(cli: &Cli) -> Result<()> {
 }
 
 fn per_slot_budget(cli: &Cli) -> Option<Budget> {
-    if let Some(b) = cli.bytes {
-        Some(Budget {
+    cli.bytes
+        .map(|b| Budget {
             kind: BudgetKind::Bytes,
             cap: b,
         })
-    } else if let Some(c) = cli.chars {
-        Some(Budget {
-            kind: BudgetKind::Chars,
-            cap: c,
+        .or_else(|| {
+            cli.chars.map(|c| Budget {
+                kind: BudgetKind::Chars,
+                cap: c,
+            })
         })
-    } else if let Some(l) = cli.lines {
-        Some(Budget {
-            kind: BudgetKind::Lines,
-            cap: l,
+        .or_else(|| {
+            cli.lines.map(|l| Budget {
+                kind: BudgetKind::Lines,
+                cap: l,
+            })
         })
-    } else {
-        None
-    }
 }
 
 fn explicit_global_budget(cli: &Cli) -> Option<Budget> {
-    if let Some(b) = cli.global_bytes {
-        Some(Budget {
+    cli.global_bytes
+        .map(|b| Budget {
             kind: BudgetKind::Bytes,
             cap: b,
         })
-    } else if let Some(l) = cli.global_lines {
-        Some(Budget {
-            kind: BudgetKind::Lines,
-            cap: l,
+        .or_else(|| {
+            cli.global_lines.map(|l| Budget {
+                kind: BudgetKind::Lines,
+                cap: l,
+            })
         })
-    } else {
-        None
-    }
 }
 
 // Return a rendering config adjusted for active budget modes (pure; does not mutate caller state).
