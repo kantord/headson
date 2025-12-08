@@ -378,7 +378,7 @@ fn filter_fileset_without_matches(
     clippy::cognitive_complexity,
     reason = "single DFS that is clearer in one routine than split helpers"
 )]
-fn compute_fileset_slot_map(
+pub(crate) fn compute_fileset_slot_map(
     order_build: &PriorityOrder,
 ) -> Option<Vec<Option<usize>>> {
     if order_build
@@ -949,9 +949,14 @@ fn select_best_k(
     (k, inclusion_flags, render_set_id, sinkhole_order)
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Tiny budget summary checks are clearer inline than split helpers."
+)]
 pub(crate) fn constrained_dimensions(
     budgets: Budgets,
     stats: &crate::utils::measure::OutputStats,
+    slot_stats: Option<&[crate::utils::measure::OutputStats]>,
 ) -> Vec<&'static str> {
     let mut dims: Vec<&'static str> = Vec::new();
     if let Some(b) = budgets.global {
@@ -960,7 +965,12 @@ pub(crate) fn constrained_dimensions(
         }
     }
     if let Some(b) = budgets.per_slot {
-        if b.exceeds(stats) {
+        if let Some(slot_vec) = slot_stats {
+            if slot_vec.iter().any(|st| b.exceeds(st)) {
+                dims.push(kind_str(b.kind, true));
+            }
+        } else if b.exceeds(stats) {
+            // Fallback when per-slot details are unavailable: use aggregate stats.
             dims.push(kind_str(b.kind, true));
         }
     }

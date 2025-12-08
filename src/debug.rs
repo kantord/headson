@@ -2,6 +2,7 @@ use serde::Serialize;
 use std::ops::Not;
 
 use crate::order::{ObjectType, PriorityOrder, ROOT_PQ_ID, RankedNode};
+use crate::serialization::output::SlotStatsRecorder;
 
 #[derive(Serialize)]
 struct CountsDbg {
@@ -241,18 +242,39 @@ pub(crate) fn emit_render_debug(
 ) {
     let mut no_color_cfg = config.clone();
     no_color_cfg.color_enabled = false;
-    let measured = crate::serialization::render_from_render_set(
-        order_build,
-        inclusion_flags,
-        render_set_id,
-        &no_color_cfg,
-    );
+    let slot_map = if budgets.per_slot.is_some() {
+        crate::pruner::budget::compute_fileset_slot_map(order_build)
+            .or_else(|| Some(vec![Some(0); order_build.total_nodes]))
+    } else {
+        None
+    };
+    let slot_count = slot_map
+        .as_ref()
+        .and_then(|map| map.iter().flatten().max().map(|s| *s + 1))
+        .unwrap_or(0)
+        .max(1);
+    let recorder = budgets
+        .per_slot
+        .is_some()
+        .then(|| SlotStatsRecorder::new(slot_count, budgets.measure_chars()));
+    let (measured, slot_stats) =
+        crate::serialization::render_from_render_set_with_slots(
+            order_build,
+            inclusion_flags,
+            render_set_id,
+            &no_color_cfg,
+            slot_map.as_deref(),
+            recorder,
+        );
     let stats = crate::utils::measure::count_output_stats(
         &measured,
         budgets.measure_chars(),
     );
-    let constrained_by =
-        crate::pruner::budget::constrained_dimensions(budgets, &stats);
+    let constrained_by = crate::pruner::budget::constrained_dimensions(
+        budgets,
+        &stats,
+        slot_stats.as_deref(),
+    );
     let out_stats = crate::debug::OutputStatsDbg {
         bytes: stats.bytes,
         chars: stats.chars,
