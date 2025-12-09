@@ -373,6 +373,26 @@ fn per_file_line_budget_respected_without_headers() {
 }
 
 #[test]
+fn per_file_zero_byte_or_char_budget_emits_nothing() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "only.txt", "data that should be hidden\n");
+
+    for (flag, desc) in [("--bytes", "byte"), ("--chars", "char")] {
+        let assert = cargo_bin_cmd!("hson")
+            .current_dir(dir.path())
+            .args(["--no-color", "--no-sort", flag, "0", "only.txt"])
+            .assert()
+            .success();
+
+        let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        assert!(
+            stdout.trim().is_empty(),
+            "per-file {desc} budget of zero should suppress all output: {stdout}"
+        );
+    }
+}
+
+#[test]
 fn per_file_grep_multiple_hits_are_not_dropped() {
     let dir = tempdir().expect("tmp");
     write_file(

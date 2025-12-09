@@ -182,6 +182,9 @@ pub fn find_largest_render_under_budgets(
             min_k,
             must_keep_slice,
         );
+    if effective_budgets.per_slot_zero_cap() {
+        return String::new();
+    }
     if k == 0
         && must_keep_slice.is_none()
         && !effective_budgets.per_slot_active()

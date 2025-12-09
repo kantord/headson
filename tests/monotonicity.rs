@@ -39,24 +39,49 @@ fn assert_within_budget_or_min(
     path: &str,
     template: &str,
 ) {
-    let min_len = lens[0];
+    let min_nonzero =
+        lens.iter().copied().filter(|n| *n > 0).min().unwrap_or(0);
     for (i, &b) in budgets.iter().enumerate() {
-        if min_len <= b {
-            assert!(
-                lens[i] <= b,
-                "len={} should be <= budget={} (template={}, path={})",
-                lens[i],
-                b,
-                template,
-                path
-            );
+        if b == 0 {
+            assert_budget_zero(lens[i], template, path);
+        } else if min_nonzero > 0 && b < min_nonzero {
+            assert_min_nonzero(lens[i], min_nonzero, b, template, path);
         } else {
-            assert_eq!(
-                lens[i], min_len,
-                "should use minimal preview when budget < min_len (b={b}, template={template}, path={path})",
-            );
+            assert_within_budget(lens[i], b, template, path);
         }
     }
+}
+
+fn assert_budget_zero(len: usize, template: &str, path: &str) {
+    assert_eq!(
+        len, 0,
+        "budget=0 should suppress output (template={template}, path={path})"
+    );
+}
+
+fn assert_min_nonzero(
+    len: usize,
+    min_nonzero: usize,
+    budget: usize,
+    template: &str,
+    path: &str,
+) {
+    assert_eq!(
+        len, min_nonzero,
+        "should use minimal preview when budget < min_nonzero (b={budget}, template={template}, path={path})"
+    );
+}
+
+fn assert_within_budget(
+    len: usize,
+    budget: usize,
+    template: &str,
+    path: &str,
+) {
+    assert!(
+        len <= budget,
+        "len={len} should be <= budget={budget} (template={template}, path={path})",
+    );
 }
 
 #[test]
