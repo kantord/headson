@@ -393,6 +393,49 @@ fn per_file_zero_byte_or_char_budget_emits_nothing() {
 }
 
 #[test]
+fn per_file_zero_byte_budget_emits_nothing_without_headers() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "only.txt", "hidden\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--no-header",
+            "--bytes",
+            "0",
+            "only.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.trim().is_empty(),
+        "per-file byte budget of zero with headers disabled should emit nothing: {stdout}"
+    );
+}
+
+#[test]
+fn per_file_zero_byte_budget_emits_nothing_with_counted_headers() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "only.txt", "hidden\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--no-sort", "-H", "--bytes", "0", "only.txt"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.trim().is_empty(),
+        "per-file byte budget of zero with counted headers should emit nothing: {stdout}"
+    );
+}
+
+#[test]
 fn per_file_grep_multiple_hits_are_not_dropped() {
     let dir = tempdir().expect("tmp");
     write_file(

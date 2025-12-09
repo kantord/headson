@@ -31,6 +31,11 @@ def test_summarize_budget_only_kw():
     assert len(out_10) <= len(out_100)
 
 
+def test_zero_byte_budget_suppresses_output():
+    out = headson.summarize('{"a":1}', format="json", style="strict", byte_budget=0)
+    assert out == ""
+
+
 def test_pseudo_shows_ellipsis_on_truncation():
     text = json.dumps({"arr": list(range(50))})
     out = headson.summarize(text, format="json", style="default", byte_budget=30)
