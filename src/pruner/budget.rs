@@ -265,7 +265,7 @@ pub fn find_largest_render_under_budgets(
             &inclusion_flags,
             render_set_id,
             config,
-            budgets,
+            effective_budgets,
             k,
         );
     }
