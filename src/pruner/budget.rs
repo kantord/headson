@@ -675,17 +675,8 @@ fn sinkhole_priority_order(
 
         if let Some(slot_idx) = slot {
             if is_must_keep {
-                if let Some(h) = header_stats {
-                    usage[slot_idx].bytes =
-                        usage[slot_idx].bytes.saturating_add(h.bytes);
-                    usage[slot_idx].chars =
-                        usage[slot_idx].chars.saturating_add(h.chars);
-                    usage[slot_idx].lines =
-                        usage[slot_idx].lines.saturating_add(h.lines);
-                    if let Some(hc) = header_charged.get_mut(slot_idx) {
-                        *hc = true;
-                    }
-                }
+                // Must-keep items are “free”: do not charge their header or body
+                // against per-slot usage so non-matching context can still fit.
                 filtered.push(*node_id);
                 continue;
             }
@@ -959,7 +950,7 @@ fn select_best_k(
                 .unwrap_or(true);
             let fits_per_slot = if per_slot_caps_active {
                 if let Some(cap) = budgets.per_slot {
-                    if let Some(slot_stats_vec) = slot_stats {
+                    if let Some(slot_stats_vec) = slot_stats.as_ref() {
                         slot_stats_vec.iter().enumerate().all(|(idx, st)| {
                             let mk_slot = must_keep_slot_stats
                                 .as_ref()
@@ -971,14 +962,27 @@ fn select_best_k(
                                 BudgetKind::Chars => st.chars.saturating_sub(
                                     mk_slot.map(|m| m.chars).unwrap_or(0),
                                 ),
-                                BudgetKind::Lines => st.lines.saturating_sub(
-                                    mk_slot.map(|m| m.lines).unwrap_or(0),
-                                ),
+                                BudgetKind::Lines => {
+                                    let mut lines = st.lines.saturating_sub(
+                                        mk_slot.map(|m| m.lines).unwrap_or(0),
+                                    );
+                                    let match_lines =
+                                        mk_slot.map(|m| m.lines).unwrap_or(0);
+                                    if match_lines > cap.cap
+                                        && lines > 0
+                                        && match_lines < st.lines
+                                    {
+                                        // Treat the omission line as free when matches already
+                                        // exceed the cap so at least one non-matching line can fit.
+                                        lines = lines.saturating_sub(1);
+                                    }
+                                    lines
+                                }
                             };
                             charged <= cap.cap
                         })
                     } else {
-                        true
+                        !cap.exceeds(&stats)
                     }
                 } else {
                     true

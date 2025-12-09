@@ -675,6 +675,44 @@ fn strong_grep_matches_do_not_exhaust_per_file_cap() {
 }
 
 #[test]
+fn strong_grep_does_not_starve_non_matching_context_in_filesets() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "a.txt", "match1\ncontext1\nmatch2\ncontext2\n");
+    write_file(&dir, "b.txt", "other\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--grep",
+            "match",
+            "--grep-show",
+            "all",
+            "-n",
+            "1",
+            "a.txt",
+            "b.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("match1") && stdout.contains("match2"),
+        "strong grep should still surface all matching lines: {stdout}"
+    );
+    assert!(
+        stdout.contains("context1") || stdout.contains("context2"),
+        "per-file cap should still leave room for some non-matching context even when matches exceed the cap: {stdout}"
+    );
+    assert!(
+        stdout.contains("==> b.txt <==") && stdout.contains("other"),
+        "non-matching files should remain visible under --grep-show all: {stdout}"
+    );
+}
+
+#[test]
 fn counted_headers_respect_per_file_line_cap_under_strong_grep() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "a.txt", "pre\nmatch\nmid\npost\n");
