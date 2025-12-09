@@ -335,6 +335,42 @@ fn per_file_line_budget_respected_with_strong_grep() {
 }
 
 #[test]
+fn per_file_line_budget_respected_with_strong_grep_single_input() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir, "only.txt", "pre\nmatch\npost\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--grep",
+            "match",
+            "--grep-show",
+            "all",
+            "-n",
+            "1",
+            "only.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("match"),
+        "strong grep should include the matching line: {stdout}"
+    );
+    assert!(
+        !(stdout.contains("pre") && stdout.contains("post")),
+        "per-file line cap of 1 should not allow both non-matching lines: {stdout}"
+    );
+    assert!(
+        stdout.contains('…'),
+        "omission marker should indicate truncated context under the per-file cap: {stdout}"
+    );
+}
+
+#[test]
 fn per_file_line_budget_respected_without_headers() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "a.txt", "a1\na2\n");
@@ -623,12 +659,18 @@ fn strong_grep_matches_do_not_exhaust_per_file_cap() {
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(
-        stdout.contains("pre") && stdout.contains("post"),
-        "non-matching context should still appear when strong grep makes matches free: {stdout}"
+        ["pre", "middle", "post"]
+            .iter()
+            .any(|line| stdout.contains(line)),
+        "some non-matching context should still appear when strong grep makes matches free: {stdout}"
     );
     assert!(
         stdout.contains("match one") && stdout.contains("match two"),
         "all matching lines should remain even if they exceed the per-file cap: {stdout}"
+    );
+    assert!(
+        stdout.contains('…'),
+        "an omission marker should signal trimmed context under the per-file cap: {stdout}"
     );
 }
 

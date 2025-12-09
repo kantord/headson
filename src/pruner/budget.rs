@@ -831,7 +831,12 @@ fn select_best_k(
                 measure_chars,
                 slot_map.as_deref(),
             );
-            (Some(mk), mk_slots)
+            let slots = if per_slot_caps_active {
+                mk_slots.or_else(|| Some(vec![mk]))
+            } else {
+                mk_slots
+            };
+            (Some(mk), slots)
         } else {
             (None, None)
         };
@@ -898,8 +903,9 @@ fn select_best_k(
                     slot_map.as_deref(),
                     recorder.take(),
                 );
-            let mut stats =
+            let full_stats =
                 crate::utils::measure::count_output_stats(&s, measure_chars);
+            let mut stats = full_stats;
             if let Some(mk) = must_keep_stats.as_ref() {
                 stats.bytes = stats.bytes.saturating_sub(mk.bytes);
                 stats.chars = stats.chars.saturating_sub(mk.chars);
@@ -944,6 +950,9 @@ fn select_best_k(
                     ));
                 }
             }
+            if per_slot_caps_active && slot_stats.is_none() {
+                slot_stats = Some(vec![full_stats]);
+            }
             let fits_global = search_budgets_excluding_must_keep
                 .global
                 .map(|b| !b.exceeds(&stats))
@@ -969,7 +978,7 @@ fn select_best_k(
                             charged <= cap.cap
                         })
                     } else {
-                        !cap.exceeds(&stats)
+                        true
                     }
                 } else {
                     true
@@ -1079,6 +1088,15 @@ fn measure_must_keep_with_slots(
     measure_chars: bool,
     slot_map: Option<&[Option<usize>]>,
 ) -> (OutputStats, Option<Vec<OutputStats>>) {
+    let mut measure_cfg = measure_cfg.clone();
+    if matches!(
+        measure_cfg.template,
+        crate::OutputTemplate::Text | crate::OutputTemplate::Auto
+    ) {
+        // Strip omission markers when measuring must-keep slices so free matches
+        // don’t undercount non-matching context.
+        measure_cfg.style = crate::serialization::types::Style::Strict;
+    }
     let mut inclusion_flags: Vec<u32> = vec![0; order_build.total_nodes];
     let render_set_id: u32 = 1;
     include_must_keep(
@@ -1099,7 +1117,7 @@ fn measure_must_keep_with_slots(
             order_build,
             &inclusion_flags,
             render_set_id,
-            measure_cfg,
+            &measure_cfg,
             slot_map,
             recorder.take(),
         );
@@ -1117,7 +1135,7 @@ fn measure_must_keep_with_slots(
                 order_build,
                 &inclusion_flags,
                 render_set_id,
-                measure_cfg,
+                &measure_cfg,
                 map,
                 measure_chars,
             ));
