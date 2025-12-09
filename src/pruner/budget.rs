@@ -500,7 +500,11 @@ fn compute_slot_stats_by_render(
                 scratch_flags[idx] = 0;
                 continue;
             }
-            if node_slot.is_some_and(|s| s != slot_idx) {
+            let Some(node_slot) = node_slot else {
+                scratch_flags[idx] = 0;
+                continue;
+            };
+            if node_slot != slot_idx {
                 scratch_flags[idx] = 0;
             } else {
                 scratch_flags[idx] = render_id;
@@ -536,6 +540,41 @@ fn fileset_slot_names(order_build: &PriorityOrder) -> Option<Vec<String>> {
         names.push(name);
     }
     Some(names)
+}
+
+fn fits_per_slot_cap(
+    cap: Option<Budget>,
+    fallback_stats: &OutputStats,
+    slot_stats: Option<&[OutputStats]>,
+    must_keep_slot_stats: Option<&[OutputStats]>,
+) -> bool {
+    let Some(cap) = cap else { return true };
+    let Some(slot_stats) = slot_stats else {
+        return !cap.exceeds(fallback_stats);
+    };
+    slot_stats.iter().enumerate().all(|(idx, st)| {
+        let mk_slot = must_keep_slot_stats.as_ref().and_then(|mk| mk.get(idx));
+        let charged = match cap.kind {
+            BudgetKind::Bytes => st
+                .bytes
+                .saturating_sub(mk_slot.map(|m| m.bytes).unwrap_or(0)),
+            BudgetKind::Chars => st
+                .chars
+                .saturating_sub(mk_slot.map(|m| m.chars).unwrap_or(0)),
+            BudgetKind::Lines => {
+                let match_lines = mk_slot.map(|m| m.lines).unwrap_or(0);
+                let mut lines = st.lines.saturating_sub(match_lines);
+                if match_lines > cap.cap && lines > 0 && match_lines < st.lines
+                {
+                    // Treat the omission line as free when matches already exceed the cap
+                    // so at least one non-matching line can fit.
+                    lines = lines.saturating_sub(1);
+                }
+                lines
+            }
+        };
+        charged <= cap.cap
+    })
 }
 
 fn node_budget_cost(
@@ -949,44 +988,12 @@ fn select_best_k(
                 .map(|b| !b.exceeds(&stats))
                 .unwrap_or(true);
             let fits_per_slot = if per_slot_caps_active {
-                if let Some(cap) = budgets.per_slot {
-                    if let Some(slot_stats_vec) = slot_stats.as_ref() {
-                        slot_stats_vec.iter().enumerate().all(|(idx, st)| {
-                            let mk_slot = must_keep_slot_stats
-                                .as_ref()
-                                .and_then(|mk| mk.get(idx));
-                            let charged = match cap.kind {
-                                BudgetKind::Bytes => st.bytes.saturating_sub(
-                                    mk_slot.map(|m| m.bytes).unwrap_or(0),
-                                ),
-                                BudgetKind::Chars => st.chars.saturating_sub(
-                                    mk_slot.map(|m| m.chars).unwrap_or(0),
-                                ),
-                                BudgetKind::Lines => {
-                                    let mut lines = st.lines.saturating_sub(
-                                        mk_slot.map(|m| m.lines).unwrap_or(0),
-                                    );
-                                    let match_lines =
-                                        mk_slot.map(|m| m.lines).unwrap_or(0);
-                                    if match_lines > cap.cap
-                                        && lines > 0
-                                        && match_lines < st.lines
-                                    {
-                                        // Treat the omission line as free when matches already
-                                        // exceed the cap so at least one non-matching line can fit.
-                                        lines = lines.saturating_sub(1);
-                                    }
-                                    lines
-                                }
-                            };
-                            charged <= cap.cap
-                        })
-                    } else {
-                        !cap.exceeds(&stats)
-                    }
-                } else {
-                    true
-                }
+                fits_per_slot_cap(
+                    budgets.per_slot,
+                    &stats,
+                    slot_stats.as_deref(),
+                    must_keep_slot_stats.as_deref(),
+                )
             } else {
                 true
             };
