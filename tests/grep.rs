@@ -893,3 +893,32 @@ fn weak_grep_fileset_with_no_matches_still_renders_and_has_no_notice() {
         "weak grep should not emit the strong-grep notice when there are no matches"
     );
 }
+
+#[test]
+fn strong_grep_obeys_zero_global_line_budget_for_non_matches() {
+    let input = br#"{"keep":"needle","drop":"filler"}"#.to_vec();
+    let assert = cargo_bin_cmd!("hson")
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--grep",
+            "needle",
+            "--grep-show",
+            "all",
+            "--global-lines",
+            "0",
+        ])
+        .write_stdin(input)
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("needle"),
+        "strong grep should still surface matching content when budgets are zeroed: {stdout}"
+    );
+    assert!(
+        !stdout.contains("drop"),
+        "non-matching content should be excluded when no global line headroom remains: {stdout}"
+    );
+}

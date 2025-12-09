@@ -32,7 +32,7 @@ pub(crate) fn compute_effective(
     cli: &Cli,
     input_count: usize,
 ) -> EffectiveBudgets {
-    let per_slot = per_slot_budget(cli);
+    let mut per_slot = per_slot_budget(cli);
     let explicit_global = explicit_global_budget(cli);
 
     // Defaults and implicit roll-ups:
@@ -68,6 +68,10 @@ pub(crate) fn compute_effective(
                 // No implicit global for line caps.
             }
             None => {
+                per_slot = Some(Budget {
+                    kind: BudgetKind::Bytes,
+                    cap: DEFAULT_BYTES_PER_INPUT,
+                });
                 global = Some(Budget {
                     kind: BudgetKind::Bytes,
                     cap: DEFAULT_BYTES_PER_INPUT.saturating_mul(input_count),
@@ -240,8 +244,12 @@ mod tests {
             "default byte budget should scale by input count (500 each)"
         );
         assert_eq!(
-            effective.budgets.per_slot, None,
-            "per-slot budgets stay unset by default"
+            effective.budgets.per_slot,
+            Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 500
+            }),
+            "defaults should still enforce a per-file 500-byte cap so later files cannot be starved"
         );
         assert_eq!(
             effective.per_file_for_priority, 500,

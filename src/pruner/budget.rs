@@ -772,14 +772,11 @@ fn select_best_k(
     must_keep: Option<&[bool]>,
 ) -> (usize, Vec<u32>, u32, Option<Vec<NodeId>>) {
     let total = order_build.total_nodes;
-    let allow_zero = must_keep.is_none() && budgets.per_slot.is_some();
-    let base_lo = if allow_zero {
-        0
-    } else if must_keep.is_some() {
-        1
-    } else {
-        min_k.max(1)
-    };
+    let zero_global_cap =
+        matches!(budgets.global, Some(Budget { cap: 0, .. }));
+    let allow_zero =
+        must_keep.is_some() || budgets.per_slot.is_some() || zero_global_cap;
+    let base_lo = if allow_zero { 0 } else { min_k.max(1) };
     let sinkhole_order =
         sinkhole_priority_order(order_build, measure_cfg, &budgets, must_keep);
     let selection_order_ref = sinkhole_order
@@ -796,6 +793,7 @@ fn select_best_k(
     };
     let capped_lo = base_lo.min(available);
     let hi = match budgets.global {
+        Some(Budget { cap: 0, .. }) => 0,
         Some(Budget {
             kind: BudgetKind::Bytes,
             cap,
@@ -843,6 +841,13 @@ fn select_best_k(
             budgets
         };
     let apply_must_keep = must_keep.is_some();
+    if apply_must_keep {
+        if let Some(b) = search_budgets_excluding_must_keep.global {
+            if b.cap == 0 {
+                return (0, inclusion_flags, render_set_id, sinkhole_order);
+            }
+        }
+    }
     let effective_min_k = if apply_must_keep { effective_lo } else { 0 };
     let _ = crate::pruner::search::binary_search_max(
         effective_lo.max(effective_min_k),
@@ -978,7 +983,7 @@ fn select_best_k(
             }
         },
     );
-    let k = best_k.unwrap_or(if apply_must_keep { effective_lo } else { 0 });
+    let k = best_k.unwrap_or(0);
     (k, inclusion_flags, render_set_id, sinkhole_order)
 }
 
