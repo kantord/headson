@@ -142,7 +142,8 @@ pub fn find_largest_render_under_budgets(
     );
     reorder_if_grep(order_build, &grep_state);
     let fileset_slots = FilesetSlots::new(order_build);
-    let measure_cfg = measure_config(order_build, config);
+    let header_budgeting = header_budgeting_policy(order_build, config);
+    let measure_cfg = measure_config(order_build, config, header_budgeting);
     let min_k = min_k_for(&grep_state, grep);
     let must_keep_slice = must_keep_slice(&grep_state, grep);
     let (k, mut inclusion_flags, render_set_id, selection_order) =
@@ -155,6 +156,7 @@ pub fn find_largest_render_under_budgets(
             grep,
             &grep_state,
             fileset_slots.as_ref(),
+            header_budgeting,
         );
     if budgets.per_slot_zero_cap() {
         return String::new();
@@ -202,8 +204,8 @@ pub fn find_largest_render_under_budgets(
             &mut inclusion_flags,
             &budgets,
             &measure_cfg,
-            config.count_fileset_headers_in_budgets,
             fileset_slots.as_ref(),
+            header_budgeting,
         );
     }
 
@@ -422,6 +424,36 @@ pub(crate) struct FilesetSlots {
     pub names: Option<Vec<String>>,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum HeadersBudgeting {
+    Free,
+    Charged,
+}
+
+impl HeadersBudgeting {
+    pub fn is_charged(self) -> bool {
+        matches!(self, HeadersBudgeting::Charged)
+    }
+}
+
+fn header_budgeting_policy(
+    order_build: &PriorityOrder,
+    config: &RenderConfig,
+) -> HeadersBudgeting {
+    let root_is_fileset = order_build
+        .object_type
+        .get(ROOT_PQ_ID)
+        .is_some_and(|t| *t == ObjectType::Fileset);
+    if !root_is_fileset || !config.show_fileset_headers {
+        return HeadersBudgeting::Free;
+    }
+    if config.count_fileset_headers_in_budgets {
+        HeadersBudgeting::Charged
+    } else {
+        HeadersBudgeting::Free
+    }
+}
+
 impl FilesetSlots {
     pub(crate) fn new(order_build: &PriorityOrder) -> Option<Self> {
         let map = compute_fileset_slot_map(order_build)?;
@@ -545,6 +577,7 @@ fn effective_budgets_with_grep(
     grep: &GrepConfig,
     state: &Option<GrepState>,
     fileset_slots: Option<&FilesetSlots>,
+    header_budgeting: HeadersBudgeting,
 ) -> Option<(OutputStats, Option<Vec<OutputStats>>)> {
     if !is_strong_grep(grep, state) {
         return None;
@@ -559,6 +592,7 @@ fn effective_budgets_with_grep(
         measure_cfg.count_fileset_headers_in_budgets
             || measure_cfg.fileset_tree,
         fileset_slots,
+        header_budgeting,
     ))
 }
 
@@ -598,6 +632,7 @@ fn select_best_k(
     grep: &GrepConfig,
     state: &Option<GrepState>,
     fileset_slots: Option<&FilesetSlots>,
+    header_budgeting: HeadersBudgeting,
 ) -> (usize, Vec<u32>, u32, Option<Vec<NodeId>>) {
     let total = order_build.total_nodes;
     let zero_global_cap =
@@ -644,6 +679,7 @@ fn select_best_k(
         grep,
         state,
         fileset_slots,
+        header_budgeting,
     );
     let (mk_stats, mk_slots) = if let Some(flags) = must_keep {
         if let Some((mk, mk_slots)) = free_allowance {
@@ -660,6 +696,7 @@ fn select_best_k(
                 flags,
                 measure_chars,
                 fileset_slots,
+                header_budgeting,
             );
             let slots = if per_slot_caps_active {
                 mk_slots.or_else(|| Some(vec![mk]))
@@ -800,6 +837,7 @@ fn kind_str(kind: BudgetKind, per_slot: bool) -> &'static str {
 fn measure_config(
     order_build: &PriorityOrder,
     config: &RenderConfig,
+    header_budgeting: HeadersBudgeting,
 ) -> RenderConfig {
     let root_is_fileset = order_build
         .object_type
@@ -809,13 +847,12 @@ fn measure_config(
     measure_cfg.color_enabled = false;
     if config.fileset_tree {
         // In tree mode, show_fileset_headers controls whether scaffold lines
-        // (pipes/gutters) render; respect the budget flag so scaffold can stay
-        // “free” when headers are excluded from budgets.
-        measure_cfg.show_fileset_headers =
-            config.count_fileset_headers_in_budgets;
+        // (pipes/gutters) render; honor the budgeting policy so scaffold can
+        // stay “free” when headers are excluded from budgets.
+        measure_cfg.show_fileset_headers = header_budgeting.is_charged();
     } else if config.show_fileset_headers
         && root_is_fileset
-        && !config.count_fileset_headers_in_budgets
+        && header_budgeting == HeadersBudgeting::Free
     {
         // Budgets are for content; measure without fileset headers so
         // section titles/summary lines remain “free” during selection.
@@ -830,8 +867,11 @@ fn measure_must_keep_with_slots(
     must_keep: &[bool],
     measure_chars: bool,
     fileset_slots: Option<&FilesetSlots>,
+    header_budgeting: HeadersBudgeting,
 ) -> (OutputStats, Option<Vec<OutputStats>>) {
     let mut measure_cfg = measure_cfg.clone();
+    measure_cfg.count_fileset_headers_in_budgets =
+        header_budgeting.is_charged();
     if matches!(
         measure_cfg.template,
         crate::OutputTemplate::Text | crate::OutputTemplate::Auto
@@ -947,8 +987,8 @@ fn ensure_fileset_headers_for_empty_slots(
     inclusion_flags: &mut Vec<u32>,
     budgets: &Budgets,
     measure_cfg: &RenderConfig,
-    count_headers_in_budgets: bool,
     fileset_slots: Option<&FilesetSlots>,
+    header_budgeting: HeadersBudgeting,
 ) {
     let Some(slots) = fileset_slots else {
         return;
@@ -991,7 +1031,7 @@ fn ensure_fileset_headers_for_empty_slots(
             newline_len,
             budgets,
         );
-        if count_headers_in_budgets && header_stats.is_none() {
+        if header_budgeting.is_charged() && header_stats.is_none() {
             continue;
         }
         if let Some(file_node) = fileset_children.get(slot_idx) {
