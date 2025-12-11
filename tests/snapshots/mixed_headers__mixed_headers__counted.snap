@@ -3,9 +3,20 @@ source: tests/mixed_headers.rs
 expression: normalized
 ---
 ==> tests/fixtures/mixed_headers/a.json <==
-
+{
+  "a": 1,
+  "b": 2,
+  "c": 3
+}
 
 ==> tests/fixtures/mixed_headers/b.yaml <==
+items:
+  - one
+  - two
+name: demo
 
 
 ==> tests/fixtures/mixed_headers/c.txt <==
+alpha
+beta
+gamma

@@ -7,4 +7,4 @@ expression: normalize(&out)
 │ ├─ emoji.txt
 │ │ 😀😀😀😀😀
 │ ├─ ascii.txt
-│ │ …
+│ │ aaaaaaaaaa

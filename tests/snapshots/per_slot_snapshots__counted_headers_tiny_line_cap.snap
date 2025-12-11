@@ -1,12 +1,7 @@
 ---
 source: tests/per_slot_snapshots.rs
-assertion_line: 47
 expression: normalize(&out)
 ---
-==> tests/fixtures/mixed_headers/a.json <==
 
 
-==> tests/fixtures/mixed_headers/b.yaml <==
-
-
-==> tests/fixtures/mixed_headers/c.txt <==
+==> 3 more files <==

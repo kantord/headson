@@ -4,6 +4,7 @@ use crate::grep::{
 use crate::order::{NodeId, ObjectType, ROOT_PQ_ID};
 use crate::utils::measure::{OutputStats, count_output_stats};
 use crate::{GrepConfig, PriorityOrder, RenderConfig};
+use std::collections::VecDeque;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BudgetKind {
@@ -143,7 +144,7 @@ pub fn find_largest_render_under_budgets(
     reorder_if_grep(order_build, &grep_state);
     let min_k = min_k_for(&grep_state, grep);
     let must_keep_slice = must_keep_slice(&grep_state, grep);
-    let (k, mut inclusion_flags, render_set_id, sinkhole_order) =
+    let (k, mut inclusion_flags, render_set_id, selection_order) =
         select_best_k(
             order_build,
             &measure_cfg,
@@ -166,8 +167,8 @@ pub fn find_largest_render_under_budgets(
     inclusion_flags.fill(0);
     let per_slot_caps_active = budgets.per_slot_active();
 
-    if let Some(order) = sinkhole_order.as_ref() {
-        mark_sinkhole_top_k_and_ancestors(
+    if let Some(order) = selection_order.as_deref() {
+        mark_custom_top_k_and_ancestors(
             order_build,
             order,
             k,
@@ -192,7 +193,7 @@ pub fn find_largest_render_under_budgets(
             );
         }
     }
-    if per_slot_caps_active && budgets.global.is_none() {
+    if per_slot_caps_active && !config.count_fileset_headers_in_budgets {
         ensure_fileset_headers_for_empty_slots(
             order_build,
             render_set_id,
@@ -410,33 +411,6 @@ pub(crate) fn compute_fileset_slot_map(
     Some(slots)
 }
 
-#[allow(
-    clippy::cognitive_complexity,
-    reason = "Small parent walk; splitting would obscure the simple loop."
-)]
-fn propagate_slots_from_parents(
-    slots: &mut [Option<usize>],
-    order_build: &PriorityOrder,
-) {
-    for idx in 0..slots.len() {
-        if slots[idx].is_some() {
-            continue;
-        }
-        let mut parent_idx =
-            order_build.parent.get(idx).and_then(|p| p.map(|n| n.0));
-        while let Some(pid) = parent_idx {
-            if let Some(slot) = slots.get(pid).copied().flatten() {
-                if let Some(entry) = slots.get_mut(idx) {
-                    *entry = Some(slot);
-                }
-                break;
-            }
-            parent_idx =
-                order_build.parent.get(pid).and_then(|p| p.map(|n| n.0));
-        }
-    }
-}
-
 fn fileset_slot_names(order_build: &PriorityOrder) -> Option<Vec<String>> {
     let children = order_build
         .fileset_children
@@ -456,6 +430,55 @@ fn fileset_slot_names(order_build: &PriorityOrder) -> Option<Vec<String>> {
         names.push(name);
     }
     Some(names)
+}
+
+fn round_robin_slot_priority(
+    order_build: &PriorityOrder,
+    slot_map: &[Option<usize>],
+) -> Option<Vec<NodeId>> {
+    let slot_count = slot_map.iter().flatten().max().map(|s| *s + 1)?;
+    let (mut buckets, unslotted) =
+        bucket_nodes_by_slot(order_build, slot_map, slot_count);
+    let mut out = drain_round_robin(&mut buckets);
+    out.extend(unslotted);
+    Some(out)
+}
+
+fn bucket_nodes_by_slot(
+    order_build: &PriorityOrder,
+    slot_map: &[Option<usize>],
+    slot_count: usize,
+) -> (Vec<VecDeque<NodeId>>, Vec<NodeId>) {
+    let mut buckets: Vec<VecDeque<NodeId>> = vec![VecDeque::new(); slot_count];
+    let mut unslotted: Vec<NodeId> = Vec::new();
+    for node in order_build.by_priority.iter().copied() {
+        if let Some(slot) = slot_map.get(node.0).and_then(|s| *s) {
+            if let Some(bucket) = buckets.get_mut(slot) {
+                bucket.push_back(node);
+                continue;
+            }
+        }
+        unslotted.push(node);
+    }
+    (buckets, unslotted)
+}
+
+fn drain_round_robin(buckets: &mut [VecDeque<NodeId>]) -> Vec<NodeId> {
+    let slot_count = buckets.len();
+    let total: usize = buckets.iter().map(VecDeque::len).sum();
+    let mut out: Vec<NodeId> = Vec::with_capacity(total);
+    let mut remaining = total;
+    let mut cursor = 0usize;
+    while remaining > 0 {
+        let slot = cursor % slot_count;
+        if let Some(node) = buckets.get_mut(slot).and_then(VecDeque::pop_front)
+        {
+            out.push(node);
+            remaining = remaining.saturating_sub(1);
+        }
+        cursor = cursor.saturating_add(1);
+    }
+    out
 }
 
 fn fits_per_slot_cap(
@@ -491,170 +514,6 @@ fn fits_per_slot_cap(
         };
         charged <= cap.cap
     })
-}
-
-fn node_budget_cost(
-    order_build: &PriorityOrder,
-    node_idx: usize,
-    measure_chars: bool,
-    newline_len: usize,
-) -> OutputStats {
-    match order_build.nodes.get(node_idx) {
-        Some(crate::RankedNode::AtomicLeaf { token, .. }) => {
-            let mut stats = count_output_stats(token.as_str(), measure_chars);
-            // Atomic tokens render with no trailing newline; add a minimal
-            // quote/punctuation buffer to avoid undercounting.
-            stats.bytes = stats.bytes.saturating_add(2);
-            if measure_chars {
-                stats.chars = stats.chars.saturating_add(2);
-            }
-            stats.lines = stats.lines.max(1);
-            stats
-        }
-        Some(crate::RankedNode::SplittableLeaf { value, .. }) => {
-            let mut stats = count_output_stats(value.as_str(), measure_chars);
-            // Quotes + newline overhead for display templates; strict JSON
-            // will be close to this bound as well.
-            stats.bytes = stats.bytes.saturating_add(2 + newline_len);
-            if measure_chars {
-                stats.chars = stats.chars.saturating_add(2 + newline_len);
-            }
-            stats.lines = stats.lines.max(1);
-            stats
-        }
-        _ => {
-            let mut stats = OutputStats {
-                bytes: newline_len,
-                chars: 0,
-                lines: 0,
-            };
-            if measure_chars {
-                stats.chars = newline_len;
-            }
-            stats
-        }
-    }
-}
-
-fn fits_per_slot(
-    current: &OutputStats,
-    delta: &OutputStats,
-    budgets: &Budgets,
-) -> bool {
-    let Some(cap) = budgets.per_slot else {
-        return true;
-    };
-    let would = match cap.kind {
-        BudgetKind::Bytes => current.bytes.saturating_add(delta.bytes),
-        BudgetKind::Chars => current.chars.saturating_add(delta.chars),
-        BudgetKind::Lines => current.lines.saturating_add(delta.lines),
-    };
-    would <= cap.cap
-}
-
-#[allow(
-    clippy::cognitive_complexity,
-    reason = "Single-pass fileset walk; inlining keeps the budget flow readable."
-)]
-#[allow(
-    clippy::too_many_lines,
-    reason = "Single-pass walk reads clearer in one function."
-)]
-fn sinkhole_priority_order(
-    order_build: &PriorityOrder,
-    measure_cfg: &RenderConfig,
-    budgets: &Budgets,
-    must_keep: Option<&[bool]>,
-) -> Option<Vec<NodeId>> {
-    let _ = budgets.per_slot?;
-    let mut slot_map = compute_fileset_slot_map(order_build)?;
-    propagate_slots_from_parents(&mut slot_map, order_build);
-    let slot_count = slot_map.iter().flatten().max().map(|s| *s + 1)?;
-    let mut usage: Vec<OutputStats> = vec![
-        OutputStats {
-            bytes: 0,
-            chars: 0,
-            lines: 0
-        };
-        slot_count
-    ];
-    let mut filtered: Vec<NodeId> =
-        Vec::with_capacity(order_build.by_priority.len());
-    let charge_headers = measure_cfg.show_fileset_headers
-        && !measure_cfg.newline.is_empty()
-        && !measure_cfg.fileset_tree;
-    let header_names = if charge_headers {
-        fileset_slot_names(order_build)
-    } else {
-        None
-    };
-    let mut header_charged: Vec<bool> = vec![false; slot_count];
-    let measure_chars = budgets.measure_chars();
-    let newline_len = measure_cfg.newline.len();
-
-    for node_id in order_build.by_priority.iter() {
-        let nid = node_id.0;
-        if matches!(
-            order_build.nodes.get(nid),
-            Some(crate::RankedNode::LeafPart { .. })
-        ) {
-            continue;
-        }
-        let slot = slot_map.get(nid).and_then(|s| *s);
-        let mut delta =
-            node_budget_cost(order_build, nid, measure_chars, newline_len);
-        let is_must_keep =
-            must_keep.and_then(|m| m.get(nid)).copied().unwrap_or(false);
-        let mut header_stats: Option<OutputStats> = None;
-        if charge_headers {
-            if let Some(slot_idx) = slot {
-                if !header_charged.get(slot_idx).copied().unwrap_or(false) {
-                    header_stats = header_stats_for_slot(
-                        slot_idx,
-                        &header_names,
-                        measure_chars,
-                        newline_len,
-                        budgets,
-                    );
-                    if header_stats.is_none() {
-                        // Header alone would exceed the cap; skip this slot.
-                        continue;
-                    }
-                }
-            }
-        }
-
-        if let Some(slot_idx) = slot {
-            if is_must_keep {
-                // Must-keep items are “free”: do not charge their header or body
-                // against per-slot usage so non-matching context can still fit.
-                filtered.push(*node_id);
-                continue;
-            }
-            if let Some(h) = header_stats.take() {
-                delta.bytes = delta.bytes.saturating_add(h.bytes);
-                delta.chars = delta.chars.saturating_add(h.chars);
-                delta.lines = delta.lines.saturating_add(h.lines);
-            }
-            if !fits_per_slot(&usage[slot_idx], &delta, budgets) {
-                continue;
-            }
-            usage[slot_idx].bytes =
-                usage[slot_idx].bytes.saturating_add(delta.bytes);
-            usage[slot_idx].chars =
-                usage[slot_idx].chars.saturating_add(delta.chars);
-            usage[slot_idx].lines =
-                usage[slot_idx].lines.saturating_add(delta.lines);
-            if header_stats.is_some() {
-                if let Some(hc) = header_charged.get_mut(slot_idx) {
-                    *hc = true;
-                }
-            }
-        }
-        filtered.push(*node_id);
-    }
-
-    Some(filtered)
 }
 
 fn effective_budgets_with_grep(
@@ -719,23 +578,32 @@ fn select_best_k(
     let total = order_build.total_nodes;
     let zero_global_cap =
         matches!(budgets.global, Some(Budget { cap: 0, .. }));
+    let per_slot_caps_active = budgets.per_slot.is_some();
+    let slot_map = if per_slot_caps_active {
+        compute_fileset_slot_map(order_build)
+    } else {
+        None
+    };
+    let slot_count = slot_map
+        .as_ref()
+        .and_then(|map| map.iter().flatten().max().map(|s| *s + 1));
     let allow_zero =
         must_keep.is_some() || budgets.per_slot.is_some() || zero_global_cap;
-    let base_lo = if allow_zero { 0 } else { min_k.max(1) };
-    let sinkhole_order =
-        sinkhole_priority_order(order_build, measure_cfg, &budgets, must_keep);
-    let selection_order_ref = sinkhole_order
+    let mut base_lo = if allow_zero { 0 } else { min_k.max(1) };
+    if per_slot_caps_active {
+        base_lo = base_lo.max(slot_count.unwrap_or(0));
+    }
+    let selection_order = if per_slot_caps_active {
+        slot_map
+            .as_ref()
+            .and_then(|slots| round_robin_slot_priority(order_build, slots))
+    } else {
+        None
+    };
+    let selection_order_ref: &[NodeId] = selection_order
         .as_deref()
         .unwrap_or(&order_build.by_priority);
-    let available = if let Some(order) = sinkhole_order.as_ref() {
-        order
-            .iter()
-            .filter(|nid| counts_toward_k(order_build, nid.0))
-            .count()
-            .max(1)
-    } else {
-        selection_order_ref.len().max(1)
-    };
+    let available = selection_order_ref.len().max(1);
     let capped_lo = base_lo.min(available);
     let hi = match budgets.global {
         Some(Budget { cap: 0, .. }) => 0,
@@ -754,13 +622,6 @@ fn select_best_k(
     let mut render_set_id: u32 = 1;
     let mut best_k: Option<usize> = None;
     let measure_chars = budgets.measure_chars();
-    let use_sinkhole = sinkhole_order.is_some();
-    let per_slot_caps_active = budgets.per_slot.is_some();
-    let slot_map = if per_slot_caps_active {
-        compute_fileset_slot_map(order_build)
-    } else {
-        None
-    };
     let free_allowance = effective_budgets_with_grep(
         order_build,
         measure_cfg,
@@ -768,9 +629,6 @@ fn select_best_k(
         state,
         slot_map.as_deref(),
     );
-    let slot_count = slot_map
-        .as_ref()
-        .and_then(|map| map.iter().flatten().max().map(|s| *s + 1));
     let (mk_stats, mk_slots) = if let Some(flags) = must_keep {
         if let Some((mk, mk_slots)) = free_allowance {
             let slots = if per_slot_caps_active {
@@ -801,7 +659,7 @@ fn select_best_k(
     if apply_must_keep {
         if let Some(b) = budgets.global {
             if b.cap == 0 {
-                return (0, inclusion_flags, render_set_id, sinkhole_order);
+                return (0, inclusion_flags, render_set_id, selection_order);
             }
         }
     }
@@ -811,22 +669,13 @@ fn select_best_k(
         effective_hi,
         |mid| {
             let current_render_id = render_set_id;
-            if use_sinkhole {
-                mark_sinkhole_top_k_and_ancestors(
-                    order_build,
-                    selection_order_ref,
-                    mid,
-                    &mut inclusion_flags,
-                    current_render_id,
-                );
-            } else {
-                crate::serialization::prepare_render_set_top_k_and_ancestors(
-                    order_build,
-                    mid,
-                    &mut inclusion_flags,
-                    current_render_id,
-                );
-            }
+            mark_custom_top_k_and_ancestors(
+                order_build,
+                selection_order_ref,
+                mid,
+                &mut inclusion_flags,
+                current_render_id,
+            );
             if let Some(flags) = must_keep {
                 if apply_must_keep {
                     include_must_keep(
@@ -890,7 +739,7 @@ fn select_best_k(
         },
     );
     let k = best_k.unwrap_or(0);
-    (k, inclusion_flags, render_set_id, sinkhole_order)
+    (k, inclusion_flags, render_set_id, selection_order)
 }
 
 #[allow(
@@ -1052,15 +901,9 @@ fn include_must_keep(
     }
 }
 
-#[allow(
-    clippy::cognitive_complexity,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    reason = "Top-level render-set marking; splitting would add indirection."
-)]
-fn mark_sinkhole_top_k_and_ancestors(
+fn mark_custom_top_k_and_ancestors(
     order_build: &PriorityOrder,
-    sinkhole_order: &[NodeId],
+    selection_order: &[NodeId],
     top_k: usize,
     inclusion_flags: &mut Vec<u32>,
     render_id: u32,
@@ -1068,34 +911,13 @@ fn mark_sinkhole_top_k_and_ancestors(
     if inclusion_flags.len() < order_build.total_nodes {
         inclusion_flags.resize(order_build.total_nodes, 0);
     }
-    if top_k == 0 {
-        return;
-    }
-    let mut counted = 0;
-    for &id in sinkhole_order.iter() {
-        if counts_toward_k(order_build, id.0) {
-            crate::utils::graph::mark_node_and_ancestors(
-                order_build,
-                id,
-                inclusion_flags,
-                render_id,
-            );
-            if matches!(
-                order_build.nodes.get(id.0),
-                Some(crate::RankedNode::SplittableLeaf { .. })
-            ) {
-                include_string_descendants(
-                    order_build,
-                    id.0,
-                    inclusion_flags,
-                    render_id,
-                );
-            }
-            counted += 1;
-            if counted >= top_k {
-                break;
-            }
-        }
+    for node in selection_order.iter().take(top_k) {
+        crate::utils::graph::mark_node_and_ancestors(
+            order_build,
+            *node,
+            inclusion_flags,
+            render_id,
+        );
     }
 }
 
@@ -1208,28 +1030,6 @@ fn header_stats_for_slot(
         }
     }
     Some(header_stats)
-}
-
-fn counts_toward_k(order_build: &PriorityOrder, node_idx: usize) -> bool {
-    let is_fileset_child = order_build
-        .parent
-        .get(node_idx)
-        .and_then(|p| *p)
-        .is_some_and(|p| p.0 == ROOT_PQ_ID)
-        && order_build
-            .object_type
-            .get(ROOT_PQ_ID)
-            .is_some_and(|t| *t == ObjectType::Fileset);
-    match order_build.nodes.get(node_idx) {
-        Some(crate::RankedNode::SplittableLeaf { .. })
-        | Some(crate::RankedNode::AtomicLeaf { .. }) => true,
-        _ if is_fileset_child => true,
-        _ => order_build
-            .children
-            .get(node_idx)
-            .map(Vec::is_empty)
-            .unwrap_or(true),
-    }
 }
 
 #[cfg(test)]
