@@ -638,20 +638,16 @@ fn sinkhole_priority_order(
         if charge_headers {
             if let Some(slot_idx) = slot {
                 if !header_charged.get(slot_idx).copied().unwrap_or(false) {
-                    if let Some(name) =
-                        header_names.as_ref().and_then(|n| n.get(slot_idx))
-                    {
-                        let mut stats = count_output_stats(
-                            &format!("==> {name} <=="),
-                            measure_chars,
-                        );
-                        stats.lines = stats.lines.max(1);
-                        stats.bytes = stats.bytes.saturating_add(newline_len);
-                        if measure_chars {
-                            stats.chars =
-                                stats.chars.saturating_add(newline_len);
-                        }
-                        header_stats = Some(stats);
+                    header_stats = header_stats_for_slot(
+                        slot_idx,
+                        &header_names,
+                        measure_chars,
+                        newline_len,
+                        budgets,
+                    );
+                    if header_stats.is_none() {
+                        // Header alone would exceed the cap; skip this slot.
+                        continue;
                     }
                 }
             }
