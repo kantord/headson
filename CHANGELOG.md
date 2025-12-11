@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0](https://github.com/kantord/headson/compare/headson-v0.10.1...headson-v0.11.0) - 2025-12-11
+
+### Added
+
+- stricter enforcement for per-file caps ([#344](https://github.com/kantord/headson/pull/344))
+
 ## [0.10.1](https://github.com/kantord/headson/compare/headson-v0.10.0...headson-v0.10.1) - 2025-12-04
 
 ### Fixed
