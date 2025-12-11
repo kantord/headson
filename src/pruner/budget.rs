@@ -576,6 +576,7 @@ fn effective_budgets_with_grep(
     grep: &GrepConfig,
     state: &Option<GrepState>,
     fileset_slots: Option<&FilesetSlots>,
+    measure_chars: bool,
 ) -> Option<(OutputStats, Option<Vec<OutputStats>>)> {
     if !is_strong_grep(grep, state) {
         return None;
@@ -587,8 +588,7 @@ fn effective_budgets_with_grep(
         order_build,
         measure_cfg,
         &s.must_keep,
-        measure_cfg.count_fileset_headers_in_budgets
-            || measure_cfg.fileset_tree,
+        measure_chars,
         fileset_slots,
     ))
 }
@@ -675,6 +675,7 @@ fn select_best_k(
         grep,
         state,
         fileset_slots,
+        measure_chars,
     );
     let (mk_stats, mk_slots) = if let Some(flags) = must_keep {
         if let Some((mk, mk_slots)) = free_allowance {

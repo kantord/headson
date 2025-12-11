@@ -37,6 +37,34 @@ fn grep_guarantees_match_even_when_budget_is_tiny() {
 }
 
 #[test]
+fn grep_counts_matches_as_free_for_char_budgets() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("sample.txt");
+    std::fs::write(
+        &path,
+        "this line has a match keyword and is long\nshort\n",
+    )
+    .unwrap();
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--chars",
+            "15",
+            "--grep",
+            "keyword",
+            path.file_name().unwrap().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("short"),
+        "non-matching context should still render when matches are free under char budgets; got: {stdout:?}"
+    );
+}
+
+#[test]
 fn grep_keeps_ancestor_path_for_matches() {
     let input = br#"{"outer":{"inner":{"value":"match-me"}}}"#.to_vec();
     let assert = cargo_bin_cmd!("hson")
