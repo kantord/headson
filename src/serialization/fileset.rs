@@ -9,17 +9,21 @@ impl<'a> RenderScope<'a> {
         &mut self,
         id: usize,
         depth: usize,
-    ) -> Option<String> {
+        out: &mut crate::serialization::output::Out<'_>,
+    ) -> bool {
         if id == ROOT_PQ_ID
             && self.order.object_type.get(id) == Some(&ObjectType::Fileset)
             && !self.config.newline.is_empty()
         {
             if self.config.fileset_tree {
-                return Some(self.render_fileset_tree(depth));
+                let rendered = self.render_fileset_tree(depth);
+                out.push_str(&rendered);
+                return true;
             }
-            return Some(self.render_fileset_sections(depth));
+            self.render_fileset_sections(depth, out);
+            return true;
         }
-        None
+        false
     }
 
     #[allow(
@@ -44,30 +48,35 @@ impl<'a> RenderScope<'a> {
         self.render_tree_output(root, depth, show_scaffold)
     }
 
-    fn render_fileset_sections(&mut self, depth: usize) -> String {
+    fn render_fileset_sections(
+        &mut self,
+        depth: usize,
+        out: &mut crate::serialization::output::Out<'_>,
+    ) {
         let Some(children_ids) = self
             .order
             .fileset_children
             .as_deref()
             .or_else(|| self.order.children.get(ROOT_PQ_ID).map(|v| &**v))
         else {
-            return String::new();
+            return;
         };
         let show_headers = self.should_render_fileset_headers();
-        let mut out = String::new();
         let kept = self.render_fileset_children(
             children_ids,
             depth,
             show_headers,
-            &mut out,
+            out,
         );
         if show_headers {
-            self.render_fileset_summary(children_ids, depth, kept, &mut out);
+            self.render_fileset_summary(children_ids, depth, kept, out);
         }
-        out
     }
 
-    fn fileset_push_section_gap(&self, out: &mut String) {
+    fn fileset_push_section_gap(
+        &self,
+        out: &mut crate::serialization::output::Out<'_>,
+    ) {
         let nl = &self.config.newline;
         out.push_str(nl);
         out.push_str(nl);
@@ -84,22 +93,25 @@ impl<'a> RenderScope<'a> {
         children_ids: &[NodeId],
         depth: usize,
         show_headers: bool,
-        out: &mut String,
+        out: &mut crate::serialization::output::Out<'_>,
     ) -> usize {
         let mut kept = 0usize;
-        for &child_id in children_ids {
+        for (slot_idx, &child_id) in children_ids.iter().enumerate() {
             if self.inclusion_flags[child_id.0] != self.render_set_id {
                 continue;
             }
             if kept > 0 && show_headers {
+                out.set_current_slot(None);
                 self.fileset_push_section_gap(out);
             }
             kept += 1;
             let raw_key =
                 self.order.nodes[child_id.0].key_in_object().unwrap_or("");
             if show_headers {
+                out.set_current_slot(Some(slot_idx));
                 out.push_str(&self.fileset_header_line(depth, raw_key));
             }
+            out.set_current_slot(Some(slot_idx));
             let rendered =
                 self.fileset_render_child(child_id.0, depth, raw_key);
             out.push_str(&rendered);
@@ -186,7 +198,7 @@ impl<'a> RenderScope<'a> {
         children_ids: &[NodeId],
         depth: usize,
         kept: usize,
-        out: &mut String,
+        out: &mut crate::serialization::output::Out<'_>,
     ) {
         let total = self
             .order
@@ -195,7 +207,9 @@ impl<'a> RenderScope<'a> {
             .and_then(|m| m.object_len)
             .unwrap_or(children_ids.len());
         if total > kept && !self.config.newline.is_empty() {
+            out.set_current_slot(None);
             self.fileset_push_section_gap(out);
+            out.set_current_slot(None);
             out.push_str(&self.fileset_summary_line(depth, total - kept));
         }
     }

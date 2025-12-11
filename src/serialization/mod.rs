@@ -287,8 +287,7 @@ impl<'a> RenderScope<'a> {
         out: &mut Out<'_>,
     ) {
         let config = self.config;
-        if let Some(rendered) = self.try_render_fileset_root(id, depth) {
-            out.push_str(&rendered);
+        if self.try_render_fileset_root(id, depth, out) {
             return;
         }
         let (children_pairs, kept) = self.gather_object_children(id, depth);

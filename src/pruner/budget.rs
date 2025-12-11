@@ -466,61 +466,6 @@ fn propagate_slots_from_parents(
     }
 }
 
-fn slot_measure_config(measure_cfg: &RenderConfig) -> RenderConfig {
-    if measure_cfg.fileset_tree && measure_cfg.count_fileset_headers_in_budgets
-    {
-        measure_cfg.clone()
-    } else if measure_cfg.fileset_tree {
-        let mut cfg = measure_cfg.clone();
-        cfg.fileset_tree = false;
-        cfg.show_fileset_headers = false;
-        cfg
-    } else {
-        measure_cfg.clone()
-    }
-}
-
-fn compute_slot_stats_by_render(
-    order_build: &PriorityOrder,
-    base_flags: &[u32],
-    render_id: u32,
-    measure_cfg: &RenderConfig,
-    slot_map: &[Option<usize>],
-    measure_chars: bool,
-) -> Vec<OutputStats> {
-    let mut scratch_flags: Vec<u32> = vec![0; base_flags.len()];
-    let slot_count =
-        slot_map.iter().flatten().max().map(|s| *s + 1).unwrap_or(0);
-    let mut out: Vec<OutputStats> = Vec::with_capacity(slot_count);
-    let slot_cfg = slot_measure_config(measure_cfg);
-    for slot_idx in 0..slot_count {
-        for (idx, flag) in base_flags.iter().enumerate() {
-            let node_slot = slot_map.get(idx).and_then(|s| *s);
-            if *flag != render_id {
-                scratch_flags[idx] = 0;
-                continue;
-            }
-            let Some(node_slot) = node_slot else {
-                scratch_flags[idx] = 0;
-                continue;
-            };
-            if node_slot != slot_idx {
-                scratch_flags[idx] = 0;
-            } else {
-                scratch_flags[idx] = render_id;
-            }
-        }
-        let rendered = crate::serialization::render_from_render_set(
-            order_build,
-            &scratch_flags,
-            render_id,
-            &slot_cfg,
-        );
-        out.push(count_output_stats(&rendered, measure_chars));
-    }
-    out
-}
-
 fn fileset_slot_names(order_build: &PriorityOrder) -> Option<Vec<String>> {
     let children = order_build
         .fileset_children
@@ -941,45 +886,6 @@ fn select_best_k(
                 stats.chars = stats.chars.saturating_sub(mk.chars);
                 stats.lines = stats.lines.saturating_sub(mk.lines);
             }
-            if slot_stats
-                .as_ref()
-                .map(|slot_vec| {
-                    slot_vec.iter().all(|stat| {
-                        stat.bytes == 0 && stat.chars == 0 && stat.lines == 0
-                    })
-                })
-                .unwrap_or(true)
-            {
-                if let Some(map) = slot_map.as_ref() {
-                    slot_stats = Some(compute_slot_stats_by_render(
-                        order_build,
-                        &inclusion_flags,
-                        current_render_id,
-                        measure_cfg,
-                        map,
-                        measure_chars,
-                    ));
-                }
-            }
-            if per_slot_caps_active
-                && measure_cfg.count_fileset_headers_in_budgets
-                && slot_stats.is_some()
-                && slot_map.is_some()
-            {
-                // Recompute per-slot stats using a slot-scoped render so counted headers
-                // are charged even when the main recorder missed them (fileset headers are
-                // assembled outside the normal Out/recorder path).
-                if let Some(map) = slot_map.as_ref() {
-                    slot_stats = Some(compute_slot_stats_by_render(
-                        order_build,
-                        &inclusion_flags,
-                        current_render_id,
-                        measure_cfg,
-                        map,
-                        measure_chars,
-                    ));
-                }
-            }
             if per_slot_caps_active && slot_stats.is_none() {
                 slot_stats = Some(vec![full_stats]);
             }
@@ -1123,7 +1029,7 @@ fn measure_must_keep_with_slots(
             measure_chars,
         )
     });
-    let (rendered, mut slot_stats) =
+    let (rendered, slot_stats) =
         crate::serialization::render_from_render_set_with_slots(
             order_build,
             &inclusion_flags,
@@ -1132,26 +1038,6 @@ fn measure_must_keep_with_slots(
             slot_map,
             recorder.take(),
         );
-    if slot_stats
-        .as_ref()
-        .map(|stats| {
-            stats
-                .iter()
-                .all(|s| s.bytes == 0 && s.chars == 0 && s.lines == 0)
-        })
-        .unwrap_or(true)
-    {
-        if let Some(map) = slot_map.as_ref() {
-            slot_stats = Some(compute_slot_stats_by_render(
-                order_build,
-                &inclusion_flags,
-                render_set_id,
-                &measure_cfg,
-                map,
-                measure_chars,
-            ));
-        }
-    }
     (
         crate::utils::measure::count_output_stats(&rendered, measure_chars),
         slot_stats,

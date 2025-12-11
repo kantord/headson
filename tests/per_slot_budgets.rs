@@ -807,16 +807,16 @@ fn per_file_line_budget_three_with_counted_headers_emits_ellipsis() {
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(
-        stdout.contains("==> a.txt <==\na1\n…\n"),
-        "counted header + cap 6 should leave room for one body line then ellipsis for a.txt: {stdout}"
+        stdout.contains("==> a.txt <==\na1\na2\n…\n"),
+        "counted header + cap 6 should allow two body lines then ellipsis for a.txt: {stdout}"
     );
     assert!(
-        stdout.contains("==> b.txt <==\nb1\n…\n"),
-        "counted header + cap 6 should leave room for one body line then ellipsis for b.txt: {stdout}"
+        stdout.contains("==> b.txt <==\nb1\nb2\n…\n"),
+        "counted header + cap 6 should allow two body lines then ellipsis for b.txt: {stdout}"
     );
     assert!(
-        !stdout.contains("\na2\n") && !stdout.contains("\nb2\n"),
-        "remaining body lines should be elided once cap is reached: {stdout}"
+        !stdout.contains("\na3\n") && !stdout.contains("\nb3\n"),
+        "final body lines should be elided once cap is reached: {stdout}"
     );
     assert!(
         stdout.lines().filter(|l| l.contains('…')).count() == 2,
