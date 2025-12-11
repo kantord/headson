@@ -34,44 +34,6 @@ pub(crate) struct RenderScope<'a> {
 }
 
 impl<'a> RenderScope<'a> {
-    fn is_text_omission_line(
-        style: crate::serialization::types::Style,
-        raw: &str,
-    ) -> bool {
-        let s = raw.trim();
-        if s.is_empty() {
-            return true;
-        }
-        match style {
-            // Default: a single omission marker
-            crate::serialization::types::Style::Default => s == "…",
-            // Detailed: either single marker or "… N more lines …"
-            crate::serialization::types::Style::Detailed => {
-                if s == "…" {
-                    return true;
-                }
-                s.starts_with('…') && s.ends_with('…')
-            }
-            // Strict: arrays do not emit omission lines in text mode; treat empty-only as omission
-            crate::serialization::types::Style::Strict => s.is_empty(),
-        }
-    }
-
-    fn rendered_is_pure_text_omission(&self, rendered: &str) -> bool {
-        // Consider it pure omission if all non-empty lines match omission pattern for current style.
-        let mut any = false;
-        for line in rendered.split('\n') {
-            if line.trim().is_empty() {
-                continue;
-            }
-            any = true;
-            if !Self::is_text_omission_line(self.config.style, line) {
-                return false;
-            }
-        }
-        any
-    }
-
     fn source_hint_for(&self, id: usize) -> Option<&'a str> {
         let mut cursor = Some(NodeId(id));
         while let Some(node) = cursor {
@@ -381,17 +343,6 @@ impl<'a> RenderScope<'a> {
                     false,
                     template,
                 );
-                if matches!(
-                    template,
-                    crate::serialization::types::OutputTemplate::Text
-                ) && self.rendered_is_pure_text_omission(&rendered)
-                {
-                    if let Some((_pi, (_pk, prev_s))) = children_pairs.last() {
-                        if self.rendered_is_pure_text_omission(prev_s) {
-                            continue;
-                        }
-                    }
-                }
                 kept += 1;
                 let orig_index = self
                     .order

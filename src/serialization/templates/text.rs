@@ -21,14 +21,17 @@ fn push_text_omission_line(out: &mut Out<'_>, omitted: usize) {
 pub(super) fn render_array(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     // For text, arrays are treated as raw lines of text. We do not emit
     // brackets or indentation; we only write lines and optional omission markers.
+    let mut last_was_omission = false;
     if ctx.omitted_at_start && ctx.omitted > 0 {
         push_text_omission_line(out, ctx.omitted);
+        last_was_omission = true;
     }
     for (_, (_, item)) in ctx.children.iter() {
         out.push_str(item);
         out.push_newline();
+        last_was_omission = false;
     }
-    if !ctx.omitted_at_start && ctx.omitted > 0 {
+    if !ctx.omitted_at_start && ctx.omitted > 0 && !last_was_omission {
         push_text_omission_line(out, ctx.omitted);
     }
 }
