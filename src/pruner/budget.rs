@@ -122,7 +122,6 @@ pub fn find_largest_render_under_budgets(
         .object_type
         .get(crate::order::ROOT_PQ_ID)
         .is_some_and(|t| *t == ObjectType::Fileset);
-    let measure_cfg = measure_config(order_build, config);
     let mut grep_state = compute_grep_state(order_build, grep);
     if !grep.weak
         && grep.show == GrepShow::Matching
@@ -142,6 +141,8 @@ pub fn find_largest_render_under_budgets(
         config.fileset_tree,
     );
     reorder_if_grep(order_build, &grep_state);
+    let slot_map = compute_fileset_slot_map(order_build);
+    let measure_cfg = measure_config(order_build, config);
     let min_k = min_k_for(&grep_state, grep);
     let must_keep_slice = must_keep_slice(&grep_state, grep);
     let (k, mut inclusion_flags, render_set_id, selection_order) =
@@ -153,6 +154,7 @@ pub fn find_largest_render_under_budgets(
             must_keep_slice,
             grep,
             &grep_state,
+            slot_map.as_deref(),
         );
     if budgets.per_slot_zero_cap() {
         return String::new();
@@ -201,6 +203,7 @@ pub fn find_largest_render_under_budgets(
             &budgets,
             &measure_cfg,
             config.count_fileset_headers_in_budgets,
+            slot_map.as_deref(),
         );
     }
 
@@ -213,7 +216,7 @@ pub fn find_largest_render_under_budgets(
             })
         )
     {
-        if let Some(slot_map) = compute_fileset_slot_map(order_build) {
+        if let Some(slot_map) = slot_map.as_ref() {
             let has_included_slot =
                 inclusion_flags.iter().enumerate().any(|(idx, flag)| {
                     *flag == render_set_id
@@ -574,16 +577,12 @@ fn select_best_k(
     must_keep: Option<&[bool]>,
     grep: &GrepConfig,
     state: &Option<GrepState>,
+    slot_map: Option<&[Option<usize>]>,
 ) -> (usize, Vec<u32>, u32, Option<Vec<NodeId>>) {
     let total = order_build.total_nodes;
     let zero_global_cap =
         matches!(budgets.global, Some(Budget { cap: 0, .. }));
     let per_slot_caps_active = budgets.per_slot.is_some();
-    let slot_map = if per_slot_caps_active {
-        compute_fileset_slot_map(order_build)
-    } else {
-        None
-    };
     let slot_count = slot_map
         .as_ref()
         .and_then(|map| map.iter().flatten().max().map(|s| *s + 1));
@@ -627,7 +626,7 @@ fn select_best_k(
         measure_cfg,
         grep,
         state,
-        slot_map.as_deref(),
+        slot_map,
     );
     let (mk_stats, mk_slots) = if let Some(flags) = must_keep {
         if let Some((mk, mk_slots)) = free_allowance {
@@ -643,7 +642,7 @@ fn select_best_k(
                 measure_cfg,
                 flags,
                 measure_chars,
-                slot_map.as_deref(),
+                slot_map,
             );
             let slots = if per_slot_caps_active {
                 mk_slots.or_else(|| Some(vec![mk]))
@@ -698,7 +697,7 @@ fn select_best_k(
                     &inclusion_flags,
                     current_render_id,
                     measure_cfg,
-                    slot_map.as_deref(),
+                    slot_map,
                     recorder.take(),
                 );
             let render_stats =
@@ -923,6 +922,7 @@ fn mark_custom_top_k_and_ancestors(
 
 #[allow(
     clippy::cognitive_complexity,
+    clippy::too_many_arguments,
     reason = "Single walk over render flags; splitting would obscure the slot/header handling."
 )]
 fn ensure_fileset_headers_for_empty_slots(
@@ -932,8 +932,9 @@ fn ensure_fileset_headers_for_empty_slots(
     budgets: &Budgets,
     measure_cfg: &RenderConfig,
     count_headers_in_budgets: bool,
+    slot_map: Option<&[Option<usize>]>,
 ) {
-    let Some(slot_map) = compute_fileset_slot_map(order_build) else {
+    let Some(slot_map) = slot_map else {
         return;
     };
     let slot_count =
