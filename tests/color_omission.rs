@@ -20,7 +20,7 @@ fn js_omission_comment_is_dark_gray() {
     let input = "[1,2,3,4,5,6,7,8,9,10]";
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let assert = cmd
-        .args(["--color", "-c", "10", "-f", "json", "-t", "detailed"]) // small budget
+        .args(["--color", "-c", "30", "-f", "json", "-t", "detailed"]) // small budget
         .write_stdin(input)
         .assert()
         .success();

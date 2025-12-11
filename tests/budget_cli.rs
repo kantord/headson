@@ -111,3 +111,17 @@ fn global_lines_zero_yields_empty() {
         "outputs should be empty when the global line budget is zero: {stdout:?}"
     );
 }
+
+#[test]
+fn per_file_byte_budget_one_renders_nothing() {
+    let path = "tests/fixtures/bytes_chars/emoji.json";
+    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
+        .args(["--no-color", "--no-sort", "--bytes", "1", path])
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.trim().is_empty(),
+        "when a 1-byte per-file/global cap leaves no room for content, output should be empty: {stdout:?}"
+    );
+}

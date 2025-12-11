@@ -42,7 +42,7 @@ fn pseudo_fileset_compact_shows_ellipsis_for_omitted() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let p3 = "tests/fixtures/explicit/string_escaping.json";
-    let budget = 50usize;
+    let budget = 80usize;
     let budget_s = budget.to_string();
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // Compact mode => object-style rendering; expect ellipsis for omitted content

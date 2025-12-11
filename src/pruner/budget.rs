@@ -25,6 +25,14 @@ pub struct Budgets {
     pub per_slot: Option<Budget>,
 }
 
+#[derive(Debug)]
+struct SelectionOutcome {
+    k: Option<usize>,
+    inclusion_flags: Vec<u32>,
+    render_set_id: u32,
+    selection_order: Option<Vec<NodeId>>,
+}
+
 impl Budget {
     fn exceeds(&self, stats: &OutputStats) -> bool {
         match self.kind {
@@ -146,17 +154,23 @@ pub fn find_largest_render_under_budgets(
     let measure_cfg = measure_config(order_build, config, header_budgeting);
     let min_k = min_k_for(&grep_state, grep);
     let must_keep_slice = must_keep_slice(&grep_state, grep);
-    let (k, mut inclusion_flags, render_set_id, selection_order) =
-        select_best_k(
-            order_build,
-            &measure_cfg,
-            budgets,
-            min_k,
-            must_keep_slice,
-            grep,
-            &grep_state,
-            fileset_slots.as_ref(),
-        );
+    let SelectionOutcome {
+        k: k_opt,
+        mut inclusion_flags,
+        render_set_id,
+        selection_order,
+    } = select_best_k(
+        order_build,
+        &measure_cfg,
+        budgets,
+        min_k,
+        must_keep_slice,
+        grep,
+        &grep_state,
+        fileset_slots.as_ref(),
+    );
+    let found_k = k_opt.is_some();
+    let k = k_opt.unwrap_or(0);
     if budgets.per_slot_zero_cap() {
         return String::new();
     }
@@ -165,6 +179,9 @@ pub fn find_largest_render_under_budgets(
         && !budgets.per_slot_active()
         && !root_is_fileset
     {
+        return String::new();
+    }
+    if !found_k && must_keep_slice.is_none() && !root_is_fileset {
         return String::new();
     }
     inclusion_flags.fill(0);
@@ -629,7 +646,7 @@ fn select_best_k(
     grep: &GrepConfig,
     state: &Option<GrepState>,
     fileset_slots: Option<&FilesetSlots>,
-) -> (usize, Vec<u32>, u32, Option<Vec<NodeId>>) {
+) -> SelectionOutcome {
     let total = order_build.total_nodes;
     let zero_global_cap =
         matches!(budgets.global, Some(Budget { cap: 0, .. }));
@@ -707,7 +724,12 @@ fn select_best_k(
     if apply_must_keep {
         if let Some(b) = budgets.global {
             if b.cap == 0 {
-                return (0, inclusion_flags, render_set_id, selection_order);
+                return SelectionOutcome {
+                    k: Some(0),
+                    inclusion_flags,
+                    render_set_id,
+                    selection_order,
+                };
             }
         }
     }
@@ -786,8 +808,12 @@ fn select_best_k(
             }
         },
     );
-    let k = best_k.unwrap_or(0);
-    (k, inclusion_flags, render_set_id, selection_order)
+    SelectionOutcome {
+        k: best_k,
+        inclusion_flags,
+        render_set_id,
+        selection_order,
+    }
 }
 
 #[allow(

@@ -52,7 +52,7 @@ fn js_fileset_compact_shows_inline_omitted_summary() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
     let p3 = "tests/fixtures/explicit/string_escaping.json";
-    let budget = 50usize;
+    let budget = 80usize;
     let budget_s = budget.to_string();
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // Compact mode => no newlines, but object-style rendering includes inline summary
@@ -84,7 +84,7 @@ fn js_fileset_compact_shows_inline_omitted_summary() {
 fn js_fileset_small_budget_shows_summary_or_markers() {
     let p1 = "tests/fixtures/explicit/object_small.json";
     let p2 = "tests/fixtures/explicit/array_numbers_50.json";
-    let out = run_js(&[p1, p2], 1);
+    let out = run_js(&[p1, p2], 30);
     assert!(
         out.contains("more files") || out.contains("…") || out.contains("/*"),
         "expected some omission indicator in output"

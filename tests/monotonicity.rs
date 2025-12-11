@@ -45,6 +45,11 @@ fn assert_within_budget_or_min(
         if b == 0 {
             assert_budget_zero(lens[i], template, path);
         } else if min_nonzero > 0 && b < min_nonzero {
+            if lens[i] == 0 {
+                // Under stricter budget enforcement we may render nothing when no
+                // content fits; accept empty output as valid.
+                continue;
+            }
             assert_min_nonzero(lens[i], min_nonzero, b, template, path);
         } else {
             assert_within_budget(lens[i], b, template, path);
