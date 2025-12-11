@@ -173,6 +173,76 @@ fn syntax_alias_for_extension(ext: &str) -> Option<&'static str> {
     None
 }
 
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum HighlightKind {
+    TextLike,
+    JsonString,
+}
+
+pub(crate) fn maybe_highlight_value(
+    config: &crate::RenderConfig,
+    raw: Option<&str>,
+    rendered: String,
+    kind: HighlightKind,
+    grep_highlight: &Option<regex::Regex>,
+) -> String {
+    match config.color_strategy() {
+        crate::serialization::types::ColorStrategy::None
+        | crate::serialization::types::ColorStrategy::Syntax => rendered,
+        crate::serialization::types::ColorStrategy::HighlightOnly => {
+            if let Some(re) = grep_highlight {
+                return match kind {
+                    HighlightKind::JsonString => raw
+                        .map(|r| highlight_json_string(re, r))
+                        .unwrap_or(rendered),
+                    HighlightKind::TextLike => {
+                        highlight_matches(re, &rendered)
+                    }
+                };
+            }
+            rendered
+        }
+    }
+}
+
+fn highlight_matches(re: &regex::Regex, text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut last = 0usize;
+    for m in re.find_iter(text) {
+        out.push_str(&text[last..m.start()]);
+        out.push_str("\u{001b}[31m");
+        out.push_str(m.as_str());
+        out.push_str("\u{001b}[39m");
+        last = m.end();
+    }
+    out.push_str(&text[last..]);
+    out
+}
+
+fn highlight_json_string(re: &regex::Regex, raw: &str) -> String {
+    // Build a JSON string literal while inserting highlight escapes around
+    // matched spans computed on the raw (unescaped) value.
+    let mut out = String::with_capacity(raw.len() + 16);
+    out.push('"');
+    let mut last = 0usize;
+    for m in re.find_iter(raw) {
+        out.push_str(&escape_json_fragment(&raw[last..m.start()]));
+        out.push_str("\u{001b}[31m");
+        out.push_str(&escape_json_fragment(m.as_str()));
+        out.push_str("\u{001b}[39m");
+        last = m.end();
+    }
+    out.push_str(&escape_json_fragment(&raw[last..]));
+    out.push('"');
+    out
+}
+
+fn escape_json_fragment(s: &str) -> String {
+    let quoted = crate::utils::json::json_string(s);
+    // Strip surrounding quotes from a valid JSON string literal.
+    quoted[1..quoted.len() - 1].to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
