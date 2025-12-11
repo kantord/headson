@@ -2,6 +2,7 @@ use serde::Serialize;
 use std::ops::Not;
 
 use crate::order::{ObjectType, PriorityOrder, ROOT_PQ_ID, RankedNode};
+use crate::pruner::budget::FilesetSlots;
 use crate::serialization::output::SlotStatsRecorder;
 
 #[derive(Serialize)]
@@ -242,15 +243,20 @@ pub(crate) fn emit_render_debug(
 ) {
     let mut no_color_cfg = config.clone();
     no_color_cfg.color_enabled = false;
-    let slot_map = if budgets.per_slot.is_some() {
-        crate::pruner::budget::compute_fileset_slot_map(order_build)
-            .or_else(|| Some(vec![Some(0); order_build.total_nodes]))
+    let slot_info = if budgets.per_slot.is_some() {
+        FilesetSlots::new(order_build).or_else(|| {
+            Some(FilesetSlots {
+                map: vec![Some(0); order_build.total_nodes],
+                count: 1,
+                names: None,
+            })
+        })
     } else {
         None
     };
-    let slot_count = slot_map
+    let slot_count = slot_info
         .as_ref()
-        .and_then(|map| map.iter().flatten().max().map(|s| *s + 1))
+        .map(|slots| slots.count)
         .unwrap_or(0)
         .max(1);
     let recorder = budgets
@@ -263,7 +269,7 @@ pub(crate) fn emit_render_debug(
             inclusion_flags,
             render_set_id,
             &no_color_cfg,
-            slot_map.as_deref(),
+            slot_info.as_ref().map(|slots| slots.map.as_slice()),
             recorder,
         );
     let stats = crate::utils::measure::count_output_stats(

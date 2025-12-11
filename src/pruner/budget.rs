@@ -141,7 +141,7 @@ pub fn find_largest_render_under_budgets(
         config.fileset_tree,
     );
     reorder_if_grep(order_build, &grep_state);
-    let slot_map = compute_fileset_slot_map(order_build);
+    let fileset_slots = FilesetSlots::new(order_build);
     let measure_cfg = measure_config(order_build, config);
     let min_k = min_k_for(&grep_state, grep);
     let must_keep_slice = must_keep_slice(&grep_state, grep);
@@ -154,7 +154,7 @@ pub fn find_largest_render_under_budgets(
             must_keep_slice,
             grep,
             &grep_state,
-            slot_map.as_deref(),
+            fileset_slots.as_ref(),
         );
     if budgets.per_slot_zero_cap() {
         return String::new();
@@ -203,7 +203,7 @@ pub fn find_largest_render_under_budgets(
             &budgets,
             &measure_cfg,
             config.count_fileset_headers_in_budgets,
-            slot_map.as_deref(),
+            fileset_slots.as_ref(),
         );
     }
 
@@ -216,11 +216,12 @@ pub fn find_largest_render_under_budgets(
             })
         )
     {
-        if let Some(slot_map) = slot_map.as_ref() {
+        if let Some(slots) = fileset_slots.as_ref() {
             let has_included_slot =
                 inclusion_flags.iter().enumerate().any(|(idx, flag)| {
                     *flag == render_set_id
-                        && slot_map
+                        && slots
+                            .map
                             .get(idx)
                             .and_then(|s| *s)
                             .is_some_and(|_| true)
@@ -414,6 +415,22 @@ pub(crate) fn compute_fileset_slot_map(
     Some(slots)
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct FilesetSlots {
+    pub map: Vec<Option<usize>>,
+    pub count: usize,
+    pub names: Option<Vec<String>>,
+}
+
+impl FilesetSlots {
+    pub(crate) fn new(order_build: &PriorityOrder) -> Option<Self> {
+        let map = compute_fileset_slot_map(order_build)?;
+        let count = map.iter().flatten().max().map(|s| *s + 1)?;
+        let names = fileset_slot_names(order_build);
+        Some(Self { map, count, names })
+    }
+}
+
 fn fileset_slot_names(order_build: &PriorityOrder) -> Option<Vec<String>> {
     let children = order_build
         .fileset_children
@@ -437,11 +454,14 @@ fn fileset_slot_names(order_build: &PriorityOrder) -> Option<Vec<String>> {
 
 fn round_robin_slot_priority(
     order_build: &PriorityOrder,
-    slot_map: &[Option<usize>],
+    slots: &FilesetSlots,
 ) -> Option<Vec<NodeId>> {
-    let slot_count = slot_map.iter().flatten().max().map(|s| *s + 1)?;
+    let slot_count = slots.count;
+    if slot_count == 0 {
+        return None;
+    }
     let (mut buckets, unslotted) =
-        bucket_nodes_by_slot(order_build, slot_map, slot_count);
+        bucket_nodes_by_slot(order_build, &slots.map, slot_count);
     let mut out = drain_round_robin(&mut buckets);
     out.extend(unslotted);
     Some(out)
@@ -524,7 +544,7 @@ fn effective_budgets_with_grep(
     measure_cfg: &RenderConfig,
     grep: &GrepConfig,
     state: &Option<GrepState>,
-    slot_map: Option<&[Option<usize>]>,
+    fileset_slots: Option<&FilesetSlots>,
 ) -> Option<(OutputStats, Option<Vec<OutputStats>>)> {
     if !is_strong_grep(grep, state) {
         return None;
@@ -538,7 +558,7 @@ fn effective_budgets_with_grep(
         &s.must_keep,
         measure_cfg.count_fileset_headers_in_budgets
             || measure_cfg.fileset_tree,
-        slot_map,
+        fileset_slots,
     ))
 }
 
@@ -577,15 +597,13 @@ fn select_best_k(
     must_keep: Option<&[bool]>,
     grep: &GrepConfig,
     state: &Option<GrepState>,
-    slot_map: Option<&[Option<usize>]>,
+    fileset_slots: Option<&FilesetSlots>,
 ) -> (usize, Vec<u32>, u32, Option<Vec<NodeId>>) {
     let total = order_build.total_nodes;
     let zero_global_cap =
         matches!(budgets.global, Some(Budget { cap: 0, .. }));
     let per_slot_caps_active = budgets.per_slot.is_some();
-    let slot_count = slot_map
-        .as_ref()
-        .and_then(|map| map.iter().flatten().max().map(|s| *s + 1));
+    let slot_count = fileset_slots.map(|s| s.count);
     let allow_zero =
         must_keep.is_some() || budgets.per_slot.is_some() || zero_global_cap;
     let mut base_lo = if allow_zero { 0 } else { min_k.max(1) };
@@ -593,8 +611,7 @@ fn select_best_k(
         base_lo = base_lo.max(slot_count.unwrap_or(0));
     }
     let selection_order = if per_slot_caps_active {
-        slot_map
-            .as_ref()
+        fileset_slots
             .and_then(|slots| round_robin_slot_priority(order_build, slots))
     } else {
         None
@@ -626,7 +643,7 @@ fn select_best_k(
         measure_cfg,
         grep,
         state,
-        slot_map,
+        fileset_slots,
     );
     let (mk_stats, mk_slots) = if let Some(flags) = must_keep {
         if let Some((mk, mk_slots)) = free_allowance {
@@ -642,7 +659,7 @@ fn select_best_k(
                 measure_cfg,
                 flags,
                 measure_chars,
-                slot_map,
+                fileset_slots,
             );
             let slots = if per_slot_caps_active {
                 mk_slots.or_else(|| Some(vec![mk]))
@@ -697,7 +714,7 @@ fn select_best_k(
                     &inclusion_flags,
                     current_render_id,
                     measure_cfg,
-                    slot_map,
+                    fileset_slots.map(|slots| slots.map.as_slice()),
                     recorder.take(),
                 );
             let render_stats =
@@ -812,7 +829,7 @@ fn measure_must_keep_with_slots(
     measure_cfg: &RenderConfig,
     must_keep: &[bool],
     measure_chars: bool,
-    slot_map: Option<&[Option<usize>]>,
+    fileset_slots: Option<&FilesetSlots>,
 ) -> (OutputStats, Option<Vec<OutputStats>>) {
     let mut measure_cfg = measure_cfg.clone();
     if matches!(
@@ -831,10 +848,9 @@ fn measure_must_keep_with_slots(
         render_set_id,
         must_keep,
     );
-    let mut recorder = slot_map.map(|slots| {
-        let max_slot = slots.iter().flatten().max().copied().unwrap_or(0);
+    let mut recorder = fileset_slots.map(|slots| {
         crate::serialization::output::SlotStatsRecorder::new(
-            max_slot.saturating_add(1),
+            slots.count,
             measure_chars,
         )
     });
@@ -844,7 +860,7 @@ fn measure_must_keep_with_slots(
             &inclusion_flags,
             render_set_id,
             &measure_cfg,
-            slot_map,
+            fileset_slots.map(|slots| slots.map.as_slice()),
             recorder.take(),
         );
     (
@@ -932,14 +948,12 @@ fn ensure_fileset_headers_for_empty_slots(
     budgets: &Budgets,
     measure_cfg: &RenderConfig,
     count_headers_in_budgets: bool,
-    slot_map: Option<&[Option<usize>]>,
+    fileset_slots: Option<&FilesetSlots>,
 ) {
-    let Some(slot_map) = slot_map else {
+    let Some(slots) = fileset_slots else {
         return;
     };
-    let slot_count =
-        slot_map.iter().flatten().max().map(|s| *s + 1).unwrap_or(0);
-    if slot_count == 0 {
+    if slots.count == 0 {
         return;
     }
     let children = order_build
@@ -953,13 +967,13 @@ fn ensure_fileset_headers_for_empty_slots(
         inclusion_flags.resize(order_build.total_nodes, 0);
     }
     let measure_chars = budgets.measure_chars();
-    let header_names = fileset_slot_names(order_build);
     let newline_len = measure_cfg.newline.len();
-    for slot_idx in 0..slot_count {
+    for slot_idx in 0..slots.count {
         let has_slot_node =
             inclusion_flags.iter().enumerate().any(|(idx, flag)| {
                 *flag == render_id
-                    && slot_map
+                    && slots
+                        .map
                         .get(idx)
                         .and_then(|s| *s)
                         .is_some_and(|s| s == slot_idx)
@@ -972,7 +986,7 @@ fn ensure_fileset_headers_for_empty_slots(
         }
         let header_stats = header_stats_for_slot(
             slot_idx,
-            &header_names,
+            slots.names.as_ref(),
             measure_chars,
             newline_len,
             budgets,
@@ -997,29 +1011,28 @@ fn ensure_fileset_headers_for_empty_slots(
 )]
 fn header_stats_for_slot(
     slot_idx: usize,
-    header_names: &Option<Vec<String>>,
+    header_names: Option<&Vec<String>>,
     measure_chars: bool,
     newline_len: usize,
     budgets: &Budgets,
 ) -> Option<OutputStats> {
-    let header_stats = if let Some(name) =
-        header_names.as_ref().and_then(|n| n.get(slot_idx))
-    {
-        let mut stats =
-            count_output_stats(&format!("==> {name} <=="), measure_chars);
-        stats.lines = stats.lines.max(1);
-        stats.bytes = stats.bytes.saturating_add(newline_len);
-        if measure_chars {
-            stats.chars = stats.chars.saturating_add(newline_len);
-        }
-        stats
-    } else {
-        OutputStats {
-            bytes: newline_len,
-            chars: if measure_chars { newline_len } else { 0 },
-            lines: 1,
-        }
-    };
+    let header_stats =
+        if let Some(name) = header_names.and_then(|n| n.get(slot_idx)) {
+            let mut stats =
+                count_output_stats(&format!("==> {name} <=="), measure_chars);
+            stats.lines = stats.lines.max(1);
+            stats.bytes = stats.bytes.saturating_add(newline_len);
+            if measure_chars {
+                stats.chars = stats.chars.saturating_add(newline_len);
+            }
+            stats
+        } else {
+            OutputStats {
+                bytes: newline_len,
+                chars: if measure_chars { newline_len } else { 0 },
+                lines: 1,
+            }
+        };
     if let Some(cap) = budgets.per_slot {
         let exceeds = match cap.kind {
             BudgetKind::Bytes => header_stats.bytes > cap.cap,
