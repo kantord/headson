@@ -151,7 +151,7 @@ Use `--tree` to render filesets as a directory tree (like `tree`) with inline st
 
 - Interactions and precedence
   - All active budgets are enforced simultaneously. The render must satisfy all of: bytes (if set), chars (if set), and lines (if set). The strictest cap wins.
-  - Outputs stay non-empty unless you explicitly set a per-file cap of zero; in that case that slot can be suppressed entirely (matching the CLI’s `-n 0` semantics).
+  - Outputs stay non-empty unless you explicitly set a per-file cap of zero; in that case that slot can be suppressed entirely (matching the CLI’s `-n 0` semantics). Extremely tight nonzero caps that cannot fit even an omission marker can also yield empty output; filesets/tree may show only omission counts in that scenario.
   - When only lines are specified, no implicit byte cap applies. When neither lines nor chars are specified, a 500‑byte default applies.
 
 Quick one‑liners:
