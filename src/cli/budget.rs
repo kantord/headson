@@ -1,7 +1,6 @@
 use anyhow::{Result, bail};
 use headson::budget::{
-    DEFAULT_BYTES_PER_INPUT, EffectiveBudgets,
-    LINE_ONLY_FREE_PREFIX_GRAPHEMES, compute_effective_budgets,
+    DEFAULT_BYTES_PER_INPUT, EffectiveBudgets, compute_effective_budgets,
 };
 use headson::{
     ArraySamplerStrategy, Budget, BudgetKind, PriorityConfig, RenderConfig,
@@ -89,14 +88,10 @@ fn explicit_global_budget(cli: &Cli) -> Option<Budget> {
 // Return a rendering config adjusted for active budget modes (pure; does not mutate caller state).
 // In practice this only lifts string trimming when running line-only (lines set, no bytes).
 pub(crate) fn render_config_for_budgets(
-    mut cfg: RenderConfig,
+    cfg: RenderConfig,
     effective: &EffectiveBudgets,
 ) -> RenderConfig {
-    if effective.line_only {
-        cfg.string_free_prefix_graphemes =
-            Some(LINE_ONLY_FREE_PREFIX_GRAPHEMES);
-    }
-    cfg
+    headson::budget::render_config_for_budgets(cfg, effective)
 }
 
 pub(crate) fn build_priority_config(

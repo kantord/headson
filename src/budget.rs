@@ -111,3 +111,15 @@ pub fn compute_effective_budgets(
         line_only,
     }
 }
+
+/// Adjust render configuration based on effective budget modes (shared across CLI/Python).
+pub fn render_config_for_budgets(
+    mut cfg: crate::RenderConfig,
+    effective: &EffectiveBudgets,
+) -> crate::RenderConfig {
+    if effective.line_only {
+        cfg.string_free_prefix_graphemes =
+            Some(LINE_ONLY_FREE_PREFIX_GRAPHEMES);
+    }
+    cfg
+}
