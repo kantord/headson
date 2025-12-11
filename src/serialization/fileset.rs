@@ -252,7 +252,12 @@ impl<'a> RenderScope<'a> {
                 child_id, depth, false, template,
             );
         }
-        self.render_node_to_string(child_id, depth, false)
+        self.render_node_to_string_with_template(
+            child_id,
+            depth,
+            false,
+            self.config.template,
+        )
     }
 
     fn fileset_template_for(&self, raw_key: &str) -> OutputTemplate {

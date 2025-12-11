@@ -20,18 +20,11 @@ repos:
         types: [rust]
         pass_filenames: false
       - id: rustfmt
-        name: rustfmt (check)
-        entry: cargo fmt --all -- --check
-        language: system
-        types: [rust]
-        pass_filenames: false
-      - id: rustfmt-fix
         name: rustfmt (auto-fix)
         entry: cargo fmt --all
         language: system
         types: [rust]
         pass_filenames: false
-        stages: [manual]
       - id: file-length
         name: file length guard (rs/py)
         entry: python scripts/check_file_lengths.py

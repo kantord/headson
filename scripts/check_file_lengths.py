@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 def main(argv: list[str]) -> int:
-    cap = int(os.environ.get("HEADSON_MAX_LINES", "2000"))
+    cap = int(os.environ.get("HEADSON_MAX_LINES", "1942"))
     failures: list[str] = []
 
     for arg in argv:

@@ -264,7 +264,11 @@ impl<'a> RenderScope<'a> {
         out: &mut Out<'_>,
     ) {
         let config = self.config;
-        let (children_pairs, kept) = self.gather_array_children(id, depth);
+        let (children_pairs, kept) = self.gather_array_children_with_template(
+            id,
+            depth,
+            config.template,
+        );
         let omitted = self.omitted_for(id, kept).unwrap_or(0);
         let ctx = ArrayCtx {
             children: children_pairs,
@@ -290,7 +294,8 @@ impl<'a> RenderScope<'a> {
         if self.try_render_fileset_root(id, depth, out) {
             return;
         }
-        let (children_pairs, kept) = self.gather_object_children(id, depth);
+        let (children_pairs, kept) = self
+            .gather_object_children_with_template(id, depth, config.template);
         let omitted = self.omitted_for(id, kept).unwrap_or(0);
         let ctx = ObjectCtx {
             children: children_pairs,
@@ -432,59 +437,6 @@ impl<'a> RenderScope<'a> {
         clippy::cognitive_complexity,
         reason = "Text omission filtering adds a branch; clearer inline"
     )]
-    fn gather_array_children(
-        &mut self,
-        id: usize,
-        depth: usize,
-    ) -> (Vec<ArrayChildPair>, usize) {
-        let mut children_pairs: Vec<ArrayChildPair> = Vec::new();
-        let mut kept = 0usize;
-        if let Some(children_ids) = self.order.children.get(id) {
-            for (i, &child_id) in children_ids.iter().enumerate() {
-                if self.inclusion_flags[child_id.0] != self.render_set_id {
-                    continue;
-                }
-                let child_kind = self.order.nodes[child_id.0].display_kind();
-                let rendered =
-                    self.render_node_to_string(child_id.0, depth + 1, false);
-                // Text template: keep omission-only children so their own
-                // renderer can place markers at the correct indentation.
-                // Coalesce: if the previously kept child is also a pure
-                // omission, skip this one to avoid consecutive markers.
-                if matches!(
-                    self.config.template,
-                    crate::serialization::types::OutputTemplate::Text
-                ) && self.rendered_is_pure_text_omission(&rendered)
-                {
-                    if let Some((_pi, (_pk, prev_s))) = children_pairs.last() {
-                        if self.rendered_is_pure_text_omission(prev_s) {
-                            continue;
-                        }
-                    }
-                }
-                kept += 1;
-                let orig_index = self
-                    .order
-                    .index_in_parent_array
-                    .get(child_id.0)
-                    .and_then(|o| *o)
-                    .unwrap_or(i);
-                self.push_array_child_line(
-                    &mut children_pairs,
-                    orig_index,
-                    child_kind,
-                    depth,
-                    rendered,
-                );
-            }
-        }
-        (children_pairs, kept)
-    }
-
-    #[allow(
-        clippy::cognitive_complexity,
-        reason = "Text omission filtering adds a branch; clearer inline"
-    )]
     fn gather_array_children_with_template(
         &mut self,
         id: usize,
@@ -535,34 +487,6 @@ impl<'a> RenderScope<'a> {
         (children_pairs, kept)
     }
 
-    fn gather_object_children(
-        &mut self,
-        id: usize,
-        depth: usize,
-    ) -> (Vec<ObjectChildPair>, usize) {
-        let mut children_pairs: Vec<ObjectChildPair> = Vec::new();
-        let mut kept = 0usize;
-        if let Some(children_ids) = self.order.children.get(id) {
-            for (i, &child_id) in children_ids.iter().enumerate() {
-                if self.inclusion_flags[child_id.0] != self.render_set_id {
-                    continue;
-                }
-                kept += 1;
-                let child = &self.order.nodes[child_id.0];
-                let raw_key = child.key_in_object().unwrap_or("");
-                let key = self.maybe_highlight_value(
-                    Some(raw_key),
-                    crate::utils::json::json_string(raw_key),
-                    HighlightKind::JsonString,
-                );
-                let val =
-                    self.render_node_to_string(child_id.0, depth + 1, true);
-                children_pairs.push((i, (key, val)));
-            }
-        }
-        (children_pairs, kept)
-    }
-
     fn gather_object_children_with_template(
         &mut self,
         id: usize,
@@ -594,37 +518,6 @@ impl<'a> RenderScope<'a> {
             }
         }
         (children_pairs, kept)
-    }
-
-    fn render_node_to_string(
-        &mut self,
-        id: usize,
-        depth: usize,
-        inline: bool,
-    ) -> String {
-        match &self.order.nodes[id] {
-            RankedNode::Array { .. } => {
-                let mut s = String::new();
-                let mut ow =
-                    Out::new(&mut s, self.config, self.line_number_width);
-                self.write_array(id, depth, inline, &mut ow);
-                s
-            }
-            RankedNode::Object { .. } => {
-                let mut s = String::new();
-                let mut ow =
-                    Out::new(&mut s, self.config, self.line_number_width);
-                self.write_object(id, depth, inline, &mut ow);
-                s
-            }
-            RankedNode::SplittableLeaf { .. } => {
-                self.serialize_string_for_template(id, self.config.template)
-            }
-            RankedNode::AtomicLeaf { .. } => self.serialize_atomic(id),
-            RankedNode::LeafPart { .. } => {
-                unreachable!("string part not rendered")
-            }
-        }
     }
 
     // Render helpers that apply a specific OutputTemplate instead of config.template.
