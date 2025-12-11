@@ -32,3 +32,9 @@ repos:
         types: [rust]
         pass_filenames: false
         stages: [manual]
+      - id: file-length
+        name: file length guard (rs/py)
+        entry: python scripts/check_file_lengths.py
+        language: system
+        types_or: [rust, python]
+        pass_filenames: true

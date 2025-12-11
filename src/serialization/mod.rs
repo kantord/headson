@@ -325,63 +325,7 @@ impl<'a> RenderScope<'a> {
         clippy::cognitive_complexity,
         reason = "Keeps string omission logic in one place for clarity."
     )]
-    fn serialize_string(&mut self, id: usize) -> String {
-        let kept = self.count_kept_children(id);
-        // Number of graphemes to render from the string prefix, honoring any
-        // free-prefix allowance enabled in lines-only mode.
-        let render_prefix_graphemes =
-            match self.config.string_free_prefix_graphemes {
-                Some(n) => kept.max(n),
-                None => kept,
-            };
-        let omitted =
-            self.omitted_for(id, render_prefix_graphemes).unwrap_or(0);
-        let full: &str = match &self.order.nodes[id] {
-            RankedNode::SplittableLeaf { value, .. } => value.as_str(),
-            _ => unreachable!(
-                "serialize_string called for non-string node: id={id}"
-            ),
-        };
-        let truncated_buf = if omitted == 0 {
-            None
-        } else {
-            let prefix = crate::utils::text::take_n_graphemes(
-                full,
-                render_prefix_graphemes,
-            );
-            Some(format!("{prefix}…"))
-        };
-        let raw_for_highlight = truncated_buf.as_deref().unwrap_or(full);
-        let highlight_kind = if matches!(
-            self.config.template,
-            crate::serialization::types::OutputTemplate::Text
-                | crate::serialization::types::OutputTemplate::Code
-        ) {
-            HighlightKind::TextLike
-        } else {
-            HighlightKind::JsonString
-        };
-        let rendered = if matches!(
-            self.config.template,
-            crate::serialization::types::OutputTemplate::Text
-                | crate::serialization::types::OutputTemplate::Code
-        ) {
-            raw_for_highlight.to_string()
-        } else {
-            crate::utils::json::json_string(raw_for_highlight)
-        };
-        self.maybe_highlight_value(
-            Some(raw_for_highlight),
-            rendered,
-            highlight_kind,
-        )
-    }
-
-    #[allow(
-        clippy::cognitive_complexity,
-        reason = "Keeps string omission logic in one place for clarity."
-    )]
-    fn serialize_string_with_template(
+    fn serialize_string_for_template(
         &mut self,
         id: usize,
         template: crate::serialization::types::OutputTemplate,
@@ -399,7 +343,7 @@ impl<'a> RenderScope<'a> {
         let full: &str = match &self.order.nodes[id] {
             RankedNode::SplittableLeaf { value, .. } => value.as_str(),
             _ => unreachable!(
-                "serialize_string called for non-string node: id={id}"
+                "serialize_string_for_template called for non-string node: id={id}"
             ),
         };
         let truncated_buf = if omitted == 0 {
@@ -461,7 +405,8 @@ impl<'a> RenderScope<'a> {
                 self.write_object(id, depth, inline, out)
             }
             RankedNode::SplittableLeaf { .. } => {
-                let s = self.serialize_string(id);
+                let s = self
+                    .serialize_string_for_template(id, self.config.template);
                 if matches!(
                     self.config.template,
                     crate::serialization::types::OutputTemplate::Text
@@ -672,7 +617,9 @@ impl<'a> RenderScope<'a> {
                 self.write_object(id, depth, inline, &mut ow);
                 s
             }
-            RankedNode::SplittableLeaf { .. } => self.serialize_string(id),
+            RankedNode::SplittableLeaf { .. } => {
+                self.serialize_string_for_template(id, self.config.template)
+            }
             RankedNode::AtomicLeaf { .. } => self.serialize_atomic(id),
             RankedNode::LeafPart { .. } => {
                 unreachable!("string part not rendered")
@@ -761,7 +708,7 @@ impl<'a> RenderScope<'a> {
                 s
             }
             RankedNode::SplittableLeaf { .. } => {
-                self.serialize_string_with_template(id, template)
+                self.serialize_string_for_template(id, template)
             }
             RankedNode::AtomicLeaf { .. } => self.serialize_atomic(id),
             RankedNode::LeafPart { .. } => {
