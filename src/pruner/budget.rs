@@ -156,7 +156,6 @@ pub fn find_largest_render_under_budgets(
             grep,
             &grep_state,
             fileset_slots.as_ref(),
-            header_budgeting,
         );
     if budgets.per_slot_zero_cap() {
         return String::new();
@@ -577,7 +576,6 @@ fn effective_budgets_with_grep(
     grep: &GrepConfig,
     state: &Option<GrepState>,
     fileset_slots: Option<&FilesetSlots>,
-    header_budgeting: HeadersBudgeting,
 ) -> Option<(OutputStats, Option<Vec<OutputStats>>)> {
     if !is_strong_grep(grep, state) {
         return None;
@@ -592,7 +590,6 @@ fn effective_budgets_with_grep(
         measure_cfg.count_fileset_headers_in_budgets
             || measure_cfg.fileset_tree,
         fileset_slots,
-        header_budgeting,
     ))
 }
 
@@ -632,7 +629,6 @@ fn select_best_k(
     grep: &GrepConfig,
     state: &Option<GrepState>,
     fileset_slots: Option<&FilesetSlots>,
-    header_budgeting: HeadersBudgeting,
 ) -> (usize, Vec<u32>, u32, Option<Vec<NodeId>>) {
     let total = order_build.total_nodes;
     let zero_global_cap =
@@ -679,7 +675,6 @@ fn select_best_k(
         grep,
         state,
         fileset_slots,
-        header_budgeting,
     );
     let (mk_stats, mk_slots) = if let Some(flags) = must_keep {
         if let Some((mk, mk_slots)) = free_allowance {
@@ -696,7 +691,6 @@ fn select_best_k(
                 flags,
                 measure_chars,
                 fileset_slots,
-                header_budgeting,
             );
             let slots = if per_slot_caps_active {
                 mk_slots.or_else(|| Some(vec![mk]))
@@ -845,6 +839,8 @@ fn measure_config(
         .is_some_and(|t| *t == crate::order::ObjectType::Fileset);
     let mut measure_cfg = config.clone();
     measure_cfg.color_enabled = false;
+    measure_cfg.count_fileset_headers_in_budgets =
+        header_budgeting.is_charged();
     if config.fileset_tree {
         // In tree mode, show_fileset_headers controls whether scaffold lines
         // (pipes/gutters) render; honor the budgeting policy so scaffold can
@@ -867,11 +863,8 @@ fn measure_must_keep_with_slots(
     must_keep: &[bool],
     measure_chars: bool,
     fileset_slots: Option<&FilesetSlots>,
-    header_budgeting: HeadersBudgeting,
 ) -> (OutputStats, Option<Vec<OutputStats>>) {
     let mut measure_cfg = measure_cfg.clone();
-    measure_cfg.count_fileset_headers_in_budgets =
-        header_budgeting.is_charged();
     if matches!(
         measure_cfg.template,
         crate::OutputTemplate::Text | crate::OutputTemplate::Auto
