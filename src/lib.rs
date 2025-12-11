@@ -20,6 +20,7 @@
 
 use anyhow::Result;
 
+pub mod budget;
 mod debug;
 mod grep;
 mod ingest;

@@ -1,132 +1,32 @@
 use anyhow::{Result, bail};
+use headson::budget::{
+    DEFAULT_BYTES_PER_INPUT, EffectiveBudgets,
+    LINE_ONLY_FREE_PREFIX_GRAPHEMES, compute_effective_budgets,
+};
 use headson::{
-    ArraySamplerStrategy, Budget, BudgetKind, Budgets, PriorityConfig,
-    RenderConfig,
+    ArraySamplerStrategy, Budget, BudgetKind, PriorityConfig, RenderConfig,
 };
 
 use crate::Cli;
 
-// CLI-facing budget helpers: compute effective caps and priority tuning derived from flag inputs.
-// Default per-input byte cap when no explicit budgets are provided anywhere.
-pub const DEFAULT_BYTES_PER_INPUT: usize = 500;
-// When only line budgets are active, allow this many graphemes before trimming strings.
-pub const LINE_ONLY_FREE_PREFIX_GRAPHEMES: usize = 40;
-
-#[derive(Debug, Copy, Clone)]
-pub struct EffectiveBudgets {
-    // Final budgets passed to the renderer/search.
-    pub budgets: Budgets,
-    // Per-file budget used to size priority heuristics (e.g., array_max_items in PriorityConfig).
-    // Ignored when line_only is true (line-only mode lifts array caps entirely).
-    pub per_file_for_priority: usize,
-    // Whether only line caps are active (no bytes); used to lift array limits and string trimming
-    // during ordering and render prep so structure survives in line-only mode.
-    pub line_only: bool,
-}
-
-#[allow(
-    clippy::cognitive_complexity,
-    reason = "Validation + default wiring is clearer in one routine; splitting would scatter the budget rules."
-)]
 pub(crate) fn compute_effective(
     cli: &Cli,
     input_count: usize,
 ) -> EffectiveBudgets {
     let mut per_slot = per_slot_budget(cli);
     let explicit_global = explicit_global_budget(cli);
-
-    // Defaults and implicit roll-ups:
-    // - If no budgets provided anywhere, default to a global 500-byte cap scaled by input count.
-    // - If a per-slot byte/char budget is provided without an explicit global, roll a matching
-    //   global cap by multiplying by input count (existing behavior: per-file caps add up).
-    // - Line caps stay per-slot unless the user passes a global line cap.
-    let mut global = explicit_global;
-    if global.is_none() {
-        match per_slot {
-            Some(Budget {
-                kind: BudgetKind::Bytes,
-                cap,
-            }) => {
-                global = Some(Budget {
-                    kind: BudgetKind::Bytes,
-                    cap: cap.saturating_mul(input_count),
-                });
-            }
-            Some(Budget {
-                kind: BudgetKind::Chars,
-                cap,
-            }) => {
-                global = Some(Budget {
-                    kind: BudgetKind::Chars,
-                    cap: cap.saturating_mul(input_count),
-                });
-            }
-            Some(Budget {
-                kind: BudgetKind::Lines,
-                ..
-            }) => {
-                // No implicit global for line caps.
-            }
-            None => {
-                per_slot = Some(Budget {
-                    kind: BudgetKind::Bytes,
-                    cap: DEFAULT_BYTES_PER_INPUT,
-                });
-                global = Some(Budget {
-                    kind: BudgetKind::Bytes,
-                    cap: DEFAULT_BYTES_PER_INPUT.saturating_mul(input_count),
-                });
-            }
-        }
+    if per_slot.is_none() && explicit_global.is_none() {
+        per_slot = Some(Budget {
+            kind: BudgetKind::Bytes,
+            cap: DEFAULT_BYTES_PER_INPUT,
+        });
     }
-
-    let budgets = Budgets { global, per_slot };
-
-    let has_lines = matches!(
-        budgets.global,
-        Some(Budget {
-            kind: BudgetKind::Lines,
-            ..
-        })
-    ) || matches!(
-        budgets.per_slot,
-        Some(Budget {
-            kind: BudgetKind::Lines,
-            ..
-        })
-    );
-    let has_bytes_or_chars = matches!(
-        budgets.global,
-        Some(Budget {
-            kind: BudgetKind::Bytes | BudgetKind::Chars,
-            ..
-        })
-    ) || matches!(
-        budgets.per_slot,
-        Some(Budget {
-            kind: BudgetKind::Bytes | BudgetKind::Chars,
-            ..
-        })
-    );
-    let line_only = has_lines && !has_bytes_or_chars;
-
-    let chosen_global = budgets
-        .global
-        .map(|b| b.cap)
-        .unwrap_or(DEFAULT_BYTES_PER_INPUT.saturating_mul(input_count));
-    // In line-only mode, PriorityConfig lifts array limits entirely; make that
-    // explicit by using usize::MAX instead of a byte/char-derived heuristic.
-    let per_file_for_priority = if line_only {
-        usize::MAX
-    } else {
-        (chosen_global / input_count.max(1)).max(1)
-    };
-
-    EffectiveBudgets {
-        budgets,
-        per_file_for_priority,
-        line_only,
-    }
+    compute_effective_budgets(
+        per_slot,
+        explicit_global,
+        input_count,
+        DEFAULT_BYTES_PER_INPUT,
+    )
 }
 
 pub(crate) fn validate(cli: &Cli) -> Result<()> {

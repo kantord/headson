@@ -1,8 +1,11 @@
 use anyhow::{bail, Result};
+use headson_core::budget::{
+    compute_effective_budgets, EffectiveBudgets, DEFAULT_BYTES_PER_INPUT,
+};
 use headson_core::{
     build_grep_config, map_json_template_for_style, ArraySamplerStrategy,
-    Budget, BudgetKind, Budgets, ColorMode, InputKind, OutputTemplate,
-    PriorityConfig, RenderConfig, Style,
+    Budget, BudgetKind, ColorMode, InputKind, OutputTemplate, PriorityConfig,
+    RenderConfig, Style,
 };
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
@@ -118,7 +121,19 @@ fn summarize(
     let mut cfg = render_config_with_sampler(format, style, sampler)
         .map_err(to_pyerr)?;
     let budget = byte_budget.unwrap_or(500);
-    let per_file_for_priority = budget.max(1);
+    let EffectiveBudgets {
+        budgets,
+        per_file_for_priority,
+        ..
+    } = compute_effective_budgets(
+        None,
+        Some(Budget {
+            kind: BudgetKind::Bytes,
+            cap: budget,
+        }),
+        1,
+        DEFAULT_BYTES_PER_INPUT,
+    );
     let prio = priority_config(per_file_for_priority, sampler);
     let input = text.as_bytes().to_vec();
     let grep_cfg =
@@ -127,13 +142,6 @@ fn summarize(
     if let Some(re) = &grep_cfg.regex {
         cfg.grep_highlight = Some(re.clone());
     }
-    let budgets = Budgets {
-        global: Some(Budget {
-            kind: BudgetKind::Bytes,
-            cap: budget,
-        }),
-        per_slot: None,
-    };
     let text_mode = if matches!(cfg.template, OutputTemplate::Code) {
         headson_core::TextMode::CodeLike
     } else {
