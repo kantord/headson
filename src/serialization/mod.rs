@@ -82,92 +82,9 @@ impl<'a> RenderScope<'a> {
         }
         self.config.primary_source_name.as_deref()
     }
-    fn code_root_array_id(&self, array_id: usize) -> usize {
-        let mut current = array_id;
-        while let Some(Some(parent)) = self.order.parent.get(current) {
-            match self.order.nodes[parent.0] {
-                RankedNode::Array { .. } => current = parent.0,
-                _ => break,
-            }
-        }
-        current
-    }
-
-    fn push_code_line(
-        &self,
-        child_idx: usize,
-        text: &str,
-        acc: &mut Vec<Option<String>>,
-    ) {
-        let idx = self
-            .order
-            .index_in_parent_array
-            .get(child_idx)
-            .and_then(|o| *o)
-            .unwrap_or(0);
-        if acc.len() <= idx {
-            acc.resize(idx + 1, None);
-        }
-        acc[idx] = Some(text.to_string());
-    }
-
     fn slot_for(&self, node_id: usize) -> Option<usize> {
         self.slot_map
             .and_then(|slots| slots.get(node_id).copied().flatten())
-    }
-
-    fn collect_code_lines(
-        &self,
-        array_id: usize,
-        acc: &mut Vec<Option<String>>,
-    ) {
-        if let Some(children) = self.order.children.get(array_id) {
-            for child in children {
-                let child_idx = child.0;
-                match &self.order.nodes[child_idx] {
-                    RankedNode::Array { .. } | RankedNode::Object { .. } => {
-                        self.collect_code_lines(child_idx, acc);
-                    }
-                    RankedNode::SplittableLeaf { value, .. } => {
-                        self.push_code_line(child_idx, value, acc);
-                    }
-                    RankedNode::AtomicLeaf { token, .. } => {
-                        self.push_code_line(child_idx, token, acc);
-                    }
-                    RankedNode::LeafPart { .. } => {}
-                }
-            }
-        }
-    }
-
-    fn compute_code_highlights(&self, array_id: usize) -> Vec<String> {
-        let root = self.code_root_array_id(array_id);
-        if let Some(full) = self.order.code_lines.get(&root) {
-            let mut highlighter =
-                crate::serialization::highlight::CodeHighlighter::new(
-                    self.source_hint_for(root),
-                );
-            return full
-                .iter()
-                .map(|line| highlighter.highlight_line(line))
-                .collect();
-        }
-        let mut lines: Vec<Option<String>> = Vec::new();
-        self.collect_code_lines(array_id, &mut lines);
-        if lines.is_empty() {
-            return Vec::new();
-        }
-        let mut highlighter =
-            crate::serialization::highlight::CodeHighlighter::new(
-                self.source_hint_for(array_id),
-            );
-        lines
-            .into_iter()
-            .map(|opt| {
-                let text = opt.unwrap_or_default();
-                highlighter.highlight_line(&text)
-            })
-            .collect()
     }
 
     fn code_highlights_for(
@@ -184,11 +101,18 @@ impl<'a> RenderScope<'a> {
         if !matches!(template, crate::OutputTemplate::Code) {
             return None;
         }
-        let root = self.code_root_array_id(array_id);
+        let root = crate::serialization::highlight::code_root_array_id(
+            self.order, array_id,
+        );
         if let Some(existing) = self.code_highlight_cache.get(&root) {
             return Some(existing.clone());
         }
-        let computed = Arc::new(self.compute_code_highlights(root));
+        let computed =
+            Arc::new(crate::serialization::highlight::code_highlight_lines(
+                self.order,
+                root,
+                self.source_hint_for(root),
+            ));
         self.code_highlight_cache.insert(root, computed.clone());
         Some(computed)
     }

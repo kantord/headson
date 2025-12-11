@@ -62,6 +62,90 @@ impl CodeHighlighter<'static> {
     }
 }
 
+pub(crate) fn code_highlight_lines(
+    order: &crate::PriorityOrder,
+    array_id: usize,
+    source_hint: Option<&str>,
+) -> Vec<String> {
+    let root = code_root_array_id(order, array_id);
+    if let Some(full) = order.code_lines.get(&root) {
+        let mut highlighter = CodeHighlighter::new(source_hint);
+        return full
+            .iter()
+            .map(|line| highlighter.highlight_line(line))
+            .collect();
+    }
+    let mut lines: Vec<Option<String>> = Vec::new();
+    collect_code_lines(order, array_id, &mut lines);
+    if lines.is_empty() {
+        return Vec::new();
+    }
+    let mut highlighter = CodeHighlighter::new(source_hint);
+    lines
+        .into_iter()
+        .map(|opt| {
+            let text = opt.unwrap_or_default();
+            highlighter.highlight_line(&text)
+        })
+        .collect()
+}
+
+pub(crate) fn collect_code_lines(
+    order: &crate::PriorityOrder,
+    array_id: usize,
+    acc: &mut Vec<Option<String>>,
+) {
+    if let Some(children) = order.children.get(array_id) {
+        for child in children {
+            let child_idx = child.0;
+            match &order.nodes[child_idx] {
+                crate::RankedNode::Array { .. }
+                | crate::RankedNode::Object { .. } => {
+                    collect_code_lines(order, child_idx, acc);
+                }
+                crate::RankedNode::SplittableLeaf { value, .. } => {
+                    push_code_line(order, child_idx, value, acc);
+                }
+                crate::RankedNode::AtomicLeaf { token, .. } => {
+                    push_code_line(order, child_idx, token, acc);
+                }
+                crate::RankedNode::LeafPart { .. } => {}
+            }
+        }
+    }
+}
+
+fn push_code_line(
+    order: &crate::PriorityOrder,
+    child_idx: usize,
+    text: &str,
+    acc: &mut Vec<Option<String>>,
+) {
+    let idx = order
+        .index_in_parent_array
+        .get(child_idx)
+        .and_then(|o| *o)
+        .unwrap_or(0);
+    if acc.len() <= idx {
+        acc.resize(idx + 1, None);
+    }
+    acc[idx] = Some(text.to_string());
+}
+
+pub(crate) fn code_root_array_id(
+    order: &crate::PriorityOrder,
+    array_id: usize,
+) -> usize {
+    let mut current = array_id;
+    while let Some(Some(parent)) = order.parent.get(current) {
+        match order.nodes[parent.0] {
+            crate::RankedNode::Array { .. } => current = parent.0,
+            _ => break,
+        }
+    }
+    current
+}
+
 fn syntax_for_hint(hint: Option<&str>) -> &'static SyntaxReference {
     let Some(name) = hint else {
         return SYNTAXES.find_syntax_plain_text();
