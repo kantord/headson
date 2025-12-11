@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1](https://github.com/kantord/headson/compare/headson-v0.11.0...headson-v0.11.1) - 2025-12-11
+
+### Other
+
+- small refactors ([#360](https://github.com/kantord/headson/pull/360))
+- simplify text omission handling ([#359](https://github.com/kantord/headson/pull/359))
+- extract code highlight helpers from renderer ([#358](https://github.com/kantord/headson/pull/358))
+- unify render dispatch and tighten length guard ([#356](https://github.com/kantord/headson/pull/356))
+- unify string serializer and relax file length cap ([#354](https://github.com/kantord/headson/pull/354))
+
 ## [0.11.0](https://github.com/kantord/headson/compare/headson-v0.10.1...headson-v0.11.0) - 2025-12-11
 
 ### Added
