@@ -25,30 +25,6 @@ pub struct Budgets {
 }
 
 impl Budget {
-    fn add_stats(self, stats: &OutputStats) -> Self {
-        let delta = match self.kind {
-            BudgetKind::Bytes => stats.bytes,
-            BudgetKind::Chars => stats.chars,
-            BudgetKind::Lines => stats.lines,
-        };
-        Self {
-            cap: self.cap.saturating_add(delta),
-            ..self
-        }
-    }
-
-    fn subtract_stats(self, stats: &OutputStats) -> Self {
-        let delta = match self.kind {
-            BudgetKind::Bytes => stats.bytes,
-            BudgetKind::Chars => stats.chars,
-            BudgetKind::Lines => stats.lines,
-        };
-        Self {
-            cap: self.cap.saturating_sub(delta),
-            ..self
-        }
-    }
-
     fn exceeds(&self, stats: &OutputStats) -> bool {
         match self.kind {
             BudgetKind::Bytes => stats.bytes > self.cap,
@@ -165,35 +141,30 @@ pub fn find_largest_render_under_budgets(
         config.fileset_tree,
     );
     reorder_if_grep(order_build, &grep_state);
-    let effective_budgets = effective_budgets_with_grep(
-        order_build,
-        &measure_cfg,
-        grep,
-        budgets,
-        &grep_state,
-    );
     let min_k = min_k_for(&grep_state, grep);
     let must_keep_slice = must_keep_slice(&grep_state, grep);
     let (k, mut inclusion_flags, render_set_id, sinkhole_order) =
         select_best_k(
             order_build,
             &measure_cfg,
-            effective_budgets,
+            budgets,
             min_k,
             must_keep_slice,
+            grep,
+            &grep_state,
         );
-    if effective_budgets.per_slot_zero_cap() {
+    if budgets.per_slot_zero_cap() {
         return String::new();
     }
     if k == 0
         && must_keep_slice.is_none()
-        && !effective_budgets.per_slot_active()
+        && !budgets.per_slot_active()
         && !root_is_fileset
     {
         return String::new();
     }
     inclusion_flags.fill(0);
-    let per_slot_caps_active = effective_budgets.per_slot_active();
+    let per_slot_caps_active = budgets.per_slot_active();
 
     if let Some(order) = sinkhole_order.as_ref() {
         mark_sinkhole_top_k_and_ancestors(
@@ -226,7 +197,7 @@ pub fn find_largest_render_under_budgets(
             order_build,
             render_set_id,
             &mut inclusion_flags,
-            &effective_budgets,
+            &budgets,
             &measure_cfg,
             config.count_fileset_headers_in_budgets,
         );
@@ -234,7 +205,7 @@ pub fn find_largest_render_under_budgets(
 
     if per_slot_caps_active
         && matches!(
-            effective_budgets.per_slot,
+            budgets.per_slot,
             Some(Budget {
                 kind: BudgetKind::Lines,
                 cap: 0
@@ -265,7 +236,7 @@ pub fn find_largest_render_under_budgets(
             &inclusion_flags,
             render_set_id,
             config,
-            effective_budgets,
+            budgets,
             k,
         );
     }
@@ -690,26 +661,23 @@ fn effective_budgets_with_grep(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
     grep: &GrepConfig,
-    budgets: Budgets,
     state: &Option<GrepState>,
-) -> Budgets {
+    slot_map: Option<&[Option<usize>]>,
+) -> Option<(OutputStats, Option<Vec<OutputStats>>)> {
     if !is_strong_grep(grep, state) {
-        return budgets;
+        return None;
     }
     let Some(s) = state else {
-        return budgets;
+        return None;
     };
-    let cost = measure_must_keep(
+    Some(measure_must_keep_with_slots(
         order_build,
         measure_cfg,
         &s.must_keep,
-        budgets.measure_chars(),
-    );
-    // Expand the budgets to cover must-keep matches; the search phase will subtract
-    // this cost so caps apply only to non-matching content. Per-slot caps remain
-    // as-is; later selection still forces must-keep matches even if they exceed a
-    // per-file cap, matching the “strong grep makes matches free” contract.
-    add_budgets(budgets, cost)
+        measure_cfg.count_fileset_headers_in_budgets
+            || measure_cfg.fileset_tree,
+        slot_map,
+    ))
 }
 
 fn min_k_for(state: &Option<GrepState>, grep: &GrepConfig) -> usize {
@@ -736,6 +704,7 @@ fn must_keep_slice<'a>(
 #[allow(
     clippy::cognitive_complexity,
     clippy::too_many_lines,
+    clippy::too_many_arguments,
     reason = "Budget search is clearer as a single routine."
 )]
 fn select_best_k(
@@ -744,6 +713,8 @@ fn select_best_k(
     budgets: Budgets,
     min_k: usize,
     must_keep: Option<&[bool]>,
+    grep: &GrepConfig,
+    state: &Option<GrepState>,
 ) -> (usize, Vec<u32>, u32, Option<Vec<NodeId>>) {
     let total = order_build.total_nodes;
     let zero_global_cap =
@@ -790,11 +761,25 @@ fn select_best_k(
     } else {
         None
     };
+    let free_allowance = effective_budgets_with_grep(
+        order_build,
+        measure_cfg,
+        grep,
+        state,
+        slot_map.as_deref(),
+    );
     let slot_count = slot_map
         .as_ref()
         .and_then(|map| map.iter().flatten().max().map(|s| *s + 1));
-    let (must_keep_stats, must_keep_slot_stats) =
-        if let Some(flags) = must_keep {
+    let (mk_stats, mk_slots) = if let Some(flags) = must_keep {
+        if let Some((mk, mk_slots)) = free_allowance {
+            let slots = if per_slot_caps_active {
+                mk_slots.or_else(|| Some(vec![mk]))
+            } else {
+                mk_slots
+            };
+            (Some(mk), slots)
+        } else {
             let (mk, mk_slots) = measure_must_keep_with_slots(
                 order_build,
                 measure_cfg,
@@ -808,20 +793,13 @@ fn select_best_k(
                 mk_slots
             };
             (Some(mk), slots)
-        } else {
-            (None, None)
-        };
-    let search_budgets_excluding_must_keep =
-        if let Some(mk) = must_keep_stats.as_ref() {
-            // Matches were already added to the effective budget upstream so they are “free”;
-            // subtract them here so the search only constrains non-matching content.
-            subtract_must_keep_from_budgets(budgets, *mk)
-        } else {
-            budgets
-        };
+        }
+    } else {
+        (None, None)
+    };
     let apply_must_keep = must_keep.is_some();
     if apply_must_keep {
-        if let Some(b) = search_budgets_excluding_must_keep.global {
+        if let Some(b) = budgets.global {
             if b.cap == 0 {
                 return (0, inclusion_flags, render_set_id, sinkhole_order);
             }
@@ -874,27 +852,30 @@ fn select_best_k(
                     slot_map.as_deref(),
                     recorder.take(),
                 );
-            let full_stats =
+            let render_stats =
                 crate::utils::measure::count_output_stats(&s, measure_chars);
-            let mut stats = full_stats;
-            if let Some(mk) = must_keep_stats.as_ref() {
-                stats.bytes = stats.bytes.saturating_sub(mk.bytes);
-                stats.chars = stats.chars.saturating_sub(mk.chars);
-                stats.lines = stats.lines.saturating_sub(mk.lines);
+            let mut adjusted_stats = render_stats;
+            if let Some(mk) = mk_stats.as_ref() {
+                adjusted_stats.bytes =
+                    adjusted_stats.bytes.saturating_sub(mk.bytes);
+                adjusted_stats.chars =
+                    adjusted_stats.chars.saturating_sub(mk.chars);
+                adjusted_stats.lines =
+                    adjusted_stats.lines.saturating_sub(mk.lines);
             }
             if per_slot_caps_active && slot_stats.is_none() {
-                slot_stats = Some(vec![full_stats]);
+                slot_stats = Some(vec![render_stats]);
             }
-            let fits_global = search_budgets_excluding_must_keep
+            let fits_global = budgets
                 .global
-                .map(|b| !b.exceeds(&stats))
+                .map(|b| !b.exceeds(&adjusted_stats))
                 .unwrap_or(true);
             let fits_per_slot = if per_slot_caps_active {
                 fits_per_slot_cap(
                     budgets.per_slot,
-                    &stats,
+                    &adjusted_stats,
                     slot_stats.as_deref(),
-                    must_keep_slot_stats.as_deref(),
+                    mk_slots.as_deref(),
                 )
             } else {
                 true
@@ -978,22 +959,6 @@ fn measure_config(
     measure_cfg
 }
 
-fn measure_must_keep(
-    order_build: &PriorityOrder,
-    measure_cfg: &RenderConfig,
-    must_keep: &[bool],
-    measure_chars: bool,
-) -> OutputStats {
-    measure_must_keep_with_slots(
-        order_build,
-        measure_cfg,
-        must_keep,
-        measure_chars,
-        None,
-    )
-    .0
-}
-
 fn measure_must_keep_with_slots(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
@@ -1038,25 +1003,6 @@ fn measure_must_keep_with_slots(
         crate::utils::measure::count_output_stats(&rendered, measure_chars),
         slot_stats,
     )
-}
-
-fn subtract_must_keep_from_budgets(
-    budgets: Budgets,
-    must_keep: OutputStats,
-) -> Budgets {
-    Budgets {
-        global: budgets.global.map(|b| b.subtract_stats(&must_keep)),
-        per_slot: budgets.per_slot,
-    }
-}
-
-fn add_budgets(budgets: Budgets, extra: OutputStats) -> Budgets {
-    Budgets {
-        global: budgets.global.map(|b| b.add_stats(&extra)),
-        // Per-slot budgets stay fixed; must-keep items can exceed the cap but
-        // should not expand the allowance for unrelated nodes in that slot.
-        per_slot: budgets.per_slot,
-    }
 }
 
 fn include_string_descendants(
