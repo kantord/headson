@@ -264,7 +264,7 @@ pub fn find_largest_render_under_budgets(
         );
     }
 
-    crate::serialization::render_from_render_set(
+    crate::serialization::render_from_render_set_with_slots(
         order_build,
         &inclusion_flags,
         render_set_id,
@@ -275,7 +275,10 @@ pub fn find_largest_render_under_budgets(
                 .or_else(|| grep.regex.clone()),
             ..config.clone()
         },
+        None,
+        None,
     )
+    .0
 }
 
 fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
