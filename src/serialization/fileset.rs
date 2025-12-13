@@ -1,10 +1,10 @@
-use super::RenderScope;
+use super::engine::RenderEngine;
 use crate::ingest::format::Format;
 use crate::order::{NodeId, ObjectType, ROOT_PQ_ID};
 use crate::serialization::color::{self, ColorRole};
 use crate::serialization::types::OutputTemplate;
 
-impl<'a> RenderScope<'a> {
+impl<'a> RenderEngine<'a> {
     pub(super) fn try_render_fileset_root(
         &mut self,
         id: usize,
