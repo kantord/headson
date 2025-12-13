@@ -3,8 +3,7 @@
 Fail if any Rust/Python file exceeds a configurable line cap.
 
 Env overrides:
-  HEADSON_MAX_RS_LINES (default: 2200)
-  HEADSON_MAX_PY_LINES (default: 1200)
+  HEADSON_MAX_LINES (default: 1112)
 """
 
 from __future__ import annotations
@@ -15,7 +14,7 @@ from pathlib import Path
 
 
 def main(argv: list[str]) -> int:
-    cap = int(os.environ.get("HEADSON_MAX_LINES", "1710"))
+    cap = int(os.environ.get("HEADSON_MAX_LINES", "1112"))
     failures: list[str] = []
 
     for arg in argv:
