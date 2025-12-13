@@ -715,42 +715,50 @@ mod tests {
             serde_yaml::from_str(s).expect("YAML parse failed (validation)");
     }
 
+    fn unbounded_prio() -> crate::PriorityConfig {
+        crate::PriorityConfig::new(usize::MAX, usize::MAX)
+    }
+
+    fn render_cfg(
+        template: crate::OutputTemplate,
+        style: crate::serialization::types::Style,
+    ) -> crate::RenderConfig {
+        crate::RenderConfig {
+            template,
+            indent_unit: "  ".to_string(),
+            space: " ".to_string(),
+            newline: "\n".to_string(),
+            prefer_tail_arrays: false,
+            color_mode: crate::ColorMode::Off,
+            color_enabled: false,
+            style,
+            string_free_prefix_graphemes: None,
+            debug: false,
+            primary_source_name: None,
+            show_fileset_headers: true,
+            fileset_tree: false,
+            count_fileset_headers_in_budgets: false,
+            grep_highlight: None,
+        }
+    }
+
     #[test]
     fn arena_render_empty_array() {
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[]",
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+            &unbounded_prio(),
         )
         .unwrap();
-        let build = build_order(
-            &arena,
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
-        )
-        .unwrap();
+        let build = build_order(&arena, &unbounded_prio()).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_top_k(
-            &build,
-            10,
-            &mut marks,
-            1,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Json,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Auto,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Strict,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
-        );
+        let cfg = crate::RenderConfig {
+            color_mode: crate::ColorMode::Auto,
+            ..render_cfg(
+                crate::OutputTemplate::Json,
+                crate::serialization::types::Style::Strict,
+            )
+        };
+        let out = render_top_k(&build, 10, &mut marks, 1, &cfg);
         assert_snapshot!("arena_render_empty", out);
     }
 
@@ -760,39 +768,20 @@ mod tests {
         // arbitrary newline sequences (e.g., "\r\n") via s.contains(nl).
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[{\"a\":1,\"b\":2}]",
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+            &unbounded_prio(),
         )
         .unwrap();
-        let build = build_order(
-            &arena,
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
-        )
-        .unwrap();
+        let build = build_order(&arena, &unbounded_prio()).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_top_k(
-            &build,
-            usize::MAX,
-            &mut marks,
-            1,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Json,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                // Use CRLF to force the contains(nl) path.
-                newline: "\r\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Auto,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Strict,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
-        );
+        let cfg = crate::RenderConfig {
+            newline: "\r\n".to_string(),
+            color_mode: crate::ColorMode::Auto,
+            ..render_cfg(
+                crate::OutputTemplate::Json,
+                crate::serialization::types::Style::Strict,
+            )
+        };
+        let out = render_top_k(&build, usize::MAX, &mut marks, 1, &cfg);
         // Sanity: output should contain CRLF newlines and render the object child across lines.
         assert!(
             out.contains("\r\n"),
@@ -805,38 +794,19 @@ mod tests {
     fn arena_render_single_string_array() {
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[\"ab\"]",
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+            &unbounded_prio(),
         )
         .unwrap();
-        let build = build_order(
-            &arena,
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
-        )
-        .unwrap();
+        let build = build_order(&arena, &unbounded_prio()).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_top_k(
-            &build,
-            10,
-            &mut marks,
-            1,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Json,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Auto,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Strict,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
-        );
+        let cfg = crate::RenderConfig {
+            color_mode: crate::ColorMode::Auto,
+            ..render_cfg(
+                crate::OutputTemplate::Json,
+                crate::serialization::types::Style::Strict,
+            )
+        };
+        let out = render_top_k(&build, 10, &mut marks, 1, &cfg);
         assert_snapshot!("arena_render_single", out);
     }
 
@@ -857,31 +827,13 @@ mod tests {
         .unwrap();
         let build = build_order(&arena, &cfg_prio).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
+        let base_cfg = render_cfg(
+            crate::OutputTemplate::Pseudo,
+            crate::serialization::types::Style::Default,
+        );
 
         // Head preference: omitted marker after items.
-        let out_head = render_top_k(
-            &build,
-            2,
-            &mut marks,
-            1,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Pseudo,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Off,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Default,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
-        );
+        let out_head = render_top_k(&build, 2, &mut marks, 1, &base_cfg);
         assert_snapshot!("array_omitted_pseudo_head", out_head);
 
         // Tail preference: omitted marker before items (with comma).
@@ -891,21 +843,8 @@ mod tests {
             &mut marks,
             2,
             &crate::RenderConfig {
-                template: crate::OutputTemplate::Pseudo,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
                 prefer_tail_arrays: true,
-                color_mode: crate::ColorMode::Off,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Default,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
+                ..base_cfg.clone()
             },
         );
         assert_snapshot!("array_omitted_pseudo_tail", out_tail);
@@ -927,30 +866,12 @@ mod tests {
         .unwrap();
         let build = build_order(&arena, &cfg_prio).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-
-        let out_head = render_top_k(
-            &build,
-            2,
-            &mut marks,
-            3,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Js,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Off,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Detailed,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
+        let base_cfg = render_cfg(
+            crate::OutputTemplate::Js,
+            crate::serialization::types::Style::Detailed,
         );
+
+        let out_head = render_top_k(&build, 2, &mut marks, 3, &base_cfg);
         assert_snapshot!("array_omitted_js_head", out_head);
 
         let out_tail = render_top_k(
@@ -959,21 +880,8 @@ mod tests {
             &mut marks,
             4,
             &crate::RenderConfig {
-                template: crate::OutputTemplate::Js,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
                 prefer_tail_arrays: true,
-                color_mode: crate::ColorMode::Off,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Detailed,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
+                ..base_cfg.clone()
             },
         );
         assert_snapshot!("array_omitted_js_tail", out_tail);
@@ -995,30 +903,12 @@ mod tests {
         .unwrap();
         let build = build_order(&arena, &cfg_prio).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-
-        let out_head = render_top_k(
-            &build,
-            2,
-            &mut marks,
-            11,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Yaml,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Off,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Detailed,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
+        let base_cfg = render_cfg(
+            crate::OutputTemplate::Yaml,
+            crate::serialization::types::Style::Detailed,
         );
+
+        let out_head = render_top_k(&build, 2, &mut marks, 11, &base_cfg);
         assert_yaml_valid(&out_head);
         assert_snapshot!("array_omitted_yaml_head", out_head);
 
@@ -1028,21 +918,8 @@ mod tests {
             &mut marks,
             12,
             &crate::RenderConfig {
-                template: crate::OutputTemplate::Yaml,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
                 prefer_tail_arrays: true,
-                color_mode: crate::ColorMode::Off,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Detailed,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
+                ..base_cfg.clone()
             },
         );
         assert_yaml_valid(&out_tail);
@@ -1053,38 +930,19 @@ mod tests {
     fn arena_render_empty_array_yaml() {
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[]",
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+            &unbounded_prio(),
         )
         .unwrap();
-        let build = build_order(
-            &arena,
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
-        )
-        .unwrap();
+        let build = build_order(&arena, &unbounded_prio()).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_top_k(
-            &build,
-            10,
-            &mut marks,
-            21,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Yaml,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Auto,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Default,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
-        );
+        let cfg = crate::RenderConfig {
+            color_mode: crate::ColorMode::Auto,
+            ..render_cfg(
+                crate::OutputTemplate::Yaml,
+                crate::serialization::types::Style::Default,
+            )
+        };
+        let out = render_top_k(&build, 10, &mut marks, 21, &cfg);
         assert_yaml_valid(&out);
         assert_snapshot!("arena_render_empty_yaml", out);
     }
@@ -1093,38 +951,19 @@ mod tests {
     fn arena_render_single_string_array_yaml() {
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[\"ab\"]",
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+            &unbounded_prio(),
         )
         .unwrap();
-        let build = build_order(
-            &arena,
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
-        )
-        .unwrap();
+        let build = build_order(&arena, &unbounded_prio()).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_top_k(
-            &build,
-            10,
-            &mut marks,
-            22,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Yaml,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Auto,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Default,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
-        );
+        let cfg = crate::RenderConfig {
+            color_mode: crate::ColorMode::Auto,
+            ..render_cfg(
+                crate::OutputTemplate::Yaml,
+                crate::serialization::types::Style::Default,
+            )
+        };
+        let out = render_top_k(&build, 10, &mut marks, 22, &cfg);
         assert_yaml_valid(&out);
         assert_snapshot!("arena_render_single_yaml", out);
     }
@@ -1140,29 +979,11 @@ mod tests {
             build_order(&arena, &crate::PriorityConfig::new(usize::MAX, 2))
                 .unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_top_k(
-            &build,
-            4,
-            &mut marks,
-            23,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Yaml,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Off,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Detailed,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
+        let cfg = render_cfg(
+            crate::OutputTemplate::Yaml,
+            crate::serialization::types::Style::Detailed,
         );
+        let out = render_top_k(&build, 4, &mut marks, 23, &cfg);
         assert_yaml_valid(&out);
         assert_snapshot!("inline_open_array_in_object_yaml", out);
     }
@@ -1171,7 +992,7 @@ mod tests {
     fn array_internal_gaps_yaml() {
         let ctx = mk_gap_ctx();
         let mut s = String::new();
-        let cfg = test_render_cfg(
+        let cfg = render_cfg(
             crate::OutputTemplate::Yaml,
             crate::serialization::types::Style::Default,
         );
@@ -1197,38 +1018,16 @@ mod tests {
         let json = "{\n            \"true\": 1,\n            \"010\": \"010\",\n            \"-dash\": \"ok\",\n            \"normal\": \"simple\",\n            \"a:b\": \"a:b\",\n            \" spaced \": \" spaced \",\n            \"reserved\": \"yes\",\n            \"multiline\": \"line1\\nline2\"\n        }";
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             json,
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+            &unbounded_prio(),
         )
         .unwrap();
-        let build = build_order(
-            &arena,
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
-        )
-        .unwrap();
+        let build = build_order(&arena, &unbounded_prio()).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_top_k(
-            &build,
-            usize::MAX,
-            &mut marks,
-            27,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Yaml,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Off,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Default,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
+        let cfg = render_cfg(
+            crate::OutputTemplate::Yaml,
+            crate::serialization::types::Style::Default,
         );
+        let out = render_top_k(&build, usize::MAX, &mut marks, 27, &cfg);
         assert_yaml_valid(&out);
         // Unquoted safe key
         assert!(
@@ -1273,39 +1072,21 @@ mod tests {
         // builder also creates LeafPart children used only for priority.
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "\"abcdefghij\"",
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+            &unbounded_prio(),
         )
         .unwrap();
-        let build = build_order(
-            &arena,
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
-        )
-        .unwrap();
+        let build = build_order(&arena, &unbounded_prio()).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
         // Include the root string node plus 5 grapheme parts (total top_k = 1 + 5).
-        let out = render_top_k(
-            &build,
-            6,
-            &mut marks,
-            99,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Json,
-                indent_unit: "".to_string(),
-                space: " ".to_string(),
-                newline: "".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Off,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Strict,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
-        );
+        let cfg = crate::RenderConfig {
+            indent_unit: "".to_string(),
+            newline: "".to_string(),
+            ..render_cfg(
+                crate::OutputTemplate::Json,
+                crate::serialization::types::Style::Strict,
+            )
+        };
+        let out = render_top_k(&build, 6, &mut marks, 99, &cfg);
         // Expect the first 5 characters plus an ellipsis, as a valid JSON string literal.
         assert_eq!(out, "\"abcde…\"");
     }
@@ -1314,38 +1095,16 @@ mod tests {
     fn yaml_array_of_objects_indentation() {
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "[{\"a\":1,\"b\":2},{\"x\":3}]",
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+            &unbounded_prio(),
         )
         .unwrap();
-        let build = build_order(
-            &arena,
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
-        )
-        .unwrap();
+        let build = build_order(&arena, &unbounded_prio()).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_top_k(
-            &build,
-            usize::MAX,
-            &mut marks,
-            28,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Yaml,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Off,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Default,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
+        let cfg = render_cfg(
+            crate::OutputTemplate::Yaml,
+            crate::serialization::types::Style::Default,
         );
+        let out = render_top_k(&build, usize::MAX, &mut marks, 28, &cfg);
         assert_yaml_valid(&out);
         // Expect dash-prefixed first line and continued indentation for following lines
         assert!(
@@ -1363,34 +1122,21 @@ mod tests {
         // Single atomic value as input (number), root is AtomicLeaf.
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "1",
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+            &unbounded_prio(),
         )
         .unwrap();
-        let build = build_order(
-            &arena,
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
-        )
-        .unwrap();
+        let build = build_order(&arena, &unbounded_prio()).unwrap();
         let mut marks = vec![0u32; build.total_nodes];
         let render_id = 7u32;
         // Mark the root included for this render set.
         marks[crate::order::ROOT_PQ_ID] = render_id;
         let cfg = crate::RenderConfig {
-            template: crate::OutputTemplate::Json,
             indent_unit: "".to_string(),
-            space: " ".to_string(),
             newline: "".to_string(),
-            prefer_tail_arrays: false,
-            color_mode: crate::ColorMode::Off,
-            color_enabled: false,
-            style: crate::serialization::types::Style::Strict,
-            string_free_prefix_graphemes: None,
-            debug: false,
-            primary_source_name: None,
-            show_fileset_headers: true,
-            fileset_tree: false,
-            count_fileset_headers_in_budgets: false,
-            grep_highlight: None,
+            ..render_cfg(
+                crate::OutputTemplate::Json,
+                crate::serialization::types::Style::Strict,
+            )
         };
         let scope = RenderScope {
             order: &build,
@@ -1418,29 +1164,11 @@ mod tests {
             build_order(&arena, &crate::PriorityConfig::new(usize::MAX, 2))
                 .unwrap();
         let mut marks = vec![0u32; build.total_nodes];
-        let out = render_top_k(
-            &build,
-            4,
-            &mut marks,
-            5,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Json,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Off,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Strict,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
+        let cfg = render_cfg(
+            crate::OutputTemplate::Json,
+            crate::serialization::types::Style::Strict,
         );
+        let out = render_top_k(&build, 4, &mut marks, 5, &cfg);
         assert_snapshot!("inline_open_array_in_object_json", out);
     }
 
@@ -1449,39 +1177,20 @@ mod tests {
         // Object with three properties; render top_k small so only one child is kept.
         let arena = crate::ingest::formats::json::build_json_tree_arena(
             "{\"a\":1,\"b\":2,\"c\":3}",
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
+            &unbounded_prio(),
         )
         .unwrap();
-        let build = build_order(
-            &arena,
-            &crate::PriorityConfig::new(usize::MAX, usize::MAX),
-        )
-        .unwrap();
+        let build = build_order(&arena, &unbounded_prio()).unwrap();
         let mut flags = vec![0u32; build.total_nodes];
+        let cfg = crate::RenderConfig {
+            color_mode: crate::ColorMode::Auto,
+            ..render_cfg(
+                crate::OutputTemplate::Js,
+                crate::serialization::types::Style::Detailed,
+            )
+        };
         // top_k=2 → root object + first property
-        let out = render_top_k(
-            &build,
-            2,
-            &mut flags,
-            1,
-            &crate::RenderConfig {
-                template: crate::OutputTemplate::Js,
-                indent_unit: "  ".to_string(),
-                space: " ".to_string(),
-                newline: "\n".to_string(),
-                prefer_tail_arrays: false,
-                color_mode: crate::ColorMode::Auto,
-                color_enabled: false,
-                style: crate::serialization::types::Style::Detailed,
-                string_free_prefix_graphemes: None,
-                debug: false,
-                primary_source_name: None,
-                show_fileset_headers: true,
-                fileset_tree: false,
-                count_fileset_headers_in_budgets: false,
-                grep_highlight: None,
-            },
-        );
+        let out = render_top_k(&build, 2, &mut flags, 1, &cfg);
         // Should be a valid JS object with one property and an omitted summary.
         assert!(out.starts_with("{\n"));
         assert!(
@@ -1516,34 +1225,11 @@ mod tests {
         needles.iter().for_each(|n| assert!(out.contains(n)));
     }
 
-    fn test_render_cfg(
-        template: crate::OutputTemplate,
-        style: crate::serialization::types::Style,
-    ) -> crate::RenderConfig {
-        crate::RenderConfig {
-            template,
-            indent_unit: "  ".to_string(),
-            space: " ".to_string(),
-            newline: "\n".to_string(),
-            prefer_tail_arrays: false,
-            color_mode: crate::ColorMode::Off,
-            color_enabled: false,
-            style,
-            string_free_prefix_graphemes: None,
-            debug: false,
-            primary_source_name: None,
-            show_fileset_headers: true,
-            fileset_tree: false,
-            count_fileset_headers_in_budgets: false,
-            grep_highlight: None,
-        }
-    }
-
     #[test]
     fn array_internal_gaps_pseudo() {
         let ctx = mk_gap_ctx();
         let mut s = String::new();
-        let cfg = test_render_cfg(
+        let cfg = render_cfg(
             crate::OutputTemplate::Pseudo,
             crate::serialization::types::Style::Default,
         );
@@ -1565,7 +1251,7 @@ mod tests {
     fn array_internal_gaps_js() {
         let ctx = mk_gap_ctx();
         let mut s = String::new();
-        let cfg = test_render_cfg(
+        let cfg = render_cfg(
             crate::OutputTemplate::Js,
             crate::serialization::types::Style::Default,
         );
