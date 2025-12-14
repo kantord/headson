@@ -53,7 +53,6 @@ pub fn render_from_render_set_with_slots(
         config,
         slot_map,
         recorder,
-        true,
     )
 }
 
@@ -70,47 +69,7 @@ fn render_from_render_set_with_slots_impl(
     config: &crate::RenderConfig,
     slot_map: Option<&[Option<usize>]>,
     recorder: Option<crate::serialization::output::SlotStatsRecorder>,
-    allow_separate_slot_render: bool,
 ) -> (String, Option<Vec<crate::utils::measure::OutputStats>>) {
-    let needs_separate_slot_render = allow_separate_slot_render
-        && recorder.is_some()
-        && slot_map.is_some()
-        && config.fileset_tree;
-    if needs_separate_slot_render {
-        let (rendered, _) = render_from_render_set_with_slots_impl(
-            order_build,
-            inclusion_flags,
-            render_id,
-            &crate::RenderConfig {
-                debug: config.debug,
-                grep_highlight: config.grep_highlight.clone(),
-                ..config.clone()
-            },
-            slot_map,
-            None,
-            false,
-        );
-        let mut slot_measure_cfg = config.clone();
-        // Per-slot measurement needs per-file slot attribution, which tree
-        // rendering does not provide. Measure in sectioned mode regardless of
-        // header budgeting, and hide headers when they are meant to be free.
-        if slot_measure_cfg.fileset_tree {
-            slot_measure_cfg.fileset_tree = false;
-            if !slot_measure_cfg.count_fileset_headers_in_budgets {
-                slot_measure_cfg.show_fileset_headers = false;
-            }
-        }
-        let (_, slot_stats) = render_from_render_set_with_slots_impl(
-            order_build,
-            inclusion_flags,
-            render_id,
-            &slot_measure_cfg,
-            slot_map,
-            recorder,
-            false,
-        );
-        return (rendered, slot_stats);
-    }
     let root_id = ROOT_PQ_ID;
     let root_is_fileset =
         order_build.object_type.get(root_id) == Some(&ObjectType::Fileset);

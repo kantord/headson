@@ -16,8 +16,7 @@ impl<'a> RenderEngine<'a> {
             && !self.config.newline.is_empty()
         {
             if self.config.fileset_tree {
-                let rendered = self.render_fileset_tree(depth);
-                out.push_str(&rendered);
+                self.render_fileset_tree(depth, out);
                 return true;
             }
             self.render_fileset_sections(depth, out);
@@ -30,22 +29,26 @@ impl<'a> RenderEngine<'a> {
         clippy::cognitive_complexity,
         reason = "Tree assembly mixes omission tracking and rendering prep; further splitting would obscure the flow."
     )]
-    fn render_fileset_tree(&mut self, depth: usize) -> String {
+    fn render_fileset_tree(
+        &mut self,
+        depth: usize,
+        out: &mut crate::serialization::output::Out<'_>,
+    ) {
         let Some(children_ids) =
             self.fileset_children().map(<[NodeId]>::to_vec)
         else {
-            return String::new();
+            return;
         };
         let inputs = self.collect_tree_inputs(&children_ids, depth);
         if inputs.is_empty() {
-            return String::new();
+            return;
         }
 
         let mut root = TreeNode::root();
         self.build_tree(&mut root, &inputs);
 
         let show_scaffold = self.config.show_fileset_headers;
-        self.render_tree_output(root, depth, show_scaffold)
+        self.render_tree_output(root, depth, show_scaffold, out);
     }
 
     fn render_fileset_sections(
@@ -132,7 +135,7 @@ impl<'a> RenderEngine<'a> {
         depth: usize,
     ) -> TreeInputs {
         let mut inputs = TreeInputs::default();
-        for &child_id in children_ids {
+        for (slot_idx, &child_id) in children_ids.iter().enumerate() {
             let raw_key =
                 self.order.nodes[child_id.0].key_in_object().unwrap_or("");
             let segments = Self::split_path_segments(raw_key);
@@ -142,14 +145,14 @@ impl<'a> RenderEngine<'a> {
             }
             let rendered =
                 self.fileset_render_child(child_id.0, depth, raw_key);
-            inputs.entries.push((segments, rendered));
+            inputs.entries.push((segments, rendered, slot_idx));
         }
         inputs
     }
 
     fn build_tree(&self, root: &mut TreeNode, inputs: &TreeInputs) {
-        for (segments, rendered) in &inputs.entries {
-            root.insert(segments, rendered.clone(), self.config);
+        for (segments, rendered, slot) in &inputs.entries {
+            root.insert(*slot, segments, rendered.clone(), self.config);
         }
         let mut omitted = inputs.omitted_map.clone();
         omitted.insert(Vec::<String>::new(), inputs.root_direct_omitted);
@@ -168,12 +171,13 @@ impl<'a> RenderEngine<'a> {
         root: TreeNode,
         depth: usize,
         render_scaffold_lines: bool,
-    ) -> String {
-        let mut out = String::new();
+        out: &mut crate::serialization::output::Out<'_>,
+    ) {
         let indent = self.config.indent_unit.repeat(depth);
         if render_scaffold_lines {
+            out.set_current_slot(None);
             out.push_str(&indent);
-            out.push('.');
+            out.push_char('.');
             out.push_str(&self.config.newline);
         }
         let mut root_children = root.children;
@@ -183,14 +187,13 @@ impl<'a> RenderEngine<'a> {
         let last_idx = root_children.len().saturating_sub(1);
         for (idx, child) in root_children.into_iter().enumerate() {
             child.render(
-                &mut out,
+                out,
                 &indent,
                 idx == last_idx,
                 self.config,
                 render_scaffold_lines,
             );
         }
-        out
     }
 
     fn render_fileset_summary(
@@ -343,7 +346,7 @@ impl<'a> RenderEngine<'a> {
 
 #[derive(Default)]
 struct TreeInputs {
-    entries: Vec<(Vec<String>, String)>,
+    entries: Vec<(Vec<String>, String, usize)>,
     omitted_map: std::collections::HashMap<Vec<String>, usize>,
     omitted_paths_in_order: Vec<Vec<String>>,
     root_direct_omitted: usize,
@@ -377,6 +380,7 @@ impl TreeInputs {
 
 struct TreeNode {
     name: String,
+    slot: Option<usize>,
     children: Vec<TreeNode>,
     content: Option<Vec<String>>,
     omitted: usize,
@@ -385,6 +389,7 @@ struct TreeNode {
 
 struct CollapsedNode {
     name: String,
+    slot: Option<usize>,
     children: Vec<TreeNode>,
     content: Option<Vec<String>>,
     omitted: usize,
@@ -395,6 +400,7 @@ impl TreeNode {
     fn root() -> Self {
         TreeNode {
             name: ".".to_string(),
+            slot: None,
             children: Vec::new(),
             content: None,
             omitted: 0,
@@ -405,6 +411,7 @@ impl TreeNode {
     fn with_name(name: String) -> Self {
         TreeNode {
             name,
+            slot: None,
             children: Vec::new(),
             content: None,
             omitted: 0,
@@ -414,6 +421,7 @@ impl TreeNode {
 
     fn insert(
         &mut self,
+        slot: usize,
         segments: &[String],
         rendered: String,
         config: &crate::RenderConfig,
@@ -424,6 +432,7 @@ impl TreeNode {
         let head = &segments[0];
         if segments.len() == 1 {
             let mut node = Self::with_name(head.clone());
+            node.slot = Some(slot);
             node.content = Some(Self::render_lines(rendered, config));
             self.children.push(node);
             return;
@@ -441,7 +450,7 @@ impl TreeNode {
             self.children.push(Self::with_name(head.clone()));
             self.children.len() - 1
         };
-        self.children[idx].insert(&segments[1..], rendered, config);
+        self.children[idx].insert(slot, &segments[1..], rendered, config);
     }
 
     fn ensure_path(&mut self, segments: &[String]) {
@@ -484,7 +493,7 @@ impl TreeNode {
     )]
     fn render(
         self,
-        out: &mut String,
+        out: &mut crate::serialization::output::Out<'_>,
         prefix: &str,
         is_last: bool,
         config: &crate::RenderConfig,
@@ -495,6 +504,7 @@ impl TreeNode {
         let is_leaf = collapsed.content.is_some();
         let content = collapsed.content;
         let omitted = collapsed.omitted;
+        let slot = collapsed.slot;
         let nl = &config.newline;
         // Tree scaffolding (pipes/names) keeps syntax coloring even in
         // highlight-only grep mode. Those glyphs never receive grep highlights,
@@ -505,6 +515,7 @@ impl TreeNode {
                 (false, true) => "└─ ",
                 (true, _) | (false, false) => "├─ ",
             };
+            out.set_current_slot(slot);
             out.push_str(prefix);
             out.push_str(&colorize_pipe(branch, color_on));
             let display_name = if is_leaf {
@@ -519,6 +530,7 @@ impl TreeNode {
             }
             out.push_str(nl);
         } else if collapsed.is_omission {
+            out.set_current_slot(slot);
             out.push_str(&collapsed.name);
             out.push_str(nl);
         }
@@ -530,6 +542,7 @@ impl TreeNode {
         };
         if let Some(lines) = content {
             for line in lines {
+                out.set_current_slot(slot);
                 out.push_str(&child_prefix);
                 out.push_str(&line);
                 out.push_str(nl);
@@ -569,6 +582,7 @@ impl TreeNode {
 
     fn collapse(self) -> CollapsedNode {
         let mut name = self.name;
+        let mut slot = self.slot;
         let mut content = self.content;
         let mut children = self.children;
         let mut omitted = self.omitted;
@@ -580,6 +594,7 @@ impl TreeNode {
         {
             if let Some(child) = children.pop() {
                 name = format!("{name}/{}", child.name);
+                slot = slot.or(child.slot);
                 content = child.content;
                 omitted = omitted.saturating_add(child.omitted);
                 children = child.children;
@@ -590,6 +605,7 @@ impl TreeNode {
         }
         CollapsedNode {
             name,
+            slot,
             children,
             content,
             omitted,
@@ -600,6 +616,7 @@ impl TreeNode {
     fn omission(count: usize) -> Self {
         TreeNode {
             name: format!("… {count} more items"),
+            slot: None,
             children: Vec::new(),
             content: Some(Vec::new()),
             omitted: 0,
@@ -629,9 +646,12 @@ mod tests {
         config: &RenderConfig,
         render_scaffold_lines: bool,
     ) -> String {
-        let mut out = String::new();
+        let mut buf = String::new();
+        let mut out =
+            crate::serialization::output::Out::new(&mut buf, config, None);
         if render_scaffold_lines {
-            out.push('.');
+            out.set_current_slot(None);
+            out.push_char('.');
             out.push_str(&config.newline);
         }
         let mut root_children = root.children;
@@ -648,7 +668,7 @@ mod tests {
                 render_scaffold_lines,
             );
         }
-        out
+        buf
     }
 
     #[test]
@@ -674,6 +694,7 @@ mod tests {
 
         let mut root = TreeNode::root();
         root.insert(
+            0,
             &["a.txt".to_string()],
             "line one\nline two\n".to_string(),
             &config,
@@ -732,6 +753,7 @@ mod tests {
         let mut root = TreeNode::root();
         // Include one file under dir/.
         root.insert(
+            0,
             &["dir".to_string(), "kept.txt".to_string()],
             "line\n".to_string(),
             &config,
@@ -780,6 +802,7 @@ mod tests {
 
         let mut root = TreeNode::root();
         root.insert(
+            0,
             &[
                 "dir".to_string(),
                 "nested".to_string(),
