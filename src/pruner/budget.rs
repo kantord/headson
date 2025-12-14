@@ -816,7 +816,6 @@ fn mark_custom_top_k_and_ancestors(
 }
 
 #[allow(
-    clippy::cognitive_complexity,
     clippy::too_many_arguments,
     reason = "Single walk over render flags; splitting would obscure the slot/header handling."
 )]
@@ -847,8 +846,9 @@ fn ensure_fileset_headers_for_empty_slots(
     }
     let measure_chars = budgets.measure_chars();
     let newline_len = measure_cfg.newline.len();
+    let zero_per_slot = matches!(budgets.per_slot, Some(Budget { cap: 0, .. }));
     for slot_idx in 0..slots.count {
-        let has_slot_node =
+        let slot_has_nodes =
             inclusion_flags.iter().enumerate().any(|(idx, flag)| {
                 *flag == render_id
                     && slots
@@ -857,10 +857,7 @@ fn ensure_fileset_headers_for_empty_slots(
                         .and_then(|s| *s)
                         .is_some_and(|s| s == slot_idx)
             });
-        if has_slot_node {
-            continue;
-        }
-        if matches!(budgets.per_slot, Some(Budget { cap: 0, .. })) {
+        if slot_has_nodes || zero_per_slot {
             continue;
         }
         let header_stats = header_stats_for_slot(
@@ -884,10 +881,6 @@ fn ensure_fileset_headers_for_empty_slots(
     }
 }
 
-#[allow(
-    clippy::cognitive_complexity,
-    reason = "Header measurement includes conditional branches for caps/kinds; splitting would obscure the budget logic."
-)]
 fn header_stats_for_slot(
     slot_idx: usize,
     header_names: Option<&Vec<String>>,
@@ -895,34 +888,34 @@ fn header_stats_for_slot(
     newline_len: usize,
     budgets: &Budgets,
 ) -> Option<OutputStats> {
-    let header_stats =
-        if let Some(name) = header_names.and_then(|n| n.get(slot_idx)) {
-            let mut stats =
+    let stats = match header_names.and_then(|n| n.get(slot_idx)) {
+        Some(name) => {
+            let mut s =
                 count_output_stats(&format!("==> {name} <=="), measure_chars);
-            stats.lines = stats.lines.max(1);
-            stats.bytes = stats.bytes.saturating_add(newline_len);
+            s.lines = s.lines.max(1);
+            s.bytes = s.bytes.saturating_add(newline_len);
             if measure_chars {
-                stats.chars = stats.chars.saturating_add(newline_len);
+                s.chars = s.chars.saturating_add(newline_len);
             }
-            stats
-        } else {
-            OutputStats {
-                bytes: newline_len,
-                chars: if measure_chars { newline_len } else { 0 },
-                lines: 1,
-            }
-        };
+            s
+        }
+        None => OutputStats {
+            bytes: newline_len,
+            chars: if measure_chars { newline_len } else { 0 },
+            lines: 1,
+        },
+    };
     if let Some(cap) = budgets.per_slot {
-        let exceeds = match cap.kind {
-            BudgetKind::Bytes => header_stats.bytes > cap.cap,
-            BudgetKind::Chars => header_stats.chars > cap.cap,
-            BudgetKind::Lines => header_stats.lines > cap.cap,
+        let value = match cap.kind {
+            BudgetKind::Bytes => stats.bytes,
+            BudgetKind::Chars => stats.chars,
+            BudgetKind::Lines => stats.lines,
         };
-        if exceeds {
+        if value > cap.cap {
             return None;
         }
     }
-    Some(header_stats)
+    Some(stats)
 }
 
 #[cfg(test)]
