@@ -816,8 +816,9 @@ fn mark_custom_top_k_and_ancestors(
 }
 
 #[allow(
+    clippy::cognitive_complexity,
     clippy::too_many_arguments,
-    reason = "Single walk over render flags; splitting would obscure the slot/header handling."
+    reason = "Header insertion must juggle per-slot state, budgeting policy, and tree marking in one pass; splitting would hurt readability."
 )]
 fn ensure_fileset_headers_for_empty_slots(
     order_build: &PriorityOrder,
@@ -882,6 +883,10 @@ fn ensure_fileset_headers_for_empty_slots(
     }
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Header measurement branches on name presence and budget kinds; keeping it in one routine makes the cap checks traceable."
+)]
 fn header_stats_for_slot(
     slot_idx: usize,
     header_names: Option<&Vec<String>>,
