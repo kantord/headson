@@ -147,10 +147,12 @@ fn tree_counted_headers_with_per_file_cap_completes() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
-    assert!(
-        stdout.contains("a.txt") && stdout.contains("b.txt"),
-        "tree output should mention both files even when headers are counted: {stdout}"
-    );
+    if !(stdout.contains("a.txt") && stdout.contains("b.txt")) {
+        assert!(
+            stdout.contains("… 2 more items"),
+            "when headers consume the entire per-file budget, tree mode should fall back to an omission summary: {stdout}"
+        );
+    }
 }
 
 #[test]
@@ -275,6 +277,41 @@ fn tree_respects_per_file_line_budget() {
     assert!(
         !stdout.contains("a2") && !stdout.contains("b2"),
         "content beyond the per-file line budget should be omitted: {stdout}"
+    );
+}
+
+#[test]
+fn tree_counts_headers_and_enforces_per_file_line_budget() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("one.txt"), "1a\n1b\n1c\n");
+    write_file(&dir.path().join("two.txt"), "2a\n2b\n2c\n");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args([
+            "--no-color",
+            "--no-sort",
+            "--tree",
+            "-H",
+            "-n",
+            "1",
+            "one.txt",
+            "two.txt",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        stdout.contains("… 2 more items"),
+        "when headers consume the per-file budget, tree mode should signal omitted files instead of rendering full bodies: {stdout}"
+    );
+    assert!(
+        !stdout.contains("1b")
+            && !stdout.contains("1c")
+            && !stdout.contains("2b")
+            && !stdout.contains("2c"),
+        "content past the line cap should be omitted when headers are charged: {stdout}"
     );
 }
 

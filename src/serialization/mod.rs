@@ -91,11 +91,14 @@ fn render_from_render_set_with_slots_impl(
             false,
         );
         let mut slot_measure_cfg = config.clone();
-        if slot_measure_cfg.fileset_tree
-            && !slot_measure_cfg.count_fileset_headers_in_budgets
-        {
+        // Per-slot measurement needs per-file slot attribution, which tree
+        // rendering does not provide. Measure in sectioned mode regardless of
+        // header budgeting, and hide headers when they are meant to be free.
+        if slot_measure_cfg.fileset_tree {
             slot_measure_cfg.fileset_tree = false;
-            slot_measure_cfg.show_fileset_headers = false;
+            if !slot_measure_cfg.count_fileset_headers_in_budgets {
+                slot_measure_cfg.show_fileset_headers = false;
+            }
         }
         let (_, slot_stats) = render_from_render_set_with_slots_impl(
             order_build,

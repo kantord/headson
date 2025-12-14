@@ -87,16 +87,33 @@ fn collect_round_robin(
 
 /// Reorder `by_priority` so each fileset contributes one node before any file
 /// gets a second turn. This keeps tight budgets from starving later files.
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Small bucket shuffle helper reads clearer inline than split"
+)]
 fn interleave_fileset_priority(
     by_priority: &mut Vec<NodeId>,
     node_slots: &[Option<usize>],
     file_count: usize,
+    file_roots: &[NodeId],
 ) {
     if file_count == 0 {
         return;
     }
     let (prefix, buckets) =
         split_priority_by_slot(by_priority, node_slots, file_count);
+    let mut buckets = buckets;
+    for (slot, bucket) in buckets.iter_mut().enumerate() {
+        if let Some(root) = file_roots.get(slot) {
+            if let Some(pos) = bucket.iter().position(|id| id == root) {
+                if let Some(root_id) = bucket.remove(pos) {
+                    bucket.push_front(root_id);
+                }
+            } else {
+                bucket.push_front(*root);
+            }
+        }
+    }
     let new_order = collect_round_robin(prefix, buckets, by_priority.len());
     *by_priority = new_order;
 }
@@ -795,11 +812,6 @@ pub fn build_order(
         }
     }
 
-    if arena.is_fileset {
-        let file_count = arena.nodes[arena.root_id].children_len;
-        interleave_fileset_priority(&mut order, &node_slots, file_count);
-    }
-
     let fileset_children = if arena.is_fileset {
         let root = &arena.nodes[arena.root_id];
         let mut ids: Vec<NodeId> = Vec::with_capacity(root.children_len);
@@ -809,6 +821,8 @@ pub fn build_order(
                 ids.push(NodeId(*pq_id));
             }
         }
+        let file_count = root.children_len;
+        interleave_fileset_priority(&mut order, &node_slots, file_count, &ids);
         Some(ids)
     } else {
         None
