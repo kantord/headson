@@ -621,3 +621,93 @@ fn fileset_tree_headers_free_keep_slot_stats_on_body_only() {
         "expected tree scaffold in user-facing render"
     );
 }
+
+#[test]
+fn fileset_tree_headers_free_scaffold_does_not_change_slot_stats() {
+    let cfg_prio = crate::PriorityConfig::new(usize::MAX, usize::MAX);
+    let arena = crate::ingest::fileset::parse_fileset_multi(
+        vec![
+            crate::ingest::fileset::FilesetInput {
+                name: "a.txt".to_string(),
+                bytes: b"line a\n".to_vec(),
+                kind: crate::ingest::fileset::FilesetInputKind::Text {
+                    atomic_lines: true,
+                },
+            },
+            crate::ingest::fileset::FilesetInput {
+                name: "b.txt".to_string(),
+                bytes: b"line b\n".to_vec(),
+                kind: crate::ingest::fileset::FilesetInputKind::Text {
+                    atomic_lines: true,
+                },
+            },
+        ],
+        &cfg_prio,
+    )
+    .unwrap();
+    let order = build_order(&arena, &cfg_prio).unwrap();
+    let mut inclusion_flags = vec![0u32; order.total_nodes];
+    prepare_render_set_top_k_and_ancestors(
+        &order,
+        usize::MAX,
+        &mut inclusion_flags,
+        1,
+    );
+
+    let slot_map =
+        crate::pruner::budget::compute_fileset_slot_map(&order).unwrap();
+    let slot_count = slot_map.iter().flatten().max().map(|s| *s + 1).unwrap();
+
+    let base_cfg = crate::RenderConfig {
+        template: crate::OutputTemplate::Auto,
+        indent_unit: "  ".to_string(),
+        space: " ".to_string(),
+        newline: "\n".to_string(),
+        prefer_tail_arrays: false,
+        color_mode: crate::ColorMode::Off,
+        color_enabled: false,
+        style: crate::serialization::types::Style::Default,
+        string_free_prefix_graphemes: None,
+        debug: false,
+        primary_source_name: None,
+        show_fileset_headers: true,
+        fileset_tree: true,
+        count_fileset_headers_in_budgets: false,
+        grep_highlight: None,
+    };
+
+    let render_with_scaffold = |show_headers: bool| {
+        let cfg = crate::RenderConfig {
+            show_fileset_headers: show_headers,
+            ..base_cfg.clone()
+        };
+        let recorder = crate::serialization::output::SlotStatsRecorder::new(
+            slot_count, false,
+        );
+        render_from_render_set_with_slots(
+            &order,
+            &inclusion_flags,
+            1,
+            &cfg,
+            Some(&slot_map),
+            Some(recorder),
+        )
+    };
+
+    let (with_scaffold_render, with_scaffold_stats) =
+        render_with_scaffold(true);
+    let (without_scaffold_render, without_scaffold_stats) =
+        render_with_scaffold(false);
+
+    assert_ne!(
+        with_scaffold_render, without_scaffold_render,
+        "outputs should differ when scaffolding is toggled"
+    );
+    let with_stats = with_scaffold_stats.expect("slot stats present");
+    let without_stats =
+        without_scaffold_stats.expect("slot stats present without scaffold");
+    assert_eq!(
+        with_stats, without_stats,
+        "per-slot counts should ignore scaffolding when headers are free"
+    );
+}

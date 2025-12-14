@@ -505,6 +505,13 @@ impl TreeNode {
         let content = collapsed.content;
         let omitted = collapsed.omitted;
         let slot = collapsed.slot;
+        let slot_for_scaffold = if render_scaffold_lines
+            && !config.count_fileset_headers_in_budgets
+        {
+            None
+        } else {
+            slot
+        };
         let nl = &config.newline;
         // Tree scaffolding (pipes/names) keeps syntax coloring even in
         // highlight-only grep mode. Those glyphs never receive grep highlights,
@@ -515,7 +522,7 @@ impl TreeNode {
                 (false, true) => "└─ ",
                 (true, _) | (false, false) => "├─ ",
             };
-            out.set_current_slot(slot);
+            out.set_current_slot(slot_for_scaffold);
             out.push_str(prefix);
             out.push_str(&colorize_pipe(branch, color_on));
             let display_name = if is_leaf {
@@ -542,8 +549,16 @@ impl TreeNode {
         };
         if let Some(lines) = content {
             for line in lines {
-                out.set_current_slot(slot);
+                let prefix_slot = if render_scaffold_lines
+                    && !config.count_fileset_headers_in_budgets
+                {
+                    slot_for_scaffold
+                } else {
+                    slot
+                };
+                out.set_current_slot(prefix_slot);
                 out.push_str(&child_prefix);
+                out.set_current_slot(slot);
                 out.push_str(&line);
                 out.push_str(nl);
             }
