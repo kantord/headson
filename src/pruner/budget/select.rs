@@ -38,6 +38,10 @@ struct SearchState {
     best_k: Option<usize>,
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Bound derivation branches on optional budgets/slots; splitting would obscure the flow."
+)]
 fn prepare_selection(ctx: &SelectionContext<'_>) -> SelectionPrep {
     let per_slot_caps_active = ctx.budgets.per_slot.is_some();
     let slot_count = ctx.fileset_slots.map(|s| s.count);
@@ -139,6 +143,10 @@ fn compute_must_keep(
     }
 }
 
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Render measurement + budget checks are easiest to follow as a single pass."
+)]
 fn evaluate_mid(
     mid: usize,
     ctx: &SelectionContext<'_>,
