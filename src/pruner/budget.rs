@@ -846,7 +846,8 @@ fn ensure_fileset_headers_for_empty_slots(
     }
     let measure_chars = budgets.measure_chars();
     let newline_len = measure_cfg.newline.len();
-    let zero_per_slot = matches!(budgets.per_slot, Some(Budget { cap: 0, .. }));
+    let zero_per_slot =
+        matches!(budgets.per_slot, Some(Budget { cap: 0, .. }));
     for slot_idx in 0..slots.count {
         let slot_has_nodes =
             inclusion_flags.iter().enumerate().any(|(idx, flag)| {
