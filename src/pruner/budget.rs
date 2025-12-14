@@ -114,11 +114,13 @@ impl Budgets {
     }
 }
 
-#[allow(
-    clippy::cognitive_complexity,
-    clippy::too_many_lines,
-    reason = "Top-level orchestrator; splitting would obscure the budget/search flow"
-)]
+fn is_fileset_root(order_build: &PriorityOrder) -> bool {
+    order_build
+        .object_type
+        .get(crate::order::ROOT_PQ_ID)
+        .is_some_and(|t| *t == ObjectType::Fileset)
+}
+
 pub fn find_largest_render_under_budgets(
     order_build: &mut PriorityOrder,
     config: &RenderConfig,
@@ -129,19 +131,9 @@ pub fn find_largest_render_under_budgets(
     if total == 0 {
         return String::new();
     }
-    let root_is_fileset = order_build
-        .object_type
-        .get(crate::order::ROOT_PQ_ID)
-        .is_some_and(|t| *t == ObjectType::Fileset);
+    let root_is_fileset = is_fileset_root(order_build);
     let mut grep_state = compute_grep_state(order_build, grep);
-    if !grep.weak
-        && grep.show == GrepShow::Matching
-        && grep.regex.is_some()
-        && grep_state.is_none()
-        && order_build
-            .object_type
-            .get(crate::order::ROOT_PQ_ID)
-            .is_some_and(|t| *t == ObjectType::Fileset)
+    if strong_fileset_grep_without_matches(grep, &grep_state, root_is_fileset)
     {
         return String::new();
     }
@@ -167,94 +159,96 @@ pub fn find_largest_render_under_budgets(
         state: &grep_state,
         fileset_slots: fileset_slots.as_ref(),
     };
+    let finalize_ctx = FinalizeContext {
+        budgets,
+        fileset_slots: fileset_slots.as_ref(),
+        measure_cfg: &measure_cfg,
+        grep,
+        grep_state: &grep_state,
+        must_keep: must_keep_slice,
+    };
+    finalize_render_from_selection(
+        order_build,
+        config,
+        header_budgeting,
+        select_best_k(&selection_ctx),
+        root_is_fileset,
+        &finalize_ctx,
+    )
+    .unwrap_or_default()
+}
+
+struct FinalizeContext<'a> {
+    budgets: Budgets,
+    fileset_slots: Option<&'a FilesetSlots>,
+    measure_cfg: &'a RenderConfig,
+    grep: &'a GrepConfig,
+    grep_state: &'a Option<GrepState>,
+    must_keep: Option<&'a [bool]>,
+}
+
+fn finalize_render_from_selection(
+    order_build: &mut PriorityOrder,
+    config: &RenderConfig,
+    header_budgeting: HeadersBudgeting,
+    selection: SelectionOutcome,
+    root_is_fileset: bool,
+    finalize_ctx: &FinalizeContext<'_>,
+) -> Option<String> {
     let SelectionOutcome {
         k: k_opt,
         mut inclusion_flags,
         render_set_id,
         selection_order,
-    } = select_best_k(&selection_ctx);
+    } = selection;
     let found_k = k_opt.is_some();
     let k = k_opt.unwrap_or(0);
-    if budgets.per_slot_zero_cap() {
-        return String::new();
-    }
-    if k == 0
-        && must_keep_slice.is_none()
-        && !budgets.per_slot_active()
-        && !root_is_fileset
-    {
-        return String::new();
-    }
-    if !found_k && must_keep_slice.is_none() && !root_is_fileset {
-        return String::new();
+    if should_short_circuit_after_selection(
+        &finalize_ctx.budgets,
+        finalize_ctx.must_keep,
+        root_is_fileset,
+        found_k,
+        k,
+    ) {
+        return None;
     }
     inclusion_flags.fill(0);
-    let per_slot_caps_active = budgets.per_slot_active();
+    let per_slot_caps_active = finalize_ctx.budgets.per_slot_active();
 
-    if let Some(order) = selection_order.as_deref() {
-        mark_custom_top_k_and_ancestors(
-            order_build,
-            order,
-            k,
-            &mut inclusion_flags,
-            render_set_id,
-        );
-    } else {
-        crate::serialization::prepare_render_set_top_k_and_ancestors(
-            order_build,
-            k,
-            &mut inclusion_flags,
-            render_set_id,
-        );
-    }
-    if let Some(state) = &grep_state {
-        if !grep.weak && state.is_enabled() {
-            include_must_keep(
-                order_build,
-                &mut inclusion_flags,
-                render_set_id,
-                &state.must_keep,
-            );
-        }
-    }
+    apply_selection(
+        order_build,
+        selection_order.as_deref(),
+        k,
+        &mut inclusion_flags,
+        render_set_id,
+    );
+    include_strong_grep_must_keep(
+        order_build,
+        finalize_ctx.grep,
+        finalize_ctx.grep_state,
+        &mut inclusion_flags,
+        render_set_id,
+    );
     if per_slot_caps_active && !config.count_fileset_headers_in_budgets {
         ensure_fileset_headers_for_empty_slots(
             order_build,
             render_set_id,
             &mut inclusion_flags,
-            &budgets,
-            &measure_cfg,
-            fileset_slots.as_ref(),
+            &finalize_ctx.budgets,
+            finalize_ctx.measure_cfg,
+            finalize_ctx.fileset_slots,
             header_budgeting,
         );
     }
 
-    if per_slot_caps_active
-        && matches!(
-            budgets.per_slot,
-            Some(Budget {
-                kind: BudgetKind::Lines,
-                cap: 0
-            })
-        )
-    {
-        if let Some(slots) = fileset_slots.as_ref() {
-            let has_included_slot =
-                inclusion_flags.iter().enumerate().any(|(idx, flag)| {
-                    *flag == render_set_id
-                        && slots
-                            .map
-                            .get(idx)
-                            .and_then(|s| *s)
-                            .is_some_and(|_| true)
-                });
-            if !has_included_slot {
-                return String::new();
-            }
-        }
-        if !root_is_fileset {
-            return String::new();
-        }
+    if should_short_circuit_zero_line_slots(
+        &finalize_ctx.budgets,
+        finalize_ctx.fileset_slots,
+        &inclusion_flags,
+        render_set_id,
+        root_is_fileset,
+    ) {
+        return None;
     }
 
     if config.debug {
@@ -263,12 +257,12 @@ pub fn find_largest_render_under_budgets(
             &inclusion_flags,
             render_set_id,
             config,
-            budgets,
+            finalize_ctx.budgets,
             k,
         );
     }
 
-    crate::serialization::render_from_render_set(
+    Some(crate::serialization::render_from_render_set(
         order_build,
         &inclusion_flags,
         render_set_id,
@@ -276,14 +270,121 @@ pub fn find_largest_render_under_budgets(
             grep_highlight: config
                 .grep_highlight
                 .clone()
-                .or_else(|| grep.regex.clone()),
+                .or_else(|| finalize_ctx.grep.regex.clone()),
             ..config.clone()
         },
-    )
+    ))
+}
+
+fn strong_fileset_grep_without_matches(
+    grep: &GrepConfig,
+    state: &Option<GrepState>,
+    root_is_fileset: bool,
+) -> bool {
+    !grep.weak
+        && matches!(grep.show, GrepShow::Matching)
+        && grep.regex.is_some()
+        && state.is_none()
+        && root_is_fileset
 }
 
 fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
     state.as_ref().is_some_and(GrepState::is_enabled) && !grep.weak
+}
+
+fn apply_selection(
+    order_build: &PriorityOrder,
+    selection_order: Option<&[NodeId]>,
+    k: usize,
+    inclusion_flags: &mut Vec<u32>,
+    render_set_id: u32,
+) {
+    if let Some(order) = selection_order {
+        mark_custom_top_k_and_ancestors(
+            order_build,
+            order,
+            k,
+            inclusion_flags,
+            render_set_id,
+        );
+    } else {
+        crate::serialization::prepare_render_set_top_k_and_ancestors(
+            order_build,
+            k,
+            inclusion_flags,
+            render_set_id,
+        );
+    }
+}
+
+fn include_strong_grep_must_keep(
+    order_build: &PriorityOrder,
+    grep: &GrepConfig,
+    grep_state: &Option<GrepState>,
+    inclusion_flags: &mut [u32],
+    render_set_id: u32,
+) {
+    if !is_strong_grep(grep, grep_state) {
+        return;
+    }
+    if let Some(state) = grep_state {
+        include_must_keep(
+            order_build,
+            inclusion_flags,
+            render_set_id,
+            &state.must_keep,
+        );
+    }
+}
+
+fn should_short_circuit_after_selection(
+    budgets: &Budgets,
+    must_keep_slice: Option<&[bool]>,
+    root_is_fileset: bool,
+    found_k: bool,
+    k: usize,
+) -> bool {
+    if budgets.per_slot_zero_cap() {
+        return true;
+    }
+    if k == 0
+        && must_keep_slice.is_none()
+        && !budgets.per_slot_active()
+        && !root_is_fileset
+    {
+        return true;
+    }
+    if !found_k && must_keep_slice.is_none() && !root_is_fileset {
+        return true;
+    }
+    false
+}
+
+fn should_short_circuit_zero_line_slots(
+    budgets: &Budgets,
+    fileset_slots: Option<&FilesetSlots>,
+    inclusion_flags: &[u32],
+    render_set_id: u32,
+    root_is_fileset: bool,
+) -> bool {
+    let Some(Budget {
+        kind: BudgetKind::Lines,
+        cap: 0,
+    }) = budgets.per_slot
+    else {
+        return false;
+    };
+    if let Some(slots) = fileset_slots {
+        let has_included_slot =
+            inclusion_flags.iter().enumerate().any(|(idx, flag)| {
+                *flag == render_set_id
+                    && slots.map.get(idx).and_then(|s| *s).is_some()
+            });
+        if !has_included_slot {
+            return true;
+        }
+    }
+    !root_is_fileset
 }
 
 fn reorder_if_grep(
@@ -460,11 +561,7 @@ fn header_budgeting_policy(
     order_build: &PriorityOrder,
     config: &RenderConfig,
 ) -> HeadersBudgeting {
-    let root_is_fileset = order_build
-        .object_type
-        .get(ROOT_PQ_ID)
-        .is_some_and(|t| *t == ObjectType::Fileset);
-    if !root_is_fileset || !config.show_fileset_headers {
+    if !is_fileset_root(order_build) || !config.show_fileset_headers {
         return HeadersBudgeting::Free;
     }
     if config.count_fileset_headers_in_budgets {
