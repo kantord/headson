@@ -711,3 +711,104 @@ fn fileset_tree_headers_free_scaffold_does_not_change_slot_stats() {
         "per-slot counts should ignore scaffolding when headers are free"
     );
 }
+
+#[test]
+fn fileset_sections_slot_stats_respect_header_budgeting() {
+    let cfg_prio = crate::PriorityConfig::new(usize::MAX, usize::MAX);
+    let arena = crate::ingest::fileset::parse_fileset_multi(
+        vec![
+            crate::ingest::fileset::FilesetInput {
+                name: "a.txt".to_string(),
+                bytes: b"a line\n".to_vec(),
+                kind: crate::ingest::fileset::FilesetInputKind::Text {
+                    atomic_lines: true,
+                },
+            },
+            crate::ingest::fileset::FilesetInput {
+                name: "b.txt".to_string(),
+                bytes: b"b line\n".to_vec(),
+                kind: crate::ingest::fileset::FilesetInputKind::Text {
+                    atomic_lines: true,
+                },
+            },
+        ],
+        &cfg_prio,
+    )
+    .unwrap();
+    let order = build_order(&arena, &cfg_prio).unwrap();
+    let mut inclusion_flags = vec![0u32; order.total_nodes];
+    prepare_render_set_top_k_and_ancestors(
+        &order,
+        usize::MAX,
+        &mut inclusion_flags,
+        1,
+    );
+
+    let slot_map =
+        crate::pruner::budget::compute_fileset_slot_map(&order).unwrap();
+    let slot_count = slot_map.iter().flatten().max().map(|s| *s + 1).unwrap();
+
+    let base_cfg = crate::RenderConfig {
+        template: crate::OutputTemplate::Auto,
+        indent_unit: "  ".to_string(),
+        space: " ".to_string(),
+        newline: "\n".to_string(),
+        prefer_tail_arrays: false,
+        color_mode: crate::ColorMode::Off,
+        color_enabled: false,
+        style: crate::serialization::types::Style::Default,
+        string_free_prefix_graphemes: None,
+        debug: false,
+        primary_source_name: None,
+        show_fileset_headers: true,
+        fileset_tree: false,
+        count_fileset_headers_in_budgets: false,
+        grep_highlight: None,
+    };
+
+    let render_sections = |count_headers: bool| {
+        let cfg = crate::RenderConfig {
+            count_fileset_headers_in_budgets: count_headers,
+            ..base_cfg.clone()
+        };
+        let recorder = crate::serialization::output::SlotStatsRecorder::new(
+            slot_count, false,
+        );
+        render_from_render_set_with_slots(
+            &order,
+            &inclusion_flags,
+            1,
+            &cfg,
+            Some(&slot_map),
+            Some(recorder),
+        )
+    };
+
+    let (free_render, free_stats) = render_sections(false);
+    let (charged_render, charged_stats) = render_sections(true);
+
+    let free_stats = free_stats.expect("slot stats present when headers free");
+    let charged_stats =
+        charged_stats.expect("slot stats present when headers are charged");
+
+    let free_lines: usize = free_stats.iter().map(|s| s.lines).sum();
+    let charged_lines: usize = charged_stats.iter().map(|s| s.lines).sum();
+
+    assert!(
+        free_render.contains("==> a.txt <==")
+            && free_render.contains("==> b.txt <=="),
+        "section headers should render when fileset headers are enabled"
+    );
+    assert!(
+        free_lines < free_render.lines().count(),
+        "slot stats should ignore section headers when they are free"
+    );
+    assert!(
+        charged_lines == free_lines && !charged_stats.is_empty(),
+        "section slot stats should stay tied to body lines even when headers are charged"
+    );
+    assert!(
+        charged_lines <= charged_render.lines().count(),
+        "per-slot stats should never exceed the rendered line counts"
+    );
+}
