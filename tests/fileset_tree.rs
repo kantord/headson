@@ -179,6 +179,27 @@ fn tree_renders_duplicate_basenames_in_distinct_dirs() {
 }
 
 #[test]
+fn tree_keeps_scaffold_for_empty_siblings() {
+    let dir = tempdir().expect("tmp");
+    write_file(&dir.path().join("a.txt"), "");
+    write_file(&dir.path().join("b.txt"), "");
+
+    let assert = cargo_bin_cmd!("hson")
+        .current_dir(dir.path())
+        .args(["--no-color", "--tree", "--no-sort", "a.txt", "b.txt"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let expected = concat!(".\n", "├─ a.txt\n", "└─ b.txt\n", "\n",);
+    assert_eq!(
+        stdout.as_ref(),
+        expected,
+        "first empty sibling should still use a tee to keep the gutter: {stdout}"
+    );
+}
+
+#[test]
 fn tree_keeps_branch_connectors_for_last_child_lines() {
     let dir = tempdir().expect("tmp");
     write_file(

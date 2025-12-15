@@ -525,7 +525,8 @@ impl TreeNode {
         let branch_edges = Edges {
             up: has_parent,
             // Keep the gutter alive for siblings even if this node has no body.
-            down: connects_down || (!is_last && has_parent),
+            // For root entries we still need a tee when there are following siblings.
+            down: connects_down || !is_last,
             right: true,
         };
         if render_scaffold_lines {
