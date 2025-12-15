@@ -517,11 +517,13 @@ impl TreeNode {
         // highlight-only grep mode. Those glyphs never receive grep highlights,
         // so this avoids double-highlighting concerns while preserving legibility.
         let color_on = config.color_enabled;
+        let has_line_content =
+            content.as_ref().map_or(false, |lines| !lines.is_empty());
         if render_scaffold_lines {
-            let branch = match (is_leaf, is_last) {
-                (false, true) => "└─ ",
-                (true, _) | (false, false) => "├─ ",
-            };
+            // Use a tee when this entry carries body lines so the gutter flows
+            // into the content; fall back to a corner only when this really ends.
+            let branch =
+                if is_last && !has_line_content { "└─ " } else { "├─ " };
             out.set_current_slot(slot_for_scaffold);
             out.push_str(prefix);
             out.push_str(&colorize_pipe(branch, color_on));
@@ -542,7 +544,14 @@ impl TreeNode {
             out.push_str(nl);
         }
 
+        let content_prefix = if render_scaffold_lines {
+            // Keep the gutter visible even for last children so lines stay aligned.
+            format!("{prefix}{} ", colorize_pipe("│", color_on))
+        } else {
+            String::new()
+        };
         let child_prefix = if render_scaffold_lines {
+            // Keep the gutter visible for nested nodes too so tree alignment stays consistent.
             format!("{prefix}{} ", colorize_pipe("│", color_on))
         } else {
             String::new()
@@ -557,7 +566,7 @@ impl TreeNode {
                     slot
                 };
                 out.set_current_slot(prefix_slot);
-                out.push_str(&child_prefix);
+                out.push_str(&content_prefix);
                 out.set_current_slot(slot);
                 out.push_str(&line);
                 out.push_str(nl);
@@ -787,7 +796,7 @@ mod tests {
             "└─ dir/\n",
             "│ ├─ kept.txt\n",
             "│ │ line\n",
-            "│ ├─ … 1 more items\n",
+            "│ └─ … 1 more items\n",
         );
         assert_eq!(
             out, expected,
@@ -839,8 +848,8 @@ mod tests {
             "│ ├─ nested/\n",
             "│ │ ├─ keep.rs\n",
             "│ │ │ fn keep() {}\n",
-            "│ │ ├─ … 1 more items\n",
-            "│ ├─ … 1 more items\n",
+            "│ │ └─ … 1 more items\n",
+            "│ └─ … 1 more items\n",
         );
         assert_eq!(
             out, expected,
@@ -874,7 +883,7 @@ mod tests {
         root.apply_omitted_counts(&counts, &mut Vec::new());
 
         let out = render_tree_from_node(root, &config, true);
-        let expected = concat!(".\n", "├─ … 2 more items\n",);
+        let expected = concat!(".\n", "└─ … 2 more items\n",);
         assert_eq!(
             out, expected,
             "when no files are kept, omissions should only appear once at the root"

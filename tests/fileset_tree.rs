@@ -170,7 +170,7 @@ fn tree_renders_duplicate_basenames_in_distinct_dirs() {
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(
         stdout.contains("├─ a/foo.rs") && stdout.contains("├─ b/foo.rs"),
-        "tree view should show both files with tee branches: {stdout}"
+        "tree view should show both files with correct branches: {stdout}"
     );
     assert!(
         stdout.contains("a/foo.rs") && stdout.contains("b/foo.rs"),
@@ -195,11 +195,12 @@ fn tree_keeps_branch_connectors_for_last_child_lines() {
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(
         stdout.contains("├─ dir/only.rs"),
-        "single child should still render with a tee branch for vertical continuity: {stdout}"
+        "single child should render with a closing branch: {stdout}"
     );
     assert!(
-        stdout.contains("│ 1: fn main() {}"),
-        "line gutters should remain aligned under the tree prefix: {stdout}"
+        stdout.contains("│ 1: fn main() {}\n")
+            && stdout.contains("│ 2: let _x = 1;\n"),
+        "line gutters should align under the closing branch for the last child: {stdout}"
     );
 }
 
@@ -360,17 +361,23 @@ fn tree_with_grep_reports_non_matching_files() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
-    let summary_expected =
-        concat!(".\n", "├─ c.txt\n", "│ hit\n", "├─ … 2 more items\n", "\n",);
-    if stdout.as_ref() != summary_expected {
-        // Allow per-file omissions when the renderer keeps file entries but elides bodies.
-        assert!(
-            stdout.contains("a.txt\n│ …\n")
-                && stdout.contains("b.txt\n│ …\n")
-                && stdout.contains("c.txt\n│ hit\n"),
-            "tree mode should either summarize non-matching files once or mark each file as omitted: {stdout}"
-        );
-    }
+        let summary_expected =
+            concat!(
+                ".\n",
+                "├─ c.txt\n",
+                "│ hit\n",
+                "└─ … 2 more items\n",
+                "\n",
+            );
+        if stdout.as_ref() != summary_expected {
+            // Allow per-file omissions when the renderer keeps file entries but elides bodies.
+            assert!(
+                stdout.contains("├─ a.txt\n│ …\n")
+                    && stdout.contains("├─ b.txt\n│ …\n")
+                    && stdout.contains("├─ c.txt\n│ hit\n"),
+                "tree mode should either summarize non-matching files once or mark each file as omitted: {stdout}"
+            );
+        }
 }
 
 #[test]
@@ -425,7 +432,8 @@ fn tree_reports_omissions_when_every_file_is_dropped() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
-    let expected = concat!(".\n", "└─ dir/\n", "│ ├─ … 2 more items\n", "\n",);
+    let expected =
+        concat!(".\n", "└─ dir/\n", "│ └─ … 2 more items\n", "\n",);
     assert_eq!(
         stdout.as_ref(),
         expected,
@@ -456,7 +464,7 @@ fn tree_respects_line_budget_by_dropping_all_content() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
-    let expected = concat!(".\n", "├─ … 2 more items\n", "\n",);
+    let expected = concat!(".\n", "└─ … 2 more items\n", "\n",);
     assert_eq!(
         stdout.as_ref(),
         expected,
@@ -497,7 +505,7 @@ fn tree_budget_omissions_append_after_kept_files() {
         "├─ big1.txt\n",
         "│ aaaa\n",
         "│ …\n",
-        "├─ … 2 more items\n",
+        "└─ … 2 more items\n",
         "\n",
     );
     assert_eq!(
@@ -530,12 +538,13 @@ fn tree_keeps_identical_files_under_tight_line_budget() {
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
     assert!(
-        stdout.contains("├─ a.py") && stdout.contains("│ 1: def foo():"),
+        stdout.contains("├─ a.py") && stdout.contains("├─ b.py"),
         "first identical file should render its first line under tight line budget: {stdout}"
     );
+    let def_count = stdout.matches("1: def foo():").count();
     assert!(
-        stdout.contains("├─ b.py") && stdout.contains("│ 1: def foo():"),
-        "second identical file should also render content despite duplicate lines: {stdout}"
+        def_count >= 2,
+        "both files should render their first lines despite duplicate content: {stdout}"
     );
 }
 

@@ -9,4 +9,4 @@ expression: stdout.as_ref()
 │ line
 ├─ c.txt
 │ line
-├─ … 2 more items
+└─ … 2 more items
