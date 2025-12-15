@@ -3,7 +3,7 @@ source: tests/per_slot_snapshots.rs
 expression: normalize(&out)
 ---
 .
-└─ tests/fixtures/tree_per_slot_varied/
+├─ tests/fixtures/tree_per_slot_varied/
 │ ├─ a.txt
 │ │ a1
 │ │ a3

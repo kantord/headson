@@ -3,7 +3,7 @@ source: tests/per_slot_snapshots.rs
 expression: normalize(&out)
 ---
 .
-└─ tests/fixtures/chars_vs_bytes/
+├─ tests/fixtures/chars_vs_bytes/
 │ ├─ emoji.txt
 │ │ 😀😀😀😀😀
 │ ├─ ascii.txt

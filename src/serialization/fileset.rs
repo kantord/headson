@@ -517,19 +517,22 @@ impl TreeNode {
         // highlight-only grep mode. Those glyphs never receive grep highlights,
         // so this avoids double-highlighting concerns while preserving legibility.
         let color_on = config.color_enabled;
+        let connects_down =
+            content.as_ref().is_some_and(|lines| !lines.is_empty())
+                || !children.is_empty()
+                || omitted > 0;
         if render_scaffold_lines {
-            let has_line_content =
-                content.as_ref().is_some_and(|lines| !lines.is_empty());
-            let branch = if is_last && has_line_content {
-                "├─ "
-            } else if is_last {
-                "└─ "
-            } else {
-                "├─ "
-            };
+            let branch = scaffold_segment(
+                prefix,
+                Edges {
+                    up: true,
+                    down: connects_down || !is_last,
+                    right: true,
+                },
+                color_on,
+            );
             out.set_current_slot(slot_for_scaffold);
-            out.push_str(prefix);
-            out.push_str(&colorize_pipe(branch, color_on));
+            out.push_str(&branch);
             let display_name = if is_leaf {
                 collapsed.name
             } else {
@@ -549,13 +552,13 @@ impl TreeNode {
 
         let content_prefix = if render_scaffold_lines {
             // Keep the gutter visible even for last children so lines stay aligned.
-            format!("{prefix}{} ", colorize_pipe("│", color_on))
+            scaffold_segment(prefix, Edges::with_up_down(true, true), color_on)
         } else {
             String::new()
         };
         let child_prefix = if render_scaffold_lines {
             // Keep gutters visible for nested nodes even when this entry is last.
-            format!("{prefix}{} ", colorize_pipe("│", color_on))
+            scaffold_segment(prefix, Edges::with_up_down(true, true), color_on)
         } else {
             String::new()
         };
@@ -658,6 +661,44 @@ fn colorize_pipe(s: &str, enabled: bool) -> String {
 
 fn colorize_name(s: &str, enabled: bool) -> String {
     color::wrap_role(s, ColorRole::Key, enabled)
+}
+
+#[derive(Clone, Copy)]
+struct Edges {
+    up: bool,
+    down: bool,
+    right: bool,
+}
+
+impl Edges {
+    fn with_up_down(up: bool, down: bool) -> Self {
+        Self {
+            up,
+            down,
+            right: false,
+        }
+    }
+}
+
+fn glyph_for_edges(edges: Edges) -> &'static str {
+    match (edges.up, edges.down, edges.right) {
+        // Tee: feeds both down and right (used for branches with content/children).
+        (_, true, true) => "├─",
+        // Corner: stops below and only connects to the name.
+        (_, false, true) => "└─",
+        // Pipe: vertical gutters.
+        (true, true, false) | (true, false, false) | (false, true, false) => {
+            "│"
+        }
+        // Empty space for fully disconnected cells.
+        _ => " ",
+    }
+}
+
+fn scaffold_segment(prefix: &str, edges: Edges, color_on: bool) -> String {
+    let mut glyph_with_space = String::from(glyph_for_edges(edges));
+    glyph_with_space.push(' ');
+    format!("{prefix}{}", colorize_pipe(&glyph_with_space, color_on))
 }
 
 #[cfg(test)]

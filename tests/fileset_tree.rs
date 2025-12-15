@@ -426,7 +426,7 @@ fn tree_reports_omissions_when_every_file_is_dropped() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
-    let expected = concat!(".\n", "└─ dir/\n", "│ └─ … 2 more items\n", "\n",);
+    let expected = concat!(".\n", "├─ dir/\n", "│ └─ … 2 more items\n", "\n",);
     assert_eq!(
         stdout.as_ref(),
         expected,
