@@ -517,21 +517,19 @@ impl TreeNode {
         // highlight-only grep mode. Those glyphs never receive grep highlights,
         // so this avoids double-highlighting concerns while preserving legibility.
         let color_on = config.color_enabled;
+        let has_parent = !prefix.is_empty();
         let connects_down =
             content.as_ref().is_some_and(|lines| !lines.is_empty())
                 || !children.is_empty()
                 || omitted > 0;
+        let branch_edges = Edges {
+            up: has_parent,
+            // Keep the gutter alive for siblings even if this node has no body.
+            down: connects_down || (!is_last && has_parent),
+            right: true,
+        };
         if render_scaffold_lines {
-            let has_parent = !prefix.is_empty();
-            let branch = scaffold_segment(
-                prefix,
-                Edges {
-                    up: has_parent,
-                    down: connects_down || (!is_last && has_parent),
-                    right: true,
-                },
-                color_on,
-            );
+            let branch = scaffold_segment(prefix, branch_edges, color_on);
             out.set_current_slot(slot_for_scaffold);
             out.push_str(&branch);
             let display_name = if is_leaf {
@@ -551,15 +549,16 @@ impl TreeNode {
             out.push_str(nl);
         }
 
+        let gutter_edges = Edges::with_up_down(has_parent, true);
         let content_prefix = if render_scaffold_lines {
             // Keep the gutter visible even for last children so lines stay aligned.
-            scaffold_segment(prefix, Edges::with_up_down(true, true), color_on)
+            scaffold_segment(prefix, gutter_edges, color_on)
         } else {
             String::new()
         };
         let child_prefix = if render_scaffold_lines {
             // Keep gutters visible for nested nodes even when this entry is last.
-            scaffold_segment(prefix, Edges::with_up_down(true, true), color_on)
+            scaffold_segment(prefix, gutter_edges, color_on)
         } else {
             String::new()
         };
