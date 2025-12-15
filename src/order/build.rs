@@ -85,24 +85,10 @@ fn collect_round_robin(
     new_order
 }
 
-/// Reorder `by_priority` so each fileset contributes one node before any file
-/// gets a second turn. This keeps tight budgets from starving later files.
-#[allow(
-    clippy::cognitive_complexity,
-    reason = "Small bucket shuffle helper reads clearer inline than split"
-)]
-fn interleave_fileset_priority(
-    by_priority: &mut Vec<NodeId>,
-    node_slots: &[Option<usize>],
-    file_count: usize,
+fn place_roots_front(
+    mut buckets: Vec<VecDeque<NodeId>>,
     file_roots: &[NodeId],
-) {
-    if file_count == 0 {
-        return;
-    }
-    let (prefix, buckets) =
-        split_priority_by_slot(by_priority, node_slots, file_count);
-    let mut buckets = buckets;
+) -> Vec<VecDeque<NodeId>> {
     for (slot, bucket) in buckets.iter_mut().enumerate() {
         if let Some(root) = file_roots.get(slot) {
             if let Some(pos) = bucket.iter().position(|id| id == root) {
@@ -114,6 +100,22 @@ fn interleave_fileset_priority(
             }
         }
     }
+    buckets
+}
+
+/// Reorder `by_priority` so each fileset contributes one node before any file
+/// gets a second turn. This keeps tight budgets from starving later files.
+fn interleave_fileset_priority(
+    by_priority: &mut Vec<NodeId>,
+    node_slots: &[Option<usize>],
+    file_roots: &[NodeId],
+) {
+    if file_roots.is_empty() {
+        return;
+    }
+    let (prefix, buckets) =
+        split_priority_by_slot(by_priority, node_slots, file_roots.len());
+    let buckets = place_roots_front(buckets, file_roots);
     let new_order = collect_round_robin(prefix, buckets, by_priority.len());
     *by_priority = new_order;
 }
@@ -821,8 +823,7 @@ pub fn build_order(
                 ids.push(NodeId(*pq_id));
             }
         }
-        let file_count = root.children_len;
-        interleave_fileset_priority(&mut order, &node_slots, file_count, &ids);
+        interleave_fileset_priority(&mut order, &node_slots, &ids);
         Some(ids)
     } else {
         None
@@ -858,43 +859,49 @@ fn compute_duplicate_line_counts(
     arena: &JsonTreeArena,
     slots: Option<&[Option<usize>]>,
 ) -> DuplicateCounts {
-    use std::collections::HashMap;
+    fn normalized_token(token: &str) -> Option<String> {
+        let trimmed = token.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    }
+
+    fn bump(
+        token: &str,
+        slot: Option<usize>,
+        global: &mut HashMap<String, usize>,
+        per_file: &mut Option<Vec<HashMap<String, usize>>>,
+    ) {
+        *global.entry(token.to_string()).or_insert(0) += 1;
+        if let (Some(slot), Some(per_file)) = (slot, per_file.as_mut()) {
+            if let Some(map) = per_file.get_mut(slot) {
+                *map.entry(token.to_string()).or_insert(0) += 1;
+            }
+        }
+    }
+
     let mut global: HashMap<String, usize> = HashMap::new();
-    let mut per_file: Option<Vec<HashMap<String, usize>>> = None;
-    if let Some(slot_map) = slots {
+    let mut per_file: Option<Vec<HashMap<String, usize>>> = slots.map(|_| {
         let file_count = arena
             .nodes
             .get(arena.root_id)
             .map(|n| n.children_len)
             .unwrap_or(0);
-        per_file = Some(vec![HashMap::new(); file_count]);
-        for (idx, node) in arena.nodes.iter().enumerate() {
-            if let Some(token) = node.atomic_token.as_ref() {
-                let norm = token.trim();
-                if norm.is_empty() {
-                    continue;
-                }
-                *global.entry(norm.to_string()).or_insert(0) += 1;
-                if let Some(slot) = slot_map.get(idx).copied().flatten() {
-                    if let Some(vec) = per_file.as_mut() {
-                        if let Some(map) = vec.get_mut(slot) {
-                            *map.entry(norm.to_string()).or_insert(0) += 1;
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        for node in &arena.nodes {
-            if let Some(token) = node.atomic_token.as_ref() {
-                let norm = token.trim();
-                if norm.is_empty() {
-                    continue;
-                }
-                *global.entry(norm.to_string()).or_insert(0) += 1;
-            }
-        }
+        vec![HashMap::new(); file_count]
+    });
+
+    for (idx, node) in arena.nodes.iter().enumerate() {
+        let Some(token) =
+            node.atomic_token.as_deref().and_then(normalized_token)
+        else {
+            continue;
+        };
+        let slot = slots.and_then(|map| map.get(idx).copied().flatten());
+        bump(&token, slot, &mut global, &mut per_file);
     }
+
     DuplicateCounts { global, per_file }
 }
 
@@ -902,6 +909,25 @@ fn compute_duplicate_line_counts(
 mod tests {
     use super::*;
     use insta::assert_snapshot;
+
+    fn slot_for(
+        node: NodeId,
+        parent: &[Option<NodeId>],
+        fileset_children: &[NodeId],
+    ) -> Option<usize> {
+        let mut current = node;
+        loop {
+            let Some(p) = parent.get(current.0).and_then(|p| *p) else {
+                return None;
+            };
+            if p.0 == ROOT_PQ_ID {
+                return fileset_children
+                    .iter()
+                    .position(|fid| *fid == current);
+            }
+            current = p;
+        }
+    }
 
     #[test]
     fn duplicate_lines_penalized_in_code_mode() {
@@ -993,6 +1019,51 @@ mod tests {
         assert!(
             dup_pos < unique_pos_a && dup_pos < unique_pos_b,
             "expected cross-file duplicate to appear before uniques (no cross-file penalty): dup={dup_pos}, ua={unique_pos_a}, ub={unique_pos_b}"
+        );
+    }
+
+    #[test]
+    fn fileset_round_robin_with_duplicates_and_braces() {
+        let mut cfg = PriorityConfig::new(usize::MAX, 8);
+        cfg.line_budget_only = true;
+        let arena = crate::ingest::fileset::build_fileset_root(vec![
+            (
+                "a.rs".to_string(),
+                crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
+                    b"fn shared() {}\n{\n}\nshared()\n".to_vec(),
+                    &cfg,
+                    true,
+                )
+                .expect("arena"),
+            ),
+            (
+                "b.rs".to_string(),
+                crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
+                    b"fn shared() {}\n{\n}\nunique_b()\n".to_vec(),
+                    &cfg,
+                    true,
+                )
+                .expect("arena"),
+            ),
+        ]);
+        let build = super::build_order(&arena, &cfg).expect("order");
+        let files = build.fileset_children.as_ref().expect("fileset roots");
+        let mut lines: Vec<String> = Vec::new();
+        for nid in &build.by_priority {
+            let Some(slot) = slot_for(*nid, &build.parent, files) else {
+                continue;
+            };
+            if let Some(RankedNode::AtomicLeaf { token, .. }) =
+                build.nodes.get(nid.0)
+            {
+                lines.push(format!("f{slot}:{}", token.trim()));
+            }
+        }
+        // Limit the snapshot to the top portion to keep it readable.
+        let head: Vec<_> = lines.into_iter().take(12).collect();
+        assert_snapshot!(
+            "fileset_round_robin_with_duplicates_and_braces",
+            head.join("\n")
         );
     }
 

@@ -1,0 +1,10 @@
+---
+source: src/order/build.rs
+expression: "head.join(\"\\n\")"
+---
+f0:fn shared() {}
+f1:fn shared() {}
+f0:{
+f1:{
+f0:shared()
+f1:unique_b()
