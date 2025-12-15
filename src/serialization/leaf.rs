@@ -84,57 +84,20 @@ impl<'a> LeafRenderer<'a> {
         }
     }
 
-    #[allow(
-        clippy::cognitive_complexity,
-        reason = "String omission/truncation and highlighting are clearer kept together."
-    )]
     pub(super) fn serialize_string_for_template(
         &mut self,
         id: usize,
         kept_graphemes: usize,
         template: crate::serialization::types::OutputTemplate,
     ) -> String {
-        let render_prefix_graphemes =
-            match self.config.string_free_prefix_graphemes {
-                Some(n) => kept_graphemes.max(n),
-                None => kept_graphemes,
-            };
-        let omitted =
-            self.omitted_for(id, render_prefix_graphemes).unwrap_or(0);
-        let full: &str = match &self.order.nodes[id] {
-            RankedNode::SplittableLeaf { value, .. } => value.as_str(),
-            _ => unreachable!(
-                "serialize_string_for_template called for non-string node: id={id}"
-            ),
-        };
-        let truncated_buf = if omitted == 0 {
-            None
-        } else {
-            let prefix = crate::utils::text::take_n_graphemes(
-                full,
-                render_prefix_graphemes,
-            );
-            Some(format!("{prefix}…"))
-        };
+        let render_prefix = self.render_prefix_len(kept_graphemes);
+        let omitted = self.omitted_for(id, render_prefix).unwrap_or(0);
+        let full = self.full_string(id);
+        let truncated_buf =
+            self.truncated_display(full, render_prefix, omitted);
         let raw_for_highlight = truncated_buf.as_deref().unwrap_or(full);
-        let highlight_kind = if matches!(
-            template,
-            crate::serialization::types::OutputTemplate::Text
-                | crate::serialization::types::OutputTemplate::Code
-        ) {
-            HighlightKind::TextLike
-        } else {
-            HighlightKind::JsonString
-        };
-        let rendered = if matches!(
-            template,
-            crate::serialization::types::OutputTemplate::Text
-                | crate::serialization::types::OutputTemplate::Code
-        ) {
-            raw_for_highlight.to_string()
-        } else {
-            crate::utils::json::json_string(raw_for_highlight)
-        };
+        let rendered = self.render_for_template(raw_for_highlight, template);
+        let highlight_kind = self.highlight_kind_for(template);
         maybe_highlight_value(
             self.config,
             Some(raw_for_highlight),
@@ -186,5 +149,67 @@ impl<'a> LeafRenderer<'a> {
             ));
         self.code_highlight_cache.insert(root, computed.clone());
         Some(computed)
+    }
+
+    fn render_prefix_len(&self, kept_graphemes: usize) -> usize {
+        match self.config.string_free_prefix_graphemes {
+            Some(n) => kept_graphemes.max(n),
+            None => kept_graphemes,
+        }
+    }
+
+    fn full_string(&self, id: usize) -> &str {
+        match &self.order.nodes[id] {
+            RankedNode::SplittableLeaf { value, .. } => value.as_str(),
+            _ => unreachable!(
+                "serialize_string_for_template called for non-string node: id={id}"
+            ),
+        }
+    }
+
+    fn truncated_display(
+        &self,
+        full: &str,
+        render_prefix: usize,
+        omitted: usize,
+    ) -> Option<String> {
+        if omitted == 0 {
+            None
+        } else {
+            let prefix =
+                crate::utils::text::take_n_graphemes(full, render_prefix);
+            Some(format!("{prefix}…"))
+        }
+    }
+
+    fn highlight_kind_for(
+        &self,
+        template: crate::serialization::types::OutputTemplate,
+    ) -> HighlightKind {
+        if matches!(
+            template,
+            crate::serialization::types::OutputTemplate::Text
+                | crate::serialization::types::OutputTemplate::Code
+        ) {
+            HighlightKind::TextLike
+        } else {
+            HighlightKind::JsonString
+        }
+    }
+
+    fn render_for_template(
+        &self,
+        raw_for_highlight: &str,
+        template: crate::serialization::types::OutputTemplate,
+    ) -> String {
+        if matches!(
+            template,
+            crate::serialization::types::OutputTemplate::Text
+                | crate::serialization::types::OutputTemplate::Code
+        ) {
+            raw_for_highlight.to_string()
+        } else {
+            crate::utils::json::json_string(raw_for_highlight)
+        }
     }
 }

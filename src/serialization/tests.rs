@@ -812,3 +812,92 @@ fn fileset_sections_slot_stats_respect_header_budgeting() {
         "per-slot stats should never exceed the rendered line counts"
     );
 }
+
+#[test]
+fn slot_stats_match_render_for_code_and_text() {
+    let cfg_prio = crate::PriorityConfig::new(usize::MAX, usize::MAX);
+    let arena = crate::ingest::fileset::parse_fileset_multi(
+        vec![crate::ingest::fileset::FilesetInput {
+            name: "main.rs".to_string(),
+            bytes: b"fn main() {}\nprintln!(\"hi\");\n".to_vec(),
+            kind: crate::ingest::fileset::FilesetInputKind::Text {
+                atomic_lines: true,
+            },
+        }],
+        &cfg_prio,
+    )
+    .unwrap();
+    let order = build_order(&arena, &cfg_prio).unwrap();
+    let mut inclusion_flags = vec![0u32; order.total_nodes];
+    prepare_render_set_top_k_and_ancestors(
+        &order,
+        usize::MAX,
+        &mut inclusion_flags,
+        1,
+    );
+
+    let slot_map =
+        crate::pruner::budget::compute_fileset_slot_map(&order).unwrap();
+    let slot_count = slot_map.iter().flatten().max().map(|s| *s + 1).unwrap();
+
+    let base_cfg = crate::RenderConfig {
+        template: crate::OutputTemplate::Auto,
+        indent_unit: "  ".to_string(),
+        space: " ".to_string(),
+        newline: "\n".to_string(),
+        prefer_tail_arrays: false,
+        color_mode: crate::ColorMode::Off,
+        color_enabled: false,
+        style: crate::serialization::types::Style::Default,
+        string_free_prefix_graphemes: None,
+        debug: false,
+        primary_source_name: None,
+        show_fileset_headers: false,
+        fileset_tree: false,
+        count_fileset_headers_in_budgets: true,
+        grep_highlight: None,
+    };
+
+    let render_with =
+        |template: crate::OutputTemplate| -> (String, crate::utils::measure::OutputStats) {
+            let cfg = crate::RenderConfig {
+                template,
+                ..base_cfg.clone()
+            };
+            let recorder =
+                crate::serialization::output::SlotStatsRecorder::new(
+                    slot_count, true,
+                );
+            let (rendered, slot_stats) =
+                render_from_render_set_with_slots(
+                    &order,
+                    &inclusion_flags,
+                    1,
+                    &cfg,
+                    Some(&slot_map),
+                    Some(recorder),
+                );
+            let stats =
+                slot_stats.expect("slot stats present for fileset render");
+            assert_eq!(stats.len(), slot_count);
+            (rendered, stats[0])
+        };
+
+    let (code_render, code_stats) = render_with(crate::OutputTemplate::Auto);
+    assert!(
+        code_render.starts_with("1:"),
+        "auto template should pick code formatting for .rs files"
+    );
+    let code_totals =
+        crate::utils::measure::count_output_stats(&code_render, true);
+    assert_eq!(code_stats, code_totals);
+
+    let (text_render, text_stats) = render_with(crate::OutputTemplate::Text);
+    assert!(
+        !text_render.starts_with("1:"),
+        "text template should render without code line numbers"
+    );
+    let text_totals =
+        crate::utils::measure::count_output_stats(&text_render, true);
+    assert_eq!(text_stats, text_totals);
+}

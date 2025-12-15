@@ -27,17 +27,9 @@ fn last_nonempty_line_indent(s: &str) -> Option<&str> {
 // line numbers are the omission signal (e.g., `4:` → `22:` means 17 lines were
 // skipped).
 
-#[allow(
-    clippy::cognitive_complexity,
-    reason = "Indent + omission flow is clearer inline"
-)]
 pub(super) fn render_array(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
-    // For code, arrays are treated as raw lines of text with line numbers.
-    let _indent_depth = ctx.depth.saturating_sub(1);
-
-    // Track the last seen non-empty line's textual indent for potential future alignment.
     let mut last_nonempty_indent: String = String::new();
-    let highlight_lookup = ctx.code_highlight.as_ref();
+    let highlight_lookup = ctx.code_highlight.as_deref();
     let mut fallback_highlighter =
         if highlight_lookup.is_none() && out.colors_enabled() {
             Some(CodeHighlighter::new(ctx.source_hint))
@@ -45,63 +37,77 @@ pub(super) fn render_array(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
             None
         };
 
-    // No omission marker at start for code template.
-
     for (orig_index, (kind, item)) in ctx.children.iter() {
-        let is_multiline = item.contains('\n');
-        match kind {
-            super::super::NodeKind::Array | super::super::NodeKind::Object => {
-                // Nested blocks are rendered verbatim.
-                out.push_str(item);
-                if let Some(ind) = last_nonempty_line_indent(item) {
-                    if !ind.is_empty() {
-                        last_nonempty_indent.clear();
-                        last_nonempty_indent.push_str(ind);
-                    }
-                }
-            }
-            _ if is_multiline => {
-                out.push_str(item);
-                if let Some(ind) = last_nonempty_line_indent(item) {
-                    if !ind.is_empty() {
-                        last_nonempty_indent.clear();
-                        last_nonempty_indent.push_str(ind);
-                    }
-                }
-            }
-            _ => {
-                // Leaf line: print line number and content.
-                let n = orig_index.saturating_add(1);
-                if let Some(w) = out.line_number_width() {
-                    out.push_str(&format!("{n:>w$}: "));
-                } else {
-                    out.push_str(&format!("{n}: "));
-                }
-                match highlight_lookup.and_then(|lines| lines.get(*orig_index))
-                {
-                    Some(colored) => out.push_str(colored),
-                    None => {
-                        if let Some(hl) = fallback_highlighter.as_mut() {
-                            let colored = hl.highlight_line(item);
-                            out.push_str(&colored);
-                        } else {
-                            out.push_str(item);
-                        }
-                    }
-                }
-                out.push_newline();
-                if !item.trim().is_empty() {
-                    last_nonempty_indent.clear();
-                    last_nonempty_indent.push_str(leading_ws_prefix(item));
-                }
-            }
+        if matches!(
+            kind,
+            super::super::NodeKind::Array | super::super::NodeKind::Object
+        ) || item.contains('\n')
+        {
+            render_block(item, &mut last_nonempty_indent, out);
+            continue;
         }
+        render_leaf_line(
+            *orig_index,
+            item,
+            &mut last_nonempty_indent,
+            highlight_lookup,
+            fallback_highlighter.as_mut(),
+            out,
+        );
     }
-
-    // No omission marker at end for code template.
 }
 
 pub(super) fn render_object(ctx: &ObjectCtx<'_>, out: &mut Out<'_>) {
     // Code template defines custom rendering only for arrays (raw lines).
     super::pseudo::render_object(ctx, out);
+}
+
+fn render_block(
+    item: &str,
+    last_nonempty_indent: &mut String,
+    out: &mut Out<'_>,
+) {
+    out.push_str(item);
+    update_last_indent(item, last_nonempty_indent);
+}
+
+fn render_leaf_line(
+    orig_index: usize,
+    item: &str,
+    last_nonempty_indent: &mut String,
+    highlight_lookup: Option<&Vec<String>>,
+    mut fallback_highlighter: Option<&mut CodeHighlighter<'static>>,
+    out: &mut Out<'_>,
+) {
+    let n = orig_index.saturating_add(1);
+    if let Some(w) = out.line_number_width() {
+        out.push_str(&format!("{n:>w$}: "));
+    } else {
+        out.push_str(&format!("{n}: "));
+    }
+    match highlight_lookup.and_then(|lines| lines.get(orig_index)) {
+        Some(colored) => out.push_str(colored),
+        None => {
+            if let Some(hl) = fallback_highlighter.as_mut() {
+                let colored = hl.highlight_line(item);
+                out.push_str(&colored);
+            } else {
+                out.push_str(item);
+            }
+        }
+    }
+    out.push_newline();
+    if !item.trim().is_empty() {
+        last_nonempty_indent.clear();
+        last_nonempty_indent.push_str(leading_ws_prefix(item));
+    }
+}
+
+fn update_last_indent(item: &str, last_nonempty_indent: &mut String) {
+    if let Some(ind) = last_nonempty_line_indent(item) {
+        if !ind.is_empty() {
+            last_nonempty_indent.clear();
+            last_nonempty_indent.push_str(ind);
+        }
+    }
 }

@@ -188,41 +188,39 @@ impl<'a> RenderEngine<'a> {
         }
     }
 
-    #[allow(
-        clippy::cognitive_complexity,
-        reason = "Text omission filtering adds a branch; clearer inline"
-    )]
     fn gather_array_children_with_template(
         &mut self,
         id: usize,
         depth: usize,
         template: crate::serialization::types::OutputTemplate,
     ) -> (Vec<ArrayChildPair>, usize) {
-        let mut children_pairs: Vec<ArrayChildPair> = Vec::new();
+        let Some(children_ids) = self.order.children.get(id) else {
+            return (Vec::new(), 0);
+        };
         let mut kept = 0usize;
-        if let Some(children_ids) = self.order.children.get(id) {
-            for (i, &child_id) in children_ids.iter().enumerate() {
-                if self.inclusion_flags[child_id.0] != self.render_set_id {
-                    continue;
-                }
-                let child_kind = self.order.nodes[child_id.0].display_kind();
-                let rendered = self.render_node_to_string_with_template(
-                    child_id.0,
-                    depth + 1,
-                    false,
-                    template,
-                );
-                kept += 1;
-                let orig_index = self
-                    .order
-                    .index_in_parent_array
-                    .get(child_id.0)
-                    .and_then(|o| *o)
-                    .unwrap_or(i);
-                children_pairs.push((orig_index, (child_kind, rendered)));
+        let mut pairs: Vec<ArrayChildPair> = Vec::new();
+        for (i, &child_id) in children_ids.iter().enumerate() {
+            if self.inclusion_flags[child_id.0] != self.render_set_id {
+                continue;
             }
+            kept += 1;
+            let child_kind = self.order.nodes[child_id.0].display_kind();
+            let rendered = self.render_node_to_string_with_template(
+                child_id.0,
+                depth + 1,
+                false,
+                template,
+            );
+            let orig_index = self
+                .order
+                .index_in_parent_array
+                .get(child_id.0)
+                .copied()
+                .flatten()
+                .unwrap_or(i);
+            pairs.push((orig_index, (child_kind, rendered)));
         }
-        (children_pairs, kept)
+        (pairs, kept)
     }
 
     fn gather_object_children_with_template(
