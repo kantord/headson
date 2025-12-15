@@ -1,5 +1,6 @@
 ---
-source: src/order/build.rs
+source: src/order/build/tests.rs
+assertion_line: 151
 expression: "head.join(\"\\n\")"
 ---
 f0:fn shared() {}
