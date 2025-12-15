@@ -517,12 +517,12 @@ impl TreeNode {
         // highlight-only grep mode. Those glyphs never receive grep highlights,
         // so this avoids double-highlighting concerns while preserving legibility.
         let color_on = config.color_enabled;
-        let has_line_content =
-            content.as_ref().is_some_and(|lines| !lines.is_empty());
         if render_scaffold_lines {
-            // Use a tee when this entry carries body lines so the gutter flows
-            // into the content; fall back to a corner only when this really ends.
-            let branch = if is_last && !has_line_content {
+            let has_line_content =
+                content.as_ref().is_some_and(|lines| !lines.is_empty());
+            let branch = if is_last && has_line_content {
+                "├─ "
+            } else if is_last {
                 "└─ "
             } else {
                 "├─ "
@@ -554,7 +554,7 @@ impl TreeNode {
             String::new()
         };
         let child_prefix = if render_scaffold_lines {
-            // Keep the gutter visible for nested nodes too so tree alignment stays consistent.
+            // Keep gutters visible for nested nodes even when this entry is last.
             format!("{prefix}{} ", colorize_pipe("│", color_on))
         } else {
             String::new()
