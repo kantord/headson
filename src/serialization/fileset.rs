@@ -522,11 +522,12 @@ impl TreeNode {
                 || !children.is_empty()
                 || omitted > 0;
         if render_scaffold_lines {
+            let has_parent = !prefix.is_empty();
             let branch = scaffold_segment(
                 prefix,
                 Edges {
-                    up: true,
-                    down: connects_down || !is_last,
+                    up: has_parent,
+                    down: connects_down || (!is_last && has_parent),
                     right: true,
                 },
                 color_on,
@@ -837,7 +838,7 @@ mod tests {
         // Desired behavior: omission should be reported once under the containing folder.
         let expected = concat!(
             ".\n",
-            "└─ dir/\n",
+            "├─ dir/\n",
             "│ ├─ kept.txt\n",
             "│ │ line\n",
             "│ └─ … 1 more items\n",
@@ -888,7 +889,7 @@ mod tests {
         let out = render_tree_from_node(root, &config, true);
         let expected = concat!(
             ".\n",
-            "└─ dir/\n",
+            "├─ dir/\n",
             "│ ├─ nested/\n",
             "│ │ ├─ keep.rs\n",
             "│ │ │ fn keep() {}\n",
