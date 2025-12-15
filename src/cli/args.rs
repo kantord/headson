@@ -216,45 +216,13 @@ pub enum GrepShowArg {
     All,
 }
 
-#[allow(
-    clippy::cognitive_complexity,
-    reason = "Single place assembling RenderConfig; further splitting would reduce clarity"
-)]
 pub fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
-    fn color_mode_from_flags(cli: &Cli) -> headson::ColorMode {
-        if cli.color {
-            headson::ColorMode::On
-        } else if cli.no_color {
-            headson::ColorMode::Off
-        } else {
-            headson::ColorMode::Auto
-        }
-    }
-
-    // Select a baseline template; may be overridden per-input later.
-    let template = match cli.format {
-        OutputFormat::Auto => headson::OutputTemplate::Auto,
-        OutputFormat::Json => {
-            headson::map_json_template_for_style(map_style(cli.style))
-        }
-        OutputFormat::Yaml => headson::OutputTemplate::Yaml,
-        OutputFormat::Text => headson::OutputTemplate::Text,
-    };
-    let space = if cli.compact || cli.no_space { "" } else { " " }.to_string();
-    let newline = if cli.compact || cli.no_newline {
-        ""
-    } else {
-        "\n"
-    }
-    .to_string();
-    let indent_unit = if cli.compact {
-        String::new()
-    } else {
-        cli.indent.clone()
-    };
+    let template = base_template(cli);
+    let (indent_unit, space, newline) = whitespace_from(cli);
     let color_mode = color_mode_from_flags(cli);
     let color_enabled = headson::resolve_color_enabled(color_mode);
-
+    let (show_fileset_headers, fileset_tree, count_fileset_headers_in_budgets) =
+        fileset_flags(cli);
     headson::RenderConfig {
         template,
         indent_unit,
@@ -267,13 +235,54 @@ pub fn get_render_config_from(cli: &Cli) -> headson::RenderConfig {
         string_free_prefix_graphemes: None,
         debug: cli.debug,
         primary_source_name: None,
-        // In tree mode this flag controls whether scaffolding counts toward budgets;
-        // CLI already forbids --tree with --no-header.
-        show_fileset_headers: !cli.no_header,
-        fileset_tree: cli.tree,
-        count_fileset_headers_in_budgets: cli.count_headers,
+        show_fileset_headers,
+        fileset_tree,
+        count_fileset_headers_in_budgets,
         grep_highlight: None,
     }
+}
+
+fn base_template(cli: &Cli) -> headson::OutputTemplate {
+    match cli.format {
+        OutputFormat::Auto => headson::OutputTemplate::Auto,
+        OutputFormat::Json => {
+            headson::map_json_template_for_style(map_style(cli.style))
+        }
+        OutputFormat::Yaml => headson::OutputTemplate::Yaml,
+        OutputFormat::Text => headson::OutputTemplate::Text,
+    }
+}
+
+fn whitespace_from(cli: &Cli) -> (String, String, String) {
+    let space = if cli.compact || cli.no_space { "" } else { " " }.to_string();
+    let newline = if cli.compact || cli.no_newline {
+        ""
+    } else {
+        "\n"
+    }
+    .to_string();
+    let indent_unit = if cli.compact {
+        String::new()
+    } else {
+        cli.indent.clone()
+    };
+    (indent_unit, space, newline)
+}
+
+fn color_mode_from_flags(cli: &Cli) -> headson::ColorMode {
+    if cli.color {
+        headson::ColorMode::On
+    } else if cli.no_color {
+        headson::ColorMode::Off
+    } else {
+        headson::ColorMode::Auto
+    }
+}
+
+fn fileset_flags(cli: &Cli) -> (bool, bool, bool) {
+    // In tree mode show_fileset_headers controls whether scaffolding counts toward budgets;
+    // CLI already forbids --tree with --no-header.
+    (!cli.no_header, cli.tree, cli.count_headers)
 }
 
 pub fn map_style(s: StyleArg) -> headson::Style {

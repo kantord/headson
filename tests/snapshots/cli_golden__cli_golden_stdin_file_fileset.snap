@@ -1,0 +1,34 @@
+---
+source: tests/cli_golden.rs
+assertion_line: 75
+expression: snap
+---
+STDIN (auto):
+{
+  "a": 1,
+  "b": 2
+}
+
+--
+FILE (auto):
+{
+  "a": 1,
+  "b": 2
+}
+
+--
+FILE (json):
+{
+  "a": 1,
+  "b": 2
+}
+
+--
+FILESET (auto):
+==> a.json <==
+{
+  "a": 1
+}
+
+==> b.yaml <==
+k: 2

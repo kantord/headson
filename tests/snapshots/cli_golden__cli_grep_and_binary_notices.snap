@@ -1,0 +1,11 @@
+---
+source: tests/cli_golden.rs
+assertion_line: 97
+expression: snap
+---
+STDOUT:
+
+
+STDERR:
+Ignored binary file: bin.dat
+No grep matches found

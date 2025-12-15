@@ -27,6 +27,11 @@ struct BudgetEntryDbg {
     cap: usize,
 }
 
+struct RenderDebugStats {
+    output_stats: OutputStatsDbg,
+    constrained_by: Vec<&'static str>,
+}
+
 fn budget_entry_dbg(b: Option<crate::Budget>) -> Option<BudgetEntryDbg> {
     b.map(|budget| BudgetEntryDbg {
         kind: match budget.kind {
@@ -241,6 +246,43 @@ pub(crate) fn emit_render_debug(
     budgets: crate::Budgets,
     top_k: usize,
 ) {
+    let render_stats = collect_render_debug_stats(
+        order_build,
+        inclusion_flags,
+        render_set_id,
+        config,
+        budgets,
+    );
+    let array_sampler = crate::ArraySamplerStrategy::Default;
+    let dbg =
+        crate::debug::build_render_debug_json(crate::debug::RenderDebugArgs {
+            order: order_build,
+            inclusion_flags,
+            render_id: render_set_id,
+            cfg: config,
+            budgets,
+            style: config.style,
+            array_sampler,
+            top_k,
+            output_stats: render_stats.output_stats,
+            constrained_by: render_stats.constrained_by,
+        });
+    #[allow(
+        clippy::print_stderr,
+        reason = "Debug mode emits JSON to stderr to aid troubleshooting"
+    )]
+    {
+        eprintln!("{dbg}");
+    }
+}
+
+fn collect_render_debug_stats(
+    order_build: &crate::PriorityOrder,
+    inclusion_flags: &[u32],
+    render_set_id: u32,
+    config: &crate::RenderConfig,
+    budgets: crate::Budgets,
+) -> RenderDebugStats {
     let mut no_color_cfg = config.clone();
     no_color_cfg.color_enabled = false;
     let slot_info = if budgets.per_slot.is_some() {
@@ -286,26 +328,9 @@ pub(crate) fn emit_render_debug(
         chars: stats.chars,
         lines: stats.lines,
     };
-    let array_sampler = crate::ArraySamplerStrategy::Default;
-    let dbg =
-        crate::debug::build_render_debug_json(crate::debug::RenderDebugArgs {
-            order: order_build,
-            inclusion_flags,
-            render_id: render_set_id,
-            cfg: config,
-            budgets,
-            style: config.style,
-            array_sampler,
-            top_k,
-            output_stats: out_stats,
-            constrained_by,
-        });
-    #[allow(
-        clippy::print_stderr,
-        reason = "Debug mode emits JSON to stderr to aid troubleshooting"
-    )]
-    {
-        eprintln!("{dbg}");
+    RenderDebugStats {
+        output_stats: out_stats,
+        constrained_by,
     }
 }
 

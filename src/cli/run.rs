@@ -18,6 +18,25 @@ type InputEntry = (String, Vec<u8>);
 type InputEntries = Vec<InputEntry>;
 pub(crate) type IgnoreNotices = Vec<String>;
 
+fn build_effective_configs(
+    cli: &Cli,
+    mut render_cfg: headson::RenderConfig,
+    input_count: usize,
+) -> (
+    headson::RenderConfig,
+    headson::PriorityConfig,
+    headson::Budgets,
+) {
+    let effective = budget::compute_effective(cli, input_count);
+    let prio = budget::build_priority_config(cli, &effective);
+    render_cfg = budget::render_config_for_budgets(render_cfg, &effective);
+    (render_cfg, prio, effective.budgets)
+}
+
+fn needs_fileset(cli: &Cli, inputs_len: usize) -> bool {
+    inputs_len > 1 || cli.tree
+}
+
 pub(crate) fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
     budget::validate(cli)?;
     let mut render_cfg = get_render_config_from(cli);
@@ -58,10 +77,6 @@ fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
     }
 }
 
-#[allow(
-    clippy::cognitive_complexity,
-    reason = "Keeps ingest + final render + debug plumbing co-located"
-)]
 fn run_from_stdin(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
@@ -69,13 +84,9 @@ fn run_from_stdin(
 ) -> Result<String> {
     let input_bytes = read_stdin()?;
     let input_count = 1usize;
-    let effective = budget::compute_effective(cli, input_count);
-    let prio = budget::build_priority_config(cli, &effective);
     let mut cfg = render_cfg.clone();
-    // Resolve effective output template for stdin:
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
-    cfg = budget::render_config_for_budgets(cfg, &effective);
-    let budgets = effective.budgets;
+    let (cfg, prio, budgets) = build_effective_configs(cli, cfg, input_count);
     let chosen_input = cli.input_format.unwrap_or(InputFormat::Json);
     render_single_input(
         chosen_input,
@@ -87,18 +98,13 @@ fn run_from_stdin(
     )
 }
 
-#[allow(
-    clippy::cognitive_complexity,
-    clippy::too_many_lines,
-    reason = "Keeps fileset ingest/selection/render + debug in one place"
-)]
 fn run_from_paths(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
     inputs: &[PathBuf],
 ) -> Result<(String, IgnoreNotices)> {
-    let sorted_inputs = if inputs.len() > 1 && !cli.no_sort {
+    let sorted_inputs = if needs_fileset(cli, inputs.len()) && !cli.no_sort {
         sort_paths_for_fileset(inputs)
     } else {
         inputs.to_vec()
@@ -113,114 +119,13 @@ fn run_from_paths(
             entries.iter().map(|(n, _)| n).collect::<Vec<_>>()
         );
     }
-    let included = entries.len();
-    let input_count = included.max(1);
-    let effective = budget::compute_effective(cli, input_count);
-    let prio = budget::build_priority_config(cli, &effective);
-    if inputs.len() > 1 || cli.tree {
-        if !matches!(cli.format, OutputFormat::Auto) {
-            bail!(
-                "--format cannot be customized for filesets; remove it or set to auto"
-            );
-        }
-        let mut cfg = render_cfg.clone();
-        // Filesets always render with per-file auto templates.
-        cfg.template = headson::OutputTemplate::Auto;
-        cfg = budget::render_config_for_budgets(cfg, &effective);
-        let budgets = effective.budgets;
-        let files: Vec<headson::FilesetInput> = entries
-            .into_iter()
-            .map(|(name, bytes)| {
-                let kind = detect_fileset_input_kind(&name);
-                headson::FilesetInput { name, bytes, kind }
-            })
-            .collect();
-        let out = headson::headson(
-            headson::InputKind::Fileset(files),
-            &cfg,
-            &prio,
-            grep_cfg,
-            budgets,
-        )?;
-        let mut notices = ignored;
-        if grep_cfg.regex.is_some()
-            && matches!(grep_cfg.show, headson::GrepShow::Matching)
-            && !grep_cfg.weak
-            && out.trim().is_empty()
-        {
-            notices.push("No grep matches found".to_string());
-        }
-        return Ok((out, notices));
+    if needs_fileset(cli, inputs.len()) {
+        return render_fileset(entries, ignored, cli, render_cfg, grep_cfg);
     }
-
-    if included == 0 {
+    if entries.is_empty() {
         return Ok((String::new(), ignored));
     }
-
-    let (name, bytes) = entries.into_iter().next().unwrap();
-    // Single file: pick ingest and output template per CLI format+style.
-    let lower = name.to_ascii_lowercase();
-    let is_yaml_ext = lower.ends_with(".yaml") || lower.ends_with(".yml");
-    let chosen_input = match cli.format {
-        OutputFormat::Auto => {
-            if let Some(fmt) = cli.input_format {
-                fmt
-            } else if is_yaml_ext {
-                InputFormat::Yaml
-            } else if lower.ends_with(".json") {
-                InputFormat::Json
-            } else {
-                InputFormat::Text
-            }
-        }
-        OutputFormat::Json => cli.input_format.unwrap_or(InputFormat::Json),
-        OutputFormat::Yaml => cli.input_format.unwrap_or(InputFormat::Yaml),
-        OutputFormat::Text => cli.input_format.unwrap_or(InputFormat::Text),
-    };
-    let mut cfg = render_cfg.clone();
-    cfg.template =
-        resolve_effective_template_for_single(cli.format, cfg.style, &lower);
-    cfg.primary_source_name = Some(name);
-    cfg = budget::render_config_for_budgets(cfg, &effective);
-    let budgets = effective.budgets;
-    let out = if let InputFormat::Text = chosen_input {
-        let is_code = headson::extensions::is_code_like_name(&lower);
-        if is_code && matches!(cli.format, OutputFormat::Auto) {
-            #[allow(
-                clippy::redundant_clone,
-                reason = "code branch requires its own config copy; other paths reuse the original"
-            )]
-            let mut cfg_code = cfg.clone();
-            cfg_code.template = headson::OutputTemplate::Code;
-            render_single_input(
-                chosen_input,
-                bytes,
-                &cfg_code,
-                &prio,
-                grep_cfg,
-                budgets,
-            )?
-        } else {
-            render_single_input(
-                chosen_input,
-                bytes,
-                &cfg,
-                &prio,
-                grep_cfg,
-                budgets,
-            )?
-        }
-    } else {
-        render_single_input(
-            chosen_input,
-            bytes,
-            &cfg,
-            &prio,
-            grep_cfg,
-            budgets,
-        )?
-    };
-    Ok((out, ignored))
+    render_single_entry(entries, ignored, cli, render_cfg, grep_cfg)
 }
 
 fn read_stdin() -> Result<Vec<u8>> {
@@ -505,6 +410,111 @@ fn resolve_effective_template_for_single(
                 headson::OutputTemplate::Text
             }
         }
+    }
+}
+
+fn render_fileset(
+    entries: InputEntries,
+    mut notices: IgnoreNotices,
+    cli: &Cli,
+    render_cfg: &headson::RenderConfig,
+    grep_cfg: &headson::GrepConfig,
+) -> Result<(String, IgnoreNotices)> {
+    if !matches!(cli.format, OutputFormat::Auto) {
+        bail!(
+            "--format cannot be customized for filesets; remove it or set to auto"
+        );
+    }
+    let mut cfg = render_cfg.clone();
+    cfg.template = headson::OutputTemplate::Auto;
+    let input_count = entries.len().max(1);
+    let (cfg, prio, budgets) = build_effective_configs(cli, cfg, input_count);
+    let files: Vec<headson::FilesetInput> = entries
+        .into_iter()
+        .map(|(name, bytes)| {
+            let kind = detect_fileset_input_kind(&name);
+            headson::FilesetInput { name, bytes, kind }
+        })
+        .collect();
+    let out = headson::headson(
+        headson::InputKind::Fileset(files),
+        &cfg,
+        &prio,
+        grep_cfg,
+        budgets,
+    )?;
+    if grep_cfg.regex.is_some()
+        && matches!(grep_cfg.show, headson::GrepShow::Matching)
+        && !grep_cfg.weak
+        && out.trim().is_empty()
+    {
+        notices.push("No grep matches found".to_string());
+    }
+    Ok((out, notices))
+}
+
+fn render_single_entry(
+    mut entries: InputEntries,
+    notices: IgnoreNotices,
+    cli: &Cli,
+    render_cfg: &headson::RenderConfig,
+    grep_cfg: &headson::GrepConfig,
+) -> Result<(String, IgnoreNotices)> {
+    let (name, bytes) = entries
+        .pop()
+        .expect("single-entry render expects one ingested input");
+    let lower = name.to_ascii_lowercase();
+    let chosen_input = select_input_format(cli, &lower);
+    let mut cfg = render_cfg.clone();
+    cfg.template =
+        resolve_effective_template_for_single(cli.format, cfg.style, &lower);
+    cfg.primary_source_name = Some(name);
+    let (cfg, prio, budgets) = build_effective_configs(cli, cfg, 1usize);
+    let is_auto = matches!(cli.format, OutputFormat::Auto);
+    let mut cfg_for_render = cfg;
+    if let InputFormat::Text = chosen_input {
+        let is_code = headson::extensions::is_code_like_name(
+            cfg_for_render
+                .primary_source_name
+                .as_deref()
+                .unwrap_or_default(),
+        );
+        if is_auto
+            && is_code
+            && matches!(cfg_for_render.template, headson::OutputTemplate::Text)
+        {
+            cfg_for_render.template = headson::OutputTemplate::Code;
+        }
+    }
+    let out = render_single_input(
+        chosen_input,
+        bytes,
+        &cfg_for_render,
+        &prio,
+        grep_cfg,
+        budgets,
+    )?;
+    Ok((out, notices))
+}
+
+fn select_input_format(cli: &Cli, lower_name: &str) -> InputFormat {
+    let is_yaml_ext =
+        lower_name.ends_with(".yaml") || lower_name.ends_with(".yml");
+    match cli.format {
+        OutputFormat::Auto => {
+            if let Some(fmt) = cli.input_format {
+                fmt
+            } else if is_yaml_ext {
+                InputFormat::Yaml
+            } else if lower_name.ends_with(".json") {
+                InputFormat::Json
+            } else {
+                InputFormat::Text
+            }
+        }
+        OutputFormat::Json => cli.input_format.unwrap_or(InputFormat::Json),
+        OutputFormat::Yaml => cli.input_format.unwrap_or(InputFormat::Yaml),
+        OutputFormat::Text => cli.input_format.unwrap_or(InputFormat::Text),
     }
 }
 
