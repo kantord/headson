@@ -518,12 +518,15 @@ impl TreeNode {
         // so this avoids double-highlighting concerns while preserving legibility.
         let color_on = config.color_enabled;
         let has_line_content =
-            content.as_ref().map_or(false, |lines| !lines.is_empty());
+            content.as_ref().is_some_and(|lines| !lines.is_empty());
         if render_scaffold_lines {
             // Use a tee when this entry carries body lines so the gutter flows
             // into the content; fall back to a corner only when this really ends.
-            let branch =
-                if is_last && !has_line_content { "└─ " } else { "├─ " };
+            let branch = if is_last && !has_line_content {
+                "└─ "
+            } else {
+                "├─ "
+            };
             out.set_current_slot(slot_for_scaffold);
             out.push_str(prefix);
             out.push_str(&colorize_pipe(branch, color_on));

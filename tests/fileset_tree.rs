@@ -361,23 +361,17 @@ fn tree_with_grep_reports_non_matching_files() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
-        let summary_expected =
-            concat!(
-                ".\n",
-                "├─ c.txt\n",
-                "│ hit\n",
-                "└─ … 2 more items\n",
-                "\n",
-            );
-        if stdout.as_ref() != summary_expected {
-            // Allow per-file omissions when the renderer keeps file entries but elides bodies.
-            assert!(
-                stdout.contains("├─ a.txt\n│ …\n")
-                    && stdout.contains("├─ b.txt\n│ …\n")
-                    && stdout.contains("├─ c.txt\n│ hit\n"),
-                "tree mode should either summarize non-matching files once or mark each file as omitted: {stdout}"
-            );
-        }
+    let summary_expected =
+        concat!(".\n", "├─ c.txt\n", "│ hit\n", "└─ … 2 more items\n", "\n",);
+    if stdout.as_ref() != summary_expected {
+        // Allow per-file omissions when the renderer keeps file entries but elides bodies.
+        assert!(
+            stdout.contains("├─ a.txt\n│ …\n")
+                && stdout.contains("├─ b.txt\n│ …\n")
+                && stdout.contains("├─ c.txt\n│ hit\n"),
+            "tree mode should either summarize non-matching files once or mark each file as omitted: {stdout}"
+        );
+    }
 }
 
 #[test]
@@ -432,8 +426,7 @@ fn tree_reports_omissions_when_every_file_is_dropped() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
-    let expected =
-        concat!(".\n", "└─ dir/\n", "│ └─ … 2 more items\n", "\n",);
+    let expected = concat!(".\n", "└─ dir/\n", "│ └─ … 2 more items\n", "\n",);
     assert_eq!(
         stdout.as_ref(),
         expected,
