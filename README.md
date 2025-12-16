@@ -31,9 +31,23 @@ Available as:
     - JSON family: `strict` → strict JSON, `default` → human‑friendly Pseudo, `detailed` → JS with inline comments
     - YAML: always YAML; `strict` has no comments, `default` uses “# …”, `detailed` uses “# N more …”
     - Text: prints raw lines. In `default` style, omissions are shown as a single line `…`; in `detailed`, as `… N more lines …`. `strict` omits array‑level summaries.
-- Multiple inputs: preview many files at once with a shared or per‑file budget
+- Multiple inputs: preview many files at once with a shared or per-file budget
 - Fast: processes gigabyte‑scale files in seconds (mostly disk‑bound)
 - Available as a CLI app and as a Python library
+
+### Feature walkthrough
+
+Grep and tree demos:
+
+![Grep demo](docs/assets/tapes/grep.gif)
+
+![Tree demo](docs/assets/tapes/tree.gif)
+
+Regenerate locally:
+
+- Place tapes under docs/tapes (e.g., docs/tapes/demo.tape)
+- Run: cargo make tapes
+- Outputs are written to docs/assets/tapes
 
 ## Install
 
@@ -233,21 +247,6 @@ Machine‑readable preview (JSON family, strict style → strict JSON):
 hson -c 120 -f json -t strict users.json
 # {"users":[{"id":1,"name":"Ana","roles":["admin"]}],"meta":{"count":2}}
 ```
-
-## Terminal Demos
-
-Grep and tree demos:
-
-![Grep demo](docs/assets/tapes/grep.gif)
-
-![Tree demo](docs/assets/tapes/tree.gif)
-
-Regenerate locally:
-
-- Place tapes under docs/tapes (e.g., docs/tapes/demo.tape)
-- Run: cargo make tapes
-- Outputs are written to docs/assets/tapes
-
 
 ## Python Bindings
 
