@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/demo.gif" alt="Terminal demo" width="1560" height="900" />
+<img src="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/demo.gif" alt="Terminal demo" width="1560" height="900" />
   <br/>
 </p>
 
@@ -235,6 +235,12 @@ hson -c 120 -f json -t strict users.json
 ```
 
 ## Terminal Demos
+
+Grep and tree demos:
+
+![Grep demo](docs/assets/tapes/grep.gif)
+
+![Tree demo](docs/assets/tapes/tree.gif)
 
 Regenerate locally:
 
