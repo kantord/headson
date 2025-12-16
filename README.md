@@ -1,6 +1,14 @@
 <h1 align="center">
   <img src="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/logo.svg" alt="headson" width="221" />
 </h1>
+
+<p align="center">
+  <a href="#features">Features</a> ·
+  <a href="#usage">Usage</a> ·
+  <a href="#install">Install</a> ·
+  <a href="#python-bindings">Python bindings</a>
+</p>
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/demo.gif" alt="Terminal demo" width="1560" height="900" />
   <br/>
@@ -13,13 +21,6 @@ Available as:
 - Python library (see [Python Bindings](#python-bindings))
 
 ![Codecov](https://img.shields.io/codecov/c/github/kantord/headson?style=flat-square) ![Crates.io Version](https://img.shields.io/crates/v/headson?style=flat-square) ![PyPI - Version](https://img.shields.io/pypi/v/headson?style=flat-square)
-
-<p align="center">
-  <a href="#features">Features</a> ·
-  <a href="#usage">Usage</a> ·
-  <a href="#install">Install</a> ·
-  <a href="#python-bindings">Python bindings</a>
-</p>
 
 
 ## Install
