@@ -4,8 +4,8 @@
 
 <p align="center">
   <a href="#features">Features</a> ·
-  <a href="#usage">Usage</a> ·
   <a href="#install">Install</a> ·
+  <a href="#usage">Usage</a> ·
   <a href="#python-bindings">Python bindings</a>
 </p>
 
@@ -23,26 +23,6 @@ Available as:
 ![Codecov](https://img.shields.io/codecov/c/github/kantord/headson?style=flat-square) ![Crates.io Version](https://img.shields.io/crates/v/headson?style=flat-square) ![PyPI - Version](https://img.shields.io/pypi/v/headson?style=flat-square)
 
 
-## Install
-
-
-Using Cargo:
-
-    cargo install headson
-
-
-> Note: the CLI installs as `hson`. All examples below use `hson ...`.
-
-
-From source:
-
-    cargo build --release
-    target/release/hson --help
-
- 
-
-
-
 ## Features
 
 - Budgeted output: specify exactly how much you want to see
@@ -54,6 +34,20 @@ From source:
 - Multiple inputs: preview many files at once with a shared or per‑file budget
 - Fast: processes gigabyte‑scale files in seconds (mostly disk‑bound)
 - Available as a CLI app and as a Python library
+
+## Install
+
+Using Cargo:
+
+    cargo install headson
+
+> Note: the CLI installs as `hson`. All examples below use `hson ...`.
+
+From source:
+
+    cargo build --release
+    target/release/hson --help
+
 
 ## Fits into command line workflows
 
