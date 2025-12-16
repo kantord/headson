@@ -14,6 +14,13 @@ Available as:
 
 ![Codecov](https://img.shields.io/codecov/c/github/kantord/headson?style=flat-square) ![Crates.io Version](https://img.shields.io/crates/v/headson?style=flat-square) ![PyPI - Version](https://img.shields.io/pypi/v/headson?style=flat-square)
 
+<p align="center">
+  <a href="#features">Features</a> ·
+  <a href="#usage">Usage</a> ·
+  <a href="#install">Install</a> ·
+  <a href="#python-bindings">Python bindings</a>
+</p>
+
 
 ## Install
 
