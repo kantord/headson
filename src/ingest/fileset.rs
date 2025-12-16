@@ -45,10 +45,10 @@ pub fn parse_fileset_multi(
             FilesetInputKind::Text { atomic_lines } => {
                 if atomic_lines {
                     build_text_tree_arena_from_bytes_with_mode(
-                        bytes, cfg, true,
-                    )?
+                        &bytes, cfg, true,
+                    )
                 } else {
-                    build_text_tree_arena_from_bytes(bytes, cfg)?
+                    build_text_tree_arena_from_bytes(&bytes, cfg)
                 }
             }
         };

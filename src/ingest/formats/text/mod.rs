@@ -24,6 +24,14 @@ fn normalize_newlines(s: &str) -> Cow<'_, str> {
 const ARRAY_NO_SAMPLING_THRESHOLD: usize = 20_000;
 const CODE_LINE_HARD_CAP: usize = 150;
 
+fn split_normalized_lines(bytes: &[u8]) -> Vec<String> {
+    let lossy = String::from_utf8_lossy(bytes);
+    let norm = normalize_newlines(&lossy);
+    norm.split_terminator('\n')
+        .map(std::string::ToString::to_string)
+        .collect()
+}
+
 struct TextArenaBuilder {
     arena: JsonTreeArena,
     array_cap: usize,
@@ -217,35 +225,27 @@ impl TextArenaBuilder {
     }
 }
 
-#[allow(
-    clippy::needless_pass_by_value,
-    clippy::unnecessary_wraps,
-    reason = "Signature matches other ingest helpers and trait expectations"
-)]
-#[allow(
-    clippy::cognitive_complexity,
-    clippy::too_many_lines,
-    reason = "Builder + indent/nesting logic is clearest co-located"
-)]
-fn build_text_tree_arena_plain(
-    bytes: Vec<u8>,
+fn build_plain_text_tree(
+    lines_vec: &[String],
     config: &PriorityConfig,
-) -> Result<JsonTreeArena> {
-    let lossy = String::from_utf8_lossy(&bytes);
-    let norm = normalize_newlines(&lossy);
-    let lines_vec: Vec<String> = norm
-        .split_terminator('\n')
-        .map(std::string::ToString::to_string)
-        .collect();
+) -> JsonTreeArena {
     let total = lines_vec.len();
     let mut b = TextArenaBuilder::new(
         config.array_max_items,
         config.array_sampler.into(),
     );
-    let root_id = b.push_array_of_lines(&lines_vec, total);
+    let root_id = b.push_array_of_lines(lines_vec, total);
     let mut a = b.finish();
     a.root_id = root_id;
-    Ok(a)
+    a
+}
+
+fn build_text_tree_arena_plain(
+    bytes: &[u8],
+    config: &PriorityConfig,
+) -> JsonTreeArena {
+    let lines_vec = split_normalized_lines(bytes);
+    build_plain_text_tree(&lines_vec, config)
 }
 
 // Safe nested builder using indices (no raw pointers).
@@ -418,25 +418,25 @@ fn transcribe_code_tree(
 }
 
 pub fn build_text_tree_arena_from_bytes_with_mode(
-    bytes: Vec<u8>,
+    bytes: &[u8],
     config: &PriorityConfig,
     atomic_strings: bool,
-) -> Result<JsonTreeArena> {
-    if !atomic_strings {
-        return build_text_tree_arena_plain(bytes, config);
+) -> JsonTreeArena {
+    if atomic_strings {
+        build_code_tree_arena(bytes, config)
+    } else {
+        build_text_tree_arena_plain(bytes, config)
     }
-    Ok(build_code_tree_arena(&bytes, config))
 }
 
 fn build_code_tree_arena(
     bytes: &[u8],
     config: &PriorityConfig,
 ) -> JsonTreeArena {
-    let lossy = String::from_utf8_lossy(bytes);
-    let norm = normalize_newlines(&lossy);
-    let owned_lines: Vec<String> = norm
-        .split_terminator('\n')
-        .map(|line| truncate_at_n_graphemes(line, CODE_LINE_HARD_CAP))
+    let normalized_lines = split_normalized_lines(bytes);
+    let owned_lines: Vec<String> = normalized_lines
+        .into_iter()
+        .map(|line| truncate_at_n_graphemes(&line, CODE_LINE_HARD_CAP))
         .collect();
     let raw_lines: Vec<&str> =
         owned_lines.iter().map(String::as_str).collect();
@@ -449,19 +449,28 @@ fn build_code_tree_arena(
 }
 
 pub fn build_text_tree_arena_from_bytes(
-    bytes: Vec<u8>,
+    bytes: &[u8],
     config: &PriorityConfig,
-) -> Result<JsonTreeArena> {
+) -> JsonTreeArena {
     build_text_tree_arena_plain(bytes, config)
 }
 
 /// Convenience functions for the Text ingest path.
+#[allow(
+    clippy::needless_pass_by_value,
+    clippy::unnecessary_wraps,
+    reason = "Signature stays aligned with other ingest helpers and public API"
+)]
 pub fn parse_text_one_with_mode(
     bytes: Vec<u8>,
     cfg: &PriorityConfig,
     atomic_strings: bool,
 ) -> Result<JsonTreeArena> {
-    build_text_tree_arena_from_bytes_with_mode(bytes, cfg, atomic_strings)
+    Ok(build_text_tree_arena_from_bytes_with_mode(
+        &bytes,
+        cfg,
+        atomic_strings,
+    ))
 }
 
 #[cfg(test)]
@@ -521,6 +530,47 @@ mod tests {
         assert_eq!(out, "a\nb\nc\n");
     }
 
+    fn build_plain_sample() -> JsonTreeArena {
+        let (_, prio) = cfg_text();
+        let input = b"root\n  child\n".to_vec();
+        super::build_text_tree_arena_from_bytes_with_mode(&input, &prio, false)
+    }
+
+    fn build_code_sample() -> JsonTreeArena {
+        let (_, prio) = cfg_text();
+        super::build_text_tree_arena_from_bytes_with_mode(
+            b"fn main() {\n  println!(\"hi\");\n}\n",
+            &prio,
+            true,
+        )
+    }
+
+    #[test]
+    fn plain_mode_uses_string_nodes() {
+        let arena = build_plain_sample();
+        let root = &arena.nodes[arena.root_id];
+        assert_eq!(root.children_len, 2, "two lines kept as-is");
+        let first_child = arena.children[root.children_start];
+        let node = &arena.nodes[first_child];
+        assert_eq!(node.kind, crate::NodeKind::String);
+        assert_eq!(node.string_value.as_deref(), Some("root"));
+        assert!(
+            node.atomic_token.is_none(),
+            "plain mode should not mark atomic tokens"
+        );
+    }
+
+    #[test]
+    fn plain_mode_contiguous_arrays_do_not_record_indices() {
+        let arena = build_plain_sample();
+        let root = &arena.nodes[arena.root_id];
+        assert_eq!(root.children_len, 2, "two lines kept as-is");
+        assert_eq!(
+            root.arr_indices_len, 0,
+            "contiguous lines do not need arr_indices"
+        );
+    }
+
     #[test]
     fn text_omission_marker_default() {
         let (mut cfg, prio) = cfg_text();
@@ -559,11 +609,11 @@ mod tests {
             .map(|i| i.to_string())
             .collect::<Vec<_>>()
             .join("\n");
+        let lines_bytes = lines.into_bytes();
         let mut cfg = PriorityConfig::new(usize::MAX, 5);
         cfg.array_sampler = crate::ArraySamplerStrategy::Tail;
         let arena =
-            super::build_text_tree_arena_from_bytes(lines.into_bytes(), &cfg)
-                .expect("arena");
+            super::build_text_tree_arena_from_bytes(&lines_bytes, &cfg);
         let root = &arena.nodes[arena.root_id];
         assert_eq!(root.children_len, 5, "kept 5");
         let mut orig_indices = Vec::new();
@@ -586,12 +636,12 @@ mod tests {
     fn code_mode_truncates_long_lines() {
         let (_, prio) = cfg_text();
         let long_line = format!("fn main() {{ {} }}", "a".repeat(200));
+        let long_line_bytes = format!("{long_line}\n").into_bytes();
         let arena = super::build_text_tree_arena_from_bytes_with_mode(
-            format!("{long_line}\n").into_bytes(),
+            &long_line_bytes,
             &prio,
             true,
-        )
-        .expect("arena");
+        );
         let code_lines = arena
             .code_lines
             .get(&arena.root_id)
@@ -613,14 +663,44 @@ mod tests {
     }
 
     #[test]
+    fn code_mode_keeps_array_bias_overrides() {
+        let arena = build_code_sample();
+        let root = &arena.nodes[arena.root_id];
+        assert_eq!(
+            root.array_bias_override,
+            Some(crate::ArrayBias::HeadMidTail),
+            "root code array should bias head/mid/tail sampling"
+        );
+        let block_array = arena.children[root.children_start];
+        let block = &arena.nodes[block_array];
+        assert_eq!(block.kind, crate::NodeKind::Array);
+    }
+
+    #[test]
+    fn code_mode_keeps_atomic_tokens_and_prefers_parent_line() {
+        let arena = build_code_sample();
+        let root = &arena.nodes[arena.root_id];
+        let block_array = arena.children[root.children_start];
+        let line_node =
+            arena.children[arena.nodes[block_array].children_start];
+        let line = &arena.nodes[line_node];
+        assert_eq!(line.kind, crate::NodeKind::Number);
+        assert!(line.atomic_token.is_some(), "code mode uses atomic tokens");
+        assert!(
+            line.prefers_parent_line,
+            "atomic lines with children should prefer parent lines"
+        );
+        assert!(line.string_value.is_none());
+    }
+
+    #[test]
     fn plain_text_ingest_keeps_full_lines() {
         let (_, prio) = cfg_text();
         let long_line = format!("text {}", "b".repeat(200));
         let arena = super::build_text_tree_arena_from_bytes(
-            format!("{long_line}\n").into_bytes(),
+            &format!("{long_line}\n").into_bytes(),
             &prio,
-        )
-        .expect("arena");
+        );
         let root = &arena.nodes[arena.root_id];
         let first_child = arena.children[root.children_start];
         let node = &arena.nodes[first_child];

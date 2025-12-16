@@ -22,11 +22,10 @@ fn duplicate_lines_penalized_in_code_mode() {
     let mut cfg = PriorityConfig::new(usize::MAX, 5);
     cfg.line_budget_only = false;
     let arena = crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
-        input,
+        &input,
         &cfg,
         true,
-    )
-    .expect("arena");
+    );
     let build = super::build_order(&arena, &cfg).expect("order");
     // Collect priority positions for each line token.
     let mut positions = std::collections::HashMap::new();
@@ -63,20 +62,18 @@ fn duplicate_lines_not_penalized_across_fileset() {
         (
             "a".to_string(),
             crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
-                b"dup\nunique_a\n".to_vec(),
+                b"dup\nunique_a\n",
                 &cfg,
                 true,
-            )
-            .expect("arena"),
+            ),
         ),
         (
             "b".to_string(),
             crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
-                b"dup\nunique_b\n".to_vec(),
+                b"dup\nunique_b\n",
                 &cfg,
                 true,
-            )
-            .expect("arena"),
+            ),
         ),
     ]);
     let build = super::build_order(&arena, &cfg).expect("order");
@@ -117,20 +114,18 @@ fn fileset_round_robin_with_duplicates_and_braces() {
         (
             "a.rs".to_string(),
             crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
-                b"fn shared() {}\n{\n}\nshared()\n".to_vec(),
+                b"fn shared() {}\n{\n}\nshared()\n",
                 &cfg,
                 true,
-            )
-            .expect("arena"),
+            ),
         ),
         (
             "b.rs".to_string(),
             crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
-                b"fn shared() {}\n{\n}\nunique_b()\n".to_vec(),
+                b"fn shared() {}\n{\n}\nunique_b()\n",
                 &cfg,
                 true,
-            )
-            .expect("arena"),
+            ),
         ),
     ]);
     let build = super::build_order(&arena, &cfg).expect("order");
