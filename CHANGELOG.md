@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.2](https://github.com/kantord/headson/compare/headson-v0.11.1...headson-v0.11.2) - 2025-12-16
+
+### Other
+
+- split text ingest pipeline ([#386](https://github.com/kantord/headson/pull/386))
+- tidy CLI/debug flow and add CLI golden snapshots ([#384](https://github.com/kantord/headson/pull/384))
+- simplify serialization and guard slot stats ([#383](https://github.com/kantord/headson/pull/383))
+- stabilize fileset interleave and duplicate penalties ([#381](https://github.com/kantord/headson/pull/381))
+
 ## [0.11.1](https://github.com/kantord/headson/compare/headson-v0.11.0...headson-v0.11.1) - 2025-12-15
 
 ### Fixed
