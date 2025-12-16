@@ -1,0 +1,18 @@
+Set FontSize 26
+Set Width 1560
+Set Height 900
+Set TypingSpeed 30ms
+Set Shell "bash"
+Env CLICOLOR_FORCE "1"
+
+Output tree.gif
+
+Require hson
+
+Type "# Tree mode renders files inline with structure-aware previews." Sleep 200ms Enter
+Type "hson code_sample.py code_sample.ts --tree -n8" Sleep 400ms Enter
+Sleep 5s
+
+Type "# Combine tree with grep to highlight matches inside the tree." Sleep 200ms Enter
+Type "hson code_sample.py code_sample.ts --tree --grep compute -n12" Sleep 400ms Enter
+Sleep 5s
