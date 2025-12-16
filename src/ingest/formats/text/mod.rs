@@ -476,6 +476,7 @@ pub fn parse_text_one_with_mode(
 #[cfg(test)]
 mod tests {
     use super::ARRAY_NO_SAMPLING_THRESHOLD;
+    use crate::utils::tree_arena::JsonTreeArena;
     use crate::{
         Budget, BudgetKind, Budgets, GrepConfig, InputKind, PriorityConfig,
         RenderConfig,
