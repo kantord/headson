@@ -26,13 +26,8 @@ Available as:
 ## Features
 
 - Budgeted output: specify exactly how much you want to see
-- Output formats: `auto | json | yaml | text`
-  - Styles: `strict | default | detailed`
-    - JSON family: `strict` → strict JSON, `default` → human‑friendly Pseudo, `detailed` → JS with inline comments
-    - YAML: always YAML; `strict` has no comments, `default` uses “# …”, `detailed` uses “# N more …”
-    - Text: prints raw lines. In `default` style, omissions are shown as a single line `…`; in `detailed`, as `… N more lines …`. `strict` omits array‑level summaries.
-- Multiple inputs: preview many files at once with a shared or per-file budget
-- Fast: processes gigabyte‑scale files in seconds (mostly disk‑bound)
+ed or per-file budget
+- Fast: processes gigabyte‑scale JSON files in seconds (mostly disk‑bound)
 - Available as a CLI app and as a Python library
 
 ### Extra features
