@@ -65,6 +65,11 @@ script_runner = "bash"
 script = [
     '''
     set -euo pipefail
+    ROOT_DIR=$(pwd)
+    echo "[tapes] building target/release/hson"
+    cargo build --release --bin hson
+    HSON_DIR="$ROOT_DIR/target/release"
+    test -x "$HSON_DIR/hson" || { echo "Error: $HSON_DIR/hson not found after build" >&2; exit 1; }
     TAPES_DIR=docs/tapes
     OUT_DIR=docs/assets/tapes
     mkdir -p "$OUT_DIR"
@@ -85,7 +90,7 @@ script = [
       # Collect declared outputs from the tape (relative to tape_dir)
       mapfile -t outputs < <(sed -n 's/^Output[[:space:]]\+//p' "$tape") || true
       # Run vhs from the tape directory so relative Output paths land there
-      (cd "$tape_dir" && vhs "$tape_base")
+      (cd "$tape_dir" && PATH="$HSON_DIR:$PATH" vhs "$tape_base")
       # Move declared outputs to OUT_DIR (if any declared); else try a sane default GIF name
       if [ ${#outputs[@]} -gt 0 ]; then
         for o in "${outputs[@]}"; do
@@ -125,6 +130,11 @@ script_runner = "bash"
 script = [
     '''
     set -euo pipefail
+    ROOT_DIR=$(pwd)
+    echo "[tape-one] building target/release/hson"
+    cargo build --release --bin hson
+    HSON_DIR="$ROOT_DIR/target/release"
+    test -x "$HSON_DIR/hson" || { echo "Error: $HSON_DIR/hson not found after build" >&2; exit 1; }
     : "${TAPE:?Set TAPE to a .tape file, e.g., TAPE=docs/tapes/demo.tape}"
     OUT_DIR=docs/assets/tapes
     mkdir -p "$OUT_DIR"
@@ -136,7 +146,7 @@ script = [
     tape_dir=$(dirname "$tape")
     tape_base=$(basename "$tape")
     mapfile -t outputs < <(sed -n 's/^Output[[:space:]]\+//p' "$tape") || true
-    (cd "$tape_dir" && vhs "$tape_base")
+    (cd "$tape_dir" && PATH="$HSON_DIR:$PATH" vhs "$tape_base")
     if [ ${#outputs[@]} -gt 0 ]; then
       for o in "${outputs[@]}"; do
         case "$o" in

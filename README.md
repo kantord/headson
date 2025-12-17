@@ -39,12 +39,13 @@ Available as:
 
 Grep and tree demos:
 
-![Grep demo](docs/assets/tapes/grep.gif)
+![Grep demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/grep.gif)
 
-![Tree demo](docs/assets/tapes/tree.gif)
+![Tree demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/tree.gif)
 
 Regenerate locally:
 
+- Install prerequisites: `cargo install cargo-make` and `vhs` (https://github.com/charmbracelet/vhs)
 - Place tapes under docs/tapes (e.g., docs/tapes/demo.tape)
 - Run: cargo make tapes
 - Outputs are written to docs/assets/tapes
