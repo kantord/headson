@@ -19,10 +19,6 @@ Sleep 300ms
 Type 'cd "$HEADSON_SORT_TAPE_REPO"' Sleep 300ms Enter
 Sleep 2s
 
-Type "# Git history (zeta.json changed repeatedly):" Sleep 200ms Enter
-Type "git log --oneline -3 --name-only" Sleep 400ms Enter
-Sleep 4s
-
 Type "# Whole folder snapshot with a strict total line cap (global budget)." Sleep 200ms Enter
 Type "hson --glob 'src/*' --glob 'data/*' --tree -n 1 -H --global-lines 12" Sleep 400ms Enter
 Sleep 5s
