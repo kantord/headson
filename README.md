@@ -37,9 +37,15 @@ Available as:
 
 ### Feature walkthrough
 
-Grep and tree demos:
+#### Grep mode
+
+Guarantee that matching keys/values stay in view under tight budgets.
 
 ![Grep demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/grep.gif)
+
+#### Tree mode
+
+Preview many files at once in a directory tree layout (inline previews, round‑robin fairness).
 
 ![Tree demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/tree.gif)
 
