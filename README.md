@@ -51,9 +51,11 @@ Preview many files at once in a directory tree layout (inline previews, round‑
 
 #### Sorting (frecency)
 
-By default, filesets are sorted by frecency (git history) with mtime fallback so “recently touched” files surface first. Use global budgets (`--global-lines`, `--global-bytes`) to get an up‑to‑date repo snapshot within a strict overall limit; use `--no-sort` to keep input order and skip the repo scan.
+By default, filesets are sorted by frecency (git history) with mtime fallback so “recently touched” files surface first. Use global budgets (`--global-lines`, `--global-bytes`) to get an up‑to‑date repo snapshot within a strict overall limit (and `--chars` when you want a per-file character cap); use `--no-sort` to keep input order and skip the repo scan.
 
 Demo tape: `docs/tapes/sort.tape` (renders to `docs/assets/tapes/sort.gif`).
+
+![Sorting demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/sort.gif)
 
 ## Install
 

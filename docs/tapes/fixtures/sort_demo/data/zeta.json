@@ -1,0 +1,9 @@
+{
+  "zeta": {
+    "pipeline": {
+      "compute": {
+        "steps": ["load", "compute", "save"]
+      }
+    }
+  }
+}
