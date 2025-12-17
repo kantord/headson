@@ -1,0 +1,7 @@
+{
+  "users": [
+    { "id": 1, "name": "Ana", "roles": ["admin", "dev"] },
+    { "id": 2, "name": "Bo", "roles": ["ops"] }
+  ],
+  "meta": { "count": 2, "source": "fixtures" }
+}

@@ -9,10 +9,10 @@ Output grep.gif
 
 Require hson
 
-Type "# Grep mode guarantees matches stay in view." Sleep 200ms Enter
-Type "hson code_sample.py --grep compute -n 10" Sleep 400ms Enter
+Type "# Grep mode guarantees matches stay in view (even across globs + mixed file types)." Sleep 200ms Enter
+Type "hson --glob 'fixtures/tree_demo/project/**/*' --grep compute -n 12" Sleep 400ms Enter
 Sleep 5s
 
-Type "# Grep across files; keep everything with --grep-show=all." Sleep 200ms Enter
-Type "hson code_sample.py code_sample.ts --grep greet --grep-show=all -n 8" Sleep 400ms Enter
+Type "# Minor feature: keep all files in view with --grep-show=all." Sleep 200ms Enter
+Type "hson --glob 'fixtures/tree_demo/project/**/*' --grep compute --grep-show=all -n 12" Sleep 400ms Enter
 Sleep 5s

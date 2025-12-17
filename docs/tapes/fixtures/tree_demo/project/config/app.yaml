@@ -1,0 +1,6 @@
+app:
+  name: headson-demo
+  version: 1
+features:
+  grep: true
+  tree: true

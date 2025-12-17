@@ -39,13 +39,13 @@ Available as:
 
 #### Grep mode
 
-Guarantee that matching keys/values stay in view under tight budgets.
+Guarantee that matching keys/values stay in view under tight budgets (supports filesets via `--glob`).
 
 ![Grep demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/grep.gif)
 
 #### Tree mode
 
-Preview many files at once in a directory tree layout (inline previews, round‑robin fairness).
+Preview many files at once in a directory tree layout (inline previews, round‑robin fairness; supports filesets via `--glob`).
 
 ![Tree demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/tree.gif)
 

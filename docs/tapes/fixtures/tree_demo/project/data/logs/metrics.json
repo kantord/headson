@@ -1,0 +1,13 @@
+{
+  "service": "demo",
+  "pipeline": {
+    "compute": {
+      "steps": [
+        { "name": "load" },
+        { "name": "compute", "params": { "method": "fast", "limit": 10 } },
+        { "name": "save" }
+      ],
+      "counters": { "ok": 12, "fail": 1 }
+    }
+  }
+}
