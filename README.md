@@ -35,7 +35,7 @@ Available as:
 - Fast: processes gigabyte‑scale files in seconds (mostly disk‑bound)
 - Available as a CLI app and as a Python library
 
-### Feature walkthrough
+### Extra features
 
 #### Grep mode
 
@@ -48,13 +48,6 @@ Guarantee that matching keys/values stay in view under tight budgets (supports f
 Preview many files at once in a directory tree layout (inline previews, round‑robin fairness; supports filesets via `--glob`).
 
 ![Tree demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/tree.gif)
-
-Regenerate locally:
-
-- Install prerequisites: `cargo install cargo-make` and `vhs` (https://github.com/charmbracelet/vhs)
-- Place tapes under docs/tapes (e.g., docs/tapes/demo.tape)
-- Run: cargo make tapes
-- Outputs are written to docs/assets/tapes
 
 ## Install
 

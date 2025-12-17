@@ -13,6 +13,10 @@ Type "# Grep mode guarantees matches stay in view (even across globs + mixed fil
 Type "hson --glob 'fixtures/tree_demo/project/**/*' --grep compute -n 12" Sleep 400ms Enter
 Sleep 5s
 
+Type "# Grep-only view: make the non-matching budget tiny (structure is still preserved)." Sleep 200ms Enter
+Type "hson --glob 'fixtures/tree_demo/project/**/*' --grep compute -n 1" Sleep 400ms Enter
+Sleep 5s
+
 Type "# Minor feature: keep all files in view with --grep-show=all." Sleep 200ms Enter
 Type "hson --glob 'fixtures/tree_demo/project/**/*' --grep compute --grep-show=all -n 12" Sleep 400ms Enter
 Sleep 5s
