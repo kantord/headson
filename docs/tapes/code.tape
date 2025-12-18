@@ -9,11 +9,11 @@ Output code.gif
 
 Require hson
 
-Type "# Source code mode: indentation-aware, line-atomic summaries." Sleep 200ms Enter
-Type "# Headson builds a heuristic block tree and keeps the most informative lines." Sleep 200ms Enter
-Type "hson fixtures/tree_demo/project/src/main.py -n 14" Sleep 400ms Enter
+Type "# Source code: get the shape of the file without dumping it all." Sleep 200ms Enter
+Type "# Keeps important lines (like function/class headers) and omits the boring middle." Sleep 200ms Enter
+Type "hson fixtures/code_demo/big.py -n 12" Sleep 400ms Enter
 Sleep 5s
 
-Type "# Syntax highlighting + line numbers (colors auto-enable with CLICOLOR_FORCE=1)." Sleep 200ms Enter
-Type "hson fixtures/tree_demo/project/src/lib/util.ts -n 14" Sleep 400ms Enter
+Type "# Works across languages; syntax highlighting + line numbers when colors are enabled." Sleep 200ms Enter
+Type "hson fixtures/code_demo/big.ts -n 12" Sleep 400ms Enter
 Sleep 5s
