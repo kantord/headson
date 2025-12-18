@@ -219,7 +219,7 @@ Show help:
 
 Note: flags align with head/tail conventions (`-c/--bytes`, `-C/--global-bytes`).
 
-## Examples: head vs hson
+## What’s wrong with just using head/tail?
 
 Input:
 
@@ -227,14 +227,14 @@ Input:
 {"users":[{"id":1,"name":"Ana","roles":["admin","dev"]},{"id":2,"name":"Bo"}],"meta":{"count":2,"source":"db"}}
 ```
 
-Naive cut (can break mid‑token):
+If you `head -c` a JSON file/stream, you can cut it in the middle of a value and end up with a confusing snippet:
 
 ```bash
 jq -c . users.json | head -c 80
 # {"users":[{"id":1,"name":"Ana","roles":["admin","dev"]},{"id":2,"name":"Bo"}],"me
 ```
 
-Structured preview with hson (JSON family, default style → Pseudo):
+With `hson`, you still get a compact preview, but it stays structure-aware:
 
 ```bash
 hson -c 120 -f json -t default users.json
@@ -247,7 +247,7 @@ hson -c 120 -f json -t default users.json
 # }
 ```
 
-Machine‑readable preview (JSON family, strict style → strict JSON):
+If you need machine-readable output, use strict mode:
 
 ```bash
 hson -c 120 -f json -t strict users.json
