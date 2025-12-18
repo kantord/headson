@@ -18,13 +18,13 @@ Type "cd $R" Sleep 300ms Enter
 Sleep 2s
 
 Type "# Whole folder snapshot with a strict total line cap (global budget)." Sleep 200ms Enter
-Type "hson --glob 'src/*' --glob 'data/*' --tree -n 2 -H --global-lines 20" Sleep 400ms Enter
+Type "hson --glob 'src/*' --glob 'data/*' --tree -n 3 -H --global-lines 26" Sleep 400ms Enter
 Sleep 5s
 
 Type "# Compare: preserve input order (no sorting)." Sleep 200ms Enter
-Type "hson --glob 'src/*' --glob 'data/*' --tree -n 2 -H --global-lines 20 --no-sort" Sleep 400ms Enter
+Type "hson --glob 'src/*' --glob 'data/*' --tree -n 3 -H --global-lines 26 --no-sort" Sleep 400ms Enter
 Sleep 5s
 
 Type "# Same idea, but cap total size in bytes (global budget)." Sleep 200ms Enter
-Type "hson --glob 'src/*' --glob 'data/*' --tree -c 180 -C 1200" Sleep 400ms Enter
+Type "hson --glob 'src/*' --glob 'data/*' --tree -c 140 -C 850" Sleep 400ms Enter
 Sleep 5s
