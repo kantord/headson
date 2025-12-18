@@ -84,6 +84,50 @@ From source:
 - INPUT (optional, repeatable): file path(s). If omitted, reads from stdin. Multiple input files are supported.
 - Prints the preview to stdout. On parse errors, exits non‑zero and prints an error to stderr.
 
+### Quick examples
+
+Peek a JSON stream from stdin:
+
+```bash
+curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | hson -c 800
+```
+
+Preview many files with a single total budget:
+
+```bash
+hson -c 200 -C 1200 logs/*.json
+```
+
+Machine-readable preview (strict JSON):
+
+```bash
+hson -c 200 -f json -t strict data.json
+```
+
+YAML with detailed comments:
+
+```bash
+hson -c 400 -f yaml -t detailed config.yaml
+```
+
+Keep matches visible (grep-like) while still summarizing structure:
+
+```bash
+hson --grep 'error|warning' -c 200 -C 1200 logs/*.json
+```
+
+Tree-like view with inline previews:
+
+```bash
+hson --tree --glob 'src/**/*' -c 160 -C 1200
+```
+
+Source code outline (keeps lines intact; omits blocks under tight budgets):
+
+```bash
+hson -n 20 src/main.py
+```
+
 Common flags:
 
 - `-c, --bytes <BYTES>`: per‑file output budget (bytes). For multiple inputs, default total budget is `<BYTES> * number_of_inputs`.
@@ -175,24 +219,6 @@ Use `--tree` to render filesets as a directory tree (like `tree`) with inline st
   - All active budgets are enforced simultaneously. The render must satisfy all of: bytes (if set), chars (if set), and lines (if set). The strictest cap wins.
   - Outputs stay non-empty unless you explicitly set a per-file cap of zero; in that case that slot can be suppressed entirely (matching the CLI’s `-n 0` semantics). Extremely tight nonzero caps that cannot fit even an omission marker can also yield empty output; filesets/tree may show only omission counts in that scenario.
   - When only lines are specified, no implicit byte cap applies. When neither lines nor chars are specified, a 500‑byte default applies.
-
-Quick one‑liners:
-
-- Peek a big JSON stream (keeps structure):
-
-      zstdcat huge.json.zst | hson -c 800 -f json -t default
-
-- Many files with a fixed overall size:
-
-      hson -C 1200 -f json -t strict logs/*.json
-
-- Glance at a file, JavaScript‑style comments for omissions:
-
-      hson -c 400 -f json -t detailed data.json
-
-- YAML with detailed comments:
-
-      hson -c 400 -f yaml -t detailed config.yaml
 
 ### Text mode
 
