@@ -98,16 +98,16 @@ script = [
           git config user.name demo
           git config commit.gpgsign false
           mkdir -p data src
-          printf '%s\n' '{"alpha":{"items":[1,2,3]}}' > data/alpha.json
-          printf '%s\n' '{"zeta":{"pipeline":{"compute":{"steps":["load","compute","save"]}}}}' > data/zeta.json
-          printf '%s\n' 'def main():' '    print("hello")' > src/main.py
+          printf '%s\n' '{"alpha":1}' > data/alpha.json
+          printf '%s\n' '{"zeta":0}' > data/zeta.json
+          printf '%s\n' 'print("hello")' > src/main.py
           printf '%s\n' 'export function add(a: number, b: number) { return a + b; }' > src/util.ts
           git add .
           git commit -qm 'init'
-          printf '%s\n' '{"zeta":{"pipeline":{"compute":{"steps":["load","compute","save"],"runs":1}}}}' > data/zeta.json
+          printf '%s\n' '{"zeta":1}' > data/zeta.json
           git add data/zeta.json
           git commit -qm 'touch zeta'
-          printf '%s\n' '{"zeta":{"pipeline":{"compute":{"steps":["load","compute","save"],"runs":2}}}}' > data/zeta.json
+          printf '%s\n' '{"zeta":2}' > data/zeta.json
           git add data/zeta.json
           git commit -qm 'touch zeta again'
         )
@@ -190,16 +190,16 @@ script = [
         git config user.name demo
         git config commit.gpgsign false
         mkdir -p data src
-        printf '%s\n' '{"alpha":{"items":[1,2,3]}}' > data/alpha.json
-        printf '%s\n' '{"zeta":{"pipeline":{"compute":{"steps":["load","compute","save"]}}}}' > data/zeta.json
-        printf '%s\n' 'def main():' '    print("hello")' > src/main.py
+        printf '%s\n' '{"alpha":1}' > data/alpha.json
+        printf '%s\n' '{"zeta":0}' > data/zeta.json
+        printf '%s\n' 'print("hello")' > src/main.py
         printf '%s\n' 'export function add(a: number, b: number) { return a + b; }' > src/util.ts
         git add .
         git commit -qm 'init'
-        printf '%s\n' '{"zeta":{"pipeline":{"compute":{"steps":["load","compute","save"],"runs":1}}}}' > data/zeta.json
+        printf '%s\n' '{"zeta":1}' > data/zeta.json
         git add data/zeta.json
         git commit -qm 'touch zeta'
-        printf '%s\n' '{"zeta":{"pipeline":{"compute":{"steps":["load","compute","save"],"runs":2}}}}' > data/zeta.json
+        printf '%s\n' '{"zeta":2}' > data/zeta.json
         git add data/zeta.json
         git commit -qm 'touch zeta again'
       )
