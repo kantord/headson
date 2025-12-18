@@ -17,8 +17,8 @@
 `head`/`tail` for JSON, YAML — but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict byte budget. (Just like `head`/`tail`, `hson` can also work with unstructured text files.)
 
 Available as:
-- CLI (see [Usage](#usage))
-- Python library (see [Python Bindings](#python-bindings))
+- CLI: [Install](#install) · [Usage](#usage)
+- Python library: [Install](#python-bindings-install) · [Usage](#python-bindings-usage)
 
 ![Codecov](https://img.shields.io/codecov/c/github/kantord/headson?style=flat-square) ![Crates.io Version](https://img.shields.io/crates/v/headson?style=flat-square) ![PyPI - Version](https://img.shields.io/pypi/v/headson?style=flat-square)
 
@@ -36,6 +36,12 @@ Available as:
 - Available as a CLI app and as a Python library
 
 ### Extra features
+
+#### Source code mode
+
+For source code files, headson uses a heuristic, indentation-aware parser to build a block hierarchy, then picks representative “interesting” lines from across that structure (while keeping lines atomic so omissions never split a line). Syntax highlighting is available when colors are enabled.
+
+![Code demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/code.gif)
 
 #### Grep mode
 
@@ -57,12 +63,6 @@ Demo tape: `docs/tapes/sort.tape` (renders to `docs/assets/tapes/sort.gif`; `car
 
 ![Sorting demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/sort.gif)
 
-#### Source code mode
-
-For source code files, headson uses a heuristic, indentation-aware parser to build a block hierarchy, then picks representative “interesting” lines from across that structure (while keeping lines atomic so omissions never split a line). Syntax highlighting is available when colors are enabled.
-
-![Code demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/code.gif)
-
 ## Install
 
 Using Cargo:
@@ -76,14 +76,6 @@ From source:
     cargo build --release
     target/release/hson --help
 
-
-## Fits into command line workflows
-
-If you’re comfortable with tools like `head` and `tail`, use `hson` when you want a quick, structured peek into a JSON file without dumping the entire thing.
-
-- `head`/`tail` operate on bytes/lines - their output is not optimized for tree structures
-- `jq`: you need to craft filters to preview large JSON files
-- `hson`: head/tail for trees—zero‑config by default; force text with `-i text` when you want raw lines
 
 ## Usage
 
@@ -266,14 +258,20 @@ hson -c 120 -f json -t strict users.json
 
 A thin Python extension module is available on PyPI as `headson`.
 
-- Install: `pip install headson` (ABI3 wheels for Python 3.10+ on Linux/macOS/Windows).
-- API:
-  - `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", byte_budget: int | None = None, skew: str = "balanced") -> str`
-    - `format`: `"auto" | "json" | "yaml"` (auto maps to JSON family for single inputs)
-    - `style`: `"strict" | "default" | "detailed"`
-    - `input_format`: `"json" | "yaml"` (ingestion)
-    - `byte_budget`: maximum output size in bytes (default: 500)
-    - `skew`: `"balanced" | "head" | "tail"` (affects display styles; strict JSON remains unannotated)
+### Install
+
+`pip install headson` (ABI3 wheels for Python 3.10+ on Linux/macOS/Windows).
+
+### Usage
+
+API:
+
+- `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", byte_budget: int | None = None, skew: str = "balanced") -> str`
+  - `format`: `"auto" | "json" | "yaml"` (auto maps to JSON family for single inputs)
+  - `style`: `"strict" | "default" | "detailed"`
+  - `input_format`: `"json" | "yaml"` (ingestion)
+  - `byte_budget`: maximum output size in bytes (default: 500)
+  - `skew`: `"balanced" | "head" | "tail"` (affects display styles; strict JSON remains unannotated)
 
 Examples:
 
@@ -327,6 +325,11 @@ When `headson` detects a code-like file, it uses a set of additional heuristics:
  - <sup><b>[3]</b></sup> <b>Choose top N nodes (binary search)</b>: Iteratively picks N so that the rendered preview fits within the byte budget, looping between “choose N” and a render attempt to converge quickly.
  - <sup><b>[4]</b></sup> <b>Render attempt</b>: Serializes the currently included nodes using the selected template. Omission summaries and per-file section headers appear in display templates (pseudo/js); json remains strict. For arrays, display templates may insert internal gap markers between non‑contiguous kept items using original indices.
  - <sup><b>[5]</b></sup> <b>Diagram source</b>: The Algorithm diagram is generated from `docs/diagrams/algorithm.mmd`. Regenerate the SVG with `cargo make diagrams` before releasing.
+
+## Comparison with alternatives
+
+- `head`/`tail`: byte/line-based, so output often breaks structure in JSON/YAML or surfaces uninteresting details.
+- `jq`: powerful, but you usually need to write filters to get a compact preview of large JSON.
 
 ## License
 
