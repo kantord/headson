@@ -88,9 +88,8 @@ script = [
       echo "[tapes] rendering $tape"
       tape_dir=$(dirname "$tape")
       tape_base=$(basename "$tape")
-      sort_repo=""
       if [ "$tape_base" = "sort.tape" ]; then
-        sort_repo=$(mktemp -d -p "$ROOT_DIR/.cache" headson-sort-tape-XXXXXX)
+        sort_repo=$(mktemp -d -t headson-sort-tape-XXXXXX)
         (
           set -euo pipefail
           cd "$sort_repo"
@@ -119,7 +118,7 @@ script = [
       (
         cd "$tape_dir"
         PATH="$HSON_DIR:$PATH" \
-        HEADSON_SORT_TAPE_REPO="$sort_repo" \
+        HEADSON_SORT_TAPE_REPO="${sort_repo:-}" \
         GIT_TERMINAL_PROMPT=0 \
         vhs "$tape_base"
       )
@@ -148,7 +147,9 @@ script = [
           mv -f "$guess" "$OUT_DIR/$(basename "$guess")"
         fi
       fi
-      [ -n "$sort_repo" ] && rm -rf "$sort_repo"
+      if [ "${tape_base}" = "sort.tape" ]; then
+        rm -rf "$sort_repo"
+      fi
     done
     echo "[tapes] done"
     ''',
@@ -179,9 +180,8 @@ script = [
     tape="$TAPE"
     tape_dir=$(dirname "$tape")
     tape_base=$(basename "$tape")
-    sort_repo=""
     if [ "$tape_base" = "sort.tape" ]; then
-      sort_repo=$(mktemp -d -p "$ROOT_DIR/.cache" headson-sort-tape-XXXXXX)
+      sort_repo=$(mktemp -d -t headson-sort-tape-XXXXXX)
       (
         set -euo pipefail
         cd "$sort_repo"
@@ -208,7 +208,7 @@ script = [
     (
       cd "$tape_dir"
       PATH="$HSON_DIR:$PATH" \
-      HEADSON_SORT_TAPE_REPO="$sort_repo" \
+      HEADSON_SORT_TAPE_REPO="${sort_repo:-}" \
       GIT_TERMINAL_PROMPT=0 \
       vhs "$tape_base"
     )
@@ -222,7 +222,9 @@ script = [
         esac
       done
     fi
-    [ -n "$sort_repo" ] && rm -rf "$sort_repo"
+    if [ "${tape_base}" = "sort.tape" ]; then
+      rm -rf "$sort_repo"
+    fi
     echo "[tape-one] done"
     ''',
 ]
