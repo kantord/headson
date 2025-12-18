@@ -44,6 +44,14 @@ Preview many files at once in a directory tree layout (inline previews, round‑
 
 ![Tree demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/tree.gif)
 
+#### Sorting
+
+In multi-file mode, inputs are ordered so frequently and recently touched files show up first, and rarely touched files drift to the end (using git history when available, with mtime fallback). Use a global byte budget (`--global-bytes`) to get an up‑to‑date repo snapshot within a strict overall limit (and `--chars` when you want a per-file character cap).
+
+Demo tape: `docs/tapes/sort.tape` (renders to `docs/assets/tapes/sort.gif`; `cargo make` creates a tiny temporary git repo for a deterministic demo).
+
+![Sorting demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/sort.gif)
+
 ## Install
 
 Using Cargo:

@@ -73,6 +73,7 @@ script = [
     TAPES_DIR=docs/tapes
     OUT_DIR=docs/assets/tapes
     mkdir -p "$OUT_DIR"
+    mkdir -p "$ROOT_DIR/.cache"
     if ! command -v vhs >/dev/null 2>&1; then
       echo "Error: 'vhs' not found on PATH. Install from https://github.com/charmbracelet/vhs" >&2
       exit 1
@@ -87,10 +88,40 @@ script = [
       echo "[tapes] rendering $tape"
       tape_dir=$(dirname "$tape")
       tape_base=$(basename "$tape")
+      if [ "$tape_base" = "sort.tape" ]; then
+        sort_repo=$(mktemp -d -t headson-sort-tape-XXXXXX)
+        (
+          set -euo pipefail
+          cd "$sort_repo"
+          git init -q
+          git config user.email demo@example.com
+          git config user.name demo
+          git config commit.gpgsign false
+          mkdir -p data src
+          printf '%s\n' '{"alpha":1}' > data/alpha.json
+          printf '%s\n' '{"zeta":0}' > data/zeta.json
+          printf '%s\n' 'print("hello")' > src/main.py
+          printf '%s\n' 'export function add(a: number, b: number) { return a + b; }' > src/util.ts
+          git add .
+          git commit -qm 'init'
+          printf '%s\n' '{"zeta":1}' > data/zeta.json
+          git add data/zeta.json
+          git commit -qm 'touch zeta'
+          printf '%s\n' '{"zeta":2}' > data/zeta.json
+          git add data/zeta.json
+          git commit -qm 'touch zeta again'
+        )
+      fi
       # Collect declared outputs from the tape (relative to tape_dir)
       mapfile -t outputs < <(sed -n 's/^Output[[:space:]]\+//p' "$tape") || true
       # Run vhs from the tape directory so relative Output paths land there
-      (cd "$tape_dir" && PATH="$HSON_DIR:$PATH" vhs "$tape_base")
+      (
+        cd "$tape_dir"
+        PATH="$HSON_DIR:$PATH" \
+        R="${sort_repo:-}" \
+        GIT_TERMINAL_PROMPT=0 \
+        vhs "$tape_base"
+      )
       # Move declared outputs to OUT_DIR (if any declared); else try a sane default GIF name
       if [ ${#outputs[@]} -gt 0 ]; then
         for o in "${outputs[@]}"; do
@@ -116,6 +147,9 @@ script = [
           mv -f "$guess" "$OUT_DIR/$(basename "$guess")"
         fi
       fi
+      if [ "${tape_base}" = "sort.tape" ]; then
+        rm -rf "$sort_repo"
+      fi
     done
     echo "[tapes] done"
     ''',
@@ -138,6 +172,7 @@ script = [
     : "${TAPE:?Set TAPE to a .tape file, e.g., TAPE=docs/tapes/demo.tape}"
     OUT_DIR=docs/assets/tapes
     mkdir -p "$OUT_DIR"
+    mkdir -p "$ROOT_DIR/.cache"
     if ! command -v vhs >/dev/null 2>&1; then
       echo "Error: 'vhs' not found on PATH. Install from https://github.com/charmbracelet/vhs" >&2
       exit 1
@@ -145,8 +180,38 @@ script = [
     tape="$TAPE"
     tape_dir=$(dirname "$tape")
     tape_base=$(basename "$tape")
+    if [ "$tape_base" = "sort.tape" ]; then
+      sort_repo=$(mktemp -d -t headson-sort-tape-XXXXXX)
+      (
+        set -euo pipefail
+        cd "$sort_repo"
+        git init -q
+        git config user.email demo@example.com
+        git config user.name demo
+        git config commit.gpgsign false
+        mkdir -p data src
+        printf '%s\n' '{"alpha":1}' > data/alpha.json
+        printf '%s\n' '{"zeta":0}' > data/zeta.json
+        printf '%s\n' 'print("hello")' > src/main.py
+        printf '%s\n' 'export function add(a: number, b: number) { return a + b; }' > src/util.ts
+        git add .
+        git commit -qm 'init'
+        printf '%s\n' '{"zeta":1}' > data/zeta.json
+        git add data/zeta.json
+        git commit -qm 'touch zeta'
+        printf '%s\n' '{"zeta":2}' > data/zeta.json
+        git add data/zeta.json
+        git commit -qm 'touch zeta again'
+      )
+    fi
     mapfile -t outputs < <(sed -n 's/^Output[[:space:]]\+//p' "$tape") || true
-    (cd "$tape_dir" && PATH="$HSON_DIR:$PATH" vhs "$tape_base")
+    (
+      cd "$tape_dir"
+      PATH="$HSON_DIR:$PATH" \
+      R="${sort_repo:-}" \
+      GIT_TERMINAL_PROMPT=0 \
+      vhs "$tape_base"
+    )
     if [ ${#outputs[@]} -gt 0 ]; then
       for o in "${outputs[@]}"; do
         case "$o" in
@@ -156,6 +221,9 @@ script = [
           *) ;;
         esac
       done
+    fi
+    if [ "${tape_base}" = "sort.tape" ]; then
+      rm -rf "$sort_repo"
     fi
     echo "[tape-one] done"
     ''',
