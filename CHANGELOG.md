@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.3](https://github.com/kantord/headson/compare/headson-v0.11.2...headson-v0.11.3) - 2025-12-18
+
+### Fixed
+
+- *(deps)* update rust crate yaml-rust2 to 0.11 ([#387](https://github.com/kantord/headson/pull/387))
+
+### Other
+
+- improve readme ([#399](https://github.com/kantord/headson/pull/399))
+- document source code support ([#398](https://github.com/kantord/headson/pull/398))
+- simplify features section in README.md ([#395](https://github.com/kantord/headson/pull/395))
+- add tape about sorting ([#397](https://github.com/kantord/headson/pull/397))
+- docs improvements ([#394](https://github.com/kantord/headson/pull/394))
+- add additional demo tapes ([#392](https://github.com/kantord/headson/pull/392))
+- add navigation bar ([#389](https://github.com/kantord/headson/pull/389))
+
 ## [0.11.2](https://github.com/kantord/headson/compare/headson-v0.11.1...headson-v0.11.2) - 2025-12-16
 
 ### Other
