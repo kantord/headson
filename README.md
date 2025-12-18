@@ -49,11 +49,11 @@ Preview many files at once in a directory tree layout (inline previews, round‑
 
 ![Tree demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/tree.gif)
 
-#### Sorting (frecency)
+#### Sorting
 
-By default, filesets are sorted by frecency (git history) with mtime fallback so “recently touched” files surface first. Use global budgets (`--global-lines`, `--global-bytes`) to get an up‑to‑date repo snapshot within a strict overall limit (and `--chars` when you want a per-file character cap); use `--no-sort` to keep input order and skip the repo scan.
+In multi-file mode, inputs are ordered so frequently and recently touched files show up first, and rarely touched files drift to the end (using git history when available, with mtime fallback). Use global budgets (`--global-lines`, `--global-bytes`) to get an up‑to‑date repo snapshot within a strict overall limit (and `--chars` when you want a per-file character cap).
 
-Demo tape: `docs/tapes/sort.tape` (renders to `docs/assets/tapes/sort.gif`; the `cargo make` runner creates a tiny temporary git repo to demonstrate frecency deterministically).
+Demo tape: `docs/tapes/sort.tape` (renders to `docs/assets/tapes/sort.gif`; `cargo make` creates a tiny temporary git repo for a deterministic demo).
 
 ![Sorting demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/sort.gif)
 
