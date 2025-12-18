@@ -69,7 +69,7 @@ Using Cargo:
 
     cargo install headson
 
-> Note: the CLI installs as `hson`. All examples below use `hson ...`.
+> Note: the package is called `headson`, but the installed CLI command is `hson`. All examples below use `hson ...`.
 
 From source:
 
