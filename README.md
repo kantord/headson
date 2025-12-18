@@ -39,9 +39,11 @@ Available as:
 
 #### Source code mode
 
-For source code files, headson uses a heuristic, indentation-aware parser to build a block hierarchy, then picks representative “interesting” lines from across that structure (while keeping lines atomic so omissions never split a line). Syntax highlighting is available when colors are enabled.
+For source code files, headson uses an indentation-aware heuristic to build an outline, then picks representative lines from across that structure (while keeping lines atomic so omissions never split a line). Syntax highlighting is available when colors are enabled.
 
 ![Code demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/code.gif)
+
+Learn more: [Source code support](#source-code-support)
 
 #### Grep mode
 
@@ -58,8 +60,6 @@ Preview many files at once in a directory tree layout (inline previews, round‑
 #### Sorting
 
 In multi-file mode, inputs are ordered so frequently and recently touched files show up first, and rarely touched files drift to the end (using git history when available, with mtime fallback). Use a global byte budget (`--global-bytes`) to get an up‑to‑date repo snapshot within a strict overall limit (and `--chars` when you want a per-file character cap).
-
-Demo tape: `docs/tapes/sort.tape` (renders to `docs/assets/tapes/sort.gif`; `cargo make` creates a tiny temporary git repo for a deterministic demo).
 
 ![Sorting demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/sort.gif)
 
@@ -128,21 +128,31 @@ Source code outline (keeps lines intact; omits blocks under tight budgets):
 hson -n 20 src/main.py
 ```
 
-Common flags:
+### Detailed documentation
+
+- [Common flags](#common-flags)
+- [Multi-file mode](#multi-file-mode)
+- [Grep mode](#grep-mode)
+- [Tree mode](#tree-mode)
+- [Budget modes](#budget-modes)
+- [Text mode](#text-mode)
+- [Source code support](#source-code-support)
+
+#### Common flags
 
 - `-c, --bytes <BYTES>`: per‑file output budget (bytes). For multiple inputs, default total budget is `<BYTES> * number_of_inputs`.
 - `-u, --chars <CHARS>`: per‑file output budget (Unicode code points). Behaves like `--bytes` but counts characters instead of bytes.
 - `-C, --global-bytes <BYTES>`: total output budget across all inputs. With `--bytes`, the effective total is the smaller of the two.
 - `-f, --format <auto|json|yaml|text>`: output format (default: `auto`).
-  - Auto: stdin → JSON family; filesets → per‑file based on extension (`.json` → JSON family, `.yaml`/`.yml` → YAML, unknown → Text).
+  - Auto: stdin → JSON family; multi-file mode → per‑file based on extension (`.json` → JSON family, `.yaml`/`.yml` → YAML, unknown → Text).
 - `-t, --template <strict|default|detailed>`: output style (default: `default`).
   - JSON family: `strict` → strict JSON; `default` → Pseudo; `detailed` → JS with inline comments.
   - YAML: always YAML; style only affects comments (`strict` none, `default` “# …”, `detailed` “# N more …”).
-- `-i, --input-format <json|yaml|text>`: ingestion format (default: `json`). For filesets in `auto` format, ingestion is chosen by extensions.
+- `-i, --input-format <json|yaml|text>`: ingestion format (default: `json`). In multi-file mode with `--format auto`, ingestion is chosen by extensions.
 - `-m, --compact`: no indentation, no spaces, no newlines
 - `--no-newline`: single line output
-- `--no-header`: suppress fileset section headers (useful when embedding output in scripts)
-- `--tree`: render filesets as a directory tree with inline previews (keeps code line numbers); uses per-file auto formatting.
+- `--no-header`: suppress per-file section headers (useful when embedding output in scripts)
+- `--tree`: render multi-file previews as a directory tree with inline previews (keeps code line numbers); uses per-file auto formatting.
 - `--no-space`: no space after `:` in objects
 - `--indent <STR>`: indentation unit (default: two spaces)
 - `--string-cap <N>`: max graphemes to consider per string (default: 500)
@@ -154,51 +164,50 @@ Notes:
 
 - Multiple inputs:
   - With newlines enabled, file sections are rendered with human‑readable headers (pass `--no-header` to suppress them). In compact/single‑line modes, headers are omitted.
-  - Order: inputs are sorted by git frecency (via frecenfile) when available, then by mtime; pass `--no-sort` to keep the original input order without repo scanning.
-  - Fairness: fileset nodes are interleaved round‑robin during selection so tight budgets don’t starve later files.
+  - Order: in git repos, files are ordered so frequently and recently touched files show up first, with mtime fallback; pass `--no-sort` to keep the original input order without repo scanning.
+  - Fairness: file contents are interleaved round‑robin during selection so tight budgets don’t starve later files.
 - In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
   - Unknown extensions are treated as Text (raw lines) — safe for logs and `.txt` files.
   - `--global-bytes` may truncate or omit entire files to respect the total budget.
-  - The tool finds the largest preview that fits the budget; even if extremely tight, you still get a minimal, valid preview.
   - Directories and binary files are ignored; a notice is printed to stderr for each. Stdin reads the stream as‑is.
-  - Head vs Tail sampling: these options bias which part of arrays are kept before rendering. Display styles may still insert internal gap markers to honor very small budgets; strict JSON stays unannotated.
+  - Head vs Tail sampling: these options bias which part of arrays are kept before rendering; strict JSON stays unannotated.
 
-### Working with multiple files
+#### Multi-file mode
 
 - Budgets: per-file caps (`--bytes`/`--chars`/`--lines`) apply to each input; global caps (`--global-*`) constrain the combined output when set. Default byte/char budgets scale by input count when no globals are set; line caps stay per-file unless you pass `--global-lines`.
 - One metric per level: pick at most one per-file budget flag (`--bytes` | `--chars` | `--lines`) and at most one global flag (`--global-bytes` | `--global-lines`). Mixing per-file and global kinds is allowed (e.g., per-file lines + global bytes); conflicting flags error.
-- Sorting: inputs are pre-sorted by git frecency (frecenfile) with last-modified-time fallback so recently touched files appear first. Pass `--no-sort` to preserve the order you provided and skip repo scanning.
-- Headers: fileset sections get `==>` headers when newlines are enabled; hide them with `--no-header`. Compact and single-line modes omit headers automatically.
-- Formats: in `--format auto`, each file picks JSON/YAML/Text based on extension; unknowns fall back to Text so mixed filesets “just work.”
+- Sorting: inputs are ordered so frequently and recently touched files appear first (git metadata when available, mtime fallback). Pass `--no-sort` to preserve the order you provided and skip repo scanning.
+- Headers: multi-file output gets `==>` headers when newlines are enabled; hide them with `--no-header`. Compact and single-line modes omit headers automatically.
+- Formats: in `--format auto`, each file picks JSON/YAML/Text based on extension; unknowns fall back to Text so mixed inputs “just work.”
 - Per-file caps: omission markers count toward per-file line budgets; a per-file line cap of zero suppresses the file entirely, even when headers are counted.
 
-## Grep mode
+#### Grep mode
 
 Use `--grep <REGEX>` to guarantee inclusion of values/keys/lines matching the regex (ripgrep-style). Matches plus their ancestors are “free” against budgets; everything else must fit the remaining headroom.
 
-- Matching: values/lines are checked; object keys match too, except for filenames in filesets (no filename-only hits).
+- Matching: values/lines are checked; object keys match too. Filenames do not match by themselves (a file must have a matching value/line/key).
 - Colors: only the matching text is highlighted; syntax colors are suppressed in grep mode. Disable color entirely with `--no-color`.
-- Weak grep: `--weak-grep <REGEX>` biases priority toward matches but does not guarantee inclusion, expand budgets, or filter filesets. Budgets stay exact and matches can still be pruned if they do not fit.
-- Filesets (strong `--grep` only):
+- Weak grep: `--weak-grep <REGEX>` biases priority toward matches but does not guarantee inclusion, expand budgets, or filter files. Budgets stay exact and matches can still be pruned if they do not fit.
+- Multi-file mode (strong `--grep` only):
   - Default (`--grep-show=matching`): files without matches are dropped from the render and summary. If no files match at all, the output is empty and the CLI prints a notice to stderr.
   - `--grep-show=all`: keep non-matching files in the render; only matching files are highlighted.
   - Headers respect `--no-header` as usual.
 - Mutual exclusion: `--grep-show` requires `--grep` and cannot be used with `--weak-grep`; `--weak-grep` cannot be combined with `--grep`.
 - Context: there are no explicit `-C/-B/-A` style flags; per-file budgets decide how much surrounding structure/lines can stay alongside the must-keep matches.
 - Budgets: matches and ancestors always render; remaining budget determines what else can appear. Extremely tight budgets may show only the must-keep path.
-- Text/code: works with `-i text` and code-like files; when using `--format auto`, file extensions still decide ingest/rendering.
+- Text/source code: works with `-i text` and source code files; when using `--format auto`, file extensions still decide ingest/rendering.
 
-## Tree mode
+#### Tree mode
 
-Use `--tree` to render filesets as a directory tree (like `tree`) with inline structured previews instead of per-file headers. Works with grep/weak-grep; matches are shown inside the tree.
+Use `--tree` to render multi-file output as a directory tree (like `tree`) with inline structured previews instead of per-file headers. Works with grep/weak-grep; matches are shown inside the tree.
 
 - Layout: classic tree branches (`├─`, `│`, `└─`) with continuous guides; code gutters stay visible under the tree prefix.
-- Headers: `--tree` is mutually exclusive with `--no-header`; tree mode never prints `==>` headers and relies on the tree structure instead. Files are still auto-formatted per extension (`--format` must be `auto` for filesets).
+- Headers: `--tree` is mutually exclusive with `--no-header`; tree mode never prints `==>` headers and relies on the tree structure instead. Files are still auto-formatted per extension (`--format` must be `auto` in multi-file mode).
 - Budgets: tree scaffolding is treated like headers (free unless you set `--count-headers`); per-file budgets always apply to file content and omission markers, and global caps apply only when provided. Tight budgets can truncate file previews within the tree, and entire files may be omitted under tiny global line budgets—omitted entries are reported as `… N more items` on the relevant folder/root. When scaffold is free, the final output can exceed the requested caps by the tree gutters/indentation; set `--count-headers` if those characters must be bounded.
 - Empty sections: under very small per-file caps (or a tiny global cap, if set), files or code blocks may render only their header/tree entry with no body; omission markers appear only when at least one child fits. This is expected when nothing fits beneath the budget.
-- Sorting: respects `--no-sort`; otherwise uses the usual frecency/mtime ordering before tree grouping.
+- Sorting: respects `--no-sort`; otherwise uses the usual repo-aware ordering (frequent+recent first; mtime fallback) before tree grouping.
 - Fairness: file contents are interleaved round‑robin in the priority order so later files still surface under tight budgets.
-## Budget Modes
+#### Budget modes
 
 - Bytes (`-c/--bytes`, `-C/--global-bytes`)
   - Measures UTF‑8 bytes in the output.
@@ -212,15 +221,15 @@ Use `--tree` to render filesets as a directory tree (like `tree`) with inline st
   - Caps the number of lines in the output.
   - Incompatible with `--no-newline`.
   - Multiple inputs: `<LINES>` is enforced per file; add `--global-lines` if you also need an aggregate cap.
-  - Fileset headers, blank separators, and summary lines do not count toward the line cap by default; only actual content lines are considered. Pass `-H/--count-headers` to include headers/summaries in the line budget.
+  - Per-file headers, blank separators, and summary lines do not count toward the line cap by default; only actual content lines are considered. Pass `-H/--count-headers` to include headers/summaries in the line budget.
   - Tiny caps may yield omission markers instead of bodies (e.g., `…` for text/code, `{…}`/`[…]` for objects/arrays); a single-line file still renders when it fits.
 
 - Interactions and precedence
   - All active budgets are enforced simultaneously. The render must satisfy all of: bytes (if set), chars (if set), and lines (if set). The strictest cap wins.
-  - Outputs stay non-empty unless you explicitly set a per-file cap of zero; in that case that slot can be suppressed entirely (matching the CLI’s `-n 0` semantics). Extremely tight nonzero caps that cannot fit even an omission marker can also yield empty output; filesets/tree may show only omission counts in that scenario.
+  - Outputs stay non-empty unless you explicitly set a per-file cap of zero; in that case that slot can be suppressed entirely (matching the CLI’s `-n 0` semantics). Extremely tight nonzero caps that cannot fit even an omission marker can also yield empty output; multi-file/tree output may show only omission counts in that scenario.
   - When only lines are specified, no implicit byte cap applies. When neither lines nor chars are specified, a 500‑byte default applies.
 
-### Text mode
+#### Text mode
 
 - Single file (auto):
 
@@ -237,7 +246,15 @@ Use `--tree` to render filesets as a directory tree (like `tree`) with inline st
   - detailed: omission as `… N more lines …`.
   - strict: no array‑level omission line (individual long lines may still truncate with `…`).
 
-> **Note:** Filesets always render with per-file auto templates. When you need to preview a directory of mixed formats, skip `-f text` and let `-f auto` pick the right renderer for each entry.
+> **Note:** In multi-file mode, each file uses its own auto format/template. When you need to preview a directory of mixed formats, skip `-f text` and let `-f auto` pick the right renderer for each entry.
+
+#### Source code support
+
+For source code files, headson uses an indentation-aware heuristic to build an outline, then samples representative lines from across that structure.
+
+- Lines are kept atomic: omission markers never split a line in half.
+- Under tight budgets, it tends to keep block-introducing lines (like function/class headers) and omit less relevant blocks from the middle.
+- With colors enabled, you also get syntax highlighting and line numbers.
 
 Show help:
 
@@ -256,7 +273,7 @@ Input:
 If you `head -c` a JSON file/stream, you can cut it in the middle of a value and end up with a confusing snippet:
 
 ```bash
-jq -c . users.json | head -c 80
+head -c 80 users.json
 # {"users":[{"id":1,"name":"Ana","roles":["admin","dev"]},{"id":2,"name":"Bo"}],"me
 ```
 
@@ -284,10 +301,12 @@ hson -c 120 -f json -t strict users.json
 
 A thin Python extension module is available on PyPI as `headson`.
 
+<a id="python-bindings-install"></a>
 ### Install
 
 `pip install headson` (ABI3 wheels for Python 3.10+ on Linux/macOS/Windows).
 
+<a id="python-bindings-usage"></a>
 ### Usage
 
 API:
@@ -324,22 +343,6 @@ print(
 doc = "root:\n  items: [1,2,3,4,5,6,7,8,9,10]\n"
 print(headson.summarize(doc, format="yaml", style="default", input_format="yaml", byte_budget=60))
 ```
-
-## Source Code Support
-
-Source code support is a challenging area. While `headson`'s algorithm and code structure would allow for the use of
-completely accurate parsing using language-specific parsers using `tree-sitter`, this would increase the complexity
-of the application and its number of dependencies.
-
-Instead of attempting a deep parse of source code files, we convert them into nested arrays based on a heuristic that
-understands indentation patterns in the file.
-
-When `headson` detects a code-like file, it uses a set of additional heuristics:
-- **Atomic line ingest**: each line is treated as an atomic string so omission markers never split a code line.
-- **Depth-aware sampling**:
-  - We attempt to include more of the top level of the source code in order to give a good overview of classes, function and constants at the top level.
-  - Nested blocks (function bodies, loops) prefer to omit lines in the middle to attempt to preserve natural "block" boundaries
-- **Header priority**: lines that introduce a nested block (e.g., `def foo():`) get a small priority boost to ensure they survive tight budgets.
 
 # Algorithm
 
