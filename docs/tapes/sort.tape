@@ -24,7 +24,3 @@ Sleep 5s
 Type "# Compare: preserve input order (no sorting)." Sleep 200ms Enter
 Type "hson --glob 'src/*' --glob 'data/*' --tree -c 180 -C 260 --no-sort" Sleep 400ms Enter
 Sleep 5s
-
-Type "# Tighter global cap still keeps the most relevant files visible." Sleep 200ms Enter
-Type "hson --glob 'src/*' --glob 'data/*' --tree -c 140 -C 110" Sleep 400ms Enter
-Sleep 5s
