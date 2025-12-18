@@ -57,6 +57,12 @@ Demo tape: `docs/tapes/sort.tape` (renders to `docs/assets/tapes/sort.gif`; `car
 
 ![Sorting demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/sort.gif)
 
+#### Source code mode
+
+For code-like files, headson uses a heuristic, indentation-aware parser to build a block hierarchy, then picks representative “interesting” lines from across that structure (while keeping lines atomic so omissions never split a line). Syntax highlighting is available in the Code renderer when colors are enabled.
+
+![Code demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/code.gif)
+
 ## Install
 
 Using Cargo:
