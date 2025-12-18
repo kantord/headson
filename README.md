@@ -25,22 +25,27 @@ Available as:
 
 ## Features
 
-- Budgeted output: specify exactly how much you want to see
-ed or per-file budget
-- Fast: processes gigabyte‑scale JSON files in seconds (mostly disk‑bound)
+- Budgeted output: specify exactly how much you want to see (bytes/chars/lines; per-file and global caps)
+- Output formats: `auto | json | yaml | text` with styles `strict | default | detailed`
+- Structure-aware parsing: full JSON/YAML parsing (preserves tree shape under truncation)
+- Source code support: heuristic, indentation-aware summaries that keep lines atomic
+- Multi-file mode: preview many files at once (paths and `--glob ...`) with shared or per-file budgets
+- Repo-aware ordering: in git repos, frequent+recent files show up first (rarely touched files drift to the end; mtime fallback)
+- `grep`-like search and `tree`-like view: `--grep <regex>` and `--tree` emulate the workflows while still summarizing file contents inline
+- Fast: processes gigabyte‑scale files in seconds (mostly disk‑bound)
 - Available as a CLI app and as a Python library
 
 ### Extra features
 
 #### Grep mode
 
-Guarantee that matching keys/values stay in view under tight budgets (supports filesets via `--glob`).
+Guarantee that matching keys/values stay in view under tight budgets (supports multi-file mode via `--glob`).
 
 ![Grep demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/grep.gif)
 
 #### Tree mode
 
-Preview many files at once in a directory tree layout (inline previews, round‑robin fairness; supports filesets via `--glob`).
+Preview many files at once in a directory tree layout (inline previews, round‑robin fairness; supports multi-file mode via `--glob`).
 
 ![Tree demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/tree.gif)
 
