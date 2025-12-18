@@ -9,7 +9,7 @@ Output code.gif
 
 Require hson
 
-Type "# Source code: get the shape of the file without dumping it all." Sleep 200ms Enter
+Type "# Source code: get an outline of the file without printing every line." Sleep 200ms Enter
 Type "# Keeps important lines (like function/class headers) and omits the boring middle." Sleep 200ms Enter
 Type "hson fixtures/code_demo/big.py -n 12" Sleep 400ms Enter
 Sleep 5s
