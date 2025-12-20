@@ -1,10 +1,42 @@
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use assert_cmd::cargo::cargo_bin_cmd;
 use filetime::{FileTime, set_file_mtime};
 use git2::{Repository, Signature, Time};
 use tempfile::tempdir;
+
+static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+struct EnvGuard {
+    key: &'static str,
+    prev: Option<OsString>,
+}
+
+impl EnvGuard {
+    fn set_path(key: &'static str, value: &Path) -> Self {
+        let prev = std::env::var_os(key);
+        unsafe {
+            std::env::set_var(key, value);
+        }
+        Self { key, prev }
+    }
+}
+
+impl Drop for EnvGuard {
+    fn drop(&mut self) {
+        match self.prev.take() {
+            Some(value) => unsafe {
+                std::env::set_var(self.key, value);
+            },
+            None => unsafe {
+                std::env::remove_var(self.key);
+            },
+        }
+    }
+}
 
 fn rel_to_workdir(path: &Path, repo: &Repository) -> PathBuf {
     let workdir = repo.workdir().expect("workdir");
@@ -98,9 +130,11 @@ fn frecency_orders_fileset_by_recent_commit() {
     .expect("mtime b");
 
     // Sanity-check frecency ordering from the library directly.
-    unsafe {
-        std::env::set_var("XDG_CACHE_HOME", dir.path().join("cache"));
-    }
+    let _env_lock = ENV_LOCK.lock().expect("env lock");
+    let cache_dir = dir.path().join("cache");
+    let _cache_guard = EnvGuard::set_path("FRECENFILE_CACHE_DIR", &cache_dir);
+    let _xdg_guard = EnvGuard::set_path("XDG_CACHE_HOME", &cache_dir);
+    let _home_guard = EnvGuard::set_path("HOME", dir.path());
     let mut scores = frecenfile::analyze_repo(dir.path(), None, None)
         .expect("frecenfile scores");
     scores.sort_by(|a, b| {
@@ -113,7 +147,9 @@ fn frecency_orders_fileset_by_recent_commit() {
     let mut cmd = cargo_bin_cmd!("hson");
     let assert = cmd
         .current_dir(dir.path())
-        .env("XDG_CACHE_HOME", dir.path().join("cache"))
+        .env("FRECENFILE_CACHE_DIR", &cache_dir)
+        .env("HOME", dir.path())
+        .env("XDG_CACHE_HOME", &cache_dir)
         .args([
             "--no-color",
             "-i",
