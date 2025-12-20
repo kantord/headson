@@ -1,17 +1,18 @@
+mod common;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
 use test_each_file::test_each_path;
 
 fn run_cli(input: &[u8]) -> (bool, Vec<u8>, Vec<u8>) {
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args(["--no-color", "-c", "10000", "-f", "json"]) // ensure valid JSON output
-        .write_stdin(input)
-        .assert();
-    let ok = assert.get_output().status.success();
-    let out = assert.get_output().stdout.clone();
-    let err = assert.get_output().stderr.clone();
-    (ok, out, err)
+    let out = common::run_cli(
+        &["--no-color", "-c", "10000", "-f", "json"],
+        Some(input),
+    );
+    let ok = out.status.success();
+    let stdout = out.stdout;
+    let stderr = out.stderr;
+    (ok, stdout, stderr)
 }
 
 fn is_y(path: &Path) -> bool {

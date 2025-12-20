@@ -1,3 +1,4 @@
+mod common;
 use std::fs;
 
 #[test]
@@ -9,19 +10,19 @@ fn single_file_auto_handles_yml_and_uppercase_extensions() {
     fs::write(&p2, b"x: 2\n").unwrap();
 
     for p in [&p1, &p2] {
-        let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-        let assert = cmd
-            .args([
+        let out = common::run_cli(
+            &[
                 "--no-color",
                 "-c",
                 "10000",
                 "-f",
                 "auto",
                 p.to_str().unwrap(),
-            ])
-            .assert()
-            .success();
-        let out = String::from_utf8_lossy(&assert.get_output().stdout);
+            ],
+            None,
+        );
+        assert!(out.status.success(), "cli should succeed");
+        let out = String::from_utf8_lossy(&out.stdout);
         assert!(out.contains(":"), "expected YAML mapping syntax: {out:?}");
     }
 }

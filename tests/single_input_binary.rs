@@ -1,3 +1,4 @@
+mod common;
 use std::fs;
 use tempfile::tempdir;
 
@@ -7,17 +8,12 @@ fn single_binary_file_is_ignored_with_notice() {
     let bin = dir.path().join("binfile");
     fs::write(&bin, [0x00, 0x01, 0xFF, 0xFE]).expect("write bin");
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .arg("--no-color")
-        .arg(bin.to_string_lossy().to_string())
-        .assert();
+    let output =
+        common::run_cli(&["--no-color", bin.to_string_lossy().as_ref()], None);
 
-    let status = assert.get_output().status.success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
-    let err =
-        String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
+    let status = output.status.success();
+    let out = String::from_utf8_lossy(&output.stdout).into_owned();
+    let err = String::from_utf8_lossy(&output.stderr).into_owned();
 
     assert!(status, "should succeed");
     assert!(

@@ -1,3 +1,4 @@
+mod common;
 #[path = "../test_support/mod.rs"]
 mod util;
 use std::fs::{self, File};
@@ -24,7 +25,6 @@ fn run_with_input_path(
     extra: &[&str],
 ) -> (bool, String, String) {
     let budget_s = budget.to_string();
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let mut args = vec!["--no-color", "-c", &budget_s];
     let lower = template.to_ascii_lowercase();
     match lower.as_str() {
@@ -36,13 +36,11 @@ fn run_with_input_path(
     }
     args.push(path);
     args.extend_from_slice(extra);
-    let assert = cmd.args(args).assert();
-    let ok = assert.get_output().status.success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
-    let err =
-        String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
-    (ok, out, err)
+    let output = common::run_cli(&args, None);
+    let ok = output.status.success();
+    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    (ok, stdout, stderr)
 }
 
 #[test]
@@ -80,9 +78,8 @@ fn directories_and_binary_files_are_ignored_with_notices() {
     let json_path = tmpdir.path().join("data.json");
     write_json_file(&json_path, b"{\"a\":1}");
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .args([
+    let output = common::run_cli(
+        &[
             "--no-color",
             "-c",
             "100",
@@ -91,12 +88,13 @@ fn directories_and_binary_files_are_ignored_with_notices() {
             json_path.to_str().unwrap(),
             dir_path.to_str().unwrap(),
             bin_path.to_str().unwrap(),
-        ])
-        .assert();
+        ],
+        None,
+    );
 
-    let ok = assert.get_output().status.success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
-    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+    let ok = output.status.success();
+    let out = String::from_utf8_lossy(&output.stdout);
+    let err = String::from_utf8_lossy(&output.stderr);
     assert!(ok, "cli should succeed: {err}");
     assert!(out.contains("\n") || out.contains('{'));
     assert!(
@@ -120,9 +118,8 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
     write_binary_file(&bin_path);
 
     // Case 1: single ignored path -> falls into included == 0 branch, empty output
-    let mut cmd1 = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert1 = cmd1
-        .args([
+    let output1 = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "-c",
@@ -130,19 +127,19 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
             "-f",
             "auto",
             dir_path.to_str().unwrap(),
-        ])
-        .assert();
-    let ok1 = assert1.get_output().status.success();
-    let out1 = String::from_utf8_lossy(&assert1.get_output().stdout);
-    let err1 = String::from_utf8_lossy(&assert1.get_output().stderr);
+        ],
+        None,
+    );
+    let ok1 = output1.status.success();
+    let out1 = String::from_utf8_lossy(&output1.stdout);
+    let err1 = String::from_utf8_lossy(&output1.stderr);
     assert!(ok1, "cli should succeed: {err1}");
     assert_eq!(out1, "\n", "expected empty output when nothing included");
     assert!(err1.contains("Ignored directory:"));
 
     // Case 2: multiple ignored paths -> no included inputs, empty output
-    let mut cmd2 = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert2 = cmd2
-        .args([
+    let output2 = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "-c",
@@ -151,11 +148,12 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
             "auto",
             dir_path.to_str().unwrap(),
             bin_path.to_str().unwrap(),
-        ])
-        .assert();
-    let ok2 = assert2.get_output().status.success();
-    let out2 = String::from_utf8_lossy(&assert2.get_output().stdout);
-    let err2 = String::from_utf8_lossy(&assert2.get_output().stderr);
+        ],
+        None,
+    );
+    let ok2 = output2.status.success();
+    let out2 = String::from_utf8_lossy(&output2.stdout);
+    let err2 = String::from_utf8_lossy(&output2.stderr);
     assert!(ok2, "cli should succeed: {err2}");
     assert_eq!(out2, "\n", "expected empty output when nothing included");
     assert!(
@@ -177,42 +175,44 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
     fs::write(&b, b"[1,2,3,4,5,6,7,8,9,10]").unwrap();
 
     // Per-file budget (-c) scenario
-    let mut cmd_pf = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert_pf = cmd_pf
-        .args([
+    let out_pf = {
+        let args = [
             "--no-color",
             "--no-sort",
             "-c",
             "40",
             "-f",
             "auto",
-            "a.json",
-            "b.json",
-        ])
-        .current_dir(tmp.path())
-        .assert()
-        .success();
-    let out_pf =
-        String::from_utf8_lossy(&assert_pf.get_output().stdout).into_owned();
+            a.to_str().unwrap(),
+            b.to_str().unwrap(),
+        ];
+        let output = common::run_cli(&args, None);
+        assert!(
+            output.status.success(),
+            "cli should succeed for per-file budget"
+        );
+        String::from_utf8_lossy(&output.stdout).into_owned()
+    };
 
     // Global budget scenario
-    let mut cmd_g = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert_g = cmd_g
-        .args([
+    let out_g = {
+        let args = [
             "--no-color",
             "--no-sort",
             "--global-bytes",
             "40",
             "-f",
             "auto",
-            "a.json",
-            "b.json",
-        ])
-        .current_dir(tmp.path())
-        .assert()
-        .success();
-    let out_g =
-        String::from_utf8_lossy(&assert_g.get_output().stdout).into_owned();
+            a.to_str().unwrap(),
+            b.to_str().unwrap(),
+        ];
+        let output = common::run_cli(&args, None);
+        assert!(
+            output.status.success(),
+            "cli should succeed for global budget"
+        );
+        String::from_utf8_lossy(&output.stdout).into_owned()
+    };
 
     assert!(
         out_g.len() <= out_pf.len(),

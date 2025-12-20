@@ -1,18 +1,16 @@
+mod common;
 use std::fs;
 use tempfile::tempdir;
 
 fn run_with_paths_json(paths: &[&str]) -> (bool, String, String) {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // large budget to avoid truncation
     let mut args =
         vec!["--no-color", "--no-sort", "-c", "100000", "-f", "auto"];
     args.extend_from_slice(paths);
-    let assert = cmd.args(args).assert();
-    let ok = assert.get_output().status.success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
-    let err =
-        String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
+    let output = common::run_cli(&args, None);
+    let ok = output.status.success();
+    let out = String::from_utf8_lossy(&output.stdout).into_owned();
+    let err = String::from_utf8_lossy(&output.stderr).into_owned();
     (ok, out, err)
 }
 
