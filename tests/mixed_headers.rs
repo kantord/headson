@@ -1,17 +1,15 @@
+mod common;
 use insta::assert_snapshot;
 use std::path::PathBuf;
 
 fn run(args: &[&str]) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .args(
-            std::iter::once("--no-color")
-                .chain(std::iter::once("--no-sort"))
-                .chain(args.iter().copied()),
-        )
-        .assert()
-        .success();
-    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+    let args: Vec<&str> = std::iter::once("--no-color")
+        .chain(std::iter::once("--no-sort"))
+        .chain(args.iter().copied())
+        .collect();
+    let out = common::run_cli(&args, None);
+    assert!(out.status.success(), "cli should succeed");
+    String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
 fn fixture_path(name: &str) -> String {

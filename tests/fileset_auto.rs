@@ -1,6 +1,11 @@
+mod common;
 use std::fs;
 
 #[test]
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "single test validates multiple file outputs in one flow"
+)]
 fn auto_template_uses_per_file_format_in_fileset() {
     let dir = tempfile::tempdir().expect("tmpdir");
     let p_json = dir.path().join("a.json");
@@ -8,9 +13,8 @@ fn auto_template_uses_per_file_format_in_fileset() {
     fs::write(&p_json, b"{\n  \"a\": 1\n}\n").unwrap();
     fs::write(&p_yaml, b"k: 2\n").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "-c",
@@ -21,10 +25,11 @@ fn auto_template_uses_per_file_format_in_fileset() {
             "yaml",
             p_json.to_str().unwrap(),
             p_yaml.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     // Should contain both headers, and JSON/YAML style bodies respectively.
     assert!(out.contains("a.json"));
     assert!(out.contains("b.yaml"));

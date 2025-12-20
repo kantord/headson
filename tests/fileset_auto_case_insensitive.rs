@@ -1,3 +1,4 @@
+mod common;
 use std::fs;
 
 #[test]
@@ -8,10 +9,9 @@ fn fileset_auto_uses_yaml_ingest_when_uppercase_yaml_present() {
     fs::write(&p_json, b"{\n  \"a\": 1\n}\n").unwrap();
     fs::write(&p_yaml, b"k: 2\n").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // No -i yaml; rely on Auto ingest selection
-    let assert = cmd
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "-c",
@@ -20,10 +20,11 @@ fn fileset_auto_uses_yaml_ingest_when_uppercase_yaml_present() {
             "auto",
             p_json.to_str().unwrap(),
             p_yaml.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     // Expect both headers and respective body styles.
     assert!(out.contains("a.json"));
     assert!(out.contains("B.YML"));

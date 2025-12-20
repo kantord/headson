@@ -1,3 +1,4 @@
+mod common;
 use std::fs;
 
 #[test]
@@ -8,10 +9,9 @@ fn auto_mode_picks_yaml_ingest_for_mixed_files() {
     fs::write(&p_json, b"{\n  \"a\": 1\n}\n").unwrap();
     fs::write(&p_yaml, b"k: 2\n").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // Do not pass -i yaml; rely on Auto ingest selection for fileset
-    let assert = cmd
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "-c",
@@ -20,9 +20,10 @@ fn auto_mode_picks_yaml_ingest_for_mixed_files() {
             "auto",
             p_json.to_str().unwrap(),
             p_yaml.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     assert!(out.contains("a.json") && out.contains("b.yaml"));
 }

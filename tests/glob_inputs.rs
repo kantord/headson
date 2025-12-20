@@ -1,3 +1,4 @@
+mod common;
 #[path = "../test_support/mod.rs"]
 mod util;
 
@@ -30,21 +31,21 @@ fn glob_expands_recursively_and_respects_gitignore() {
     fs::write(root.join(".gitignore"), "ignored.json\n")
         .expect("write gitignore");
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .current_dir(root)
-        .args([
+    let out = common::run_cli_in_dir(
+        root,
+        &[
             "--no-color",
             "--no-sort",
             "-c",
             "1000",
             "-g",
             "src/**/*.json",
-        ])
-        .assert();
+        ],
+        None,
+    );
 
-    let ok = assert.get_output().status.success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+    let ok = out.status.success();
+    let out = String::from_utf8_lossy(&out.stdout);
     assert!(ok, "glob run should succeed: {out}");
     let keep_header =
         format!("==> {} <==", Path::new("src").join("keep.json").display());
@@ -89,10 +90,9 @@ fn glob_no_sort_preserves_pattern_order() {
     write_json(root.join("a.json").as_path(), r#"{"a": 1}"#);
     write_json(root.join("b.json").as_path(), r#"{"b": 2}"#);
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .current_dir(root)
-        .args([
+    let out = common::run_cli_in_dir(
+        root,
+        &[
             "--no-color",
             "--no-sort",
             "-c",
@@ -101,11 +101,12 @@ fn glob_no_sort_preserves_pattern_order() {
             "b*.json",
             "-g",
             "a*.json",
-        ])
-        .assert();
+        ],
+        None,
+    );
 
-    let ok = assert.get_output().status.success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+    let ok = out.status.success();
+    let out = String::from_utf8_lossy(&out.stdout);
     assert!(ok, "glob run should succeed: {out}");
     let header_a = format!("==> {} <==", Path::new("a.json").display());
     let header_b = format!("==> {} <==", Path::new("b.json").display());
@@ -128,10 +129,9 @@ fn glob_inputs_deduplicate_overlaps_and_explicit_paths() {
     write_json(root.join("one.json").as_path(), r#"{"a": 1}"#);
     write_json(root.join("two.json").as_path(), r#"{"b": 2}"#);
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .current_dir(root)
-        .args([
+    let out = common::run_cli_in_dir(
+        root,
+        &[
             "--no-color",
             "--no-sort",
             "-c",
@@ -139,11 +139,12 @@ fn glob_inputs_deduplicate_overlaps_and_explicit_paths() {
             "-g",
             "*.json",
             "one.json",
-        ])
-        .assert();
+        ],
+        None,
+    );
 
-    let ok = assert.get_output().status.success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+    let ok = out.status.success();
+    let out = String::from_utf8_lossy(&out.stdout);
     assert!(ok, "glob + explicit run should succeed: {out}");
 
     let header_one = format!("==> {} <==", Path::new("one.json").display());
@@ -165,15 +166,12 @@ fn glob_with_no_matches_emits_notice_instead_of_blocking_on_stdin() {
     let tmp = tempfile::tempdir().expect("tmpdir");
     let root = tmp.path();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .current_dir(root)
-        .args(["--no-color", "-g", "*.json"])
-        .assert();
+    let output =
+        common::run_cli_in_dir(root, &["--no-color", "-g", "*.json"], None);
 
-    let ok = assert.get_output().status.success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
-    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+    let ok = output.status.success();
+    let out = String::from_utf8_lossy(&output.stdout);
+    let err = String::from_utf8_lossy(&output.stderr);
     assert!(ok, "glob with no matches should still succeed: {err}");
     assert_eq!(out, "\n", "stdout should stay empty: {out:?}");
     assert!(
@@ -189,15 +187,15 @@ fn tree_glob_with_no_matches_still_emits_notice() {
     let tmp = tempfile::tempdir().expect("tmpdir");
     let root = tmp.path();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .current_dir(root)
-        .args(["--no-color", "--tree", "-g", "*.json"])
-        .assert();
+    let output = common::run_cli_in_dir(
+        root,
+        &["--no-color", "--tree", "-g", "*.json"],
+        None,
+    );
 
-    let ok = assert.get_output().status.success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
-    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+    let ok = output.status.success();
+    let out = String::from_utf8_lossy(&output.stdout);
+    let err = String::from_utf8_lossy(&output.stderr);
     assert!(
         ok,
         "tree mode with an unmatched glob should still succeed: {err}"

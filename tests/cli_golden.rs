@@ -1,22 +1,19 @@
+mod common;
 use std::fs;
 use std::path::Path;
 
 fn stdout_from(cwd: &Path, args: &[&str], stdin: Option<&str>) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let mut cmd = cmd.current_dir(cwd).args(args);
-    if let Some(input) = stdin {
-        cmd = cmd.write_stdin(input);
-    }
-    let assert = cmd.assert().success();
-    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+    let out = common::run_cli_in_dir(cwd, args, stdin.map(str::as_bytes));
+    assert!(out.status.success(), "cli should succeed");
+    String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
 fn stdout_stderr_from(cwd: &Path, args: &[&str]) -> (String, String) {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd.current_dir(cwd).args(args).assert().success();
+    let out = common::run_cli_in_dir(cwd, args, None);
+    assert!(out.status.success(), "cli should succeed");
     (
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned(),
-        String::from_utf8_lossy(&assert.get_output().stderr).into_owned(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
     )
 }
 

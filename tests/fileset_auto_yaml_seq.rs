@@ -1,6 +1,11 @@
+mod common;
 use std::fs;
 
 #[test]
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "fixture parsing + section slicing keeps intent readable"
+)]
 fn auto_fileset_renders_yaml_sequence_of_mappings_properly() {
     // Use real fixtures to ensure YAML arrays-of-objects render with dash items
     // and YAML key syntax, not JSON braces.
@@ -11,9 +16,8 @@ fn auto_fileset_renders_yaml_sequence_of_mappings_properly() {
     assert!(fs::metadata(p_json).is_ok());
     assert!(fs::metadata(p_yaml).is_ok());
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "-c",
@@ -22,10 +26,11 @@ fn auto_fileset_renders_yaml_sequence_of_mappings_properly() {
             "auto",
             p_json,
             p_yaml,
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
 
     // Find the YAML section body
     let header = format!("==> {p_yaml} <==");

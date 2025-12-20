@@ -1,3 +1,4 @@
+mod common;
 use std::fs;
 
 #[test]
@@ -12,9 +13,8 @@ fn fileset_auto_unknown_extensions_use_text_template() {
     fs::write(&p1, b"one\ntwo\n").unwrap();
     fs::write(&p2, b"alpha\nbeta\n").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "-c",
@@ -23,10 +23,11 @@ fn fileset_auto_unknown_extensions_use_text_template() {
             "auto",
             p1.to_str().unwrap(),
             p2.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     // Section headers
     assert!(out.contains("a.txt"));
     assert!(out.contains("b.log"));

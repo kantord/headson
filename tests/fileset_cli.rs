@@ -1,3 +1,4 @@
+mod common;
 use std::fs;
 
 #[test]
@@ -8,8 +9,9 @@ fn fileset_rejects_custom_format() {
     fs::write(&p_a, "hello").expect("write a");
     fs::write(&p_b, "world").expect("write b");
 
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--no-sort",
             "-f",
@@ -18,12 +20,15 @@ fn fileset_rejects_custom_format() {
             "100",
             p_a.to_str().unwrap(),
             p_b.to_str().unwrap(),
-        ])
-        .current_dir(dir.path())
-        .assert()
-        .failure();
+        ],
+        None,
+    );
 
-    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(
+        !out.status.success(),
+        "cli should fail for fileset custom format"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
         stderr.contains("--format cannot be customized for filesets"),
         "stderr missing rejection message: {stderr}"
