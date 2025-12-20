@@ -11,12 +11,18 @@
   "ignoreTests": false,
   "packageRules": [
     {
-      "matchManagers": ["github-actions"],
+      "matchManagers": [
+        "github-actions"
+      ],
       "pinDigests": true
     },
     {
-      "matchManagers": ["cargo"],
-      "matchPaths": ["python/Cargo.toml"],
+      "matchManagers": [
+        "cargo"
+      ],
+      "matchFileNames": [
+        "python/Cargo.toml"
+      ],
       "lockFileMaintenance": {
         "enabled": true
       }
