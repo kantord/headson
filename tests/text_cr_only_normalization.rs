@@ -1,13 +1,15 @@
+mod common;
+
 #[test]
 fn text_normalizes_bare_cr_to_lf() {
     // Provide only '\r' newlines; expect LF normalization.
     let input = b"a\rb\rc\r".to_vec();
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args(["--no-color", "-i", "text", "-f", "text", "-c", "1000"])
-        .write_stdin(input)
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+    let out = common::run_cli(
+        ["--no-color", "-i", "text", "-f", "text", "-c", "1000"].as_ref(),
+        Some(&input),
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     assert!(
         out.contains("a\nb\nc\n"),
         "expected LF-normalized lines: {out:?}"

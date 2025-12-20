@@ -1,3 +1,5 @@
+mod common;
+
 #[test]
 fn text_detailed_shows_omitted_count() {
     // Many lines; detailed style should show count: "… N more lines …"
@@ -5,8 +7,8 @@ fn text_detailed_shows_omitted_count() {
         .map(|i| format!("line{i}"))
         .collect::<Vec<_>>()
         .join("\n");
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-i",
             "text",
@@ -16,11 +18,11 @@ fn text_detailed_shows_omitted_count() {
             "detailed",
             "-c",
             "40",
-        ])
-        .write_stdin(input)
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(input.as_bytes()),
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     assert!(
         out.contains(" more lines "),
         "expected detailed count marker: {out:?}"

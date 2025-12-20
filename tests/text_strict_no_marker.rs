@@ -1,3 +1,5 @@
+mod common;
+
 #[test]
 fn text_strict_truncates_without_marker() {
     // Ten short lines; use a tiny budget to force truncation.
@@ -5,8 +7,8 @@ fn text_strict_truncates_without_marker() {
         .map(|i| format!("line{i}"))
         .collect::<Vec<_>>()
         .join("\n");
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-i",
             "text",
@@ -16,11 +18,11 @@ fn text_strict_truncates_without_marker() {
             "strict",
             "-c",
             "20",
-        ]) // small budget
-        .write_stdin(input)
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ], // small budget
+        Some(input.as_bytes()),
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     // No standalone omission marker line in strict mode (array truncation marker)
     let has_omission_line = out
         .lines()

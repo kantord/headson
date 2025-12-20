@@ -1,3 +1,4 @@
+mod common;
 use std::fs;
 use std::path::Path;
 
@@ -5,7 +6,6 @@ use insta::assert_snapshot;
 
 fn run_case_with_head(path: &Path, template: &str, n: u32) -> String {
     let input = fs::read_to_string(path).expect("read fixture");
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let n_s = n.to_string();
     let mut args = vec!["--no-color", "-c", &n_s, "--head"];
     let lower = template.to_ascii_lowercase();
@@ -16,7 +16,7 @@ fn run_case_with_head(path: &Path, template: &str, n: u32) -> String {
         "js" => args.extend(["-f", "json", "-t", "detailed"]),
         other => args.extend(["-f", other]),
     }
-    let output = cmd.args(args).write_stdin(input).output().expect("run");
+    let output = common::run_cli(&args, Some(input.as_bytes()));
     String::from_utf8_lossy(&output.stdout).into_owned()
 }
 

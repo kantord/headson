@@ -1,3 +1,5 @@
+mod common;
+
 #[test]
 fn text_tail_places_marker_at_start() {
     // Use default style ("…") and tail mode; expect marker at the beginning.
@@ -5,8 +7,8 @@ fn text_tail_places_marker_at_start() {
         .map(|i| format!("line{i}"))
         .collect::<Vec<_>>()
         .join("\n");
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--tail",
             "-i",
@@ -15,11 +17,11 @@ fn text_tail_places_marker_at_start() {
             "text",
             "-c",
             "30",
-        ]) // smallish budget
-        .write_stdin(input)
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ], // smallish budget
+        Some(input.as_bytes()),
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     let mut lines = out.lines();
     let first = lines.next().unwrap_or("");
     assert_eq!(
