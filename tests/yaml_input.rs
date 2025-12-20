@@ -1,3 +1,4 @@
+mod common;
 #[path = "../test_support/mod.rs"]
 mod util;
 use insta::assert_snapshot;
@@ -32,9 +33,8 @@ fn file_yaml_basic_end_to_end() {
     let tmp = tempfile::tempdir().expect("tmp");
     let p = tmp.path().join("data.yaml");
     fs::write(&p, b"a: 1\narr: [x, y, z]\n").expect("write yaml");
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-c",
             "10000",
@@ -43,10 +43,11 @@ fn file_yaml_basic_end_to_end() {
             "-i",
             "yaml",
             p.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     assert!(out.contains("a:"));
     assert!(out.contains("arr:"));
 }

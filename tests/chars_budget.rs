@@ -1,9 +1,4 @@
-use assert_cmd::assert::Assert;
-
-fn run_cli(input: &str, args: &[&str]) -> Assert {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    cmd.arg("--no-color").args(args).write_stdin(input).assert()
-}
+mod common;
 
 fn count_chars_normalized(s: &str) -> usize {
     s.trim_end_matches('\n').chars().count()
@@ -36,12 +31,18 @@ fn ascii_parity_with_bytes() {
     // ASCII-only; bytes and chars budgets of the same numeric value should match.
     let input =
         "[\"x\",\"x\",\"x\",\"x\",\"x\",\"x\",\"x\",\"x\",\"x\",\"x\"]";
-    let out_c = run_cli(input, &["-c", "60", "-f", "json", "-t", "strict"]) // bytes
-        .success();
-    let out_u = run_cli(input, &["-u", "60", "-f", "json", "-t", "strict"]) // chars
-        .success();
-    let s_c = String::from_utf8_lossy(&out_c.get_output().stdout).into_owned();
-    let s_u = String::from_utf8_lossy(&out_u.get_output().stdout).into_owned();
+    let out_c = common::run_cli(
+        &["--no-color", "-c", "60", "-f", "json", "-t", "strict"],
+        Some(input.as_bytes()),
+    ); // bytes
+    let out_u = common::run_cli(
+        &["--no-color", "-u", "60", "-f", "json", "-t", "strict"],
+        Some(input.as_bytes()),
+    ); // chars
+    assert!(out_c.status.success(), "cli should succeed for bytes");
+    assert!(out_u.status.success(), "cli should succeed for chars");
+    let s_c = String::from_utf8_lossy(&out_c.stdout).into_owned();
+    let s_u = String::from_utf8_lossy(&out_u.stdout).into_owned();
     assert_eq!(s_c, s_u, "ASCII output should be identical for -c and -u");
 }
 
@@ -50,16 +51,18 @@ fn multibyte_chars_allow_more_than_bytes_at_same_cap() {
     // Input with multi-byte characters (é). With same numeric cap, --chars can allow
     // more content than --bytes.
     let input = "[\"é\",\"é\",\"é\",\"é\",\"é\",\"é\",\"é\",\"é\",\"é\",\"é\",\"é\",\"é\"]";
-    let out_bytes =
-        run_cli(input, &["-c", "60", "-f", "json", "-t", "strict"]) // bytes
-            .success();
-    let out_chars =
-        run_cli(input, &["-u", "60", "-f", "json", "-t", "strict"]) // chars
-            .success();
-    let s_b =
-        String::from_utf8_lossy(&out_bytes.get_output().stdout).into_owned();
-    let s_u =
-        String::from_utf8_lossy(&out_chars.get_output().stdout).into_owned();
+    let out_bytes = common::run_cli(
+        &["--no-color", "-c", "60", "-f", "json", "-t", "strict"],
+        Some(input.as_bytes()),
+    ); // bytes
+    let out_chars = common::run_cli(
+        &["--no-color", "-u", "60", "-f", "json", "-t", "strict"],
+        Some(input.as_bytes()),
+    ); // chars
+    assert!(out_bytes.status.success(), "cli should succeed for bytes");
+    assert!(out_chars.status.success(), "cli should succeed for chars");
+    let s_b = String::from_utf8_lossy(&out_bytes.stdout).into_owned();
+    let s_u = String::from_utf8_lossy(&out_chars.stdout).into_owned();
     // Compare by final byte lengths as a proxy; char budget should not be shorter.
     assert!(
         s_u.len() >= s_b.len(),
@@ -140,12 +143,22 @@ fn colored_vs_plain_match_after_stripping_under_char_budget() {
 fn combined_chars_and_lines_caps_rejected() {
     let p = "tests/fixtures/explicit/object_small.json";
     let content = std::fs::read_to_string(p).expect("read fixture");
-    let assert = run_cli(
-        &content,
-        &["-f", "json", "-t", "default", "-n", "2", "-u", "100000"],
-    ) // conflicting per-file metrics
-    .failure();
-    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+    let out = common::run_cli(
+        &[
+            "--no-color",
+            "-f",
+            "json",
+            "-t",
+            "default",
+            "-n",
+            "2",
+            "-u",
+            "100000",
+        ],
+        Some(content.as_bytes()),
+    ); // conflicting per-file metrics
+    assert!(!out.status.success(), "cli should fail");
+    let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
         stderr.contains("only one per-file budget"),
         "expected conflict error for mixed per-file metrics: {stderr}"
@@ -161,9 +174,8 @@ fn fileset_char_budget_scales_with_inputs() {
     fs::write(&a, b"[1,2,3,4,5,6,7,8,9,10]").unwrap();
     fs::write(&b, b"[1,2,3,4,5,6,7,8,9,10]").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-H",
             "-u",
@@ -172,11 +184,11 @@ fn fileset_char_budget_scales_with_inputs() {
             "auto",
             a.to_str().unwrap(),
             b.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout).into_owned();
     // Total char count should be <= per-file cap * number_of_inputs
     assert!(
         count_chars_normalized(&out) <= 80,

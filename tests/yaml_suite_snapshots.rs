@@ -1,3 +1,4 @@
+mod common;
 use insta::assert_snapshot;
 use std::fs;
 use std::path::Path;
@@ -5,8 +6,8 @@ use test_each_file::test_each_path;
 
 fn run_cli_yaml_with_budget(input: &[u8], budget: usize) -> String {
     let budget_s = budget.to_string();
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-c",
             &budget_s,
@@ -18,11 +19,11 @@ fn run_cli_yaml_with_budget(input: &[u8], budget: usize) -> String {
             "detailed",
             "-i",
             "yaml",
-        ])
-        .write_stdin(input)
-        .assert()
-        .success();
-    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+        ],
+        Some(input),
+    );
+    assert!(out.status.success(), "cli should succeed");
+    String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
 fn is_yaml_file(path: &Path) -> bool {

@@ -1,3 +1,4 @@
+mod common;
 use serde_json::Value as J;
 use std::collections::BTreeMap;
 use std::fs;
@@ -6,8 +7,8 @@ use test_each_file::test_each_path;
 use yaml_rust2::{Yaml, YamlLoader};
 
 fn run_cli_yaml(input: &[u8]) -> (bool, String, String) {
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-c",
             "1000000",
@@ -17,15 +18,13 @@ fn run_cli_yaml(input: &[u8]) -> (bool, String, String) {
             "yaml",
             "-i",
             "yaml",
-        ]) // parse YAML, render YAML with no truncation
-        .write_stdin(input)
-        .assert();
-    let ok = assert.get_output().status.success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
-    let err =
-        String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
-    (ok, out, err)
+        ], // parse YAML, render YAML with no truncation
+        Some(input),
+    );
+    let ok = out.status.success();
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    (ok, stdout, stderr)
 }
 
 fn is_yaml_file(path: &Path) -> bool {

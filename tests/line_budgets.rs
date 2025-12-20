@@ -1,16 +1,14 @@
+mod common;
 use insta::assert_snapshot;
 
 fn run(args: &[&str]) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .args(
-            std::iter::once("--no-color")
-                .chain(std::iter::once("--no-sort"))
-                .chain(args.iter().copied()),
-        )
-        .assert()
-        .success();
-    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+    let args: Vec<&str> = std::iter::once("--no-color")
+        .chain(std::iter::once("--no-sort"))
+        .chain(args.iter().copied())
+        .collect();
+    let out = common::run_cli(&args, None);
+    assert!(out.status.success(), "cli should succeed");
+    String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
 fn count_lines_normalized(s: &str) -> usize {
@@ -137,8 +135,8 @@ fn text_single_line_fits_under_cap() {
 #[test]
 fn combined_char_and_line_caps() {
     let p = "tests/fixtures/explicit/string_escaping.json";
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "-f",
@@ -150,10 +148,11 @@ fn combined_char_and_line_caps() {
             "-c",
             "60",
             p,
-        ])
-        .assert()
-        .failure();
-    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+        ],
+        None,
+    );
+    assert!(!out.status.success(), "cli should fail");
+    let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
         stderr.contains("only one per-file budget"),
         "expected conflict error for mixed per-file metrics: {stderr}"

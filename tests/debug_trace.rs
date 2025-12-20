@@ -1,10 +1,10 @@
+mod common;
 use std::fs;
 
 #[test]
 fn debug_json_stdin() {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .args([
+    let output = common::run_cli(
+        &[
             "--no-color",
             "--debug",
             "-c",
@@ -13,12 +13,12 @@ fn debug_json_stdin() {
             "json",
             "-i",
             "json",
-        ]) // explicit
-        .write_stdin("{\"a\":1,\"b\":{\"c\":2}}\n")
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
-    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+        ], // explicit
+        Some("{\"a\":1,\"b\":{\"c\":2}}\n".as_bytes()),
+    );
+    assert!(output.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&output.stdout);
+    let err = String::from_utf8_lossy(&output.stderr);
     assert!(!out.trim().is_empty(), "stdout must not be empty");
     let v: serde_json::Value =
         serde_json::from_str(&err).expect("stderr must be JSON");
@@ -30,9 +30,8 @@ fn debug_json_stdin() {
 
 #[test]
 fn debug_text_stdin() {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .args([
+    let output = common::run_cli(
+        &[
             "--no-color",
             "--debug",
             "-c",
@@ -41,12 +40,12 @@ fn debug_text_stdin() {
             "text",
             "-i",
             "text",
-        ]) // explicit
-        .write_stdin("one\ntwo\nthree\n")
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
-    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+        ], // explicit
+        Some("one\ntwo\nthree\n".as_bytes()),
+    );
+    assert!(output.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&output.stdout);
+    let err = String::from_utf8_lossy(&output.stderr);
     assert!(!out.trim().is_empty(), "stdout must not be empty");
     let v: serde_json::Value =
         serde_json::from_str(&err).expect("stderr must be JSON");
@@ -62,9 +61,8 @@ fn debug_fileset_two_inputs() {
     fs::write(&p_json, b"{\n  \"a\": 1\n}\n").unwrap();
     fs::write(&p_yaml, b"k: 2\n").unwrap();
 
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let assert = cmd
-        .args([
+    let output = common::run_cli(
+        &[
             "--no-color",
             "--debug", // capture stderr dump
             "--no-sort",
@@ -76,10 +74,11 @@ fn debug_fileset_two_inputs() {
             "yaml", // allow YAML ingest for fileset with yaml present
             p_json.to_str().unwrap(),
             p_yaml.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-    let err = String::from_utf8_lossy(&assert.get_output().stderr);
+        ],
+        None,
+    );
+    assert!(output.status.success(), "cli should succeed");
+    let err = String::from_utf8_lossy(&output.stderr);
     let v: serde_json::Value =
         serde_json::from_str(&err).expect("stderr must be JSON");
     // format-agnostic debug dump; ensure structure present
