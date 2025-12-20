@@ -1,7 +1,7 @@
+mod common;
 use insta::assert_snapshot;
 
 fn run_color(input: &str, template: &str) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let mut args = vec!["--color", "-c", "1000"];
     let lower = template.to_ascii_lowercase();
     match lower.as_str() {
@@ -10,8 +10,12 @@ fn run_color(input: &str, template: &str) -> String {
         "js" => args.extend(["-f", "json", "-t", "detailed"]),
         other => args.extend(["-f", other]),
     }
-    let assert = cmd.args(args).write_stdin(input).assert().success();
-    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+    let out = common::run_cli(&args, Some(input.as_bytes()));
+    assert!(
+        out.status.success(),
+        "cli should succeed for template {template}"
+    );
+    String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
 #[test]

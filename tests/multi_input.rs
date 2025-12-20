@@ -1,17 +1,17 @@
+mod common;
+
 fn run_with_paths(paths: &[&str], budget: usize) -> (bool, String, String) {
     let budget_s = budget.to_string();
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     // Auto format selects per-file JSON renderings for .json inputs.
     let mut args =
         vec!["--no-color", "--no-sort", "-c", &budget_s, "-f", "auto"];
     args.extend_from_slice(paths);
-    let assert = cmd.args(args).assert();
-    let ok = assert.get_output().status.success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
-    let err =
-        String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
-    (ok, out, err)
+    let out = common::run_cli(&args, None);
+    (
+        out.status.success(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
 }
 
 #[test]
