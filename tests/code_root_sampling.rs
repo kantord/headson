@@ -1,4 +1,4 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+mod common;
 use insta::assert_snapshot;
 use std::collections::HashMap;
 use std::fs;
@@ -12,19 +12,19 @@ const CODE_FILESET_PATHS: &[&str] = &[
 ];
 
 fn run_sample_py_auto() -> String {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-c",
             "120",
             "-f",
             "auto",
             "tests/fixtures/code/sample.py",
-        ])
-        .assert()
-        .success();
-    let mut out =
-        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
     while out.ends_with('\n') {
         out.pop();
     }
@@ -33,19 +33,19 @@ fn run_sample_py_auto() -> String {
 }
 
 fn run_sample_py_colored() -> String {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--color",
             "-c",
             "120",
             "-f",
             "auto",
             "tests/fixtures/code/sample.py",
-        ])
-        .assert()
-        .success();
-    let mut out =
-        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
     while out.ends_with('\n') {
         out.pop();
     }
@@ -54,19 +54,19 @@ fn run_sample_py_colored() -> String {
 }
 
 fn run_large_code_huge_budget() -> String {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-c",
             "1000000",
             "-f",
             "auto",
             "tests/fixtures/code/big_sample.py",
-        ])
-        .assert()
-        .success();
-    let mut out =
-        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
     while out.ends_with('\n') {
         out.pop();
     }
@@ -75,19 +75,19 @@ fn run_large_code_huge_budget() -> String {
 }
 
 fn run_minimal_drop_huge_budget() -> String {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-n",
             "1000000",
             "-f",
             "auto",
             "tests/fixtures/code/minimal_drop_case.py",
-        ])
-        .assert()
-        .success();
-    let mut out =
-        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
     while out.ends_with('\n') {
         out.pop();
     }
@@ -96,19 +96,19 @@ fn run_minimal_drop_huge_budget() -> String {
 }
 
 fn run_multi_describe_line_budget() -> String {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-n",
             "1000000",
             "-f",
             "auto",
             "tests/fixtures/code/multi_describe.test.js",
-        ])
-        .assert()
-        .success();
-    let mut out =
-        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
     while out.ends_with('\n') {
         out.pop();
     }
@@ -117,8 +117,8 @@ fn run_multi_describe_line_budget() -> String {
 }
 
 fn run_multi_code_files_colored() -> String {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--color",
             "-c",
             "200",
@@ -126,26 +126,30 @@ fn run_multi_code_files_colored() -> String {
             "auto",
             "tests/fixtures/code/sample.py",
             "tests/fixtures/code/sample.ts",
-        ])
-        .assert()
-        .success();
-    String::from_utf8_lossy(&assert.get_output().stdout).to_string()
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    String::from_utf8_lossy(&out.stdout).to_string()
 }
 
 fn run_code_fileset_with_budget(budget: usize) -> String {
-    let mut cmd = cargo_bin_cmd!("hson");
-    cmd.arg("--no-color")
-        .arg("--no-sort")
-        .arg("-H")
-        .arg("-c")
-        .arg(budget.to_string())
-        .arg("-f")
-        .arg("auto");
+    let mut args = vec![
+        "--no-color".to_string(),
+        "--no-sort".to_string(),
+        "-H".to_string(),
+        "-c".to_string(),
+        budget.to_string(),
+        "-f".to_string(),
+        "auto".to_string(),
+    ];
     for path in CODE_FILESET_PATHS {
-        cmd.arg(path);
+        args.push((*path).to_string());
     }
-    let assert = cmd.assert().success();
-    String::from_utf8_lossy(&assert.get_output().stdout).to_string()
+    let args_ref: Vec<&str> = args.iter().map(String::as_str).collect();
+    let out = common::run_cli(&args_ref, None);
+    assert!(out.status.success(), "cli should succeed");
+    String::from_utf8_lossy(&out.stdout).to_string()
 }
 
 fn run_large_code_fileset_small_budget() -> String {
@@ -387,18 +391,19 @@ fn code_minimal_huge_budget_snapshot() {
 
 #[test]
 fn code_prefers_top_level_headers() {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-c",
             "120",
             "-f",
             "auto",
             "tests/fixtures/code/sample.py",
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     assert!(
         out.contains("def main"),
         "expected top-level def main to appear:\n{out}"
@@ -428,16 +433,19 @@ fn fileset_line_budget_should_not_drop_code_lines_for_headers() {
         .copied()
         .max()
         .expect("fixtures should contain at least one line");
-    let mut cmd = cargo_bin_cmd!("hson");
-    cmd.arg("--no-color")
-        .arg("--no-sort")
-        .arg("-n")
-        .arg(per_file_budget.to_string());
+    let mut args = vec![
+        "--no-color".to_string(),
+        "--no-sort".to_string(),
+        "-n".to_string(),
+        per_file_budget.to_string(),
+    ];
     for path in &files {
-        cmd.arg(path);
+        args.push((*path).to_string());
     }
-    let assert = cmd.assert().success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let args_ref: Vec<&str> = args.iter().map(String::as_str).collect();
+    let out = common::run_cli(&args_ref, None);
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout).to_string();
     let observed: HashMap<String, usize> =
         fileset_section_line_counts(&out).into_iter().collect();
     for (path, expected_lines) in expected {
@@ -453,18 +461,19 @@ fn fileset_line_budget_should_not_drop_code_lines_for_headers() {
 
 #[test]
 fn fileset_line_budget_keeps_go_functions_in_filesets() {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "-n",
             "3",
             "tests/fixtures/code/sample.go",
             "tests/fixtures/code/sample.py",
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout).to_string();
     let go_lines =
         fileset_section_lines(&out, "tests/fixtures/code/sample.go");
     assert!(
@@ -481,8 +490,8 @@ fn fileset_line_budget_keeps_go_functions_in_filesets() {
 
 #[test]
 fn fileset_no_header_flag_hides_section_headers() {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--no-header",
             "--no-sort",
@@ -490,10 +499,11 @@ fn fileset_no_header_flag_hides_section_headers() {
             "20",
             "tests/fixtures/code/sample.py",
             "tests/fixtures/code/sample.ts",
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout).to_string();
     assert!(
         !out.contains("==>"),
         "expected --no-header output to omit fileset headers:\n{out}"
@@ -517,16 +527,19 @@ fn fileset_line_budget_global_line_count_matches_expectation() {
         "tests/fixtures/code/sample.cpp",
     ];
     let per_file_lines = 3;
-    let mut cmd = cargo_bin_cmd!("hson");
-    cmd.arg("--no-color")
-        .arg("--no-sort")
-        .arg("-n")
-        .arg(per_file_lines.to_string());
+    let mut args = vec![
+        "--no-color".to_string(),
+        "--no-sort".to_string(),
+        "-n".to_string(),
+        per_file_lines.to_string(),
+    ];
     for path in &files {
-        cmd.arg(path);
+        args.push((*path).to_string());
     }
-    let assert = cmd.assert().success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let args_ref: Vec<&str> = args.iter().map(String::as_str).collect();
+    let out = common::run_cli(&args_ref, None);
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout).to_string();
     let numbered = count_numbered_lines(&out);
     assert_eq!(
         numbered,
@@ -537,17 +550,17 @@ fn fileset_line_budget_global_line_count_matches_expectation() {
 
 #[test]
 fn code_lines_are_hard_truncated_end_to_end() {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-f",
             "auto",
             "tests/fixtures/code/long_line.rs",
-        ])
-        .assert()
-        .success();
-    let stdout =
-        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
     let line = stdout
         .lines()
         .find(|l| l.contains("let message"))

@@ -1,17 +1,39 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+mod common;
 use headson::{
     Budgets, GrepConfig, InputKind, PriorityConfig, RenderConfig, Style,
 };
+use std::ffi::OsStr;
+use std::path::Path;
+use std::process::Output;
 use tempfile::tempdir;
 
 // Covers strong --grep behavior (guaranteed inclusion path). Weak mode
 // assertions belong in separate tests when implemented.
 
+fn run_ok(args: &[&str], stdin: Option<&[u8]>) -> Output {
+    let out = common::run_cli(args, stdin);
+    assert!(out.status.success(), "cli should succeed");
+    out
+}
+
+fn run_ok_in_dir(dir: &Path, args: &[&str], stdin: Option<&[u8]>) -> Output {
+    let out = common::run_cli_in_dir(dir, args, stdin);
+    assert!(out.status.success(), "cli should succeed");
+    out
+}
+
+fn run_ok_color(args: &[&str], stdin: Option<&[u8]>) -> Output {
+    let envs = [("FORCE_COLOR", OsStr::new("1"))];
+    let out = common::run_cli_in_dir_env(".", args, stdin, &envs);
+    assert!(out.status.success(), "cli should succeed");
+    out
+}
+
 #[test]
 fn grep_guarantees_match_even_when_budget_is_tiny() {
     let input = br#"{"outer":{"inner":"needle"},"other":"zzzz"}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok(
+        &[
             "--no-color",
             "--bytes",
             "5",
@@ -21,11 +43,10 @@ fn grep_guarantees_match_even_when_budget_is_tiny() {
             "strict",
             "--grep",
             "needle",
-        ])
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("needle"),
         "match should be present even if it pushes past the user budget"
@@ -45,19 +66,19 @@ fn grep_counts_matches_as_free_for_char_budgets() {
         "this line has a match keyword and is long\nshort\n",
     )
     .unwrap();
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--chars",
             "15",
             "--grep",
             "keyword",
             path.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("short"),
         "non-matching context should still render when matches are free under char budgets; got: {stdout:?}"
@@ -67,8 +88,8 @@ fn grep_counts_matches_as_free_for_char_budgets() {
 #[test]
 fn grep_keeps_ancestor_path_for_matches() {
     let input = br#"{"outer":{"inner":{"value":"match-me"}}}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok(
+        &[
             "--no-color",
             "-c",
             "8",
@@ -78,11 +99,10 @@ fn grep_keeps_ancestor_path_for_matches() {
             "strict",
             "--grep",
             "match-me",
-        ])
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("match-me"),
         "matched leaf should always appear"
@@ -96,8 +116,8 @@ fn grep_keeps_ancestor_path_for_matches() {
 #[test]
 fn grep_pins_sampled_array_elements() {
     let input = br#"[{"id":1},{"id":2},{"id":3,"value":"NEEDLE"},{"id":4,"value":"skip-me"}]"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok(
+        &[
             "--no-color",
             "--bytes",
             "12",
@@ -107,11 +127,10 @@ fn grep_pins_sampled_array_elements() {
             "strict",
             "--grep",
             "NEEDLE",
-        ])
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("NEEDLE"),
         "array sampling should not drop matched elements in strong grep mode"
@@ -125,8 +144,8 @@ fn grep_pins_sampled_array_elements() {
 #[test]
 fn grep_highlights_matching_keys() {
     let input = br#"{"needle":123,"other":456}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok_color(
+        &[
             "--no-sort",
             "-c",
             "50",
@@ -137,12 +156,10 @@ fn grep_highlights_matching_keys() {
             "--grep",
             "needle",
             "--no-header",
-        ])
-        .env("FORCE_COLOR", "1")
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "matching keys should be highlighted when color is enabled"
@@ -152,8 +169,8 @@ fn grep_highlights_matching_keys() {
 #[test]
 fn grep_highlights_anchored_keys_without_quotes() {
     let input = br#"{"needle":123,"other":456}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok_color(
+        &[
             "--no-sort",
             "-c",
             "50",
@@ -164,12 +181,10 @@ fn grep_highlights_anchored_keys_without_quotes() {
             "--grep",
             "^needle$",
             "--no-header",
-        ])
-        .env("FORCE_COLOR", "1")
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "anchored regex should highlight the matching key without requiring quotes; got: {stdout:?}"
@@ -179,8 +194,8 @@ fn grep_highlights_anchored_keys_without_quotes() {
 #[test]
 fn grep_highlights_in_strict_style() {
     let input = br#"{"foo":"needle","bar":"other"}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok_color(
+        &[
             "--color",
             "-f",
             "json",
@@ -190,11 +205,10 @@ fn grep_highlights_in_strict_style() {
             "needle",
             "--no-sort",
             "--no-header",
-        ])
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "grep should highlight matches even in strict style; got: {stdout:?}"
@@ -208,13 +222,11 @@ fn grep_highlights_in_strict_style() {
 #[test]
 fn grep_defaults_to_color_output() {
     let input = br#"{"k":"foo","x":"bar"}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args(["-f", "json", "-t", "default", "--grep", "foo", "--no-sort"])
-        .env("FORCE_COLOR", "1")
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let out = run_ok_color(
+        &["-f", "json", "-t", "default", "--grep", "foo", "--no-sort"],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("\u{001b}[31m"),
         "grep should emit colored matches by default; got: {stdout:?}"
@@ -225,8 +237,8 @@ fn grep_defaults_to_color_output() {
 fn grep_suppresses_syntax_colors_even_when_no_matches() {
     // With a grep pattern that matches nothing, syntax colors should still be off.
     let input = br#"{"a":1,"b":2}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok_color(
+        &[
             "-f",
             "json",
             "-t",
@@ -234,11 +246,10 @@ fn grep_suppresses_syntax_colors_even_when_no_matches() {
             "--grep",
             "nomatch",
             "--no-sort",
-        ])
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         !stdout.contains("\u{001b}[32m") && !stdout.contains("\u{001b}[1;34m"),
         "syntax coloring should be disabled in grep mode even with zero matches; got: {stdout:?}"
@@ -250,8 +261,8 @@ fn grep_respects_auto_color_when_not_tty() {
     // Default (auto) color mode should avoid escape codes when stdout is not a TTY,
     // even if --grep is provided.
     let input = br#"{"needle": 1}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok(
+        &[
             "-f",
             "json",
             "-t",
@@ -260,11 +271,10 @@ fn grep_respects_auto_color_when_not_tty() {
             "needle",
             "--no-sort",
             "--no-header",
-        ])
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         !stdout.contains('\u{001b}'),
         "auto color should be disabled for non-TTY stdout; got escapes in: {stdout:?}"
@@ -274,8 +284,8 @@ fn grep_respects_auto_color_when_not_tty() {
 #[test]
 fn grep_highlights_yaml_values_correctly() {
     let input = b"foo: bar\nmatch: baz\n".to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok_color(
+        &[
             "-f",
             "yaml",
             "-i",
@@ -285,12 +295,10 @@ fn grep_highlights_yaml_values_correctly() {
             "--grep",
             "baz",
             "--no-sort",
-        ])
-        .env("FORCE_COLOR", "1")
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("\u{001b}[31mbaz\u{001b}[39m"),
         "expected exact match highlighting for YAML scalar values; got: {stdout:?}"
@@ -300,12 +308,11 @@ fn grep_highlights_yaml_values_correctly() {
 #[test]
 fn grep_does_not_highlight_json_punctuation() {
     let input = br#"{"a":1,"b":2}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args(["-f", "json", "-t", "default", "--grep", ":", "--no-sort"])
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let out = run_ok_color(
+        &["-f", "json", "-t", "default", "--grep", ":", "--no-sort"],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         !stdout.contains("\u{001b}[31m:\u{001b}[39m"),
         "grep should not color structural punctuation: {stdout:?}"
@@ -316,8 +323,8 @@ fn grep_does_not_highlight_json_punctuation() {
 fn grep_highlights_code_lines_without_syntax_colors() {
     // Small Rust-like snippet; grep should highlight only matches and not emit syntax colors.
     let input = b"fn build_order() {}\n// build something else\n".to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok_color(
+        &[
             "-f",
             "text",
             "-i",
@@ -328,12 +335,10 @@ fn grep_highlights_code_lines_without_syntax_colors() {
             "build",
             "--no-sort",
             "--no-header",
-        ])
-        .env("FORCE_COLOR", "1")
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("\u{001b}[31mbuild\u{001b}[39m"),
         "expected grep highlight in code-like text: {stdout:?}"
@@ -348,8 +353,8 @@ fn grep_highlights_code_lines_without_syntax_colors() {
 fn grep_highlight_is_applied_once_per_value() {
     // Top-level string to exercise the direct leaf rendering path.
     let input = br#""foo""#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok_color(
+        &[
             "-f",
             "json",
             "-t",
@@ -360,12 +365,10 @@ fn grep_highlight_is_applied_once_per_value() {
             "50",
             "--no-sort",
             "--no-header",
-        ])
-        .env("FORCE_COLOR", "1")
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("\u{001b}[31mfoo\u{001b}[39m"),
         "expected single highlighted match in output; got: {stdout:?}"
@@ -384,20 +387,19 @@ fn grep_filters_out_files_without_matches_in_filesets() {
     std::fs::write(&with, br#"{"keep":"needle"}"#).unwrap();
     std::fs::write(&without, br#"{"drop":0}"#).unwrap();
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--grep",
             "needle",
             "--no-sort",
             with.file_name().unwrap().to_str().unwrap(),
             without.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(stdout.contains("needle"));
     assert!(
         !stdout.contains("without.json"),
@@ -417,9 +419,9 @@ fn grep_show_all_keeps_non_matching_files_in_filesets() {
     std::fs::write(&with, br#"{"keep":"needle"}"#).unwrap();
     std::fs::write(&without, br#"{"drop":0}"#).unwrap();
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--grep",
             "needle",
@@ -428,11 +430,10 @@ fn grep_show_all_keeps_non_matching_files_in_filesets() {
             "--no-sort",
             with.file_name().unwrap().to_str().unwrap(),
             without.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("needle"),
         "matching content should still be present with --grep-show=all"
@@ -455,9 +456,9 @@ fn grep_filtered_files_produce_identical_output() {
     std::fs::write(&with_b, br#"{"keep":"needle","more":2}"#).unwrap();
     std::fs::write(&without, br#"{"drop":0}"#).unwrap();
 
-    let base = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let base = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--grep",
             "needle",
@@ -466,13 +467,13 @@ fn grep_filtered_files_produce_identical_output() {
             "--no-sort",
             with_a.file_name().unwrap().to_str().unwrap(),
             with_b.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
 
-    let with_extra = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let with_extra = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--grep",
             "needle",
@@ -482,14 +483,12 @@ fn grep_filtered_files_produce_identical_output() {
             with_a.file_name().unwrap().to_str().unwrap(),
             with_b.file_name().unwrap().to_str().unwrap(),
             without.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
 
-    let base_out = base.get_output().stdout.clone();
-    let extra_out = with_extra.get_output().stdout.clone();
     assert_eq!(
-        base_out, extra_out,
+        base.stdout, with_extra.stdout,
         "adding files without matches should not change grep output",
     );
 }
@@ -503,9 +502,9 @@ fn grep_ignores_filename_only_matches_in_filesets() {
     // No content matches; only the filename contains the pattern.
     std::fs::write(&filename_match, br#"{ "drop": 0 }"#).unwrap();
 
-    let base = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let base = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--grep",
             "needle",
@@ -513,13 +512,13 @@ fn grep_ignores_filename_only_matches_in_filesets() {
             "80",
             "--no-sort",
             matching.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
 
-    let with_filename_match = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let with_filename_match = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--grep",
             "needle",
@@ -528,13 +527,12 @@ fn grep_ignores_filename_only_matches_in_filesets() {
             "--no-sort",
             matching.file_name().unwrap().to_str().unwrap(),
             filename_match.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
 
-    let base_body = String::from_utf8_lossy(&base.get_output().stdout);
-    let with_body =
-        String::from_utf8_lossy(&with_filename_match.get_output().stdout);
+    let base_body = String::from_utf8_lossy(&base.stdout);
+    let with_body = String::from_utf8_lossy(&with_filename_match.stdout);
     // Fileset runs should keep only the content matches and not count filename-only
     // matches as hits. Headers may differ, but the rendered payload should match.
     let strip_header = |s: &str| {
@@ -565,22 +563,22 @@ fn grep_show_matching_matches_default_behavior() {
     std::fs::write(&with, br#"{"keep":"needle"}"#).unwrap();
     std::fs::write(&without, br#"{"drop":0}"#).unwrap();
 
-    let default = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let default = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--grep",
             "needle",
             "--no-sort",
             with.file_name().unwrap().to_str().unwrap(),
             without.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
 
-    let explicit = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let explicit = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--grep",
             "needle",
@@ -589,13 +587,12 @@ fn grep_show_matching_matches_default_behavior() {
             "--no-sort",
             with.file_name().unwrap().to_str().unwrap(),
             without.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
 
     assert_eq!(
-        default.get_output().stdout,
-        explicit.get_output().stdout,
+        default.stdout, explicit.stdout,
         "--grep-show=matching should mirror the default grep fileset filtering"
     );
 }
@@ -608,20 +605,19 @@ fn grep_fileset_without_matches_renders_nothing() {
     std::fs::write(&a, br#"{"foo":1}"#).unwrap();
     std::fs::write(&b, br#"[1,2,3]"#).unwrap();
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--no-sort",
             "--grep",
             "NEEDLE",
             a.file_name().unwrap().to_str().unwrap(),
             b.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.trim().is_empty(),
         "filesets with zero grep matches should render nothing, got: {stdout:?}"
@@ -636,20 +632,20 @@ fn grep_fileset_without_matches_emits_notice() {
     std::fs::write(&a, br#"{"foo":1}"#).unwrap();
     std::fs::write(&b, br#"[1,2,3]"#).unwrap();
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--no-sort",
             "--grep",
             "NEEDLE",
             a.file_name().unwrap().to_str().unwrap(),
             b.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
 
-    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+    let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
         stderr.contains("No grep matches found"),
         "expected a notice about missing grep matches for fileset run: {stderr:?}"
@@ -670,9 +666,9 @@ fn grep_does_not_shrink_global_budget_when_filtering_filesets() {
         .unwrap();
     std::fs::write(&without, br#"{"drop":0}"#).unwrap();
 
-    let base = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let base = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--no-sort",
             "--no-header",
@@ -684,13 +680,13 @@ fn grep_does_not_shrink_global_budget_when_filtering_filesets() {
             "hit",
             with_a.file_name().unwrap().to_str().unwrap(),
             with_b.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
 
-    let with_extra = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let with_extra = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--no-sort",
             "--no-header",
@@ -703,14 +699,12 @@ fn grep_does_not_shrink_global_budget_when_filtering_filesets() {
             with_a.file_name().unwrap().to_str().unwrap(),
             with_b.file_name().unwrap().to_str().unwrap(),
             without.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
 
-    let base_out = base.get_output().stdout.clone();
-    let extra_out = with_extra.get_output().stdout.clone();
     assert_eq!(
-        base_out, extra_out,
+        base.stdout, with_extra.stdout,
         "adding non-matching files should not shrink the effective global budget"
     );
 }
@@ -769,8 +763,8 @@ fn grep_highlights_for_library_calls_without_extra_config() {
 #[test]
 fn weak_grep_does_not_expand_budget_or_guarantee_match() {
     let input = br#"{"keep":"needle"}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok(
+        &[
             "--no-color",
             "--bytes",
             "5",
@@ -780,11 +774,10 @@ fn weak_grep_does_not_expand_budget_or_guarantee_match() {
             "strict",
             "--weak-grep",
             "needle",
-        ])
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.len() <= 5,
         "weak grep should not expand the user-provided byte budget; got len {}",
@@ -800,20 +793,19 @@ fn weak_grep_keeps_non_matching_files_in_filesets() {
     std::fs::write(&matching, br#"{"keep":"needle"}"#).unwrap();
     std::fs::write(&other, br#"{"drop":0}"#).unwrap();
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--weak-grep",
             "needle",
             "--no-sort",
             matching.file_name().unwrap().to_str().unwrap(),
             other.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("needle"),
         "matching content should still render with weak grep"
@@ -827,8 +819,8 @@ fn weak_grep_keeps_non_matching_files_in_filesets() {
 #[test]
 fn weak_grep_highlights_matches_without_syntax_colors() {
     let input = br#"{"k":"needle","x":"other"}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok_color(
+        &[
             "-f",
             "json",
             "-t",
@@ -837,12 +829,10 @@ fn weak_grep_highlights_matches_without_syntax_colors() {
             "needle",
             "--no-sort",
             "--no-header",
-        ])
-        .env("FORCE_COLOR", "1")
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "weak grep should still highlight matches when color is enabled"
@@ -858,8 +848,8 @@ fn weak_grep_biases_sampling_toward_matches() {
     // Object order: non-matching field first, then the match. With a tiny budget,
     // weak grep should bias priority so the matched field is the one that survives.
     let input = br#"{"miss":"xxxxxxxxxx","hit":"needle"}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok(
+        &[
             "--no-color",
             "--bytes",
             "20",
@@ -870,11 +860,10 @@ fn weak_grep_biases_sampling_toward_matches() {
             "--weak-grep",
             "needle",
             "--no-sort",
-        ])
-        .write_stdin(input)
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("\"hit\""),
         "weak grep should bias sampling so the matched field is kept under tight budgets: {stdout:?}"
@@ -897,21 +886,20 @@ fn weak_grep_fileset_with_no_matches_still_renders_and_has_no_notice() {
     std::fs::write(&a, br#"{"foo":1}"#).unwrap();
     std::fs::write(&b, br#"{"bar":2}"#).unwrap();
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_ok_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--weak-grep",
             "NEEDLE",
             "--no-sort",
             a.file_name().unwrap().to_str().unwrap(),
             b.file_name().unwrap().to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
-    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+        ],
+        None,
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
         !stdout.trim().is_empty(),
         "weak grep should not drop all fileset content when no matches are found"
@@ -925,8 +913,8 @@ fn weak_grep_fileset_with_no_matches_still_renders_and_has_no_notice() {
 #[test]
 fn strong_grep_obeys_zero_global_line_budget_for_non_matches() {
     let input = br#"{"keep":"needle","drop":"filler"}"#.to_vec();
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = run_ok(
+        &[
             "--no-color",
             "--no-sort",
             "--grep",
@@ -935,12 +923,10 @@ fn strong_grep_obeys_zero_global_line_budget_for_non_matches() {
             "all",
             "--global-lines",
             "0",
-        ])
-        .write_stdin(input)
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        Some(&input),
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("needle"),
         "strong grep should still surface matching content when budgets are zeroed: {stdout}"

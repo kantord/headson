@@ -1,6 +1,7 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+mod common;
 use insta::assert_snapshot;
 use std::collections::HashSet;
+use std::ffi::OsStr;
 use std::{fs, path::Path};
 use tempfile::tempdir;
 
@@ -9,6 +10,22 @@ fn write_file(path: &Path, contents: &str) {
         fs::create_dir_all(dir).expect("mkdirs");
     }
     fs::write(path, contents).expect("write");
+}
+
+fn run_in_dir(dir: &tempfile::TempDir, args: &[&str]) -> std::process::Output {
+    let out = common::run_cli_in_dir(dir.path(), args, None);
+    assert!(out.status.success(), "cli should succeed");
+    out
+}
+
+fn run_in_dir_env(
+    dir: &tempfile::TempDir,
+    args: &[&str],
+    envs: &[(&str, &OsStr)],
+) -> std::process::Output {
+    let out = common::run_cli_in_dir_env(dir.path(), args, None, envs);
+    assert!(out.status.success(), "cli should succeed");
+    out
 }
 
 fn tree_cfg() -> headson::RenderConfig {
@@ -45,9 +62,9 @@ fn tree_renders_nested_files_with_code_gutters() {
     write_file(&dir.path().join("data/users.json"), r#"{"users":[1,2,3]}"#);
     write_file(&dir.path().join("README.md"), "headson tree preview\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
@@ -57,11 +74,9 @@ fn tree_renders_nested_files_with_code_gutters() {
             "src/ingest/fileset.rs",
             "data/users.json",
             "README.md",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     let expected = concat!(
         ".\n",
         "├─ src/\n",
@@ -95,20 +110,18 @@ fn tree_emits_omission_marker_under_tight_budget() {
         "fn a() {}\nfn b() {}\nfn c() {}\nfn d() {}\nfn e() {}\n",
     );
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
             "--bytes",
             "60",
             "src/lib.rs",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     let expected = concat!(
         ".\n",
         "├─ src/lib.rs\n",
@@ -131,9 +144,9 @@ fn tree_counted_headers_with_per_file_cap_completes() {
     write_file(&dir.path().join("a.txt"), "one\n");
     write_file(&dir.path().join("b.txt"), "two\nthree\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
@@ -142,11 +155,9 @@ fn tree_counted_headers_with_per_file_cap_completes() {
             "1",
             "a.txt",
             "b.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     if !(stdout.contains("a.txt") && stdout.contains("b.txt")) {
         assert!(
             stdout.contains("… 2 more items"),
@@ -161,13 +172,11 @@ fn tree_renders_duplicate_basenames_in_distinct_dirs() {
     write_file(&dir.path().join("a/foo.rs"), "fn a() {}\n");
     write_file(&dir.path().join("b/foo.rs"), "fn b() {}\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--tree", "--no-sort", "a/foo.rs", "b/foo.rs"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let out = run_in_dir(
+        &dir,
+        &["--no-color", "--tree", "--no-sort", "a/foo.rs", "b/foo.rs"],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("├─ a/foo.rs") && stdout.contains("├─ b/foo.rs"),
         "tree view should show both files with correct branches: {stdout}"
@@ -184,13 +193,11 @@ fn tree_keeps_scaffold_for_empty_siblings() {
     write_file(&dir.path().join("a.txt"), "");
     write_file(&dir.path().join("b.txt"), "");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--tree", "--no-sort", "a.txt", "b.txt"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let out = run_in_dir(
+        &dir,
+        &["--no-color", "--tree", "--no-sort", "a.txt", "b.txt"],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     let expected = concat!(".\n", "├─ a.txt\n", "└─ b.txt\n", "\n",);
     assert_eq!(
         stdout.as_ref(),
@@ -207,13 +214,11 @@ fn tree_keeps_branch_connectors_for_last_child_lines() {
         "fn main() {}\nlet _x = 1;\n",
     );
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--tree", "--no-sort", "dir/only.rs"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let out = run_in_dir(
+        &dir,
+        &["--no-color", "--tree", "--no-sort", "dir/only.rs"],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("├─ dir/only.rs"),
         "single child should render with a closing branch: {stdout}"
@@ -229,13 +234,9 @@ fn tree_keeps_branch_connectors_for_last_child_lines() {
 fn tree_colorizes_pipes_and_names_when_color_enabled() {
     let dir = tempdir().expect("tmp");
     write_file(&dir.path().join("a.rs"), "fn a() {}\n");
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .env("FORCE_COLOR", "1")
-        .args(["--tree", "--no-sort", "a.rs"])
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let envs = [("FORCE_COLOR", OsStr::new("1"))];
+    let out = run_in_dir_env(&dir, &["--tree", "--no-sort", "a.rs"], &envs);
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("\u{001b}[90m├─ \u{001b}[0m")
             || stdout.contains("\u{001b}[90m├─\u{001b}[0m"),
@@ -251,12 +252,8 @@ fn tree_colorizes_pipes_and_names_when_color_enabled() {
 fn tree_remains_plain_when_color_disabled() {
     let dir = tempdir().expect("tmp");
     write_file(&dir.path().join("b.rs"), "fn b() {}\n");
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--tree", "--no-sort", "b.rs"])
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let out = run_in_dir(&dir, &["--no-color", "--tree", "--no-sort", "b.rs"]);
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         !stdout.contains("\u{001b}["),
         "no ANSI escapes should appear when color is disabled: {stdout:?}"
@@ -269,9 +266,9 @@ fn tree_respects_per_file_line_budget() {
     write_file(&dir.path().join("a.txt"), "a1\na2\na3\n");
     write_file(&dir.path().join("b.txt"), "b1\nb2\nb3\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "--tree",
@@ -279,11 +276,9 @@ fn tree_respects_per_file_line_budget() {
             "2",
             "a.txt",
             "b.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("├─ a.txt"),
         "first file should appear in tree: {stdout}"
@@ -308,9 +303,9 @@ fn tree_counts_headers_and_enforces_per_file_line_budget() {
     write_file(&dir.path().join("one.txt"), "1a\n1b\n1c\n");
     write_file(&dir.path().join("two.txt"), "2a\n2b\n2c\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "--tree",
@@ -319,11 +314,9 @@ fn tree_counts_headers_and_enforces_per_file_line_budget() {
             "1",
             "one.txt",
             "two.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("… 2 more items"),
         "when headers consume the per-file budget, tree mode should signal omitted files instead of rendering full bodies: {stdout}"
@@ -341,13 +334,13 @@ fn tree_counts_headers_and_enforces_per_file_line_budget() {
 fn tree_with_grep_keeps_match_highlights_and_colored_pipes() {
     let dir = tempdir().expect("tmp");
     write_file(&dir.path().join("c.json"), r#"{"k":"needle","x":"other"}"#);
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .env("FORCE_COLOR", "1")
-        .args(["--tree", "--grep", "needle", "--no-sort", "c.json"])
-        .assert()
-        .success();
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let envs = [("FORCE_COLOR", OsStr::new("1"))];
+    let out = run_in_dir_env(
+        &dir,
+        &["--tree", "--grep", "needle", "--no-sort", "c.json"],
+        &envs,
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "grep highlight should still color the match: {stdout:?}"
@@ -366,9 +359,9 @@ fn tree_with_grep_reports_non_matching_files() {
     write_file(&dir.path().join("b.txt"), "miss\n");
     write_file(&dir.path().join("c.txt"), "hit\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
@@ -377,11 +370,9 @@ fn tree_with_grep_reports_non_matching_files() {
             "a.txt",
             "b.txt",
             "c.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     let summary_expected =
         concat!(".\n", "├─ c.txt\n", "│ hit\n", "└─ … 2 more items\n", "\n",);
     if stdout.as_ref() != summary_expected {
@@ -402,9 +393,9 @@ fn tree_reports_omitted_files_when_budget_drops_them() {
         write_file(&dir.path().join(format!("{name}.txt")), "line\n");
     }
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
@@ -415,11 +406,9 @@ fn tree_reports_omitted_files_when_budget_drops_them() {
             "c.txt",
             "d.txt",
             "e.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("… 2 more items"),
         "when the budget is too small for most files, tree mode should report how many items were omitted: {stdout}"
@@ -432,9 +421,9 @@ fn tree_reports_omissions_when_every_file_is_dropped() {
     write_file(&dir.path().join("dir/a.txt"), "line\n");
     write_file(&dir.path().join("dir/b.txt"), "line\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
@@ -442,11 +431,9 @@ fn tree_reports_omissions_when_every_file_is_dropped() {
             "0",
             "dir/a.txt",
             "dir/b.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     let expected = concat!(".\n", "├─ dir/\n", "│ └─ … 2 more items\n", "\n",);
     assert_eq!(
         stdout.as_ref(),
@@ -463,9 +450,9 @@ fn tree_respects_line_budget_by_dropping_all_content() {
     write_file(&dir.path().join("a.txt"), "line\n");
     write_file(&dir.path().join("b.txt"), "line\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
@@ -473,11 +460,9 @@ fn tree_respects_line_budget_by_dropping_all_content() {
             "1",
             "a.txt",
             "b.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     let expected = concat!(".\n", "└─ … 2 more items\n", "\n",);
     assert_eq!(
         stdout.as_ref(),
@@ -498,9 +483,9 @@ fn tree_budget_omissions_append_after_kept_files() {
     write_file(&dir.path().join("small1.txt"), "bbbb\n");
     write_file(&dir.path().join("small2.txt"), "cccc\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
@@ -509,11 +494,9 @@ fn tree_budget_omissions_append_after_kept_files() {
             "big1.txt",
             "small1.txt",
             "small2.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     let expected = concat!(
         ".\n",
         "├─ big1.txt\n",
@@ -536,9 +519,9 @@ fn tree_keeps_identical_files_under_tight_line_budget() {
     write_file(&dir.path().join("a.py"), "def foo():\n    pass\n");
     write_file(&dir.path().join("b.py"), "def foo():\n    pass\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
@@ -546,11 +529,9 @@ fn tree_keeps_identical_files_under_tight_line_budget() {
             "2",
             "a.py",
             "b.py",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.contains("├─ a.py") && stdout.contains("├─ b.py"),
         "first identical file should render its first line under tight line budget: {stdout}"
@@ -569,9 +550,9 @@ fn tree_cli_snapshot_budgeted_root_omission() {
         write_file(&dir.path().join(format!("{name}.txt")), "line\n");
     }
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
@@ -582,11 +563,9 @@ fn tree_cli_snapshot_budgeted_root_omission() {
             "c.txt",
             "d.txt",
             "e.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert_snapshot!(
         "tree_cli_snapshot_budgeted_root_omission",
         stdout.as_ref()
@@ -599,14 +578,13 @@ fn tree_cli_color_snapshot_with_grep() {
     write_file(&dir.path().join("main.rs"), "fn main(){}\n");
     write_file(&dir.path().join("lib.rs"), "fn helper(){}\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .env("FORCE_COLOR", "1")
-        .args(["--tree", "--no-sort", "--grep", "main", "main.rs", "lib.rs"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let envs = [("FORCE_COLOR", OsStr::new("1"))];
+    let out = run_in_dir_env(
+        &dir,
+        &["--tree", "--no-sort", "--grep", "main", "main.rs", "lib.rs"],
+        &envs,
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert_snapshot!("tree_cli_color_snapshot_with_grep", stdout.as_ref());
 }
 
@@ -616,9 +594,9 @@ fn tree_cli_snapshot_nested_folder_omission() {
     write_file(&dir.path().join("keep/root.rs"), "fn keep(){}\n");
     write_file(&dir.path().join("omit/deep/file.rs"), "fn drop(){}\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
@@ -626,11 +604,9 @@ fn tree_cli_snapshot_nested_folder_omission() {
             "3",
             "keep/root.rs",
             "omit/deep/file.rs",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert_snapshot!(
         "tree_cli_snapshot_nested_folder_omission",
         stdout.as_ref()

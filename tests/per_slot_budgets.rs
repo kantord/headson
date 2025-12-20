@@ -1,4 +1,4 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+mod common;
 use std::collections::HashMap;
 use std::fs;
 use tempfile::{TempDir, tempdir};
@@ -11,19 +11,22 @@ fn write_file(dir: &TempDir, name: &str, contents: &str) {
     fs::write(path, contents).expect("write");
 }
 
+fn run_in_dir(dir: &TempDir, args: &[&str]) -> String {
+    let out = common::run_cli_in_dir(dir.path(), args, None);
+    assert!(out.status.success(), "cli should succeed");
+    String::from_utf8_lossy(&out.stdout).into_owned()
+}
+
 #[test]
 fn per_file_line_budget_respected() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "a.txt", "a1\na2\na3\n");
     write_file(&dir, "b.txt", "b1\nb2\nb3\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-n", "1", "a.txt", "b.txt"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout = run_in_dir(
+        &dir,
+        &["--no-color", "--no-sort", "-n", "1", "a.txt", "b.txt"],
+    );
     assert!(
         stdout.contains("==> a.txt <=="),
         "first file header should render under per-file cap: {stdout}"
@@ -43,9 +46,9 @@ fn per_file_line_budget_keeps_context_with_strong_grep() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "a.txt", "alpha\nneedle1\nbeta\nneedle2\ngamma\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let stdout = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "--grep",
@@ -55,11 +58,8 @@ fn per_file_line_budget_keeps_context_with_strong_grep() {
             "-n",
             "3",
             "a.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
     assert!(
         stdout.contains("alpha")
             && stdout.contains("beta")
@@ -82,13 +82,10 @@ fn per_file_line_budget_counts_headers() {
     write_file(&dir, "a.txt", "a1\na2\n");
     write_file(&dir, "b.txt", "b1\nb2\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-H", "-n", "1", "a.txt", "b.txt"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout = run_in_dir(
+        &dir,
+        &["--no-color", "--no-sort", "-H", "-n", "1", "a.txt", "b.txt"],
+    );
     assert!(
         !stdout.contains("\na1\n") && !stdout.contains("\nb1\n"),
         "content should be skipped when header consumes the per-file line budget: {stdout}"
@@ -101,13 +98,10 @@ fn per_file_line_budget_one_with_counted_headers_emits_no_ellipsis() {
     write_file(&dir, "a.txt", "a1\na2\n");
     write_file(&dir, "b.txt", "b1\nb2\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-H", "-n", "1", "a.txt", "b.txt"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout = run_in_dir(
+        &dir,
+        &["--no-color", "--no-sort", "-H", "-n", "1", "a.txt", "b.txt"],
+    );
     assert!(
         !stdout.contains('…'),
         "per-file line budget of one with counted headers should not emit an extra omission line: {stdout}"
@@ -120,9 +114,9 @@ fn per_file_line_budget_leaves_room_for_minimal_bodies() {
     write_file(&dir, "a.json", "{}\n");
     write_file(&dir, "b.yaml", "{}\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let stdout = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "-H",
@@ -130,11 +124,8 @@ fn per_file_line_budget_leaves_room_for_minimal_bodies() {
             "2",
             "a.json",
             "b.yaml",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
     assert!(
         stdout.contains("==> a.json <==\n{}\n"),
         "JSON body should still render when header + body fit under per-file cap: {stdout}"
@@ -151,13 +142,10 @@ fn per_file_line_budget_zero_with_counted_headers_outputs_nothing() {
     write_file(&dir, "a.txt", "a1\na2\n");
     write_file(&dir, "b.txt", "b1\nb2\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-H", "-n", "0", "a.txt", "b.txt"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout = run_in_dir(
+        &dir,
+        &["--no-color", "--no-sort", "-H", "-n", "0", "a.txt", "b.txt"],
+    );
     assert!(
         stdout.trim().is_empty(),
         "per-file line budget of zero with counted headers should emit nothing: {stdout}"
@@ -170,13 +158,10 @@ fn per_file_line_budget_zero_without_headers_outputs_nothing() {
     write_file(&dir, "a.txt", "a1\na2\n");
     write_file(&dir, "b.txt", "b1\nb2\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-n", "0", "a.txt", "b.txt"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout = run_in_dir(
+        &dir,
+        &["--no-color", "--no-sort", "-n", "0", "a.txt", "b.txt"],
+    );
     assert!(
         stdout.trim().is_empty(),
         "per-file line budget of zero without headers should emit nothing: {stdout}"
@@ -188,13 +173,8 @@ fn per_file_line_budget_zero_single_input_outputs_nothing() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "only.txt", "line1\nline2\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-n", "0", "only.txt"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout =
+        run_in_dir(&dir, &["--no-color", "--no-sort", "-n", "0", "only.txt"]);
     assert!(
         stdout.trim().is_empty(),
         "single input should be fully suppressed when per-file line cap is zero: {stdout}"
@@ -207,20 +187,17 @@ fn per_file_byte_budget_prevents_starvation() {
     write_file(&dir, "long.txt", "abcdefg\nhijklmn\n");
     write_file(&dir, "short.txt", "x\ny\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let stdout = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "--bytes",
             "8",
             "long.txt",
             "short.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
     assert!(
         stdout.contains("==> long.txt <=="),
         "long file should still appear even when truncated by per-file bytes: {stdout}"
@@ -242,13 +219,10 @@ fn per_file_line_budget_one_keeps_bodies_empty_when_headers_free() {
     write_file(&dir, "a.json", "{\"a\":1,\"b\":2,\"c\":3}\n");
     write_file(&dir, "b.json", "{\"x\":1,\"y\":2,\"z\":3}\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-n", "1", "a.json", "b.json"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout = run_in_dir(
+        &dir,
+        &["--no-color", "--no-sort", "-n", "1", "a.json", "b.json"],
+    );
     let mut counts: HashMap<String, usize> = HashMap::new();
     let mut current: Option<String> = None;
     for line in stdout.lines() {
@@ -283,9 +257,9 @@ fn per_file_line_budget_respected_with_strong_grep() {
     write_file(&dir, "a.py", "def f():\n    return 1\n");
     write_file(&dir, "b.py", "def g():\n    pass\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let stdout = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "--grep",
@@ -296,11 +270,8 @@ fn per_file_line_budget_respected_with_strong_grep() {
             "1",
             "a.py",
             "b.py",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
     assert!(
         stdout.contains("return 1"),
         "matching file should include the return line even under per-file cap: {stdout}"
@@ -320,9 +291,9 @@ fn per_file_line_budget_respected_with_strong_grep_single_input() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "only.txt", "pre\nmatch\npost\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let stdout = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "--grep",
@@ -332,11 +303,8 @@ fn per_file_line_budget_respected_with_strong_grep_single_input() {
             "-n",
             "1",
             "only.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
     assert!(
         stdout.contains("match"),
         "strong grep should include the matching line: {stdout}"
@@ -357,9 +325,9 @@ fn per_file_line_budget_respected_without_headers() {
     write_file(&dir, "a.txt", "a1\na2\n");
     write_file(&dir, "b.txt", "b1\nb2\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let stdout = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "--no-header",
@@ -367,11 +335,8 @@ fn per_file_line_budget_respected_without_headers() {
             "1",
             "a.txt",
             "b.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
     assert!(
         !stdout.contains("==>"),
         "headers should be suppressed with --no-header: {stdout}"
@@ -395,13 +360,10 @@ fn per_file_zero_byte_or_char_budget_emits_nothing() {
     write_file(&dir, "only.txt", "data that should be hidden\n");
 
     for (flag, desc) in [("--bytes", "byte"), ("--chars", "char")] {
-        let assert = cargo_bin_cmd!("hson")
-            .current_dir(dir.path())
-            .args(["--no-color", "--no-sort", flag, "0", "only.txt"])
-            .assert()
-            .success();
-
-        let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        let stdout = run_in_dir(
+            &dir,
+            &["--no-color", "--no-sort", flag, "0", "only.txt"],
+        );
         assert!(
             stdout.trim().is_empty(),
             "per-file {desc} budget of zero should suppress all output: {stdout}"
@@ -414,20 +376,17 @@ fn per_file_zero_byte_budget_emits_nothing_without_headers() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "only.txt", "hidden\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let stdout = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "--no-header",
             "--bytes",
             "0",
             "only.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
     assert!(
         stdout.trim().is_empty(),
         "per-file byte budget of zero with headers disabled should emit nothing: {stdout}"
@@ -439,13 +398,10 @@ fn per_file_zero_byte_budget_emits_nothing_with_counted_headers() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "only.txt", "hidden\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-H", "--bytes", "0", "only.txt"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout = run_in_dir(
+        &dir,
+        &["--no-color", "--no-sort", "-H", "--bytes", "0", "only.txt"],
+    );
     assert!(
         stdout.trim().is_empty(),
         "per-file byte budget of zero with counted headers should emit nothing: {stdout}"
@@ -462,9 +418,9 @@ fn per_file_grep_multiple_hits_are_not_dropped() {
     );
     write_file(&dir, "other.py", "def g():\n    pass\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let stdout = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "--grep",
@@ -475,11 +431,8 @@ fn per_file_grep_multiple_hits_are_not_dropped() {
             "1",
             "match.py",
             "other.py",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
     assert!(
         stdout.matches("return").count() >= 3,
         "all matching lines should be kept even when per-file cap is tight: {stdout}"
@@ -500,13 +453,10 @@ fn per_file_byte_budget_counts_headers() {
     write_file(&dir, "a.txt", "aaaaaa\nbbbbbb\n");
     write_file(&dir, "b.txt", "cccccc\ndddddd\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "--bytes", "12", "a.txt", "b.txt"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout = run_in_dir(
+        &dir,
+        &["--no-color", "--no-sort", "--bytes", "12", "a.txt", "b.txt"],
+    );
     assert!(
         stdout.contains("==> a.txt <=="),
         "header should consume from the per-file byte budget but still render: {stdout}"
@@ -529,9 +479,9 @@ fn global_line_budget_does_not_override_per_slot_cap() {
     write_file(&dir, "c.txt", "c1\nc2\nc3\nc4\n");
     write_file(&dir, "d.txt", "d1\nd2\nd3\nd4\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let stdout = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "-n",
@@ -542,11 +492,8 @@ fn global_line_budget_does_not_override_per_slot_cap() {
             "b.txt",
             "c.txt",
             "d.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
     for prefix in ["a", "b", "c", "d"] {
         assert!(
             stdout.contains(&format!("{prefix}1")),
@@ -569,13 +516,10 @@ fn per_file_line_budget_does_not_drop_small_files() {
     write_file(&dir, "a.txt", "a1\na2\n");
     write_file(&dir, "b.txt", "b1\nb2\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-n", "5", "a.txt", "b.txt"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout = run_in_dir(
+        &dir,
+        &["--no-color", "--no-sort", "-n", "5", "a.txt", "b.txt"],
+    );
     assert!(
         stdout.contains("a1\na2"),
         "small file should render fully when under per-file line budget: {stdout}"
@@ -604,13 +548,10 @@ fn per_file_line_budget_keeps_string_prefix_in_line_only_mode() {
         &format!("{{\"long\":\"{}\"}}", "B".repeat(400)),
     );
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-n", "1", "a.json", "b.json"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout = run_in_dir(
+        &dir,
+        &["--no-color", "--no-sort", "-n", "1", "a.json", "b.json"],
+    );
     assert!(
         stdout.contains("{ … }"),
         "line-only per-file cap should still show an elided object placeholder: {stdout}"
@@ -622,9 +563,9 @@ fn strong_grep_matches_do_not_exhaust_per_file_cap() {
     let dir = tempdir().expect("tmp");
     write_file(&dir, "log.txt", "pre\nmatch one\nmiddle\nmatch two\npost\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let stdout = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "--grep",
@@ -634,11 +575,8 @@ fn strong_grep_matches_do_not_exhaust_per_file_cap() {
             "-n",
             "2",
             "log.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
     assert!(
         ["pre", "middle", "post"]
             .iter()
@@ -661,9 +599,9 @@ fn strong_grep_does_not_starve_non_matching_context_in_filesets() {
     write_file(&dir, "a.txt", "match1\ncontext1\nmatch2\ncontext2\n");
     write_file(&dir, "b.txt", "other\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let stdout = run_in_dir(
+        &dir,
+        &[
             "--no-color",
             "--no-sort",
             "--grep",
@@ -674,11 +612,8 @@ fn strong_grep_does_not_starve_non_matching_context_in_filesets() {
             "1",
             "a.txt",
             "b.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+    );
     assert!(
         stdout.contains("match1") && stdout.contains("match2"),
         "strong grep should still surface all matching lines: {stdout}"
@@ -712,9 +647,9 @@ fn counted_headers_respect_per_file_line_cap_under_strong_grep() {
 }
 
 fn run_grep_with_counted_headers(dir: &TempDir) -> String {
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    run_in_dir(
+        dir,
+        &[
             "--no-color",
             "--no-sort",
             "-H",
@@ -726,10 +661,8 @@ fn run_grep_with_counted_headers(dir: &TempDir) -> String {
             "all",
             "b.txt",
             "a.txt",
-        ])
-        .assert()
-        .success();
-    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+        ],
+    )
 }
 
 fn assert_headers_and_match_present(stdout: &str) {
@@ -753,13 +686,10 @@ fn per_file_line_budget_two_with_headers_free_still_truncates_body() {
     write_file(&dir, "a.txt", "a1\na2\na3\n");
     write_file(&dir, "b.txt", "b1\nb2\nb3\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-n", "2", "a.txt", "b.txt"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout = run_in_dir(
+        &dir,
+        &["--no-color", "--no-sort", "-n", "2", "a.txt", "b.txt"],
+    );
     assert!(
         stdout.contains("==> a.txt <==\na1\n…\n"),
         "free headers with per-file line cap 2 should allow one body line then ellipsis for a.txt: {stdout}"
@@ -780,13 +710,10 @@ fn per_file_line_budget_three_with_counted_headers_emits_ellipsis() {
     write_file(&dir, "a.txt", "a1\na2\na3\n");
     write_file(&dir, "b.txt", "b1\nb2\nb3\n");
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-H", "-n", "6", "a.txt", "b.txt"])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stdout = run_in_dir(
+        &dir,
+        &["--no-color", "--no-sort", "-H", "-n", "6", "a.txt", "b.txt"],
+    );
     assert!(
         stdout.contains("==> a.txt <==\na1\na2\na3\n"),
         "counted header + cap 6 should fit full body when nothing is omitted: {stdout}"
