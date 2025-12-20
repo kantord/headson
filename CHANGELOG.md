@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.5](https://github.com/kantord/headson/compare/headson-v0.11.4...headson-v0.11.5) - 2025-12-20
+
+### Added
+
+- add shell completions ([#406](https://github.com/kantord/headson/pull/406))
+
+### Other
+
+- drop git2 network features and tidy fileset ordering tests ([#412](https://github.com/kantord/headson/pull/412))
+- *(deps)* update rust crate frecenfile to v0.4.1 ([#410](https://github.com/kantord/headson/pull/410))
+- turn off default features in git2 ([#407](https://github.com/kantord/headson/pull/407))
+
 ## [0.11.4](https://github.com/kantord/headson/compare/headson-v0.11.3...headson-v0.11.4) - 2025-12-18
 
 ### Other
