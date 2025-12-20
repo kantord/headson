@@ -1,11 +1,12 @@
+mod common;
 use insta::assert_snapshot;
 use std::path::Path;
 use test_each_file::test_each_path;
 
 #[allow(dead_code, reason = "legacy helper kept during --debug migration")]
 fn run_cli_auto_text_with_style(path: &Path, style: &str) -> String {
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args([
+    let output = common::run_cli(
+        &[
             "--no-color",
             "-c",
             "120", // modest budget to trigger omission markers where applicable
@@ -14,12 +15,12 @@ fn run_cli_auto_text_with_style(path: &Path, style: &str) -> String {
             "-t",
             style, // strict | default | detailed
             path.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
+    assert!(output.status.success(), "cli should succeed");
 
-    let mut out =
-        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let mut out = String::from_utf8_lossy(&output.stdout).to_string();
     // Normalize trailing newlines to a single one to keep snapshots stable.
     while out.ends_with('\n') {
         out.pop();
@@ -29,8 +30,8 @@ fn run_cli_auto_text_with_style(path: &Path, style: &str) -> String {
 }
 
 fn run_cli_auto_text_with_debug(path: &Path, style: &str) -> (String, String) {
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args([
+    let output = common::run_cli(
+        &[
             "--no-color",
             "--debug",
             "-c",
@@ -40,19 +41,19 @@ fn run_cli_auto_text_with_debug(path: &Path, style: &str) -> (String, String) {
             "-t",
             style, // strict | default | detailed
             path.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
+    assert!(output.status.success(), "cli should succeed");
 
-    let mut out =
-        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let mut out = String::from_utf8_lossy(&output.stdout).to_string();
     // Normalize trailing newlines to a single one to keep snapshots stable.
     while out.ends_with('\n') {
         out.pop();
     }
     out.push('\n');
 
-    let err = String::from_utf8_lossy(&assert.get_output().stderr).to_string();
+    let err = String::from_utf8_lossy(&output.stderr).to_string();
     let norm = normalize_debug(&err);
     (out, norm)
 }

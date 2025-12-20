@@ -1,4 +1,4 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+mod common;
 use insta::assert_snapshot;
 
 fn normalize(out: &str) -> String {
@@ -7,8 +7,8 @@ fn normalize(out: &str) -> String {
 
 #[test]
 fn snapshot_grep_per_slot_line_cap() {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "--grep",
@@ -19,18 +19,18 @@ fn snapshot_grep_per_slot_line_cap() {
             "1",
             "tests/fixtures/code/sample.py",
             "tests/fixtures/code/sample.ts",
-        ])
-        .assert()
-        .success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout).into_owned();
     assert_snapshot!("grep_per_slot_line_cap", normalize(&out));
 }
 
 #[test]
 fn snapshot_counted_headers_tiny_line_cap() {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "-H",
@@ -39,18 +39,18 @@ fn snapshot_counted_headers_tiny_line_cap() {
             "tests/fixtures/mixed_headers/a.json",
             "tests/fixtures/mixed_headers/b.yaml",
             "tests/fixtures/mixed_headers/c.txt",
-        ])
-        .assert()
-        .success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout).into_owned();
     assert_snapshot!("counted_headers_tiny_line_cap", normalize(&out));
 }
 
 #[test]
 fn snapshot_tree_per_slot_line_cap() {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
@@ -58,18 +58,18 @@ fn snapshot_tree_per_slot_line_cap() {
             "tests/fixtures/tree_per_slot/b.txt",
             "-n",
             "1",
-        ])
-        .assert()
-        .success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout).into_owned();
     assert_snapshot!("tree_per_slot_line_cap", normalize(&out));
 }
 
 #[test]
 fn snapshot_tree_per_slot_varied_line_cap() {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--tree",
             "--no-sort",
@@ -79,18 +79,18 @@ fn snapshot_tree_per_slot_varied_line_cap() {
             "tests/fixtures/tree_per_slot_varied/d.txt",
             "-n",
             "3",
-        ])
-        .assert()
-        .success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout).into_owned();
     assert_snapshot!("tree_per_slot_varied_line_cap", normalize(&out));
 }
 
 #[test]
 fn snapshot_multibyte_chars_and_bytes_per_slot() {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "--chars",
@@ -99,18 +99,18 @@ fn snapshot_multibyte_chars_and_bytes_per_slot() {
             "12",
             "tests/fixtures/bytes_chars/emoji.json",
             "tests/fixtures/bytes_chars/long.txt",
-        ])
-        .assert()
-        .success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout).into_owned();
     assert_snapshot!("multibyte_chars_and_bytes_per_slot", normalize(&out));
 }
 
 #[test]
 fn snapshot_multibyte_chars_tighter_than_bytes() {
-    let assert = cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "--no-sort",
             "--tree",
@@ -120,10 +120,10 @@ fn snapshot_multibyte_chars_tighter_than_bytes() {
             "100",
             "tests/fixtures/chars_vs_bytes/emoji.txt",
             "tests/fixtures/chars_vs_bytes/ascii.txt",
-        ])
-        .assert()
-        .success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout).into_owned();
     assert_snapshot!("multibyte_chars_tighter_than_bytes", normalize(&out));
 }

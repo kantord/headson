@@ -1,4 +1,4 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+mod common;
 use std::fs;
 use tempfile::tempdir;
 
@@ -8,9 +8,9 @@ fn per_slot_and_global_zero_caps_emit_nothing() {
     fs::write(dir.path().join("a.txt"), "a1\na2\n").unwrap();
     fs::write(dir.path().join("b.txt"), "b1\nb2\n").unwrap();
 
-    let assert = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let out = common::run_cli_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--no-sort",
             "-n",
@@ -19,11 +19,11 @@ fn per_slot_and_global_zero_caps_emit_nothing() {
             "0",
             "a.txt",
             "b.txt",
-        ])
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         stdout.trim().is_empty(),
         "combined zero per-file and global caps should suppress output: {stdout:?}"
@@ -31,14 +31,18 @@ fn per_slot_and_global_zero_caps_emit_nothing() {
 }
 
 #[test]
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "single test compares multiple output variants for clarity"
+)]
 fn tree_header_budgeting_differs_when_headers_are_charged() {
     let dir = tempdir().expect("tmp");
     fs::write(dir.path().join("a.txt"), "a1\na2\na3\n").unwrap();
     fs::write(dir.path().join("b.txt"), "b1\nb2\nb3\n").unwrap();
 
-    let default = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let default = common::run_cli_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--no-sort",
             "--tree",
@@ -46,12 +50,12 @@ fn tree_header_budgeting_differs_when_headers_are_charged() {
             "2",
             "a.txt",
             "b.txt",
-        ])
-        .assert()
-        .success();
-    let counted = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+        ],
+        None,
+    );
+    let counted = common::run_cli_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--no-sort",
             "--tree",
@@ -60,12 +64,14 @@ fn tree_header_budgeting_differs_when_headers_are_charged() {
             "2",
             "a.txt",
             "b.txt",
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
+    assert!(default.status.success(), "cli should succeed");
+    assert!(counted.status.success(), "cli should succeed");
 
-    let default_out = String::from_utf8_lossy(&default.get_output().stdout);
-    let counted_out = String::from_utf8_lossy(&counted.get_output().stdout);
+    let default_out = String::from_utf8_lossy(&default.stdout);
+    let counted_out = String::from_utf8_lossy(&counted.stdout);
     assert!(
         default_out.contains("a1") && default_out.contains("b1"),
         "tree render should surface body lines when headers are free: {default_out}"
@@ -85,24 +91,30 @@ fn tree_header_budgeting_differs_when_headers_are_charged() {
 }
 
 #[test]
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "single test compares multiple output variants for clarity"
+)]
 fn section_headers_charged_under_line_caps() {
     let dir = tempdir().expect("tmp");
     fs::write(dir.path().join("a.txt"), "a1\na2\na3\n").unwrap();
     fs::write(dir.path().join("b.txt"), "b1\nb2\nb3\n").unwrap();
 
-    let free = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-n", "2", "a.txt", "b.txt"])
-        .assert()
-        .success();
-    let charged = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args(["--no-color", "--no-sort", "-H", "-n", "2", "a.txt", "b.txt"])
-        .assert()
-        .success();
+    let free = common::run_cli_in_dir(
+        dir.path(),
+        &["--no-color", "--no-sort", "-n", "2", "a.txt", "b.txt"],
+        None,
+    );
+    let charged = common::run_cli_in_dir(
+        dir.path(),
+        &["--no-color", "--no-sort", "-H", "-n", "2", "a.txt", "b.txt"],
+        None,
+    );
+    assert!(free.status.success(), "cli should succeed");
+    assert!(charged.status.success(), "cli should succeed");
 
-    let free_out = String::from_utf8_lossy(&free.get_output().stdout);
-    let charged_out = String::from_utf8_lossy(&charged.get_output().stdout);
+    let free_out = String::from_utf8_lossy(&free.stdout);
+    let charged_out = String::from_utf8_lossy(&charged.stdout);
     assert!(
         free_out.contains("a1") && free_out.contains("b1"),
         "section mode should still surface content when headers are free: {free_out}"
@@ -122,9 +134,9 @@ fn strong_vs_weak_grep_under_zero_global_lines() {
     let dir = tempdir().expect("tmp");
     fs::write(dir.path().join("only.txt"), "alpha\nneedle\nomega\n").unwrap();
 
-    let strong = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+    let strong = common::run_cli_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--no-sort",
             "--grep",
@@ -132,12 +144,12 @@ fn strong_vs_weak_grep_under_zero_global_lines() {
             "--global-lines",
             "0",
             "only.txt",
-        ])
-        .assert()
-        .success();
-    let weak = cargo_bin_cmd!("hson")
-        .current_dir(dir.path())
-        .args([
+        ],
+        None,
+    );
+    let weak = common::run_cli_in_dir(
+        dir.path(),
+        &[
             "--no-color",
             "--no-sort",
             "--weak-grep",
@@ -145,12 +157,14 @@ fn strong_vs_weak_grep_under_zero_global_lines() {
             "--global-lines",
             "0",
             "only.txt",
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
+    assert!(strong.status.success(), "cli should succeed");
+    assert!(weak.status.success(), "cli should succeed");
 
-    let strong_out = String::from_utf8_lossy(&strong.get_output().stdout);
-    let weak_out = String::from_utf8_lossy(&weak.get_output().stdout);
+    let strong_out = String::from_utf8_lossy(&strong.stdout);
+    let weak_out = String::from_utf8_lossy(&weak.stdout);
     assert!(
         strong_out.contains("needle") && !strong_out.trim().is_empty(),
         "must-keep matches should still render even when the global budget is zero: {strong_out}"

@@ -1,4 +1,4 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+mod common;
 use std::collections::HashSet;
 
 struct FixtureExpectation {
@@ -66,14 +66,10 @@ const FIXTURES: &[FixtureExpectation] = &[
 ];
 
 fn run_colored_output(path: &str) -> String {
-    let output = cargo_bin_cmd!("hson")
-        .args(["--color", "-c", "400", "-f", "auto", path])
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-    String::from_utf8(output).expect("headson output should be UTF-8")
+    let out =
+        common::run_cli(&["--color", "-c", "400", "-f", "auto", path], None);
+    assert!(out.status.success(), "cli should succeed");
+    String::from_utf8(out.stdout).expect("headson output should be UTF-8")
 }
 
 fn parse_ansi_sequences(line: &str) -> Result<Vec<String>, String> {

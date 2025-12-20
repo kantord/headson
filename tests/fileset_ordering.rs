@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use assert_cmd::cargo::cargo_bin_cmd;
+mod common;
 use filetime::{FileTime, set_file_mtime};
 use git2::{Repository, Signature, Time};
 use tempfile::tempdir;
@@ -97,14 +97,15 @@ fn frecency_orders_fileset_by_recent_commit() {
     )
     .expect("mtime b");
 
-    let mut cmd = cargo_bin_cmd!("hson");
     let cache_dir = dir.path().join("cache");
-    let assert = cmd
-        .current_dir(dir.path())
-        .env("FRECENFILE_CACHE_DIR", &cache_dir)
-        .env("HOME", dir.path())
-        .env("XDG_CACHE_HOME", &cache_dir)
-        .args([
+    let envs = [
+        ("FRECENFILE_CACHE_DIR", cache_dir.as_os_str()),
+        ("HOME", dir.path().as_os_str()),
+        ("XDG_CACHE_HOME", cache_dir.as_os_str()),
+    ];
+    let out = common::run_cli_in_dir_env(
+        dir.path(),
+        &[
             "--no-color",
             "-i",
             "text",
@@ -113,10 +114,12 @@ fn frecency_orders_fileset_by_recent_commit() {
             "1000",
             "file_a.txt",
             "file_b.txt",
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+        &envs,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     let names = parse_header_order(&out);
     assert_eq!(names, vec!["file_b.txt", "file_a.txt"]);
 }
@@ -133,11 +136,11 @@ fn non_git_repo_uses_mtime_order() {
     // Ensure a small gap to avoid same-second ordering.
     set_file_mtime(&b, FileTime::from_unix_time(3, 0)).expect("mtime b");
 
-    let mut cmd = cargo_bin_cmd!("hson");
-    let assert = cmd
-        .current_dir(dir.path())
-        .env("XDG_CACHE_HOME", dir.path().join("cache"))
-        .args([
+    let cache_dir = dir.path().join("cache");
+    let envs = [("XDG_CACHE_HOME", cache_dir.as_os_str())];
+    let out = common::run_cli_in_dir_env(
+        dir.path(),
+        &[
             "--no-color",
             "-i",
             "text",
@@ -146,10 +149,12 @@ fn non_git_repo_uses_mtime_order() {
             "1000",
             "a.txt",
             "b.txt",
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+        &envs,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     let names = parse_header_order(&out);
     assert_eq!(names, vec!["b.txt", "a.txt"]);
 }
@@ -165,11 +170,11 @@ fn non_git_repo_no_sort_keeps_input_order() {
     set_file_mtime(&a, FileTime::from_unix_time(1, 0)).expect("mtime a");
     set_file_mtime(&b, FileTime::from_unix_time(3, 0)).expect("mtime b");
 
-    let mut cmd = cargo_bin_cmd!("hson");
-    let assert = cmd
-        .current_dir(dir.path())
-        .env("XDG_CACHE_HOME", dir.path().join("cache"))
-        .args([
+    let cache_dir = dir.path().join("cache");
+    let envs = [("XDG_CACHE_HOME", cache_dir.as_os_str())];
+    let out = common::run_cli_in_dir_env(
+        dir.path(),
+        &[
             "--no-color",
             "--no-sort",
             "-i",
@@ -179,10 +184,12 @@ fn non_git_repo_no_sort_keeps_input_order() {
             "1000",
             "a.txt",
             "b.txt",
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+        &envs,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     let names = parse_header_order(&out);
     assert_eq!(names, vec!["a.txt", "b.txt"]);
 }
@@ -198,11 +205,11 @@ fn non_git_repo_glob_still_sorts_by_mtime() {
     set_file_mtime(&a, FileTime::from_unix_time(1, 0)).expect("mtime a");
     set_file_mtime(&b, FileTime::from_unix_time(3, 0)).expect("mtime b");
 
-    let mut cmd = cargo_bin_cmd!("hson");
-    let assert = cmd
-        .current_dir(dir.path())
-        .env("XDG_CACHE_HOME", dir.path().join("cache"))
-        .args([
+    let cache_dir = dir.path().join("cache");
+    let envs = [("XDG_CACHE_HOME", cache_dir.as_os_str())];
+    let out = common::run_cli_in_dir_env(
+        dir.path(),
+        &[
             "--no-color",
             "-i",
             "text",
@@ -211,10 +218,12 @@ fn non_git_repo_glob_still_sorts_by_mtime() {
             "1000",
             "-g",
             "*.txt",
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+        &envs,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     let names = parse_header_order(&out);
     assert_eq!(names, vec!["b.txt", "a.txt"]);
 }
@@ -230,11 +239,11 @@ fn non_git_repo_glob_no_sort_preserves_discovery_order() {
     set_file_mtime(&a, FileTime::from_unix_time(1, 0)).expect("mtime a");
     set_file_mtime(&b, FileTime::from_unix_time(3, 0)).expect("mtime b");
 
-    let mut cmd = cargo_bin_cmd!("hson");
-    let assert = cmd
-        .current_dir(dir.path())
-        .env("XDG_CACHE_HOME", dir.path().join("cache"))
-        .args([
+    let cache_dir = dir.path().join("cache");
+    let envs = [("XDG_CACHE_HOME", cache_dir.as_os_str())];
+    let out = common::run_cli_in_dir_env(
+        dir.path(),
+        &[
             "--no-color",
             "--no-sort",
             "-i",
@@ -244,10 +253,12 @@ fn non_git_repo_glob_no_sort_preserves_discovery_order() {
             "1000",
             "-g",
             "*.txt",
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+        &envs,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     let names = parse_header_order(&out);
     assert_eq!(names, vec!["a.txt", "b.txt"]);
 }

@@ -1,22 +1,19 @@
+mod common;
 #[path = "../test_support/mod.rs"]
 mod util;
 
 fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let mut full_args = vec!["--no-color", "--no-sort", "-f", "auto"];
     full_args.extend_from_slice(args);
     full_args.extend_from_slice(paths);
-    let assert = cmd.args(full_args).assert();
-    let ok = assert.get_output().status.success();
-    let out =
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
-    let err =
-        String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
-    (ok, out, err)
+    let out = common::run_cli(&full_args, None);
+    let ok = out.status.success();
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    (ok, stdout, stderr)
 }
 
 fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let limit_s = limit.to_string();
     let mut args = vec![
         "--no-color",
@@ -30,9 +27,9 @@ fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
     ];
     args.extend_from_slice(extra);
     args.extend_from_slice(paths);
-    let assert = cmd.args(args).assert();
-    assert!(assert.get_output().status.success());
-    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+    let out = common::run_cli(&args, None);
+    assert!(out.status.success(), "cli should succeed");
+    String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
 fn count_section_headers(out: &str) -> usize {
@@ -62,15 +59,14 @@ fn find_js_summary_output(
 }
 
 fn run_pseudo_with_limit(paths: &[&str], limit: usize) -> String {
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let limit_s = limit.to_string();
     let args =
         vec!["--no-color", "-f", "auto", "-t", "default", "-C", &limit_s];
-    let assert = cmd
-        .args(args.into_iter().chain(paths.iter().copied()))
-        .assert();
-    assert!(assert.get_output().status.success());
-    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+    let full_args: Vec<&str> =
+        args.into_iter().chain(paths.iter().copied()).collect();
+    let out = common::run_cli(&full_args, None);
+    assert!(out.status.success(), "cli should succeed");
+    String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
 fn count_pseudo_headers(out: &str) -> usize {
@@ -148,22 +144,20 @@ fn budget_and_global_limit_can_be_used_together() {
     let path = "tests/fixtures/explicit/object_small.json";
     // When both are set, the effective global limit is min(c, C).
     // Here min(200, 100) = 100; using both should match using only -C 100.
-    let mut cmd_both = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let out_both = cmd_both
-        .args(["--no-color", "-f", "json", "-c", "200", "-C", "100", path])
-        .assert()
-        .success();
-    let stdout_both =
-        String::from_utf8_lossy(&out_both.get_output().stdout).into_owned();
+    let out_both = common::run_cli(
+        &["--no-color", "-f", "json", "-c", "200", "-C", "100", path],
+        None,
+    );
+    assert!(out_both.status.success(), "cli should succeed");
+    let stdout_both = String::from_utf8_lossy(&out_both.stdout).into_owned();
 
-    let mut cmd_global_only = assert_cmd::cargo::cargo_bin_cmd!("hson");
-    let out_global_only = cmd_global_only
-        .args(["--no-color", "-f", "json", "-C", "100", path])
-        .assert()
-        .success();
+    let out_global_only = common::run_cli(
+        &["--no-color", "-f", "json", "-C", "100", path],
+        None,
+    );
+    assert!(out_global_only.status.success(), "cli should succeed");
     let stdout_global_only =
-        String::from_utf8_lossy(&out_global_only.get_output().stdout)
-            .into_owned();
+        String::from_utf8_lossy(&out_global_only.stdout).into_owned();
 
     assert_eq!(
         stdout_both, stdout_global_only,

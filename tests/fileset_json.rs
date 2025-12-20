@@ -1,11 +1,13 @@
+mod common;
+
 fn run_json(paths: &[&str], budget: usize) -> String {
     let budget_s = budget.to_string();
-    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
     let mut args =
         vec!["--no-color", "--no-sort", "-c", &budget_s, "-f", "auto"];
     args.extend_from_slice(paths);
-    let assert = cmd.args(args).assert().success();
-    String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+    let out = common::run_cli(&args, None);
+    assert!(out.status.success(), "cli should succeed");
+    String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
 #[test]
@@ -26,9 +28,8 @@ fn json_fileset_small_budget_shows_summary() {
     let out = {
         let budget = 60usize;
         let budget_s = budget.to_string();
-        let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("hson");
-        let assert = cmd
-            .args([
+        let out = common::run_cli(
+            &[
                 "--no-color",
                 "--no-sort",
                 "-H",
@@ -39,10 +40,11 @@ fn json_fileset_small_budget_shows_summary() {
                 p1,
                 p2,
                 p3,
-            ])
-            .assert()
-            .success();
-        String::from_utf8_lossy(&assert.get_output().stdout).into_owned()
+            ],
+            None,
+        );
+        assert!(out.status.success(), "cli should succeed");
+        String::from_utf8_lossy(&out.stdout).into_owned()
     };
     assert!(
         out.contains("more files") || out.contains("==> "),

@@ -1,23 +1,25 @@
+mod common;
+
 #[test]
 fn cpp_text_fallback_snapshot() {
     // Use a real C++-like file with indentation so future changes to
     // text fallback (e.g., indent-aware rendering) will reflect in the snapshot.
     let fixture = std::path::Path::new("tests/fixtures/code/sample.cpp");
 
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color", // stabilize output
             "-c",
             "120", // modest char budget to potentially trigger omission markers
             "-f",
             "auto", // unknown ext => text template fallback
             fixture.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
 
-    let mut out =
-        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
     // Normalize trailing newlines to a single one for snapshot stability.
     while out.ends_with('\n') {
         out.pop();
@@ -30,8 +32,8 @@ fn cpp_text_fallback_snapshot() {
 #[test]
 fn cpp_text_fallback_snapshot_json() {
     let fixture = std::path::Path::new("tests/fixtures/code/sample.cpp");
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-c",
             "120",
@@ -41,12 +43,12 @@ fn cpp_text_fallback_snapshot_json() {
             "-f",
             "json",
             fixture.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
 
-    let mut out =
-        String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
     while out.ends_with('\n') {
         out.pop();
     }
@@ -57,8 +59,8 @@ fn cpp_text_fallback_snapshot_json() {
 #[test]
 fn code_format_override_text_template() {
     let fixture = std::path::Path::new("tests/fixtures/code/sample.py");
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args([
+    let out = common::run_cli(
+        &[
             "--no-color",
             "-c",
             "120",
@@ -67,10 +69,11 @@ fn code_format_override_text_template() {
             "-f",
             "text",
             fixture.to_str().unwrap(),
-        ])
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+        ],
+        None,
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     assert!(
         out.starts_with("def greet"),
         "expected raw text output, got: {out}"
@@ -85,12 +88,12 @@ fn code_format_override_text_template() {
 fn code_format_override_json_via_stdin() {
     let data = std::fs::read_to_string("tests/fixtures/code/sample.py")
         .expect("read fixture");
-    let assert = assert_cmd::cargo::cargo_bin_cmd!("hson")
-        .args(["--no-color", "-c", "120", "-i", "text", "-f", "json"])
-        .write_stdin(data)
-        .assert()
-        .success();
-    let out = String::from_utf8_lossy(&assert.get_output().stdout);
+    let out = common::run_cli(
+        &["--no-color", "-c", "120", "-i", "text", "-f", "json"],
+        Some(data.as_bytes()),
+    );
+    assert!(out.status.success(), "cli should succeed");
+    let out = String::from_utf8_lossy(&out.stdout);
     assert!(
         out.trim_start().starts_with('['),
         "expected JSON array output, got: {out}"
