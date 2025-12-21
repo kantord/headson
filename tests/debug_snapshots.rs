@@ -1,42 +1,6 @@
 mod common;
 use std::fs;
 
-use serde_json::{self as json, Value};
-
-fn normalize_debug(s: &str) -> String {
-    #[allow(
-        clippy::cognitive_complexity,
-        reason = "small local normalizer for snapshot stability; branching kept inline"
-    )]
-    fn walk(v: &mut Value) {
-        match v {
-            Value::Object(map) => {
-                if let Some(id) = map.get_mut("id") {
-                    *id = Value::from(0);
-                }
-                if let Some(counts) = map.get_mut("counts") {
-                    if let Some(obj) = counts.as_object_mut() {
-                        obj.insert("total_nodes".to_string(), Value::from(0));
-                        obj.insert("included".to_string(), Value::from(0));
-                    }
-                }
-                for (_k, vv) in map.iter_mut() {
-                    walk(vv);
-                }
-            }
-            Value::Array(arr) => {
-                for vv in arr.iter_mut() {
-                    walk(vv);
-                }
-            }
-            _ => {}
-        }
-    }
-    let mut v: Value = json::from_str(s).expect("stderr must be JSON");
-    walk(&mut v);
-    json::to_string_pretty(&v).unwrap()
-}
-
 #[test]
 fn snapshot_debug_json_stdin_strict_combined() {
     let output = common::run_cli(
@@ -57,7 +21,7 @@ fn snapshot_debug_json_stdin_strict_combined() {
     assert!(output.status.success(), "cli should succeed");
     let out = String::from_utf8_lossy(&output.stdout);
     let err = String::from_utf8_lossy(&output.stderr);
-    let norm = normalize_debug(&err);
+    let norm = common::normalize_debug(&err);
     let snap = format!("STDOUT:\n{out}\nDEBUG (normalized):\n{norm}\n");
     insta::assert_snapshot!("debug_json_stdin_strict_combined", snap);
 }
@@ -89,7 +53,7 @@ fn snapshot_debug_fileset_auto_combined() {
     assert!(output.status.success(), "cli should succeed");
     let out = String::from_utf8_lossy(&output.stdout);
     let err = String::from_utf8_lossy(&output.stderr);
-    let norm = normalize_debug(&err);
+    let norm = common::normalize_debug(&err);
     let snap = format!("STDOUT:\n{out}\nDEBUG (normalized):\n{norm}\n");
     insta::assert_snapshot!("debug_fileset_auto_combined", snap);
 }

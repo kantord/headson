@@ -152,3 +152,52 @@ fn template_args(template: &str) -> Vec<&str> {
         _ => vec!["-f", template],
     }
 }
+
+#[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
+pub fn normalize_trailing_newline(s: &str) -> String {
+    let mut out = s.to_string();
+    while out.ends_with('\n') {
+        out.pop();
+    }
+    out.push('\n');
+    out
+}
+
+#[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
+pub fn normalize_debug(s: &str) -> String {
+    use serde_json::{self, Value};
+    let mut v: Value = serde_json::from_str(s).expect("stderr must be JSON");
+    normalize_debug_value(&mut v);
+    serde_json::to_string_pretty(&v).unwrap()
+}
+
+fn normalize_debug_value(v: &mut serde_json::Value) {
+    match v {
+        serde_json::Value::Object(map) => {
+            normalize_debug_object(map);
+            for (_k, vv) in map.iter_mut() {
+                normalize_debug_value(vv);
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for vv in arr.iter_mut() {
+                normalize_debug_value(vv);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn normalize_debug_object(
+    map: &mut serde_json::Map<String, serde_json::Value>,
+) {
+    if let Some(id) = map.get_mut("id") {
+        *id = serde_json::Value::from(0);
+    }
+    if let Some(counts) = map.get_mut("counts") {
+        if let Some(obj) = counts.as_object_mut() {
+            obj.insert("total_nodes".to_string(), serde_json::Value::from(0));
+            obj.insert("included".to_string(), serde_json::Value::from(0));
+        }
+    }
+}

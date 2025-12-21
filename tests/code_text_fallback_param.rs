@@ -20,13 +20,8 @@ fn run_cli_auto_text_with_style(path: &Path, style: &str) -> String {
     );
     assert!(output.status.success(), "cli should succeed");
 
-    let mut out = String::from_utf8_lossy(&output.stdout).to_string();
-    // Normalize trailing newlines to a single one to keep snapshots stable.
-    while out.ends_with('\n') {
-        out.pop();
-    }
-    out.push('\n');
-    out
+    let out = String::from_utf8_lossy(&output.stdout);
+    common::normalize_trailing_newline(&out)
 }
 
 fn run_cli_auto_text_with_debug(path: &Path, style: &str) -> (String, String) {
@@ -46,47 +41,12 @@ fn run_cli_auto_text_with_debug(path: &Path, style: &str) -> (String, String) {
     );
     assert!(output.status.success(), "cli should succeed");
 
-    let mut out = String::from_utf8_lossy(&output.stdout).to_string();
-    // Normalize trailing newlines to a single one to keep snapshots stable.
-    while out.ends_with('\n') {
-        out.pop();
-    }
-    out.push('\n');
+    let out = String::from_utf8_lossy(&output.stdout);
+    let out = common::normalize_trailing_newline(&out);
 
-    let err = String::from_utf8_lossy(&output.stderr).to_string();
-    let norm = normalize_debug(&err);
+    let err = String::from_utf8_lossy(&output.stderr);
+    let norm = common::normalize_debug(&err);
     (out, norm)
-}
-
-// Normalizer to stabilize the full pruned debug JSON tree across runs.
-// Mirrors tests/debug_snapshots.rs: zeroes volatile ids and count totals but
-// keeps full children so we can debug structure.
-fn normalize_debug(s: &str) -> String {
-    use serde_json::Value;
-    fn zero_ids_and_counts(map: &mut serde_json::Map<String, Value>) {
-        if let Some(id) = map.get_mut("id") {
-            *id = Value::from(0);
-        }
-        if let Some(counts) = map.get_mut("counts") {
-            if let Some(obj) = counts.as_object_mut() {
-                obj.insert("total_nodes".to_string(), Value::from(0));
-                obj.insert("included".to_string(), Value::from(0));
-            }
-        }
-    }
-    fn walk(v: &mut Value) {
-        match v {
-            Value::Object(map) => {
-                zero_ids_and_counts(map);
-                map.iter_mut().for_each(|(_, vv)| walk(vv));
-            }
-            Value::Array(arr) => arr.iter_mut().for_each(walk),
-            _ => {}
-        }
-    }
-    let mut v: Value = serde_json::from_str(s).expect("stderr must be JSON");
-    walk(&mut v);
-    serde_json::to_string_pretty(&v).unwrap()
 }
 
 fn stem_str(path: &Path) -> String {
