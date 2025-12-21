@@ -1,7 +1,7 @@
 mod common;
 
 fn count_chars_normalized(s: &str) -> usize {
-    s.trim_end_matches('\n').chars().count()
+    common::trim_trailing_newlines(s).chars().count()
 }
 
 fn strip_ansi(s: &str) -> String {

@@ -106,7 +106,7 @@ fn pseudo_fileset_summary_shows_more_files_with_newlines() {
     };
     let summary = format!("==> {omitted} more files <==");
     // CLI prints a trailing newline; ensure the content ends with summary
-    let trimmed = out.trim_end_matches('\n');
+    let trimmed = common::trim_trailing_newlines(&out);
     assert!(
         trimmed.ends_with(&summary),
         "summary must be final content line"
@@ -175,7 +175,7 @@ fn js_fileset_summary_shows_more_files_with_newlines() {
         .expect("expected some budget to omit files and show summary");
     let summary = format!("==> {omitted} more files <==");
     // Ensure exactly one blank line before the summary
-    let trimmed = out.trim_end_matches('\n');
+    let trimmed = common::trim_trailing_newlines(&out);
     if let Some(pos) = trimmed.rfind(&summary) {
         let before = &trimmed[..pos];
         assert!(

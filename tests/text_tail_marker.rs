@@ -29,8 +29,7 @@ fn text_tail_places_marker_at_start() {
         "tail mode should place omission at start: {out:?}"
     );
     // Ensure no omission marker at the end.
-    let last = out
-        .trim_end_matches('\n')
+    let last = common::trim_trailing_newlines(&out)
         .rsplit_once('\n')
         .map(|(_, s)| s)
         .unwrap_or(first);

@@ -12,14 +12,14 @@ fn no_newline_flag_makes_single_line() {
 
     for tmpl in templates {
         let multi = run_with_flags(input, tmpl, &[]);
-        let multi_trimmed = multi.trim_end_matches('\n');
+        let multi_trimmed = common::trim_trailing_newlines(&multi);
         assert!(
             multi_trimmed.contains('\n'),
             "expected multi-line output for {tmpl}"
         );
 
         let single = run_with_flags(input, tmpl, &["--no-newline"]);
-        let single_trimmed = single.trim_end_matches('\n');
+        let single_trimmed = common::trim_trailing_newlines(&single);
         assert!(
             !single_trimmed.contains('\n'),
             "expected single-line output for {tmpl}, got: {single:?}"

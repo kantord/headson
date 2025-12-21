@@ -14,7 +14,7 @@ fn run_array_case(template: &str, budget: usize, extra: &[&str]) -> String {
 fn array_head_pseudo_ellipsis_at_end() {
     let budget = 30usize;
     let out = run_array_case("pseudo", budget, &["--head"]);
-    let out = out.trim_end_matches(['\r', '\n']).to_string();
+    let out = common::trim_trailing_newlines(&out).to_string();
     // In compact mode, the omission marker should appear just before ']'.
     assert!(
         out.ends_with("]") && (out.contains("…]") || out.contains("…,]")),
@@ -38,7 +38,7 @@ fn array_head_pseudo_ellipsis_at_end() {
 fn array_head_js_comment_last() {
     let budget = 30usize;
     let out = run_array_case("js", budget, &["--head"]);
-    let out = out.trim_end_matches(['\r', '\n']).to_string();
+    let out = common::trim_trailing_newlines(&out).to_string();
     assert!(
         out.ends_with("]") && out.contains("/*") && out.contains("*/]"),
         "expected omission comment at end in head mode (js): {out:?}"

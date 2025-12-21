@@ -2,7 +2,7 @@ mod common;
 use std::fs;
 
 fn trimmed_len(s: &str) -> usize {
-    s.trim_end_matches(['\r', '\n']).len()
+    common::trim_trailing_newlines(s).len()
 }
 
 fn collect_lengths(

@@ -18,7 +18,7 @@ fn assert_full_output_ok(template: &str) {
     let input = load_fixture();
     let out =
         common::run_template_budget_no_color(&input, template, 10_000, &[]);
-    let trimmed = out.trim_end_matches(['\r', '\n']).to_string();
+    let trimmed = common::trim_trailing_newlines(&out).to_string();
     assert!(
         trimmed.starts_with('"') && trimmed.ends_with('"'),
         "quoted string: {trimmed:?}"
@@ -44,7 +44,7 @@ fn escaping_preserved_in_full_output() {
 fn assert_truncated_output_ok(template: &str) {
     let input = load_fixture();
     let out = common::run_template_budget_no_color(&input, template, 20, &[]);
-    let trimmed = out.trim_end_matches(['\r', '\n']).to_string();
+    let trimmed = common::trim_trailing_newlines(&out).to_string();
     assert!(
         trimmed.starts_with('"') && trimmed.ends_with('"'),
         "quoted truncated string: {trimmed:?}"

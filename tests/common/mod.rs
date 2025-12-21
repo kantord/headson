@@ -164,6 +164,11 @@ pub fn normalize_trailing_newline(s: &str) -> String {
 }
 
 #[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
+pub fn trim_trailing_newlines(s: &str) -> &str {
+    s.trim_end_matches(['\r', '\n'])
+}
+
+#[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
 pub fn normalize_debug(s: &str) -> String {
     use serde_json::{self, Value};
     let mut v: Value = serde_json::from_str(s).expect("stderr must be JSON");

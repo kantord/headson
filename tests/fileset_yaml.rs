@@ -73,7 +73,7 @@ fn yaml_compact_falls_back_to_json_style() {
     assert!(out.status.success(), "cli should succeed");
     let out = String::from_utf8_lossy(&out.stdout);
     assert!(out.contains("{"), "expected JSON-style compact rendering");
-    let trimmed = out.trim_end_matches('\n');
+    let trimmed = common::trim_trailing_newlines(&out);
     assert!(
         !trimmed.contains('\n'),
         "expected no internal newlines in compact output: {out:?}"

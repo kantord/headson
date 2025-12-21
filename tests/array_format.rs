@@ -10,7 +10,7 @@ fn arrays_have_no_space_after_commas_compact() {
             1000,
             &["--compact"],
         );
-        let trimmed = out.trim_end_matches(['\r', '\n']);
+        let trimmed = common::trim_trailing_newlines(&out);
         assert!(trimmed.contains("[1,2,3,4]"), "compact array: {trimmed:?}");
         assert!(
             !trimmed.contains(", "),

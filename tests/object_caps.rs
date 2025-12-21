@@ -8,7 +8,7 @@ fn run_object_case(template: &str, budget: usize, extra: &[&str]) -> String {
 }
 
 fn parse_js_object_omitted(out_js: &str) -> usize {
-    let trimmed = out_js.trim_end_matches(['\r', '\n']).trim();
+    let trimmed = common::trim_trailing_newlines(out_js).trim();
     assert!(
         trimmed.starts_with('{') && trimmed.ends_with('}'),
         "unexpected shape: {out_js:?}"

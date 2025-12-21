@@ -11,7 +11,7 @@ fn compact_minifies_output() {
     let assert = run(input, &["--compact"]).success();
     let stdout =
         String::from_utf8_lossy(&assert.get_output().stdout).into_owned();
-    let trimmed = stdout.trim_end_matches('\n').to_string();
+    let trimmed = common::trim_trailing_newlines(&stdout).to_string();
     assert!(!trimmed.contains('\n'), "no newlines in compact output");
     assert!(!trimmed.contains("  "), "no double spaces from indent");
     assert!(!trimmed.contains(": "), "no space after colon");

@@ -361,7 +361,7 @@ fn code_fileset_respects_total_byte_budget() {
     let per_file_budget = 10;
     let out = run_code_fileset_with_budget(per_file_budget);
     let total_cap = per_file_budget * CODE_FILESET_PATHS.len();
-    let trimmed_len = out.trim_end_matches('\n').len();
+    let trimmed_len = common::trim_trailing_newlines(&out).len();
     assert!(
         trimmed_len <= total_cap,
         "expected total output <= {total_cap} bytes, got {trimmed_len}\n{out}"
