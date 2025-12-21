@@ -1,4 +1,4 @@
-pub(crate) fn binary_search_max(
+pub fn binary_search_max(
     mut lo: usize,
     mut hi: usize,
     mut pred: impl FnMut(usize) -> bool,

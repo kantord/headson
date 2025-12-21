@@ -1,9 +1,4 @@
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(crate) struct OutputStats {
-    pub bytes: usize,
-    pub chars: usize,
-    pub lines: usize,
-}
+pub(crate) use prunist::OutputStats;
 
 #[inline]
 fn count_lines_from_bytes(b: &[u8]) -> usize {

@@ -1,0 +1,311 @@
+use crate::{Budget, BudgetKind, Budgets, OutputStats, binary_search_max};
+
+pub trait SelectionEngine<Id: Copy> {
+    fn total_nodes(&self) -> usize;
+    fn priority_order(&self) -> &[Id];
+    fn selection_order_for_slots(&self) -> Option<Vec<Id>>;
+    fn slot_count(&self) -> Option<usize>;
+    fn mark_top_k_and_ancestors(
+        &self,
+        order: &[Id],
+        k: usize,
+        flags: &mut [u32],
+        render_id: u32,
+    );
+    fn include_must_keep(
+        &self,
+        flags: &mut [u32],
+        render_id: u32,
+        must_keep: &[bool],
+    );
+    fn measure(
+        &self,
+        flags: &[u32],
+        render_id: u32,
+        measure_chars: bool,
+    ) -> (OutputStats, Option<Vec<OutputStats>>);
+}
+
+pub struct MustKeep<'a> {
+    pub flags: &'a [bool],
+    pub stats: MustKeepStats,
+}
+
+#[derive(Clone, Debug)]
+pub struct MustKeepStats {
+    pub total: OutputStats,
+    pub per_slot: Option<Vec<OutputStats>>,
+}
+
+pub struct SelectionConfig<'a, Id, E>
+where
+    Id: Copy,
+    E: SelectionEngine<Id>,
+{
+    pub engine: &'a E,
+    pub budgets: Budgets,
+    pub min_k: usize,
+    pub must_keep: Option<MustKeep<'a>>,
+    pub _marker: std::marker::PhantomData<Id>,
+}
+
+#[derive(Debug)]
+pub struct SelectionOutcome<Id: Copy> {
+    pub k: Option<usize>,
+    pub inclusion_flags: Vec<u32>,
+    pub render_set_id: u32,
+    pub selection_order: Option<Vec<Id>>,
+}
+
+struct SelectionPrep<Id: Copy> {
+    selection_order: Option<Vec<Id>>,
+    per_slot_caps_active: bool,
+    effective_lo: usize,
+    effective_hi: usize,
+    measure_chars: bool,
+}
+
+struct MustKeepInfo {
+    stats: Option<OutputStats>,
+    slot_stats: Option<Vec<OutputStats>>,
+    apply: bool,
+}
+
+struct SearchState {
+    inclusion_flags: Vec<u32>,
+    render_set_id: u32,
+    best_k: Option<usize>,
+}
+
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Bound derivation branches on optional budgets/slots; splitting would obscure the flow."
+)]
+fn prepare_selection<Id: Copy, E: SelectionEngine<Id>>(
+    cfg: &SelectionConfig<'_, Id, E>,
+) -> SelectionPrep<Id> {
+    let per_slot_caps_active = cfg.budgets.per_slot.is_some();
+    let slot_count = cfg.engine.slot_count();
+    let selection_order = if per_slot_caps_active {
+        cfg.engine.selection_order_for_slots()
+    } else {
+        None
+    };
+    let selection_order_ref: &[Id] = selection_order
+        .as_deref()
+        .unwrap_or_else(|| cfg.engine.priority_order());
+    let available = selection_order_ref.len().max(1);
+    let zero_global_cap =
+        matches!(cfg.budgets.global, Some(Budget { cap: 0, .. }));
+    let allow_zero =
+        cfg.must_keep.is_some() || per_slot_caps_active || zero_global_cap;
+    let mut base_lo = if allow_zero { 0 } else { cfg.min_k.max(1) };
+    if per_slot_caps_active {
+        base_lo = base_lo.max(slot_count.unwrap_or(0));
+    }
+    let capped_lo = base_lo.min(available);
+    let hi = match cfg.budgets.global {
+        Some(Budget { cap: 0, .. }) => 0,
+        Some(Budget {
+            kind: BudgetKind::Bytes,
+            cap,
+        }) => cfg.engine.total_nodes().min(cap.max(1)),
+        _ => cfg.engine.total_nodes(),
+    }
+    .min(available);
+    let effective_lo = capped_lo;
+    let effective_hi = hi.max(effective_lo);
+
+    SelectionPrep {
+        selection_order,
+        per_slot_caps_active,
+        effective_lo,
+        effective_hi,
+        measure_chars: cfg.budgets.measure_chars(),
+    }
+}
+
+fn compute_must_keep<Id: Copy, E: SelectionEngine<Id>>(
+    cfg: &SelectionConfig<'_, Id, E>,
+    prep: &SelectionPrep<Id>,
+) -> MustKeepInfo {
+    let apply = cfg.must_keep.is_some();
+    if !apply {
+        return MustKeepInfo {
+            stats: None,
+            slot_stats: None,
+            apply,
+        };
+    }
+    let Some(mk) = cfg.must_keep.as_ref() else {
+        return MustKeepInfo {
+            stats: None,
+            slot_stats: None,
+            apply: false,
+        };
+    };
+    let mut slot_stats = mk.stats.per_slot.clone();
+    if prep.per_slot_caps_active && slot_stats.is_none() {
+        slot_stats = Some(vec![mk.stats.total]);
+    }
+    MustKeepInfo {
+        stats: Some(mk.stats.total),
+        slot_stats,
+        apply,
+    }
+}
+
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Render measurement + budget checks are easiest to follow as a single pass."
+)]
+fn evaluate_mid<Id: Copy, E: SelectionEngine<Id>>(
+    mid: usize,
+    cfg: &SelectionConfig<'_, Id, E>,
+    prep: &SelectionPrep<Id>,
+    mk_info: &MustKeepInfo,
+    selection_order_ref: &[Id],
+    state: &mut SearchState,
+) -> bool {
+    let current_render_id = state.render_set_id;
+    cfg.engine.mark_top_k_and_ancestors(
+        selection_order_ref,
+        mid,
+        &mut state.inclusion_flags,
+        current_render_id,
+    );
+    if mk_info.apply
+        && let Some(mk) = cfg.must_keep.as_ref()
+    {
+        cfg.engine.include_must_keep(
+            &mut state.inclusion_flags,
+            current_render_id,
+            mk.flags,
+        );
+    }
+    let (render_stats, mut slot_stats) = cfg.engine.measure(
+        &state.inclusion_flags,
+        current_render_id,
+        prep.measure_chars,
+    );
+    let mut adjusted_stats = render_stats;
+    if let Some(mk) = mk_info.stats.as_ref() {
+        adjusted_stats.bytes = adjusted_stats.bytes.saturating_sub(mk.bytes);
+        adjusted_stats.chars = adjusted_stats.chars.saturating_sub(mk.chars);
+        adjusted_stats.lines = adjusted_stats.lines.saturating_sub(mk.lines);
+    }
+    if prep.per_slot_caps_active && slot_stats.is_none() {
+        slot_stats = Some(vec![render_stats]);
+    }
+    let fits_global = cfg
+        .budgets
+        .global
+        .map(|b| !b.exceeds(&adjusted_stats))
+        .unwrap_or(true);
+    let fits_per_slot = if prep.per_slot_caps_active {
+        fits_per_slot_cap(
+            cfg.budgets.per_slot,
+            &adjusted_stats,
+            slot_stats.as_deref(),
+            mk_info.slot_stats.as_deref(),
+        )
+    } else {
+        true
+    };
+    state.render_set_id = state.render_set_id.wrapping_add(1).max(1);
+    if fits_global && fits_per_slot {
+        state.best_k = Some(mid);
+        true
+    } else {
+        false
+    }
+}
+
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Binary search over render sets remains branchy even after extraction."
+)]
+pub fn select_best_k<Id: Copy, E: SelectionEngine<Id>>(
+    cfg: SelectionConfig<'_, Id, E>,
+) -> SelectionOutcome<Id> {
+    let prep = prepare_selection(&cfg);
+    let mk_info = compute_must_keep(&cfg, &prep);
+    let mut search_state = SearchState {
+        inclusion_flags: vec![0; cfg.engine.total_nodes()],
+        render_set_id: 1,
+        best_k: None,
+    };
+
+    if mk_info.apply
+        && let Some(b) = cfg.budgets.global
+        && b.cap == 0
+    {
+        return SelectionOutcome {
+            k: Some(0),
+            inclusion_flags: search_state.inclusion_flags,
+            render_set_id: search_state.render_set_id,
+            selection_order: prep.selection_order,
+        };
+    }
+
+    let effective_min_k = if mk_info.apply { prep.effective_lo } else { 0 };
+    let selection_order_ref: &[Id] = prep
+        .selection_order
+        .as_deref()
+        .unwrap_or_else(|| cfg.engine.priority_order());
+    let _ = binary_search_max(
+        prep.effective_lo.max(effective_min_k),
+        prep.effective_hi,
+        |mid| {
+            evaluate_mid(
+                mid,
+                &cfg,
+                &prep,
+                &mk_info,
+                selection_order_ref,
+                &mut search_state,
+            )
+        },
+    );
+    SelectionOutcome {
+        k: search_state.best_k,
+        inclusion_flags: search_state.inclusion_flags,
+        render_set_id: search_state.render_set_id,
+        selection_order: prep.selection_order,
+    }
+}
+
+fn fits_per_slot_cap(
+    cap: Option<Budget>,
+    fallback_stats: &OutputStats,
+    slot_stats: Option<&[OutputStats]>,
+    must_keep_slot_stats: Option<&[OutputStats]>,
+) -> bool {
+    let Some(cap) = cap else { return true };
+    let Some(slot_stats) = slot_stats else {
+        return !cap.exceeds(fallback_stats);
+    };
+    slot_stats.iter().enumerate().all(|(idx, st)| {
+        let mk_slot = must_keep_slot_stats.as_ref().and_then(|mk| mk.get(idx));
+        let charged = match cap.kind {
+            BudgetKind::Bytes => st
+                .bytes
+                .saturating_sub(mk_slot.map(|m| m.bytes).unwrap_or(0)),
+            BudgetKind::Chars => st
+                .chars
+                .saturating_sub(mk_slot.map(|m| m.chars).unwrap_or(0)),
+            BudgetKind::Lines => {
+                let match_lines = mk_slot.map(|m| m.lines).unwrap_or(0);
+                let mut lines = st.lines.saturating_sub(match_lines);
+                if match_lines > cap.cap && lines > 0 && match_lines < st.lines
+                {
+                    // Treat the omission line as free when matches already exceed the cap
+                    // so at least one non-matching line can fit.
+                    lines = lines.saturating_sub(1);
+                }
+                lines
+            }
+        };
+        charged <= cap.cap
+    })
+}

@@ -4,121 +4,94 @@ use crate::grep::{
 use crate::order::{NodeId, ObjectType, ROOT_PQ_ID};
 use crate::utils::measure::{OutputStats, count_output_stats};
 use crate::{GrepConfig, PriorityOrder, RenderConfig};
+use prunist::{
+    Budget, BudgetKind, Budgets, MustKeep, MustKeepStats, SelectionConfig,
+    SelectionEngine, SelectionOutcome, select_best_k,
+};
 use std::collections::VecDeque;
 
-mod select;
-use select::{SelectionContext, select_best_k};
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum BudgetKind {
-    Bytes,
-    Chars,
-    Lines,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Budget {
-    pub kind: BudgetKind,
-    pub cap: usize,
-}
-
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub struct Budgets {
-    pub global: Option<Budget>,
-    pub per_slot: Option<Budget>,
-}
-
-#[derive(Debug)]
-struct SelectionOutcome {
-    k: Option<usize>,
-    inclusion_flags: Vec<u32>,
-    render_set_id: u32,
-    selection_order: Option<Vec<NodeId>>,
-}
-
-impl Budget {
-    fn exceeds(&self, stats: &OutputStats) -> bool {
-        match self.kind {
-            BudgetKind::Bytes => stats.bytes > self.cap,
-            BudgetKind::Chars => stats.chars > self.cap,
-            BudgetKind::Lines => stats.lines > self.cap,
-        }
-    }
-}
-
-impl Budgets {
-    pub fn measure_chars(&self) -> bool {
-        matches!(
-            self.global,
-            Some(Budget {
-                kind: BudgetKind::Chars,
-                ..
-            })
-        ) || matches!(
-            self.per_slot,
-            Some(Budget {
-                kind: BudgetKind::Chars,
-                ..
-            })
-        )
-    }
-
-    pub fn measure_lines(&self) -> bool {
-        matches!(
-            self.global,
-            Some(Budget {
-                kind: BudgetKind::Lines,
-                ..
-            })
-        ) || matches!(
-            self.per_slot,
-            Some(Budget {
-                kind: BudgetKind::Lines,
-                ..
-            })
-        )
-    }
-
-    pub fn per_slot_active(&self) -> bool {
-        self.per_slot.is_some()
-    }
-
-    pub fn global_active(&self) -> bool {
-        self.global.is_some()
-    }
-
-    pub fn per_slot_kind(&self) -> Option<BudgetKind> {
-        self.per_slot.map(|b| b.kind)
-    }
-
-    pub fn global_kind(&self) -> Option<BudgetKind> {
-        self.global.map(|b| b.kind)
-    }
-
-    pub fn per_slot_cap_for(&self, kind: BudgetKind) -> Option<usize> {
-        match self.per_slot {
-            Some(b) if b.kind == kind => Some(b.cap),
-            _ => None,
-        }
-    }
-
-    pub fn global_cap_for(&self, kind: BudgetKind) -> Option<usize> {
-        match self.global {
-            Some(b) if b.kind == kind => Some(b.cap),
-            _ => None,
-        }
-    }
-
-    pub fn per_slot_zero_cap(&self) -> bool {
-        matches!(self.per_slot, Some(b) if b.cap == 0)
-    }
-}
+type SelectionResult = SelectionOutcome<NodeId>;
 
 fn is_fileset_root(order_build: &PriorityOrder) -> bool {
     order_build
         .object_type
         .get(crate::order::ROOT_PQ_ID)
         .is_some_and(|t| *t == ObjectType::Fileset)
+}
+
+struct HeadsonSelectionEngine<'a> {
+    order_build: &'a PriorityOrder,
+    measure_cfg: &'a RenderConfig,
+    fileset_slots: Option<&'a FilesetSlots>,
+}
+
+impl SelectionEngine<NodeId> for HeadsonSelectionEngine<'_> {
+    fn total_nodes(&self) -> usize {
+        self.order_build.total_nodes
+    }
+
+    fn priority_order(&self) -> &[NodeId] {
+        &self.order_build.by_priority
+    }
+
+    fn selection_order_for_slots(&self) -> Option<Vec<NodeId>> {
+        self.fileset_slots.and_then(|slots| {
+            round_robin_slot_priority(self.order_build, slots)
+        })
+    }
+
+    fn slot_count(&self) -> Option<usize> {
+        self.fileset_slots.map(|s| s.count)
+    }
+
+    fn mark_top_k_and_ancestors(
+        &self,
+        order: &[NodeId],
+        k: usize,
+        flags: &mut [u32],
+        render_id: u32,
+    ) {
+        mark_custom_top_k_and_ancestors(
+            self.order_build,
+            order,
+            k,
+            flags,
+            render_id,
+        );
+    }
+
+    fn include_must_keep(
+        &self,
+        flags: &mut [u32],
+        render_id: u32,
+        must_keep: &[bool],
+    ) {
+        include_must_keep(self.order_build, flags, render_id, must_keep);
+    }
+
+    fn measure(
+        &self,
+        flags: &[u32],
+        render_id: u32,
+        measure_chars: bool,
+    ) -> (OutputStats, Option<Vec<OutputStats>>) {
+        let mut recorder = self.fileset_slots.map(|slots| {
+            crate::serialization::output::SlotStatsRecorder::new(
+                slots.count,
+                measure_chars,
+            )
+        });
+        let (rendered, slot_stats) =
+            crate::serialization::render_from_render_set_with_slots(
+                self.order_build,
+                flags,
+                render_id,
+                self.measure_cfg,
+                self.fileset_slots.map(|slots| slots.map.as_slice()),
+                recorder.take(),
+            );
+        (count_output_stats(&rendered, measure_chars), slot_stats)
+    }
 }
 
 pub fn find_largest_render_under_budgets(
@@ -149,16 +122,52 @@ pub fn find_largest_render_under_budgets(
     let measure_cfg = measure_config(order_build, config, header_budgeting);
     let min_k = min_k_for(&grep_state, grep);
     let must_keep_slice = must_keep_slice(&grep_state, grep);
-    let selection_ctx = SelectionContext {
+    let must_keep = must_keep_slice.map(|flags| {
+        let free_allowance = effective_budgets_with_grep(
+            order_build,
+            &measure_cfg,
+            grep,
+            &grep_state,
+            fileset_slots.as_ref(),
+            budgets.measure_chars(),
+        );
+        let (mk_stats, mk_slots) = if let Some((mk, mk_slots)) = free_allowance
+        {
+            (mk, mk_slots)
+        } else {
+            measure_must_keep_with_slots(
+                order_build,
+                &measure_cfg,
+                flags,
+                budgets.measure_chars(),
+                fileset_slots.as_ref(),
+            )
+        };
+        let per_slot = if budgets.per_slot_active() && mk_slots.is_none() {
+            Some(vec![mk_stats])
+        } else {
+            mk_slots
+        };
+        MustKeep {
+            flags,
+            stats: MustKeepStats {
+                total: mk_stats,
+                per_slot,
+            },
+        }
+    });
+    let engine = HeadsonSelectionEngine {
         order_build,
         measure_cfg: &measure_cfg,
-        budgets,
-        min_k,
-        must_keep: must_keep_slice,
-        grep,
-        state: &grep_state,
         fileset_slots: fileset_slots.as_ref(),
     };
+    let selection = select_best_k(SelectionConfig {
+        engine: &engine,
+        budgets,
+        min_k,
+        must_keep,
+        _marker: std::marker::PhantomData,
+    });
     let finalize_ctx = FinalizeContext {
         budgets,
         fileset_slots: fileset_slots.as_ref(),
@@ -171,7 +180,7 @@ pub fn find_largest_render_under_budgets(
         order_build,
         config,
         header_budgeting,
-        select_best_k(&selection_ctx),
+        selection,
         root_is_fileset,
         &finalize_ctx,
     )
@@ -191,7 +200,7 @@ fn finalize_render_from_selection(
     order_build: &mut PriorityOrder,
     config: &RenderConfig,
     header_budgeting: HeadersBudgeting,
-    selection: SelectionOutcome,
+    selection: SelectionResult,
     root_is_fileset: bool,
     finalize_ctx: &FinalizeContext<'_>,
 ) -> Option<String> {
@@ -304,7 +313,7 @@ fn apply_selection(
             order_build,
             order,
             k,
-            inclusion_flags,
+            inclusion_flags.as_mut_slice(),
             render_set_id,
         );
     } else {
@@ -653,41 +662,6 @@ fn drain_round_robin(buckets: &mut [VecDeque<NodeId>]) -> Vec<NodeId> {
     out
 }
 
-fn fits_per_slot_cap(
-    cap: Option<Budget>,
-    fallback_stats: &OutputStats,
-    slot_stats: Option<&[OutputStats]>,
-    must_keep_slot_stats: Option<&[OutputStats]>,
-) -> bool {
-    let Some(cap) = cap else { return true };
-    let Some(slot_stats) = slot_stats else {
-        return !cap.exceeds(fallback_stats);
-    };
-    slot_stats.iter().enumerate().all(|(idx, st)| {
-        let mk_slot = must_keep_slot_stats.as_ref().and_then(|mk| mk.get(idx));
-        let charged = match cap.kind {
-            BudgetKind::Bytes => st
-                .bytes
-                .saturating_sub(mk_slot.map(|m| m.bytes).unwrap_or(0)),
-            BudgetKind::Chars => st
-                .chars
-                .saturating_sub(mk_slot.map(|m| m.chars).unwrap_or(0)),
-            BudgetKind::Lines => {
-                let match_lines = mk_slot.map(|m| m.lines).unwrap_or(0);
-                let mut lines = st.lines.saturating_sub(match_lines);
-                if match_lines > cap.cap && lines > 0 && match_lines < st.lines
-                {
-                    // Treat the omission line as free when matches already exceed the cap
-                    // so at least one non-matching line can fit.
-                    lines = lines.saturating_sub(1);
-                }
-                lines
-            }
-        };
-        charged <= cap.cap
-    })
-}
-
 fn effective_budgets_with_grep(
     order_build: &PriorityOrder,
     measure_cfg: &RenderConfig,
@@ -896,12 +870,9 @@ fn mark_custom_top_k_and_ancestors(
     order_build: &PriorityOrder,
     selection_order: &[NodeId],
     top_k: usize,
-    inclusion_flags: &mut Vec<u32>,
+    inclusion_flags: &mut [u32],
     render_id: u32,
 ) {
-    if inclusion_flags.len() < order_build.total_nodes {
-        inclusion_flags.resize(order_build.total_nodes, 0);
-    }
     for node in selection_order.iter().take(top_k) {
         crate::utils::graph::mark_node_and_ancestors(
             order_build,
