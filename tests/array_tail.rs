@@ -1,5 +1,4 @@
-#[path = "../test_support/mod.rs"]
-mod util;
+mod common;
 use std::fs;
 
 fn run_array_case(template: &str, budget: usize, extra: &[&str]) -> String {
@@ -8,7 +7,7 @@ fn run_array_case(template: &str, budget: usize, extra: &[&str]) -> String {
             .expect("read fixture");
     let mut args = vec!["--compact"];
     args.extend_from_slice(extra);
-    util::run_template_budget(&s, template, budget, &args)
+    common::run_template_budget_no_color(&s, template, budget, &args)
 }
 
 #[test]
@@ -85,7 +84,8 @@ fn array_tail_pseudo_leading_marker_has_comma() {
     let s =
         fs::read_to_string("tests/fixtures/explicit/array_numbers_50.json")
             .expect("read fixture");
-    let out = util::run_template_budget(&s, "pseudo", 40, &["--tail"]);
+    let out =
+        common::run_template_budget_no_color(&s, "pseudo", 40, &["--tail"]);
     assert!(
         out.contains("\n  …,\n"),
         "expected leading ellipsis with trailing comma in pseudo: {out:?}"
@@ -98,7 +98,7 @@ fn array_tail_js_leading_marker_has_comma() {
     let s =
         fs::read_to_string("tests/fixtures/explicit/array_numbers_50.json")
             .expect("read fixture");
-    let out = util::run_template_budget(&s, "js", 40, &["--tail"]);
+    let out = common::run_template_budget_no_color(&s, "js", 40, &["--tail"]);
     assert!(
         out.contains("\n  /*") && out.contains("*/,\n"),
         "expected trailing comma after omission comment in js: {out:?}"

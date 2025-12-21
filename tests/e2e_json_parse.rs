@@ -1,12 +1,11 @@
 use std::fs;
 use std::path::Path;
 
-#[path = "../test_support/mod.rs"]
-mod util;
+mod common;
 
 fn run_case(path: &Path, n: u32) -> String {
     let input = fs::read_to_string(path).expect("read fixture");
-    util::run_template_budget(&input, "json", n as usize, &[])
+    common::run_template_budget_no_color(&input, "json", n as usize, &[])
 }
 
 #[test]

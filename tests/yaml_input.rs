@@ -1,6 +1,4 @@
 mod common;
-#[path = "../test_support/mod.rs"]
-mod util;
 use insta::assert_snapshot;
 use std::fs;
 
@@ -9,7 +7,12 @@ fn stdin_yaml_basic_end_to_end() {
     // Basic mapping + sequence
     let y = "foo:\n  - list1\n  - 2\nbar: true\n";
     // Render in YAML template as well, but ingestion is YAML via -i yaml
-    let out = util::run_template_budget(y, "yaml", 10_000, &["-i", "yaml"]);
+    let out = common::run_template_budget_no_color(
+        y,
+        "yaml",
+        10_000,
+        &["-i", "yaml"],
+    );
     // Expect top-level YAML mapping keys present
     assert!(
         out.contains("foo:"),
@@ -24,7 +27,12 @@ fn stdin_yaml_basic_end_to_end() {
 #[test]
 fn stdin_yaml_basic_snapshot() {
     let y = "foo:\n  - list1\n  - 2\nbar: true\n";
-    let out = util::run_template_budget(y, "yaml", 10_000, &["-i", "yaml"]);
+    let out = common::run_template_budget_no_color(
+        y,
+        "yaml",
+        10_000,
+        &["-i", "yaml"],
+    );
     assert_snapshot!("yaml_stdin_basic", out);
 }
 

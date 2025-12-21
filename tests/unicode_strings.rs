@@ -1,10 +1,9 @@
-#[path = "../test_support/mod.rs"]
-mod util;
+mod common;
 use std::fs;
 
 fn run_truncated_string(input: &str, template: &str, cap: usize) -> String {
     let cap_s = cap.to_string();
-    let out = util::run_template_budget(
+    let out = common::run_template_budget_no_color(
         input,
         template,
         1000, // generous byte budget; truncation driven by --string-cap

@@ -1,9 +1,8 @@
-#[path = "../test_support/mod.rs"]
-mod util;
+mod common;
 use assert_cmd::assert::Assert;
 
 fn run(input: &str, extra: &[&str]) -> Assert {
-    util::run_template_budget_assert(input, "json", 1000, extra)
+    common::run_template_budget_assert_no_color(input, "json", 1000, extra)
 }
 
 #[test]

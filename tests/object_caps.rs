@@ -1,11 +1,10 @@
-#[path = "../test_support/mod.rs"]
-mod util;
+mod common;
 use std::fs;
 
 fn run_object_case(template: &str, budget: usize, extra: &[&str]) -> String {
     let s = fs::read_to_string("tests/fixtures/explicit/object_small.json")
         .expect("read fixture");
-    util::run_template_budget(&s, template, budget, extra)
+    common::run_template_budget_no_color(&s, template, budget, extra)
 }
 
 fn parse_js_object_omitted(out_js: &str) -> usize {

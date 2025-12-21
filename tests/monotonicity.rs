@@ -1,5 +1,4 @@
-#[path = "../test_support/mod.rs"]
-mod util;
+mod common;
 use std::fs;
 
 fn trimmed_len(s: &str) -> usize {
@@ -15,7 +14,12 @@ fn collect_lengths(
     budgets
         .iter()
         .map(|&b| {
-            trimmed_len(&util::run_template_budget(&input, template, b, &[]))
+            trimmed_len(&common::run_template_budget_no_color(
+                &input,
+                template,
+                b,
+                &[],
+            ))
         })
         .collect()
 }

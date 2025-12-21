@@ -1,8 +1,7 @@
-#[path = "../test_support/mod.rs"]
-mod util;
+mod common;
 
 fn run(input: &str, template: &str, budget: usize) -> String {
-    util::run_template_budget(input, template, budget, &[])
+    common::run_template_budget_no_color(input, template, budget, &[])
 }
 
 #[test]

@@ -1,6 +1,4 @@
 mod common;
-#[path = "../test_support/mod.rs"]
-mod util;
 
 fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
     let mut full_args = vec!["--no-color", "--no-sort", "-f", "auto"];

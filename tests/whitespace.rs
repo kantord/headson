@@ -1,5 +1,4 @@
-#[path = "../test_support/mod.rs"]
-mod util;
+mod common;
 use std::fs;
 
 fn input_object() -> String {
@@ -10,7 +9,12 @@ fn input_object() -> String {
 #[test]
 fn no_space_removes_space_after_colon_in_objects() {
     let input = input_object();
-    let out = util::run_template_budget(&input, "json", 1000, &["--no-space"]);
+    let out = common::run_template_budget_no_color(
+        &input,
+        "json",
+        1000,
+        &["--no-space"],
+    );
     assert!(out.contains(":"));
     assert!(
         !out.contains(": "),
@@ -21,8 +25,12 @@ fn no_space_removes_space_after_colon_in_objects() {
 #[test]
 fn indent_tab_produces_tab_indentation() {
     let input = input_object();
-    let out =
-        util::run_template_budget(&input, "json", 1000, &["--indent", "\t"]);
+    let out = common::run_template_budget_no_color(
+        &input,
+        "json",
+        1000,
+        &["--indent", "\t"],
+    );
     assert!(out.contains('\n'));
     assert!(out.contains("\n\t"), "expected tab indentation: {out:?}");
     assert!(
@@ -34,8 +42,12 @@ fn indent_tab_produces_tab_indentation() {
 #[test]
 fn indent_multi_char_produces_custom_indentation() {
     let input = input_object();
-    let out =
-        util::run_template_budget(&input, "json", 1000, &["--indent", ".."]);
+    let out = common::run_template_budget_no_color(
+        &input,
+        "json",
+        1000,
+        &["--indent", ".."],
+    );
     assert!(out.contains('\n'));
     assert!(out.contains("\n.."), "expected custom indent: {out:?}");
     assert!(

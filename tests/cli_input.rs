@@ -1,6 +1,4 @@
 mod common;
-#[path = "../test_support/mod.rs"]
-mod util;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
@@ -50,7 +48,8 @@ fn stdin_and_input_path_produce_identical_output() {
     let templates = ["json", "pseudo", "js"];
     let budget = 1000usize;
     for &tmpl in &templates {
-        let out_stdin = util::run_template_budget(&input, tmpl, budget, &[]);
+        let out_stdin =
+            common::run_template_budget_no_color(&input, tmpl, budget, &[]);
         let (ok, out_file, err) = run_with_input_path(path, tmpl, budget, &[]);
         assert!(ok, "cli should succeed (tmpl={tmpl}): {err}");
         assert_eq!(out_stdin, out_file, "tmpl={tmpl}");

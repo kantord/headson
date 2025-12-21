@@ -1,5 +1,4 @@
-#[path = "../test_support/mod.rs"]
-mod util;
+mod common;
 use std::fs;
 
 fn run_array_case(template: &str, budget: usize, extra: &[&str]) -> String {
@@ -8,7 +7,7 @@ fn run_array_case(template: &str, budget: usize, extra: &[&str]) -> String {
             .expect("read fixture");
     let mut args = vec!["--compact"];
     args.extend_from_slice(extra);
-    util::run_template_budget(&s, template, budget, &args)
+    common::run_template_budget_no_color(&s, template, budget, &args)
 }
 
 #[test]

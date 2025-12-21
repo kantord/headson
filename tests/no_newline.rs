@@ -1,8 +1,7 @@
-#[path = "../test_support/mod.rs"]
-mod util;
+mod common;
 
 fn run_with_flags(input: &str, template: &str, extra: &[&str]) -> String {
-    util::run_template_budget(input, template, 1000, extra)
+    common::run_template_budget_no_color(input, template, 1000, extra)
 }
 
 #[test]

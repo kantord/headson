@@ -1,6 +1,4 @@
 mod common;
-#[path = "../test_support/mod.rs"]
-mod util;
 
 use std::fs;
 use std::path::Path;
