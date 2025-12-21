@@ -7,13 +7,7 @@ fn text_stdin_snapshot() {
         &["--no-color", "-i", "text", "-f", "text"],
         Some(&input),
     );
-    assert!(out.status.success(), "cli should succeed");
-    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
-    // Normalize trailing newlines to a single one for snapshot stability.
-    while out.ends_with('\n') {
-        out.pop();
-    }
-    out.push('\n');
+    let out = common::normalize_trailing_newline(&out.stdout);
     insta::assert_snapshot!(out);
 }
 
@@ -37,11 +31,6 @@ fn fileset_text_files_snapshot() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
-    while out.ends_with('\n') {
-        out.pop();
-    }
-    out.push('\n');
+    let out = common::normalize_trailing_newline(&out.stdout);
     insta::assert_snapshot!(out);
 }

@@ -16,9 +16,8 @@ fn debug_json_stdin() {
         ], // explicit
         Some("{\"a\":1,\"b\":{\"c\":2}}\n".as_bytes()),
     );
-    assert!(output.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&output.stdout);
-    let err = String::from_utf8_lossy(&output.stderr);
+    let out = output.stdout;
+    let err = output.stderr;
     assert!(!out.trim().is_empty(), "stdout must not be empty");
     let v: serde_json::Value =
         serde_json::from_str(&err).expect("stderr must be JSON");
@@ -43,9 +42,8 @@ fn debug_text_stdin() {
         ], // explicit
         Some("one\ntwo\nthree\n".as_bytes()),
     );
-    assert!(output.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&output.stdout);
-    let err = String::from_utf8_lossy(&output.stderr);
+    let out = output.stdout;
+    let err = output.stderr;
     assert!(!out.trim().is_empty(), "stdout must not be empty");
     let v: serde_json::Value =
         serde_json::from_str(&err).expect("stderr must be JSON");
@@ -77,8 +75,7 @@ fn debug_fileset_two_inputs() {
         ],
         None,
     );
-    assert!(output.status.success(), "cli should succeed");
-    let err = String::from_utf8_lossy(&output.stderr);
+    let err = output.stderr;
     let v: serde_json::Value =
         serde_json::from_str(&err).expect("stderr must be JSON");
     // format-agnostic debug dump; ensure structure present

@@ -18,8 +18,7 @@ fn snapshot_grep_per_slot_line_cap() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).into_owned();
+    let out = out.stdout;
     assert_snapshot!(
         "grep_per_slot_line_cap",
         common::normalize_snapshot_paths(&out)
@@ -41,8 +40,7 @@ fn snapshot_counted_headers_tiny_line_cap() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).into_owned();
+    let out = out.stdout;
     assert_snapshot!(
         "counted_headers_tiny_line_cap",
         common::normalize_snapshot_paths(&out)
@@ -63,8 +61,7 @@ fn snapshot_tree_per_slot_line_cap() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).into_owned();
+    let out = out.stdout;
     assert_snapshot!(
         "tree_per_slot_line_cap",
         common::normalize_snapshot_paths(&out)
@@ -87,8 +84,7 @@ fn snapshot_tree_per_slot_varied_line_cap() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).into_owned();
+    let out = out.stdout;
     assert_snapshot!(
         "tree_per_slot_varied_line_cap",
         common::normalize_snapshot_paths(&out)
@@ -110,8 +106,7 @@ fn snapshot_multibyte_chars_and_bytes_per_slot() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).into_owned();
+    let out = out.stdout;
     assert_snapshot!(
         "multibyte_chars_and_bytes_per_slot",
         common::normalize_snapshot_paths(&out)
@@ -134,8 +129,7 @@ fn snapshot_multibyte_chars_tighter_than_bytes() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).into_owned();
+    let out = out.stdout;
     assert_snapshot!(
         "multibyte_chars_tighter_than_bytes",
         common::normalize_snapshot_paths(&out)

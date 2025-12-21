@@ -21,8 +21,7 @@ fn text_detailed_shows_omitted_count() {
         ],
         Some(input.as_bytes()),
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     assert!(
         out.contains(" more lines "),
         "expected detailed count marker: {out:?}"

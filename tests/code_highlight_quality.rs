@@ -68,8 +68,7 @@ const FIXTURES: &[FixtureExpectation] = &[
 fn run_colored_output(path: &str) -> String {
     let out =
         common::run_cli(&["--color", "-c", "400", "-f", "auto", path], None);
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8(out.stdout).expect("headson output should be UTF-8")
+    out.stdout_ansi
 }
 
 fn parse_ansi_sequences(line: &str) -> Result<Vec<String>, String> {

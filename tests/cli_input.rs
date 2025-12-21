@@ -21,7 +21,8 @@ fn run_with_input_path(
     template: &str,
     budget: usize,
     extra: &[&str],
-) -> (bool, String, String) {
+    expect_fail: bool,
+) -> common::CliOutput {
     let budget_s = budget.to_string();
     let mut args = vec!["--no-color", "-c", &budget_s];
     let lower = template.to_ascii_lowercase();
@@ -34,11 +35,11 @@ fn run_with_input_path(
     }
     args.push(path);
     args.extend_from_slice(extra);
-    let output = common::run_cli(&args, None);
-    let ok = output.status.success();
-    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-    (ok, stdout, stderr)
+    if expect_fail {
+        common::run_cli_expect_fail(&args, None, None)
+    } else {
+        common::run_cli(&args, None)
+    }
 }
 
 #[test]
@@ -50,18 +51,15 @@ fn stdin_and_input_path_produce_identical_output() {
     for &tmpl in &templates {
         let out_stdin =
             common::run_template_budget_no_color(&input, tmpl, budget, &[]);
-        let (ok, out_file, err) = run_with_input_path(path, tmpl, budget, &[]);
-        assert!(ok, "cli should succeed (tmpl={tmpl}): {err}");
-        assert_eq!(out_stdin, out_file, "tmpl={tmpl}");
+        let out = run_with_input_path(path, tmpl, budget, &[], false);
+        assert_eq!(out_stdin, out.stdout, "tmpl={tmpl}");
     }
 }
 
 #[test]
 fn unreadable_file_path_errors_with_stderr() {
-    let (ok, _out, err) =
-        run_with_input_path("/no/such/file", "json", 100, &[]);
-    assert!(!ok, "cli should fail for unreadable file");
-    assert!(!err.trim().is_empty(), "stderr should be non-empty");
+    let out = run_with_input_path("/no/such/file", "json", 100, &[], true);
+    assert!(!out.stderr.trim().is_empty(), "stderr should be non-empty");
 }
 
 #[test]
@@ -91,10 +89,8 @@ fn directories_and_binary_files_are_ignored_with_notices() {
         None,
     );
 
-    let ok = output.status.success();
-    let out = String::from_utf8_lossy(&output.stdout);
-    let err = String::from_utf8_lossy(&output.stderr);
-    assert!(ok, "cli should succeed: {err}");
+    let out = output.stdout;
+    let err = output.stderr;
     assert!(out.contains("\n") || out.contains('{'));
     assert!(
         err.contains("Ignored directory:")
@@ -129,10 +125,8 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
         ],
         None,
     );
-    let ok1 = output1.status.success();
-    let out1 = String::from_utf8_lossy(&output1.stdout);
-    let err1 = String::from_utf8_lossy(&output1.stderr);
-    assert!(ok1, "cli should succeed: {err1}");
+    let out1 = output1.stdout;
+    let err1 = output1.stderr;
     assert_eq!(out1, "\n", "expected empty output when nothing included");
     assert!(err1.contains("Ignored directory:"));
 
@@ -150,10 +144,8 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
         ],
         None,
     );
-    let ok2 = output2.status.success();
-    let out2 = String::from_utf8_lossy(&output2.stdout);
-    let err2 = String::from_utf8_lossy(&output2.stderr);
-    assert!(ok2, "cli should succeed: {err2}");
+    let out2 = output2.stdout;
+    let err2 = output2.stderr;
     assert_eq!(out2, "\n", "expected empty output when nothing included");
     assert!(
         err2.contains("Ignored directory:")
@@ -185,12 +177,7 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
             a.to_str().unwrap(),
             b.to_str().unwrap(),
         ];
-        let output = common::run_cli(&args, None);
-        assert!(
-            output.status.success(),
-            "cli should succeed for per-file budget"
-        );
-        String::from_utf8_lossy(&output.stdout).into_owned()
+        common::run_cli(&args, None).stdout
     };
 
     // Global budget scenario
@@ -205,12 +192,7 @@ fn global_budget_limits_total_output_vs_per_file_budget() {
             a.to_str().unwrap(),
             b.to_str().unwrap(),
         ];
-        let output = common::run_cli(&args, None);
-        assert!(
-            output.status.success(),
-            "cli should succeed for global budget"
-        );
-        String::from_utf8_lossy(&output.stdout).into_owned()
+        common::run_cli(&args, None).stdout
     };
 
     assert!(

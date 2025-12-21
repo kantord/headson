@@ -12,20 +12,16 @@ fn write_file(path: &Path, contents: &str) {
     fs::write(path, contents).expect("write");
 }
 
-fn run_in_dir(dir: &tempfile::TempDir, args: &[&str]) -> std::process::Output {
-    let out = common::run_cli_in_dir(dir.path(), args, None);
-    assert!(out.status.success(), "cli should succeed");
-    out
+fn run_in_dir(dir: &tempfile::TempDir, args: &[&str]) -> common::CliOutput {
+    common::run_cli_in_dir(dir.path(), args, None)
 }
 
 fn run_in_dir_env(
     dir: &tempfile::TempDir,
     args: &[&str],
     envs: &[(&str, &OsStr)],
-) -> std::process::Output {
-    let out = common::run_cli_in_dir_env(dir.path(), args, None, envs);
-    assert!(out.status.success(), "cli should succeed");
-    out
+) -> common::CliOutput {
+    common::run_cli_in_dir_env(dir.path(), args, None, envs)
 }
 
 fn tree_cfg() -> headson::RenderConfig {
@@ -76,7 +72,7 @@ fn tree_renders_nested_files_with_code_gutters() {
             "README.md",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     let expected = concat!(
         ".\n",
         "├─ src/\n",
@@ -99,7 +95,7 @@ fn tree_renders_nested_files_with_code_gutters() {
         "│ 1: headson tree preview\n",
         "\n",
     );
-    assert_eq!(stdout.as_ref(), expected);
+    assert_eq!(stdout.as_str(), expected);
 }
 
 #[test]
@@ -121,7 +117,7 @@ fn tree_emits_omission_marker_under_tight_budget() {
             "src/lib.rs",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     let expected = concat!(
         ".\n",
         "├─ src/lib.rs\n",
@@ -131,7 +127,7 @@ fn tree_emits_omission_marker_under_tight_budget() {
         "│ 5: fn e() {}\n",
         "\n",
     );
-    assert_eq!(stdout.as_ref(), expected);
+    assert_eq!(stdout.as_str(), expected);
     assert!(
         !stdout.contains("fn d"),
         "budget should truncate file content in tree mode"
@@ -157,7 +153,7 @@ fn tree_counted_headers_with_per_file_cap_completes() {
             "b.txt",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     if !(stdout.contains("a.txt") && stdout.contains("b.txt")) {
         assert!(
             stdout.contains("… 2 more items"),
@@ -176,7 +172,7 @@ fn tree_renders_duplicate_basenames_in_distinct_dirs() {
         &dir,
         &["--no-color", "--tree", "--no-sort", "a/foo.rs", "b/foo.rs"],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("├─ a/foo.rs") && stdout.contains("├─ b/foo.rs"),
         "tree view should show both files with correct branches: {stdout}"
@@ -197,10 +193,10 @@ fn tree_keeps_scaffold_for_empty_siblings() {
         &dir,
         &["--no-color", "--tree", "--no-sort", "a.txt", "b.txt"],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     let expected = concat!(".\n", "├─ a.txt\n", "└─ b.txt\n", "\n",);
     assert_eq!(
-        stdout.as_ref(),
+        stdout.as_str(),
         expected,
         "first empty sibling should still use a tee to keep the gutter: {stdout}"
     );
@@ -218,7 +214,7 @@ fn tree_keeps_branch_connectors_for_last_child_lines() {
         &dir,
         &["--no-color", "--tree", "--no-sort", "dir/only.rs"],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("├─ dir/only.rs"),
         "single child should render with a closing branch: {stdout}"
@@ -236,7 +232,7 @@ fn tree_colorizes_pipes_and_names_when_color_enabled() {
     write_file(&dir.path().join("a.rs"), "fn a() {}\n");
     let envs = [("FORCE_COLOR", OsStr::new("1"))];
     let out = run_in_dir_env(&dir, &["--tree", "--no-sort", "a.rs"], &envs);
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("\u{001b}[90m├─ \u{001b}[0m")
             || stdout.contains("\u{001b}[90m├─\u{001b}[0m"),
@@ -253,7 +249,7 @@ fn tree_remains_plain_when_color_disabled() {
     let dir = tempdir().expect("tmp");
     write_file(&dir.path().join("b.rs"), "fn b() {}\n");
     let out = run_in_dir(&dir, &["--no-color", "--tree", "--no-sort", "b.rs"]);
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         !stdout.contains("\u{001b}["),
         "no ANSI escapes should appear when color is disabled: {stdout:?}"
@@ -278,7 +274,7 @@ fn tree_respects_per_file_line_budget() {
             "b.txt",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.contains("├─ a.txt"),
         "first file should appear in tree: {stdout}"
@@ -316,7 +312,7 @@ fn tree_counts_headers_and_enforces_per_file_line_budget() {
             "two.txt",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.contains("… 2 more items"),
         "when headers consume the per-file budget, tree mode should signal omitted files instead of rendering full bodies: {stdout}"
@@ -340,7 +336,7 @@ fn tree_with_grep_keeps_match_highlights_and_colored_pipes() {
         &["--tree", "--grep", "needle", "--no-sort", "c.json"],
         &envs,
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "grep highlight should still color the match: {stdout:?}"
@@ -372,10 +368,10 @@ fn tree_with_grep_reports_non_matching_files() {
             "c.txt",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     let summary_expected =
         concat!(".\n", "├─ c.txt\n", "│ hit\n", "└─ … 2 more items\n", "\n",);
-    if stdout.as_ref() != summary_expected {
+    if stdout.as_str() != summary_expected {
         // Allow per-file omissions when the renderer keeps file entries but elides bodies.
         assert!(
             stdout.contains("├─ a.txt\n│ …\n")
@@ -408,7 +404,7 @@ fn tree_reports_omitted_files_when_budget_drops_them() {
             "e.txt",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.contains("… 2 more items"),
         "when the budget is too small for most files, tree mode should report how many items were omitted: {stdout}"
@@ -433,10 +429,10 @@ fn tree_reports_omissions_when_every_file_is_dropped() {
             "dir/b.txt",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     let expected = concat!(".\n", "├─ dir/\n", "│ └─ … 2 more items\n", "\n",);
     assert_eq!(
-        stdout.as_ref(),
+        stdout.as_str(),
         expected,
         "when all files are pruned, omission counts should still render under their folder"
     );
@@ -462,10 +458,10 @@ fn tree_respects_line_budget_by_dropping_all_content() {
             "b.txt",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     let expected = concat!(".\n", "└─ … 2 more items\n", "\n",);
     assert_eq!(
-        stdout.as_ref(),
+        stdout.as_str(),
         expected,
         "line budget should drop all file content and surface a single omission marker"
     );
@@ -496,7 +492,7 @@ fn tree_budget_omissions_append_after_kept_files() {
             "small2.txt",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     let expected = concat!(
         ".\n",
         "├─ big1.txt\n",
@@ -506,7 +502,7 @@ fn tree_budget_omissions_append_after_kept_files() {
         "\n",
     );
     assert_eq!(
-        stdout.as_ref(),
+        stdout.as_str(),
         expected,
         "root-level omission marker should be merged and appear after kept content"
     );
@@ -531,7 +527,7 @@ fn tree_keeps_identical_files_under_tight_line_budget() {
             "b.py",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.contains("├─ a.py") && stdout.contains("├─ b.py"),
         "first identical file should render its first line under tight line budget: {stdout}"
@@ -565,10 +561,10 @@ fn tree_cli_snapshot_budgeted_root_omission() {
             "e.txt",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert_snapshot!(
         "tree_cli_snapshot_budgeted_root_omission",
-        stdout.as_ref()
+        stdout.as_str()
     );
 }
 
@@ -584,8 +580,8 @@ fn tree_cli_color_snapshot_with_grep() {
         &["--tree", "--no-sort", "--grep", "main", "main.rs", "lib.rs"],
         &envs,
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
-    assert_snapshot!("tree_cli_color_snapshot_with_grep", stdout.as_ref());
+    let stdout = out.stdout_ansi;
+    assert_snapshot!("tree_cli_color_snapshot_with_grep", stdout.as_str());
 }
 
 #[test]
@@ -606,10 +602,10 @@ fn tree_cli_snapshot_nested_folder_omission() {
             "omit/deep/file.rs",
         ],
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert_snapshot!(
         "tree_cli_snapshot_nested_folder_omission",
-        stdout.as_ref()
+        stdout.as_str()
     );
 }
 

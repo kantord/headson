@@ -21,9 +21,9 @@ fn run_cli_yaml(input: &[u8]) -> (bool, String, String) {
         ], // parse YAML, render YAML with no truncation
         Some(input),
     );
-    let ok = out.status.success();
-    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
-    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    let ok = out.success();
+    let stdout = out.stdout;
+    let stderr = out.stderr;
     (ok, stdout, stderr)
 }
 

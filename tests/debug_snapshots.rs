@@ -18,9 +18,8 @@ fn snapshot_debug_json_stdin_strict_combined() {
         ], // strict -> template "json"
         Some("{\"a\":1,\"b\":{\"c\":2}}\n".as_bytes()),
     );
-    assert!(output.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&output.stdout);
-    let err = String::from_utf8_lossy(&output.stderr);
+    let out = output.stdout;
+    let err = output.stderr;
     let norm = common::normalize_debug(&err);
     let snap = format!("STDOUT:\n{out}\nDEBUG (normalized):\n{norm}\n");
     insta::assert_snapshot!("debug_json_stdin_strict_combined", snap);
@@ -50,9 +49,8 @@ fn snapshot_debug_fileset_auto_combined() {
         ],
         None,
     );
-    assert!(output.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&output.stdout);
-    let err = String::from_utf8_lossy(&output.stderr);
+    let out = output.stdout;
+    let err = output.stderr;
     let norm = common::normalize_debug(&err);
     let snap = format!("STDOUT:\n{out}\nDEBUG (normalized):\n{norm}\n");
     insta::assert_snapshot!("debug_fileset_auto_combined", snap);

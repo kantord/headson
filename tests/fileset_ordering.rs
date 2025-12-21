@@ -118,8 +118,7 @@ fn frecency_orders_fileset_by_recent_commit() {
         None,
         &envs,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     let names = parse_header_order(&out);
     assert_eq!(names, vec!["file_b.txt", "file_a.txt"]);
 }
@@ -153,8 +152,7 @@ fn non_git_repo_uses_mtime_order() {
         None,
         &envs,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     let names = parse_header_order(&out);
     assert_eq!(names, vec!["b.txt", "a.txt"]);
 }
@@ -188,8 +186,7 @@ fn non_git_repo_no_sort_keeps_input_order() {
         None,
         &envs,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     let names = parse_header_order(&out);
     assert_eq!(names, vec!["a.txt", "b.txt"]);
 }
@@ -222,8 +219,7 @@ fn non_git_repo_glob_still_sorts_by_mtime() {
         None,
         &envs,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     let names = parse_header_order(&out);
     assert_eq!(names, vec!["b.txt", "a.txt"]);
 }
@@ -257,8 +253,7 @@ fn non_git_repo_glob_no_sort_preserves_discovery_order() {
         None,
         &envs,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     let names = parse_header_order(&out);
     assert_eq!(names, vec!["a.txt", "b.txt"]);
 }

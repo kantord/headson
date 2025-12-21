@@ -7,8 +7,7 @@ fn run(args: &[&str]) -> String {
         .chain(args.iter().copied())
         .collect();
     let out = common::run_cli(&args, None);
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 fn count_lines_normalized(s: &str) -> usize {
@@ -135,7 +134,7 @@ fn text_single_line_fits_under_cap() {
 #[test]
 fn combined_char_and_line_caps() {
     let p = "tests/fixtures/explicit/string_escaping.json";
-    let out = common::run_cli(
+    let out = common::run_cli_expect_fail(
         &[
             "--no-color",
             "--no-sort",
@@ -150,9 +149,9 @@ fn combined_char_and_line_caps() {
             p,
         ],
         None,
+        None,
     );
-    assert!(!out.status.success(), "cli should fail");
-    let stderr = String::from_utf8_lossy(&out.stderr);
+    let stderr = out.stderr;
     assert!(
         stderr.contains("only one per-file budget"),
         "expected conflict error for mixed per-file metrics: {stderr}"

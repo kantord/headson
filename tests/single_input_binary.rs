@@ -11,9 +11,9 @@ fn single_binary_file_is_ignored_with_notice() {
     let output =
         common::run_cli(&["--no-color", bin.to_string_lossy().as_ref()], None);
 
-    let status = output.status.success();
-    let out = String::from_utf8_lossy(&output.stdout).into_owned();
-    let err = String::from_utf8_lossy(&output.stderr).into_owned();
+    let status = output.success();
+    let out = output.stdout;
+    let err = output.stderr;
 
     assert!(status, "should succeed");
     assert!(

@@ -22,8 +22,7 @@ fn per_slot_and_global_zero_caps_emit_nothing() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.trim().is_empty(),
         "combined zero per-file and global caps should suppress output: {stdout:?}"
@@ -67,11 +66,9 @@ fn tree_header_budgeting_differs_when_headers_are_charged() {
         ],
         None,
     );
-    assert!(default.status.success(), "cli should succeed");
-    assert!(counted.status.success(), "cli should succeed");
 
-    let default_out = String::from_utf8_lossy(&default.stdout);
-    let counted_out = String::from_utf8_lossy(&counted.stdout);
+    let default_out = default.stdout;
+    let counted_out = counted.stdout;
     assert!(
         default_out.contains("a1") && default_out.contains("b1"),
         "tree render should surface body lines when headers are free: {default_out}"
@@ -110,11 +107,9 @@ fn section_headers_charged_under_line_caps() {
         &["--no-color", "--no-sort", "-H", "-n", "2", "a.txt", "b.txt"],
         None,
     );
-    assert!(free.status.success(), "cli should succeed");
-    assert!(charged.status.success(), "cli should succeed");
 
-    let free_out = String::from_utf8_lossy(&free.stdout);
-    let charged_out = String::from_utf8_lossy(&charged.stdout);
+    let free_out = free.stdout;
+    let charged_out = charged.stdout;
     assert!(
         free_out.contains("a1") && free_out.contains("b1"),
         "section mode should still surface content when headers are free: {free_out}"
@@ -160,11 +155,9 @@ fn strong_vs_weak_grep_under_zero_global_lines() {
         ],
         None,
     );
-    assert!(strong.status.success(), "cli should succeed");
-    assert!(weak.status.success(), "cli should succeed");
 
-    let strong_out = String::from_utf8_lossy(&strong.stdout);
-    let weak_out = String::from_utf8_lossy(&weak.stdout);
+    let strong_out = strong.stdout;
+    let weak_out = weak.stdout;
     assert!(
         strong_out.contains("needle") && !strong_out.trim().is_empty(),
         "must-keep matches should still render even when the global budget is zero: {strong_out}"

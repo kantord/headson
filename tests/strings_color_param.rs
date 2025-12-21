@@ -11,11 +11,7 @@ fn run_color(input: &str, template: &str) -> String {
         other => args.extend(["-f", other]),
     }
     let out = common::run_cli(&args, Some(input.as_bytes()));
-    assert!(
-        out.status.success(),
-        "cli should succeed for template {template}"
-    );
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout_ansi
 }
 
 #[test]

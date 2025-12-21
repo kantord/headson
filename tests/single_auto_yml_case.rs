@@ -21,8 +21,7 @@ fn single_file_auto_handles_yml_and_uppercase_extensions() {
             ],
             None,
         );
-        assert!(out.status.success(), "cli should succeed");
-        let out = String::from_utf8_lossy(&out.stdout);
+        let out = out.stdout;
         assert!(out.contains(":"), "expected YAML mapping syntax: {out:?}");
     }
 }

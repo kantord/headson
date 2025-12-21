@@ -20,8 +20,7 @@ fn text_tail_places_marker_at_start() {
         ], // smallish budget
         Some(input.as_bytes()),
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     let mut lines = out.lines();
     let first = lines.next().unwrap_or("");
     assert_eq!(

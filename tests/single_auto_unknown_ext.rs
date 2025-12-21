@@ -18,8 +18,7 @@ fn single_file_auto_unknown_ext_defaults_to_text() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     // headson prints the rendered output and adds a trailing println newline.
     // Text template emitted a newline per line; println adds one more.
     assert_eq!(out, "alpha\nbeta\ngamma\n\n");

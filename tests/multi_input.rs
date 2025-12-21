@@ -7,11 +7,7 @@ fn run_with_paths(paths: &[&str], budget: usize) -> (bool, String, String) {
         vec!["--no-color", "--no-sort", "-c", &budget_s, "-f", "auto"];
     args.extend_from_slice(paths);
     let out = common::run_cli(&args, None);
-    (
-        out.status.success(),
-        String::from_utf8_lossy(&out.stdout).into_owned(),
-        String::from_utf8_lossy(&out.stderr).into_owned(),
-    )
+    (out.success(), out.stdout, out.stderr)
 }
 
 #[test]

@@ -17,10 +17,8 @@ fn ascii_parity_with_bytes() {
         &["--no-color", "-u", "60", "-f", "json", "-t", "strict"],
         Some(input.as_bytes()),
     ); // chars
-    assert!(out_c.status.success(), "cli should succeed for bytes");
-    assert!(out_u.status.success(), "cli should succeed for chars");
-    let s_c = String::from_utf8_lossy(&out_c.stdout).into_owned();
-    let s_u = String::from_utf8_lossy(&out_u.stdout).into_owned();
+    let s_c = out_c.stdout;
+    let s_u = out_u.stdout;
     assert_eq!(s_c, s_u, "ASCII output should be identical for -c and -u");
 }
 
@@ -37,10 +35,8 @@ fn multibyte_chars_allow_more_than_bytes_at_same_cap() {
         &["--no-color", "-u", "60", "-f", "json", "-t", "strict"],
         Some(input.as_bytes()),
     ); // chars
-    assert!(out_bytes.status.success(), "cli should succeed for bytes");
-    assert!(out_chars.status.success(), "cli should succeed for chars");
-    let s_b = String::from_utf8_lossy(&out_bytes.stdout).into_owned();
-    let s_u = String::from_utf8_lossy(&out_chars.stdout).into_owned();
+    let s_b = out_bytes.stdout;
+    let s_u = out_chars.stdout;
     // Compare by final byte lengths as a proxy; char budget should not be shorter.
     assert!(
         s_u.len() >= s_b.len(),
@@ -121,7 +117,7 @@ fn colored_vs_plain_match_after_stripping_under_char_budget() {
 fn combined_chars_and_lines_caps_rejected() {
     let p = "tests/fixtures/explicit/object_small.json";
     let content = std::fs::read_to_string(p).expect("read fixture");
-    let out = common::run_cli(
+    let out = common::run_cli_expect_fail(
         &[
             "--no-color",
             "-f",
@@ -134,9 +130,9 @@ fn combined_chars_and_lines_caps_rejected() {
             "100000",
         ],
         Some(content.as_bytes()),
+        None,
     ); // conflicting per-file metrics
-    assert!(!out.status.success(), "cli should fail");
-    let stderr = String::from_utf8_lossy(&out.stderr);
+    let stderr = out.stderr;
     assert!(
         stderr.contains("only one per-file budget"),
         "expected conflict error for mixed per-file metrics: {stderr}"
@@ -165,8 +161,7 @@ fn fileset_char_budget_scales_with_inputs() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).into_owned();
+    let out = out.stdout;
     // Total char count should be <= per-file cap * number_of_inputs
     assert!(
         count_chars_normalized(&out) <= 80,

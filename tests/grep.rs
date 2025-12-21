@@ -4,29 +4,26 @@ use headson::{
 };
 use std::ffi::OsStr;
 use std::path::Path;
-use std::process::Output;
 use tempfile::tempdir;
 
 // Covers strong --grep behavior (guaranteed inclusion path). Weak mode
 // assertions belong in separate tests when implemented.
 
-fn run_ok(args: &[&str], stdin: Option<&[u8]>) -> Output {
-    let out = common::run_cli(args, stdin);
-    assert!(out.status.success(), "cli should succeed");
-    out
+fn run_ok(args: &[&str], stdin: Option<&[u8]>) -> common::CliOutput {
+    common::run_cli(args, stdin)
 }
 
-fn run_ok_in_dir(dir: &Path, args: &[&str], stdin: Option<&[u8]>) -> Output {
-    let out = common::run_cli_in_dir(dir, args, stdin);
-    assert!(out.status.success(), "cli should succeed");
-    out
+fn run_ok_in_dir(
+    dir: &Path,
+    args: &[&str],
+    stdin: Option<&[u8]>,
+) -> common::CliOutput {
+    common::run_cli_in_dir(dir, args, stdin)
 }
 
-fn run_ok_color(args: &[&str], stdin: Option<&[u8]>) -> Output {
+fn run_ok_color(args: &[&str], stdin: Option<&[u8]>) -> common::CliOutput {
     let envs = [("FORCE_COLOR", OsStr::new("1"))];
-    let out = common::run_cli_in_dir_env(".", args, stdin, &envs);
-    assert!(out.status.success(), "cli should succeed");
-    out
+    common::run_cli_in_dir_env(".", args, stdin, &envs)
 }
 
 #[test]
@@ -46,7 +43,7 @@ fn grep_guarantees_match_even_when_budget_is_tiny() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("needle"),
         "match should be present even if it pushes past the user budget"
@@ -78,7 +75,7 @@ fn grep_counts_matches_as_free_for_char_budgets() {
         ],
         None,
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.contains("short"),
         "non-matching context should still render when matches are free under char budgets; got: {stdout:?}"
@@ -102,7 +99,7 @@ fn grep_keeps_ancestor_path_for_matches() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.contains("match-me"),
         "matched leaf should always appear"
@@ -130,7 +127,7 @@ fn grep_pins_sampled_array_elements() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.contains("NEEDLE"),
         "array sampling should not drop matched elements in strong grep mode"
@@ -159,7 +156,7 @@ fn grep_highlights_matching_keys() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "matching keys should be highlighted when color is enabled"
@@ -184,7 +181,7 @@ fn grep_highlights_anchored_keys_without_quotes() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "anchored regex should highlight the matching key without requiring quotes; got: {stdout:?}"
@@ -208,7 +205,7 @@ fn grep_highlights_in_strict_style() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "grep should highlight matches even in strict style; got: {stdout:?}"
@@ -226,7 +223,7 @@ fn grep_defaults_to_color_output() {
         &["-f", "json", "-t", "default", "--grep", "foo", "--no-sort"],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("\u{001b}[31m"),
         "grep should emit colored matches by default; got: {stdout:?}"
@@ -249,7 +246,7 @@ fn grep_suppresses_syntax_colors_even_when_no_matches() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         !stdout.contains("\u{001b}[32m") && !stdout.contains("\u{001b}[1;34m"),
         "syntax coloring should be disabled in grep mode even with zero matches; got: {stdout:?}"
@@ -274,7 +271,7 @@ fn grep_respects_auto_color_when_not_tty() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         !stdout.contains('\u{001b}'),
         "auto color should be disabled for non-TTY stdout; got escapes in: {stdout:?}"
@@ -298,7 +295,7 @@ fn grep_highlights_yaml_values_correctly() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("\u{001b}[31mbaz\u{001b}[39m"),
         "expected exact match highlighting for YAML scalar values; got: {stdout:?}"
@@ -312,7 +309,7 @@ fn grep_does_not_highlight_json_punctuation() {
         &["-f", "json", "-t", "default", "--grep", ":", "--no-sort"],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         !stdout.contains("\u{001b}[31m:\u{001b}[39m"),
         "grep should not color structural punctuation: {stdout:?}"
@@ -338,7 +335,7 @@ fn grep_highlights_code_lines_without_syntax_colors() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("\u{001b}[31mbuild\u{001b}[39m"),
         "expected grep highlight in code-like text: {stdout:?}"
@@ -368,7 +365,7 @@ fn grep_highlight_is_applied_once_per_value() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("\u{001b}[31mfoo\u{001b}[39m"),
         "expected single highlighted match in output; got: {stdout:?}"
@@ -399,7 +396,7 @@ fn grep_filters_out_files_without_matches_in_filesets() {
         ],
         None,
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(stdout.contains("needle"));
     assert!(
         !stdout.contains("without.json"),
@@ -433,7 +430,7 @@ fn grep_show_all_keeps_non_matching_files_in_filesets() {
         ],
         None,
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.contains("needle"),
         "matching content should still be present with --grep-show=all"
@@ -531,8 +528,8 @@ fn grep_ignores_filename_only_matches_in_filesets() {
         None,
     );
 
-    let base_body = String::from_utf8_lossy(&base.stdout);
-    let with_body = String::from_utf8_lossy(&with_filename_match.stdout);
+    let base_body = base.stdout;
+    let with_body = with_filename_match.stdout;
     // Fileset runs should keep only the content matches and not count filename-only
     // matches as hits. Headers may differ, but the rendered payload should match.
     let strip_header = |s: &str| {
@@ -617,7 +614,7 @@ fn grep_fileset_without_matches_renders_nothing() {
         ],
         None,
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.trim().is_empty(),
         "filesets with zero grep matches should render nothing, got: {stdout:?}"
@@ -645,7 +642,7 @@ fn grep_fileset_without_matches_emits_notice() {
         None,
     );
 
-    let stderr = String::from_utf8_lossy(&out.stderr);
+    let stderr = out.stderr;
     assert!(
         stderr.contains("No grep matches found"),
         "expected a notice about missing grep matches for fileset run: {stderr:?}"
@@ -777,7 +774,7 @@ fn weak_grep_does_not_expand_budget_or_guarantee_match() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.len() <= 5,
         "weak grep should not expand the user-provided byte budget; got len {}",
@@ -805,7 +802,7 @@ fn weak_grep_keeps_non_matching_files_in_filesets() {
         ],
         None,
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.contains("needle"),
         "matching content should still render with weak grep"
@@ -832,7 +829,7 @@ fn weak_grep_highlights_matches_without_syntax_colors() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout_ansi;
     assert!(
         stdout.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "weak grep should still highlight matches when color is enabled"
@@ -863,7 +860,7 @@ fn weak_grep_biases_sampling_toward_matches() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.contains("\"hit\""),
         "weak grep should bias sampling so the matched field is kept under tight budgets: {stdout:?}"
@@ -898,8 +895,8 @@ fn weak_grep_fileset_with_no_matches_still_renders_and_has_no_notice() {
         ],
         None,
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
-    let stderr = String::from_utf8_lossy(&out.stderr);
+    let stdout = out.stdout;
+    let stderr = out.stderr;
     assert!(
         !stdout.trim().is_empty(),
         "weak grep should not drop all fileset content when no matches are found"
@@ -926,7 +923,7 @@ fn strong_grep_obeys_zero_global_line_budget_for_non_matches() {
         ],
         Some(&input),
     );
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.contains("needle"),
         "strong grep should still surface matching content when budgets are zeroed: {stdout}"

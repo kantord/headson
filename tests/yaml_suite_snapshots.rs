@@ -22,8 +22,7 @@ fn run_cli_yaml_with_budget(input: &[u8], budget: usize) -> String {
         ],
         Some(input),
     );
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 fn is_yaml_file(path: &Path) -> bool {

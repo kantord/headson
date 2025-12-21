@@ -12,9 +12,9 @@ fn run_with_paths_json(
         vec!["--no-color", "--no-sort", "-c", &budget_s, "-f", "auto"];
     args.extend_from_slice(paths);
     let output = common::run_cli(&args, None);
-    let ok = output.status.success();
-    let out = String::from_utf8_lossy(&output.stdout).into_owned();
-    let err = String::from_utf8_lossy(&output.stderr).into_owned();
+    let ok = output.success();
+    let out = output.stdout;
+    let err = output.stderr;
     (ok, out, err)
 }
 

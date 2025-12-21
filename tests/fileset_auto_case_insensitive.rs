@@ -23,8 +23,7 @@ fn fileset_auto_uses_yaml_ingest_when_uppercase_yaml_present() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     // Expect both headers and respective body styles.
     assert!(out.contains("a.json"));
     assert!(out.contains("B.YML"));

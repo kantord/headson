@@ -1,6 +1,30 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 use std::process::Output;
 
+#[allow(dead_code, reason = "fields are used selectively across tests")]
+pub struct CliOutput {
+    pub raw: Output,
+    pub stdout_ansi: String,
+    pub stderr_ansi: String,
+    pub stdout: String,
+    pub stderr: String,
+    pub exit_code: Option<i32>,
+}
+
+impl CliOutput {
+    pub fn success(&self) -> bool {
+        self.raw.status.success()
+    }
+}
+
+impl std::ops::Deref for CliOutput {
+    type Target = Output;
+
+    fn deref(&self) -> &Self::Target {
+        &self.raw
+    }
+}
+
 pub fn build_cmd(args: &[&str], stdin: Option<&[u8]>) -> assert_cmd::Command {
     let mut cmd = cargo_bin_cmd!("hson");
     cmd.args(args);
@@ -10,12 +34,31 @@ pub fn build_cmd(args: &[&str], stdin: Option<&[u8]>) -> assert_cmd::Command {
     cmd
 }
 
+fn capture_output(raw: Output) -> CliOutput {
+    let stdout_ansi = String::from_utf8_lossy(&raw.stdout).into_owned();
+    let stderr_ansi = String::from_utf8_lossy(&raw.stderr).into_owned();
+    let stdout = strip_ansi(&stdout_ansi);
+    let stderr = strip_ansi(&stderr_ansi);
+    let exit_code = raw.status.code();
+    CliOutput {
+        raw,
+        stdout_ansi,
+        stderr_ansi,
+        stdout,
+        stderr,
+        exit_code,
+    }
+}
+
 #[allow(
     dead_code,
     reason = "test helpers are used selectively across per-test crates"
 )]
-pub fn run_cli(args: &[&str], stdin: Option<&[u8]>) -> Output {
-    build_cmd(args, stdin).assert().get_output().clone()
+pub fn run_cli(args: &[&str], stdin: Option<&[u8]>) -> CliOutput {
+    let raw = build_cmd(args, stdin).assert().get_output().clone();
+    let out = capture_output(raw);
+    assert!(out.success(), "cli should succeed");
+    out
 }
 
 #[allow(
@@ -26,11 +69,14 @@ pub fn run_cli_in_dir(
     dir: impl AsRef<std::path::Path>,
     args: &[&str],
     stdin: Option<&[u8]>,
-) -> Output {
-    build_cmd_in_dir(dir, args, stdin)
+) -> CliOutput {
+    let raw = build_cmd_in_dir(dir, args, stdin)
         .assert()
         .get_output()
-        .clone()
+        .clone();
+    let out = capture_output(raw);
+    assert!(out.success(), "cli should succeed");
+    out
 }
 
 pub fn build_cmd_in_dir(
@@ -55,11 +101,14 @@ pub fn run_cli_in_dir_env(
     args: &[&str],
     stdin: Option<&[u8]>,
     envs: &[(&str, &std::ffi::OsStr)],
-) -> Output {
-    build_cmd_in_dir_env(dir, args, stdin, envs)
+) -> CliOutput {
+    let raw = build_cmd_in_dir_env(dir, args, stdin, envs)
         .assert()
         .get_output()
-        .clone()
+        .clone();
+    let out = capture_output(raw);
+    assert!(out.success(), "cli should succeed");
+    out
 }
 
 pub fn build_cmd_in_dir_env(
@@ -80,7 +129,7 @@ pub fn build_cmd_in_dir_env(
 }
 
 #[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
-pub fn run_cli_no_color(args: &[&str], stdin: Option<&[u8]>) -> Output {
+pub fn run_cli_no_color(args: &[&str], stdin: Option<&[u8]>) -> CliOutput {
     let mut with_flags: Vec<&str> = Vec::with_capacity(args.len() + 1);
     with_flags.push("--no-color");
     with_flags.extend_from_slice(args);
@@ -90,8 +139,7 @@ pub fn run_cli_no_color(args: &[&str], stdin: Option<&[u8]>) -> Output {
 #[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
 pub fn run_stdout_no_color(input: &str, args: &[&str]) -> String {
     let out = run_cli_no_color(args, Some(input.as_bytes()));
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 #[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
@@ -128,8 +176,77 @@ pub fn run_capture_no_color(
     args: &[&str],
 ) -> (bool, Vec<u8>, Vec<u8>) {
     let out = run_cli_no_color(args, Some(input));
-    let ok = out.status.success();
-    (ok, out.stdout, out.stderr)
+    let ok = out.success();
+    (ok, out.raw.stdout, out.raw.stderr)
+}
+
+#[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
+pub fn run_cli_expect_fail(
+    args: &[&str],
+    stdin: Option<&[u8]>,
+    expect_code: Option<i32>,
+) -> CliOutput {
+    let raw = build_cmd(args, stdin).assert().get_output().clone();
+    let out = capture_output(raw);
+    assert!(!out.success(), "cli should fail");
+    if let Some(code) = expect_code {
+        assert_eq!(
+            out.exit_code,
+            Some(code),
+            "expected exit code {code}, got {:?}",
+            out.exit_code
+        );
+    }
+    out
+}
+
+#[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
+pub fn run_cli_in_dir_expect_fail(
+    dir: impl AsRef<std::path::Path>,
+    args: &[&str],
+    stdin: Option<&[u8]>,
+    expect_code: Option<i32>,
+) -> CliOutput {
+    let raw = build_cmd_in_dir(dir, args, stdin)
+        .assert()
+        .get_output()
+        .clone();
+    let out = capture_output(raw);
+    assert!(!out.success(), "cli should fail");
+    if let Some(code) = expect_code {
+        assert_eq!(
+            out.exit_code,
+            Some(code),
+            "expected exit code {code}, got {:?}",
+            out.exit_code
+        );
+    }
+    out
+}
+
+#[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
+pub fn run_cli_in_dir_env_expect_fail(
+    dir: impl AsRef<std::path::Path>,
+    args: &[&str],
+    stdin: Option<&[u8]>,
+    envs: &[(&str, &std::ffi::OsStr)],
+    expect_code: Option<i32>,
+) -> CliOutput {
+    let raw = build_cmd_in_dir_env(dir, args, stdin, envs)
+        .assert()
+        .get_output()
+        .clone();
+    let out = capture_output(raw);
+    assert!(!out.success(), "cli should fail");
+    if let Some(code) = expect_code {
+        assert_eq!(
+            out.exit_code,
+            Some(code),
+            "expected exit code {code}, got {:?}",
+            out.exit_code
+        );
+    }
+    out
 }
 
 fn build_cmd_no_color(

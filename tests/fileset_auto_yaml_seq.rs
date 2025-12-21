@@ -29,8 +29,7 @@ fn auto_fileset_renders_yaml_sequence_of_mappings_properly() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
 
     // Find the YAML section body
     let header = format!("==> {p_yaml} <==");

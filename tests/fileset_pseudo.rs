@@ -14,8 +14,7 @@ fn run_pseudo(paths: &[&str], budget: usize) -> String {
     ]; // newline mode
     args.extend_from_slice(paths);
     let out = common::run_cli(&args, None);
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 #[test]
@@ -64,8 +63,7 @@ fn pseudo_fileset_compact_shows_ellipsis_for_omitted() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     assert!(
         out.contains('…') || out.contains("..."),
         "expected ellipsis marker for omitted content: {out:?}"

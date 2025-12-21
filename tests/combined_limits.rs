@@ -7,8 +7,7 @@ fn run_args(args: &[&str]) -> String {
         .chain(args.iter().copied())
         .collect();
     let out = common::run_cli(&args, None);
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 fn make_tmp_with_files(count: usize) -> (tempfile::TempDir, Vec<String>) {
@@ -45,8 +44,7 @@ fn run_fileset_json_with_budgets_raw(
     }
     let args_ref: Vec<&str> = args.iter().map(String::as_str).collect();
     let out = common::run_cli_in_dir(dir, &args_ref, None);
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 #[test]

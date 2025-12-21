@@ -13,8 +13,7 @@ fn write_file(dir: &TempDir, name: &str, contents: &str) {
 
 fn run_in_dir(dir: &TempDir, args: &[&str]) -> String {
     let out = common::run_cli_in_dir(dir.path(), args, None);
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 #[test]

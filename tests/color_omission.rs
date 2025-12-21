@@ -8,8 +8,7 @@ fn pseudo_ellipsis_is_dark_gray() {
         &["--color", "-c", "10", "-f", "json", "-t", "default"], // small budget
         Some(input.as_bytes()),
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout_ansi;
     assert!(
         out.contains("\u{001b}[90m…\u{001b}[0m"),
         "expected dark gray ellipsis in pseudo: {out:?}"
@@ -23,8 +22,7 @@ fn js_omission_comment_is_dark_gray() {
         &["--color", "-c", "30", "-f", "json", "-t", "detailed"], // small budget
         Some(input.as_bytes()),
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout_ansi;
     assert!(
         out.contains("\u{001b}[90m/* ")
             && out.contains(" more items */\u{001b}[0m"),

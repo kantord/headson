@@ -9,7 +9,7 @@ fn fileset_rejects_custom_format() {
     fs::write(&p_a, "hello").expect("write a");
     fs::write(&p_b, "world").expect("write b");
 
-    let out = common::run_cli_in_dir(
+    let out = common::run_cli_in_dir_expect_fail(
         dir.path(),
         &[
             "--no-color",
@@ -22,13 +22,9 @@ fn fileset_rejects_custom_format() {
             p_b.to_str().unwrap(),
         ],
         None,
+        None,
     );
-
-    assert!(
-        !out.status.success(),
-        "cli should fail for fileset custom format"
-    );
-    let stderr = String::from_utf8_lossy(&out.stderr);
+    let stderr = out.stderr;
     assert!(
         stderr.contains("--format cannot be customized for filesets"),
         "stderr missing rejection message: {stderr}"

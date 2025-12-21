@@ -23,8 +23,7 @@ fn run_sample_py_auto() -> String {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
+    let mut out = out.stdout;
     while out.ends_with('\n') {
         out.pop();
     }
@@ -44,8 +43,7 @@ fn run_sample_py_colored() -> String {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
+    let mut out = out.stdout_ansi;
     while out.ends_with('\n') {
         out.pop();
     }
@@ -65,8 +63,7 @@ fn run_large_code_huge_budget() -> String {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
+    let mut out = out.stdout;
     while out.ends_with('\n') {
         out.pop();
     }
@@ -86,8 +83,7 @@ fn run_minimal_drop_huge_budget() -> String {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
+    let mut out = out.stdout;
     while out.ends_with('\n') {
         out.pop();
     }
@@ -107,8 +103,7 @@ fn run_multi_describe_line_budget() -> String {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
+    let mut out = out.stdout;
     while out.ends_with('\n') {
         out.pop();
     }
@@ -129,8 +124,7 @@ fn run_multi_code_files_colored() -> String {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).to_string()
+    out.stdout_ansi
 }
 
 fn run_code_fileset_with_budget(budget: usize) -> String {
@@ -148,8 +142,7 @@ fn run_code_fileset_with_budget(budget: usize) -> String {
     }
     let args_ref: Vec<&str> = args.iter().map(String::as_str).collect();
     let out = common::run_cli(&args_ref, None);
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).to_string()
+    out.stdout
 }
 
 fn run_large_code_fileset_small_budget() -> String {
@@ -380,8 +373,7 @@ fn code_prefers_top_level_headers() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     assert!(
         out.contains("def main"),
         "expected top-level def main to appear:\n{out}"
@@ -422,8 +414,7 @@ fn fileset_line_budget_should_not_drop_code_lines_for_headers() {
     }
     let args_ref: Vec<&str> = args.iter().map(String::as_str).collect();
     let out = common::run_cli(&args_ref, None);
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).to_string();
+    let out = out.stdout;
     let observed: HashMap<String, usize> =
         fileset_section_line_counts(&out).into_iter().collect();
     for (path, expected_lines) in expected {
@@ -450,8 +441,7 @@ fn fileset_line_budget_keeps_go_functions_in_filesets() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).to_string();
+    let out = out.stdout;
     let go_lines =
         fileset_section_lines(&out, "tests/fixtures/code/sample.go");
     assert!(
@@ -480,8 +470,7 @@ fn fileset_no_header_flag_hides_section_headers() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).to_string();
+    let out = out.stdout;
     assert!(
         !out.contains("==>"),
         "expected --no-header output to omit fileset headers:\n{out}"
@@ -516,8 +505,7 @@ fn fileset_line_budget_global_line_count_matches_expectation() {
     }
     let args_ref: Vec<&str> = args.iter().map(String::as_str).collect();
     let out = common::run_cli(&args_ref, None);
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).to_string();
+    let out = out.stdout;
     let numbered = count_numbered_lines(&out);
     assert_eq!(
         numbered,
@@ -537,8 +525,7 @@ fn code_lines_are_hard_truncated_end_to_end() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+    let stdout = out.stdout;
     let line = stdout
         .lines()
         .find(|l| l.contains("let message"))

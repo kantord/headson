@@ -8,8 +8,7 @@ fn run(args: &[&str]) -> String {
         .chain(args.iter().copied())
         .collect();
     let out = common::run_cli(&args, None);
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 fn fixture_path(name: &str) -> String {

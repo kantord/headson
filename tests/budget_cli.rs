@@ -10,7 +10,7 @@ fn temp_file(contents: &str) -> tempfile::NamedTempFile {
 #[test]
 fn rejects_conflicting_per_file_metrics() {
     let file = temp_file("hello");
-    let out = common::run_cli(
+    let out = common::run_cli_expect_fail(
         &[
             "--no-color",
             "--no-sort",
@@ -21,9 +21,9 @@ fn rejects_conflicting_per_file_metrics() {
             file.path().to_str().unwrap(),
         ],
         None,
+        None,
     );
-    assert!(!out.status.success(), "cli should fail");
-    let stderr = String::from_utf8_lossy(&out.stderr);
+    let stderr = out.stderr;
     assert!(
         stderr.contains("only one per-file budget"),
         "stderr should mention conflicting per-file metrics: {stderr}"
@@ -33,7 +33,7 @@ fn rejects_conflicting_per_file_metrics() {
 #[test]
 fn rejects_conflicting_global_metrics() {
     let file = temp_file("hello");
-    let out = common::run_cli(
+    let out = common::run_cli_expect_fail(
         &[
             "--no-color",
             "--no-sort",
@@ -44,9 +44,9 @@ fn rejects_conflicting_global_metrics() {
             file.path().to_str().unwrap(),
         ],
         None,
+        None,
     );
-    assert!(!out.status.success(), "cli should fail");
-    let stderr = String::from_utf8_lossy(&out.stderr);
+    let stderr = out.stderr;
     assert!(
         stderr.contains("only one global budget"),
         "stderr should mention conflicting global metrics: {stderr}"
@@ -68,8 +68,7 @@ fn allows_mixed_levels() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.lines().filter(|l| !l.is_empty()).count() <= 2,
         "per-file line cap should hold even with global bytes: {stdout:?}"
@@ -89,8 +88,7 @@ fn global_bytes_too_small_yields_empty() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.trim().is_empty(),
         "outputs should be empty when the global byte budget cannot fit any content: {stdout:?}"
@@ -110,8 +108,7 @@ fn global_lines_zero_yields_empty() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.trim().is_empty(),
         "outputs should be empty when the global line budget is zero: {stdout:?}"
@@ -125,8 +122,7 @@ fn per_file_byte_budget_one_renders_nothing() {
         &["--no-color", "--no-sort", "--bytes", "1", path],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = out.stdout;
     assert!(
         stdout.trim().is_empty(),
         "when a 1-byte per-file/global cap leaves no room for content, output should be empty: {stdout:?}"

@@ -6,8 +6,7 @@ fn run_json(paths: &[&str], budget: usize) -> String {
         vec!["--no-color", "--no-sort", "-c", &budget_s, "-f", "auto"];
     args.extend_from_slice(paths);
     let out = common::run_cli(&args, None);
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 #[test]
@@ -43,8 +42,7 @@ fn json_fileset_small_budget_shows_summary() {
             ],
             None,
         );
-        assert!(out.status.success(), "cli should succeed");
-        String::from_utf8_lossy(&out.stdout).into_owned()
+        out.stdout
     };
     assert!(
         out.contains("more files") || out.contains("==> "),

@@ -8,8 +8,7 @@ fn text_normalizes_bare_cr_to_lf() {
         ["--no-color", "-i", "text", "-f", "text", "-c", "1000"].as_ref(),
         Some(&input),
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     assert!(
         out.contains("a\nb\nc\n"),
         "expected LF-normalized lines: {out:?}"

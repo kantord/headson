@@ -4,17 +4,12 @@ use std::path::Path;
 
 fn stdout_from(cwd: &Path, args: &[&str], stdin: Option<&str>) -> String {
     let out = common::run_cli_in_dir(cwd, args, stdin.map(str::as_bytes));
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 fn stdout_stderr_from(cwd: &Path, args: &[&str]) -> (String, String) {
     let out = common::run_cli_in_dir(cwd, args, None);
-    assert!(out.status.success(), "cli should succeed");
-    (
-        String::from_utf8_lossy(&out.stdout).into_owned(),
-        String::from_utf8_lossy(&out.stderr).into_owned(),
-    )
+    (out.stdout, out.stderr)
 }
 
 #[test]

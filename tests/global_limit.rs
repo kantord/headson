@@ -5,9 +5,9 @@ fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
     full_args.extend_from_slice(args);
     full_args.extend_from_slice(paths);
     let out = common::run_cli(&full_args, None);
-    let ok = out.status.success();
-    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
-    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    let ok = out.success();
+    let stdout = out.stdout;
+    let stderr = out.stderr;
     (ok, stdout, stderr)
 }
 
@@ -26,8 +26,7 @@ fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
     args.extend_from_slice(extra);
     args.extend_from_slice(paths);
     let out = common::run_cli(&args, None);
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 fn count_section_headers(out: &str) -> usize {
@@ -63,8 +62,7 @@ fn run_pseudo_with_limit(paths: &[&str], limit: usize) -> String {
     let full_args: Vec<&str> =
         args.into_iter().chain(paths.iter().copied()).collect();
     let out = common::run_cli(&full_args, None);
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 fn count_pseudo_headers(out: &str) -> usize {
@@ -146,16 +144,13 @@ fn budget_and_global_limit_can_be_used_together() {
         &["--no-color", "-f", "json", "-c", "200", "-C", "100", path],
         None,
     );
-    assert!(out_both.status.success(), "cli should succeed");
-    let stdout_both = String::from_utf8_lossy(&out_both.stdout).into_owned();
+    let stdout_both = out_both.stdout;
 
     let out_global_only = common::run_cli(
         &["--no-color", "-f", "json", "-C", "100", path],
         None,
     );
-    assert!(out_global_only.status.success(), "cli should succeed");
-    let stdout_global_only =
-        String::from_utf8_lossy(&out_global_only.stdout).into_owned();
+    let stdout_global_only = out_global_only.stdout;
 
     assert_eq!(
         stdout_both, stdout_global_only,

@@ -8,8 +8,7 @@ fn run_yaml(paths: &[&str], budget: usize) -> String {
         vec!["--no-color", "--no-sort", "-c", &budget_s, "-f", "auto"];
     args.extend_from_slice(paths);
     let out = common::run_cli(&args, None);
-    assert!(out.status.success(), "cli should succeed");
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    out.stdout
 }
 
 #[test]
@@ -44,8 +43,7 @@ fn yaml_fileset_omitted_summary_when_budget_small() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).into_owned();
+    let out = out.stdout;
     assert!(out.contains("more files"));
 }
 
@@ -70,8 +68,7 @@ fn yaml_compact_falls_back_to_json_style() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     assert!(out.contains("{"), "expected JSON-style compact rendering");
     let trimmed = common::trim_trailing_newlines(&out);
     assert!(
@@ -100,7 +97,6 @@ fn yaml_fileset_compact_snapshot() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout).into_owned();
+    let out = out.stdout;
     assert_snapshot!("yaml_fileset_compact", out);
 }

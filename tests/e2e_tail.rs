@@ -17,7 +17,7 @@ fn run_case_with_tail(path: &Path, template: &str, n: u32) -> String {
         other => args.extend(["-f", other]),
     }
     let output = common::run_cli(&args, Some(input.as_bytes()));
-    String::from_utf8_lossy(&output.stdout).into_owned()
+    output.stdout
 }
 
 fn assert_tail_snapshots_for(

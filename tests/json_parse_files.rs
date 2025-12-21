@@ -4,17 +4,6 @@ use std::fs;
 use std::path::Path;
 use test_each_file::test_each_path;
 
-fn run_cli(input: &[u8]) -> (bool, Vec<u8>, Vec<u8>) {
-    let out = common::run_cli(
-        &["--no-color", "-c", "10000", "-f", "json"],
-        Some(input),
-    );
-    let ok = out.status.success();
-    let stdout = out.stdout;
-    let stderr = out.stderr;
-    (ok, stdout, stderr)
-}
-
 fn is_y(path: &Path) -> bool {
     path.file_name()
         .and_then(|s| s.to_str())
@@ -51,10 +40,12 @@ fn should_skip_case(path: &Path) -> bool {
 
 fn verify_positive(path: &Path, input: &[u8]) {
     let original: Value = serde_json::from_slice(input).expect("serde accept");
-    let (ok, out, _err) = run_cli(input);
-    assert!(ok, "cli should succeed: {}", path.display());
+    let out = common::run_cli(
+        &["--no-color", "-c", "10000", "-f", "json"],
+        Some(input),
+    );
     let reparsed: Value =
-        serde_json::from_slice(&out).expect("cli output valid json");
+        serde_json::from_str(&out.stdout).expect("cli output valid json");
     assert_eq!(original, reparsed, "roundtrip mismatch: {}", path.display());
 }
 
@@ -64,10 +55,13 @@ fn verify_negative(path: &Path, input: &[u8]) {
         "serde should reject: {}",
         path.display()
     );
-    let (ok, _out, err) = run_cli(input);
-    assert!(!ok, "cli should fail: {}", path.display());
+    let out = common::run_cli_expect_fail(
+        &["--no-color", "-c", "10000", "-f", "json"],
+        Some(input),
+        None,
+    );
     assert!(
-        !String::from_utf8_lossy(&err).trim().is_empty(),
+        !out.stderr.trim().is_empty(),
         "stderr non-empty: {}",
         path.display()
     );

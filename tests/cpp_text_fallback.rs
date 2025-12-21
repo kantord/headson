@@ -17,15 +17,8 @@ fn cpp_text_fallback_snapshot() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
 
-    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
-    // Normalize trailing newlines to a single one for snapshot stability.
-    while out.ends_with('\n') {
-        out.pop();
-    }
-    out.push('\n');
-
+    let out = common::normalize_trailing_newline(&out.stdout);
     insta::assert_snapshot!(out);
 }
 
@@ -46,13 +39,8 @@ fn cpp_text_fallback_snapshot_json() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
 
-    let mut out = String::from_utf8_lossy(&out.stdout).to_string();
-    while out.ends_with('\n') {
-        out.pop();
-    }
-    out.push('\n');
+    let out = common::normalize_trailing_newline(&out.stdout);
     insta::assert_snapshot!(out);
 }
 
@@ -72,8 +60,7 @@ fn code_format_override_text_template() {
         ],
         None,
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     assert!(
         out.starts_with("def greet"),
         "expected raw text output, got: {out}"
@@ -92,8 +79,7 @@ fn code_format_override_json_via_stdin() {
         &["--no-color", "-c", "120", "-i", "text", "-f", "json"],
         Some(data.as_bytes()),
     );
-    assert!(out.status.success(), "cli should succeed");
-    let out = String::from_utf8_lossy(&out.stdout);
+    let out = out.stdout;
     assert!(
         out.trim_start().starts_with('['),
         "expected JSON array output, got: {out}"

@@ -18,9 +18,8 @@ fn run_cli_auto_text_with_style(path: &Path, style: &str) -> String {
         ],
         None,
     );
-    assert!(output.status.success(), "cli should succeed");
 
-    let out = String::from_utf8_lossy(&output.stdout);
+    let out = output.stdout;
     common::normalize_trailing_newline(&out)
 }
 
@@ -39,12 +38,11 @@ fn run_cli_auto_text_with_debug(path: &Path, style: &str) -> (String, String) {
         ],
         None,
     );
-    assert!(output.status.success(), "cli should succeed");
 
-    let out = String::from_utf8_lossy(&output.stdout);
+    let out = output.stdout;
     let out = common::normalize_trailing_newline(&out);
 
-    let err = String::from_utf8_lossy(&output.stderr);
+    let err = output.stderr;
     let norm = common::normalize_debug(&err);
     (out, norm)
 }

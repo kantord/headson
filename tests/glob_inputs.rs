@@ -42,8 +42,8 @@ fn glob_expands_recursively_and_respects_gitignore() {
         None,
     );
 
-    let ok = out.status.success();
-    let out = String::from_utf8_lossy(&out.stdout);
+    let ok = out.success();
+    let out = out.stdout;
     assert!(ok, "glob run should succeed: {out}");
     let keep_header =
         format!("==> {} <==", Path::new("src").join("keep.json").display());
@@ -103,8 +103,8 @@ fn glob_no_sort_preserves_pattern_order() {
         None,
     );
 
-    let ok = out.status.success();
-    let out = String::from_utf8_lossy(&out.stdout);
+    let ok = out.success();
+    let out = out.stdout;
     assert!(ok, "glob run should succeed: {out}");
     let header_a = format!("==> {} <==", Path::new("a.json").display());
     let header_b = format!("==> {} <==", Path::new("b.json").display());
@@ -141,8 +141,8 @@ fn glob_inputs_deduplicate_overlaps_and_explicit_paths() {
         None,
     );
 
-    let ok = out.status.success();
-    let out = String::from_utf8_lossy(&out.stdout);
+    let ok = out.success();
+    let out = out.stdout;
     assert!(ok, "glob + explicit run should succeed: {out}");
 
     let header_one = format!("==> {} <==", Path::new("one.json").display());
@@ -167,9 +167,9 @@ fn glob_with_no_matches_emits_notice_instead_of_blocking_on_stdin() {
     let output =
         common::run_cli_in_dir(root, &["--no-color", "-g", "*.json"], None);
 
-    let ok = output.status.success();
-    let out = String::from_utf8_lossy(&output.stdout);
-    let err = String::from_utf8_lossy(&output.stderr);
+    let ok = output.success();
+    let out = output.stdout;
+    let err = output.stderr;
     assert!(ok, "glob with no matches should still succeed: {err}");
     assert_eq!(out, "\n", "stdout should stay empty: {out:?}");
     assert!(
@@ -191,9 +191,9 @@ fn tree_glob_with_no_matches_still_emits_notice() {
         None,
     );
 
-    let ok = output.status.success();
-    let out = String::from_utf8_lossy(&output.stdout);
-    let err = String::from_utf8_lossy(&output.stderr);
+    let ok = output.success();
+    let out = output.stdout;
+    let err = output.stderr;
     assert!(
         ok,
         "tree mode with an unmatched glob should still succeed: {err}"
