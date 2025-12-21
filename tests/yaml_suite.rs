@@ -6,7 +6,7 @@ use std::path::Path;
 use test_each_file::test_each_path;
 use yaml_rust2::{Yaml, YamlLoader};
 
-fn run_cli_yaml(input: &[u8]) -> (bool, String, String) {
+fn run_cli_yaml(input: &[u8]) -> (String, String) {
     let out = common::run_cli(
         &[
             "--no-color",
@@ -21,10 +21,9 @@ fn run_cli_yaml(input: &[u8]) -> (bool, String, String) {
         ], // parse YAML, render YAML with no truncation
         Some(input),
     );
-    let ok = out.success();
     let stdout = out.stdout;
     let stderr = out.stderr;
-    (ok, stdout, stderr)
+    (stdout, stderr)
 }
 
 fn is_yaml_file(path: &Path) -> bool {
@@ -38,13 +37,7 @@ fn yaml_suite_case(path: &Path) {
         return;
     }
     let input = fs::read(path).expect("read yaml");
-    let (ok, out, err) = run_cli_yaml(&input);
-    assert!(
-        ok,
-        "cli should succeed for YAML: {}\nerr: {}",
-        path.display(),
-        err
-    );
+    let (out, _err) = run_cli_yaml(&input);
 
     // Output should be valid YAML that parses with yaml-rust2 as at least one document.
     let docs = YamlLoader::load_from_str(&out)

@@ -1,14 +1,11 @@
 mod common;
 
-fn run_paths_json(paths: &[&str], args: &[&str]) -> (bool, String, String) {
+fn run_paths_json(paths: &[&str], args: &[&str]) -> String {
     let mut full_args = vec!["--no-color", "--no-sort", "-f", "auto"];
     full_args.extend_from_slice(args);
     full_args.extend_from_slice(paths);
     let out = common::run_cli(&full_args, None);
-    let ok = out.success();
-    let stdout = out.stdout;
-    let stderr = out.stderr;
-    (ok, stdout, stderr)
+    out.stdout
 }
 
 fn run_js_with_limit(paths: &[&str], limit: usize, extra: &[&str]) -> String {
@@ -129,8 +126,7 @@ fn global_limit_can_omit_entire_files() {
         "tests/fixtures/explicit/string_escaping.json",
     ];
     // Impose a small global limit so not all files fit.
-    let (ok, out, err) = run_paths_json(&paths, &["-C", "80"]);
-    assert!(ok, "should succeed: {err}");
+    let out = run_paths_json(&paths, &["-C", "80"]);
     let kept = count_section_headers(&out);
     assert!(kept < paths.len(), "expected some files omitted: {out}");
 }

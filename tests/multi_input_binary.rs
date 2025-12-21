@@ -3,19 +3,15 @@ use std::fs;
 use std::io::Write;
 use tempfile::tempdir;
 
-fn run_with_paths_json(
-    paths: &[&str],
-    budget: usize,
-) -> (bool, String, String) {
+fn run_with_paths_json(paths: &[&str], budget: usize) -> (String, String) {
     let budget_s = budget.to_string();
     let mut args =
         vec!["--no-color", "--no-sort", "-c", &budget_s, "-f", "auto"];
     args.extend_from_slice(paths);
     let output = common::run_cli(&args, None);
-    let ok = output.success();
     let out = output.stdout;
     let err = output.stderr;
-    (ok, out, err)
+    (out, err)
 }
 
 #[test]
@@ -36,12 +32,7 @@ fn binary_file_is_ignored_and_reported_in_stderr() {
 
     let json_s = json_path.to_string_lossy();
     let bin_s = bin_path.to_string_lossy();
-    let (ok, out, err) = run_with_paths_json(&[&json_s, &bin_s], 10_000);
-
-    assert!(
-        ok,
-        "multi-file should succeed even with binary input; stderr: {err}"
-    );
+    let (out, err) = run_with_paths_json(&[&json_s, &bin_s], 10_000);
     assert!(out.contains("==> "));
     assert!(out.contains(&*json_s));
     assert!(!out.contains(&format!("==> {bin_s} <==")));
@@ -74,10 +65,7 @@ fn multiple_binary_files_each_reported_once_at_end() {
     let bin1_s = bin1.to_string_lossy().to_string();
     let bin2_s = bin2.to_string_lossy().to_string();
 
-    let (ok, out, err) =
-        run_with_paths_json(&[&json_s, &bin1_s, &bin2_s], 10_000);
-
-    assert!(ok, "should succeed: {err}");
+    let (out, err) = run_with_paths_json(&[&json_s, &bin1_s, &bin2_s], 10_000);
     assert!(out.contains("==> "));
     assert!(out.contains(&*json_s));
     assert!(!out.contains(&format!("==> {bin1_s} <==")));

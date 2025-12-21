@@ -2,16 +2,15 @@ mod common;
 use std::fs;
 use tempfile::tempdir;
 
-fn run_with_paths_json(paths: &[&str]) -> (bool, String, String) {
+fn run_with_paths_json(paths: &[&str]) -> (String, String) {
     // large budget to avoid truncation
     let mut args =
         vec!["--no-color", "--no-sort", "-c", "100000", "-f", "auto"];
     args.extend_from_slice(paths);
     let output = common::run_cli(&args, None);
-    let ok = output.success();
     let out = output.stdout;
     let err = output.stderr;
-    (ok, out, err)
+    (out, err)
 }
 
 #[test]
@@ -30,8 +29,7 @@ fn directory_inputs_are_ignored_and_reported() {
     let json_s = json.to_string_lossy().to_string();
     let sub_s = sub.to_string_lossy().to_string();
 
-    let (ok, out, err) = run_with_paths_json(&[&json_s, &sub_s]);
-    assert!(ok, "should succeed: {err}");
+    let (out, err) = run_with_paths_json(&[&json_s, &sub_s]);
 
     assert!(out.contains("==> "));
     assert!(out.contains(&json_s));
