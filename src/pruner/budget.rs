@@ -1,3 +1,4 @@
+use super::pruning_context::HeadsonPruningContext;
 use crate::grep::{
     GrepShow, GrepState, compute_grep_state, reorder_priority_with_must_keep,
 };
@@ -6,7 +7,7 @@ use crate::utils::measure::{OutputStats, count_output_stats};
 use crate::{GrepConfig, PriorityOrder, RenderConfig};
 use prunist::{
     Budget, BudgetKind, Budgets, MustKeep, MustKeepStats, PruningConfig,
-    PruningContext, PruningOutcome, select_best_k,
+    PruningOutcome, select_best_k,
 };
 use std::collections::VecDeque;
 
@@ -17,81 +18,6 @@ fn is_fileset_root(order_build: &PriorityOrder) -> bool {
         .object_type
         .get(crate::order::ROOT_PQ_ID)
         .is_some_and(|t| *t == ObjectType::Fileset)
-}
-
-struct HeadsonPruningContext<'a> {
-    order_build: &'a PriorityOrder,
-    measure_cfg: &'a RenderConfig,
-    fileset_slots: Option<&'a FilesetSlots>,
-}
-
-impl PruningContext<NodeId> for HeadsonPruningContext<'_> {
-    fn total_nodes(&self) -> usize {
-        self.order_build.total_nodes
-    }
-
-    fn priority_order(&self) -> &[NodeId] {
-        &self.order_build.by_priority
-    }
-
-    fn selection_order_for_slots(&self) -> Option<Vec<NodeId>> {
-        self.fileset_slots.and_then(|slots| {
-            round_robin_slot_priority(self.order_build, slots)
-        })
-    }
-
-    fn slot_count(&self) -> Option<usize> {
-        self.fileset_slots.map(|s| s.count)
-    }
-
-    fn mark_top_k_and_ancestors(
-        &self,
-        order: &[NodeId],
-        k: usize,
-        flags: &mut [u32],
-        render_id: u32,
-    ) {
-        mark_custom_top_k_and_ancestors(
-            self.order_build,
-            order,
-            k,
-            flags,
-            render_id,
-        );
-    }
-
-    fn include_must_keep(
-        &self,
-        flags: &mut [u32],
-        render_id: u32,
-        must_keep: &[bool],
-    ) {
-        include_must_keep(self.order_build, flags, render_id, must_keep);
-    }
-
-    fn measure(
-        &self,
-        flags: &[u32],
-        render_id: u32,
-        measure_chars: bool,
-    ) -> (OutputStats, Option<Vec<OutputStats>>) {
-        let mut recorder = self.fileset_slots.map(|slots| {
-            crate::serialization::output::SlotStatsRecorder::new(
-                slots.count,
-                measure_chars,
-            )
-        });
-        let (rendered, slot_stats) =
-            crate::serialization::render_from_render_set_with_slots(
-                self.order_build,
-                flags,
-                render_id,
-                self.measure_cfg,
-                self.fileset_slots.map(|slots| slots.map.as_slice()),
-                recorder.take(),
-            );
-        (count_output_stats(&rendered, measure_chars), slot_stats)
-    }
 }
 
 pub fn find_largest_render_under_budgets(
@@ -605,7 +531,7 @@ fn fileset_slot_names(order_build: &PriorityOrder) -> Option<Vec<String>> {
     Some(names)
 }
 
-fn round_robin_slot_priority(
+pub(super) fn round_robin_slot_priority(
     order_build: &PriorityOrder,
     slots: &FilesetSlots,
 ) -> Option<Vec<NodeId>> {
@@ -831,7 +757,7 @@ fn include_string_descendants(
     }
 }
 
-fn include_must_keep(
+pub(super) fn include_must_keep(
     order_build: &PriorityOrder,
     inclusion_flags: &mut [u32],
     render_set_id: u32,
@@ -861,7 +787,7 @@ fn include_must_keep(
     }
 }
 
-fn mark_custom_top_k_and_ancestors(
+pub(super) fn mark_custom_top_k_and_ancestors(
     order_build: &PriorityOrder,
     selection_order: &[NodeId],
     top_k: usize,
