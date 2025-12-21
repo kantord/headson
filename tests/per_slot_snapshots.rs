@@ -1,10 +1,6 @@
 mod common;
 use insta::assert_snapshot;
 
-fn normalize(out: &str) -> String {
-    out.replace('\\', "/")
-}
-
 #[test]
 fn snapshot_grep_per_slot_line_cap() {
     let out = common::run_cli(
@@ -24,7 +20,10 @@ fn snapshot_grep_per_slot_line_cap() {
     );
     assert!(out.status.success(), "cli should succeed");
     let out = String::from_utf8_lossy(&out.stdout).into_owned();
-    assert_snapshot!("grep_per_slot_line_cap", normalize(&out));
+    assert_snapshot!(
+        "grep_per_slot_line_cap",
+        common::normalize_snapshot_paths(&out)
+    );
 }
 
 #[test]
@@ -44,7 +43,10 @@ fn snapshot_counted_headers_tiny_line_cap() {
     );
     assert!(out.status.success(), "cli should succeed");
     let out = String::from_utf8_lossy(&out.stdout).into_owned();
-    assert_snapshot!("counted_headers_tiny_line_cap", normalize(&out));
+    assert_snapshot!(
+        "counted_headers_tiny_line_cap",
+        common::normalize_snapshot_paths(&out)
+    );
 }
 
 #[test]
@@ -63,7 +65,10 @@ fn snapshot_tree_per_slot_line_cap() {
     );
     assert!(out.status.success(), "cli should succeed");
     let out = String::from_utf8_lossy(&out.stdout).into_owned();
-    assert_snapshot!("tree_per_slot_line_cap", normalize(&out));
+    assert_snapshot!(
+        "tree_per_slot_line_cap",
+        common::normalize_snapshot_paths(&out)
+    );
 }
 
 #[test]
@@ -84,7 +89,10 @@ fn snapshot_tree_per_slot_varied_line_cap() {
     );
     assert!(out.status.success(), "cli should succeed");
     let out = String::from_utf8_lossy(&out.stdout).into_owned();
-    assert_snapshot!("tree_per_slot_varied_line_cap", normalize(&out));
+    assert_snapshot!(
+        "tree_per_slot_varied_line_cap",
+        common::normalize_snapshot_paths(&out)
+    );
 }
 
 #[test]
@@ -104,7 +112,10 @@ fn snapshot_multibyte_chars_and_bytes_per_slot() {
     );
     assert!(out.status.success(), "cli should succeed");
     let out = String::from_utf8_lossy(&out.stdout).into_owned();
-    assert_snapshot!("multibyte_chars_and_bytes_per_slot", normalize(&out));
+    assert_snapshot!(
+        "multibyte_chars_and_bytes_per_slot",
+        common::normalize_snapshot_paths(&out)
+    );
 }
 
 #[test]
@@ -125,5 +136,8 @@ fn snapshot_multibyte_chars_tighter_than_bytes() {
     );
     assert!(out.status.success(), "cli should succeed");
     let out = String::from_utf8_lossy(&out.stdout).into_owned();
-    assert_snapshot!("multibyte_chars_tighter_than_bytes", normalize(&out));
+    assert_snapshot!(
+        "multibyte_chars_tighter_than_bytes",
+        common::normalize_snapshot_paths(&out)
+    );
 }

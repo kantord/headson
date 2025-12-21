@@ -28,7 +28,7 @@ fn headers_free_by_default_under_char_cap() {
         &fixture_path("b.yaml"),
         &fixture_path("c.txt"),
     ]);
-    let normalized = out.replace('\\', "/");
+    let normalized = common::normalize_snapshot_paths(&out);
     assert_snapshot!("mixed_headers__free", normalized);
 }
 
@@ -42,6 +42,6 @@ fn headers_count_under_char_cap_with_flag() {
         &fixture_path("b.yaml"),
         &fixture_path("c.txt"),
     ]);
-    let normalized = out.replace('\\', "/");
+    let normalized = common::normalize_snapshot_paths(&out);
     assert_snapshot!("mixed_headers__counted", normalized);
 }
