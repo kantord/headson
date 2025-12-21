@@ -201,7 +201,7 @@ fn finalize_render_from_selection(
     finalize_ctx: &FinalizeContext<'_>,
 ) -> Option<String> {
     let SelectionOutcome {
-        k: k_opt,
+        top_k: k_opt,
         mut inclusion_flags,
         render_set_id,
         selection_order,

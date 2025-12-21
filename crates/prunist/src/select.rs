@@ -72,7 +72,7 @@ where
 
 #[derive(Debug)]
 pub struct SelectionOutcome<Id: Copy> {
-    pub k: Option<usize>,
+    pub top_k: Option<usize>,
     pub inclusion_flags: Vec<u32>,
     pub render_set_id: u32,
     pub selection_order: Option<Vec<Id>>,
@@ -262,7 +262,7 @@ pub fn select_best_k<Id: Copy, E: SelectionEngine<Id>>(
         && b.cap == 0
     {
         return SelectionOutcome {
-            k: Some(0),
+            top_k: Some(0),
             inclusion_flags: search_state.inclusion_flags,
             render_set_id: search_state.render_set_id,
             selection_order: prep.selection_order,
@@ -289,7 +289,7 @@ pub fn select_best_k<Id: Copy, E: SelectionEngine<Id>>(
         },
     );
     SelectionOutcome {
-        k: search_state.best_k,
+        top_k: search_state.best_k,
         inclusion_flags: search_state.inclusion_flags,
         render_set_id: search_state.render_set_id,
         selection_order: prep.selection_order,
@@ -334,6 +334,7 @@ fn fits_per_slot_cap(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::VecDeque;
 
     #[derive(Clone)]
     struct FakeEngine {
@@ -374,7 +375,35 @@ mod tests {
         }
 
         fn selection_order_for_slots(&self) -> Option<Vec<usize>> {
-            Some(self.order.clone())
+            let slot_count = self.slot_count?;
+            let slot_map = self.slot_map.as_ref()?;
+            let mut buckets: Vec<VecDeque<usize>> =
+                vec![VecDeque::new(); slot_count];
+            let mut unslotted = Vec::new();
+            for &id in &self.order {
+                if let Some(slot) = slot_map.get(id).copied()
+                    && let Some(bucket) = buckets.get_mut(slot)
+                {
+                    bucket.push_back(id);
+                    continue;
+                }
+                unslotted.push(id);
+            }
+            let mut out = Vec::with_capacity(self.order.len());
+            let mut cursor = 0usize;
+            let mut remaining: usize = buckets.iter().map(VecDeque::len).sum();
+            while remaining > 0 {
+                let slot = cursor % slot_count;
+                if let Some(bucket) = buckets.get_mut(slot)
+                    && let Some(node) = bucket.pop_front()
+                {
+                    out.push(node);
+                    remaining = remaining.saturating_sub(1);
+                }
+                cursor = cursor.saturating_add(1);
+            }
+            out.extend(unslotted);
+            Some(out)
         }
 
         fn slot_count(&self) -> Option<usize> {
@@ -465,7 +494,7 @@ mod tests {
             None,
         );
         let out = select_best_k(cfg);
-        assert_eq!(out.k, Some(3));
+        assert_eq!(out.top_k, Some(3));
     }
 
     #[test]
@@ -484,7 +513,7 @@ mod tests {
             None,
         );
         let out = select_best_k(cfg);
-        assert_eq!(out.k, Some(2));
+        assert_eq!(out.top_k, Some(2));
     }
 
     #[test]
@@ -503,7 +532,7 @@ mod tests {
             &engine,
             Budgets {
                 global: Some(Budget {
-                    kind: BudgetKind::Bytes,
+                    kind: BudgetKind::Lines,
                     cap: 1,
                 }),
                 per_slot: None,
@@ -515,6 +544,6 @@ mod tests {
             }),
         );
         let out = select_best_k(cfg);
-        assert_eq!(out.k, Some(3));
+        assert_eq!(out.top_k, Some(3));
     }
 }
