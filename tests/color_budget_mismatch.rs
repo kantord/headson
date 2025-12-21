@@ -1,26 +1,4 @@
-fn strip_ansi(s: &str) -> String {
-    // Minimal SGR stripper for tests: remove ESC [ ... m sequences, preserve UTF-8.
-    let bytes = s.as_bytes();
-    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == 0x1b && i + 1 < bytes.len() && bytes[i + 1] == b'[' {
-            // Skip until an 'm' or end
-            i += 2;
-            while i < bytes.len() {
-                let b = bytes[i];
-                i += 1;
-                if b == b'm' {
-                    break;
-                }
-            }
-        } else {
-            out.push(bytes[i]);
-            i += 1;
-        }
-    }
-    String::from_utf8(out).expect("valid utf8 after strip")
-}
+mod common;
 
 #[test]
 fn colored_and_plain_outputs_should_match_after_stripping() {
@@ -83,7 +61,7 @@ fn colored_and_plain_outputs_should_match_after_stripping() {
     )
     .expect("color render");
 
-    let colored_stripped = strip_ansi(&colored);
+    let colored_stripped = common::strip_ansi(&colored);
 
     // Expect identical logical output after stripping ANSI.
     assert_eq!(plain, colored_stripped);

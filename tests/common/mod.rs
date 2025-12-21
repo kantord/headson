@@ -169,6 +169,29 @@ pub fn trim_trailing_newlines(s: &str) -> &str {
 }
 
 #[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
+pub fn strip_ansi(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == 0x1b && i + 1 < bytes.len() && bytes[i + 1] == b'[' {
+            i += 2;
+            while i < bytes.len() {
+                let b = bytes[i];
+                i += 1;
+                if b == b'm' {
+                    break;
+                }
+            }
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).expect("valid utf8 after strip")
+}
+
+#[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
 pub fn normalize_debug(s: &str) -> String {
     use serde_json::{self, Value};
     let mut v: Value = serde_json::from_str(s).expect("stderr must be JSON");

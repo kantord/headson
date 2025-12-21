@@ -4,28 +4,6 @@ fn count_chars_normalized(s: &str) -> usize {
     common::trim_trailing_newlines(s).chars().count()
 }
 
-fn strip_ansi(s: &str) -> String {
-    let bytes = s.as_bytes();
-    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == 0x1b && i + 1 < bytes.len() && bytes[i + 1] == b'[' {
-            i += 2;
-            while i < bytes.len() {
-                let b = bytes[i];
-                i += 1;
-                if b == b'm' {
-                    break;
-                }
-            }
-        } else {
-            out.push(bytes[i]);
-            i += 1;
-        }
-    }
-    String::from_utf8(out).expect("valid utf8 after strip")
-}
-
 #[test]
 fn ascii_parity_with_bytes() {
     // ASCII-only; bytes and chars budgets of the same numeric value should match.
@@ -135,7 +113,7 @@ fn colored_vs_plain_match_after_stripping_under_char_budget() {
     // Ensure char budget enforced on uncolored output
     assert!(plain.chars().count() <= budgets.global.unwrap().cap);
     // Stripping ANSI from colored should match plain logical content
-    let colored_stripped = strip_ansi(&colored);
+    let colored_stripped = common::strip_ansi(&colored);
     assert_eq!(plain, colored_stripped);
 }
 

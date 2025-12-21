@@ -1,27 +1,5 @@
+mod common;
 use headson::{ColorMode, OutputTemplate, PriorityConfig, RenderConfig};
-
-fn strip_ansi(s: &str) -> String {
-    let bytes = s.as_bytes();
-    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == 0x1b && i + 1 < bytes.len() && bytes[i + 1] == b'[' {
-            // Skip until an 'm' or end
-            i += 2;
-            while i < bytes.len() {
-                let b = bytes[i];
-                i += 1;
-                if b == b'm' {
-                    break;
-                }
-            }
-        } else {
-            out.push(bytes[i]);
-            i += 1;
-        }
-    }
-    String::from_utf8(out).expect("valid utf8 after strip")
-}
 
 #[test]
 fn yaml_coloring_applies_and_strips_to_plain() {
@@ -93,6 +71,6 @@ fn yaml_coloring_applies_and_strips_to_plain() {
     );
 
     // Stripped output should be identical to the plain render.
-    let stripped = strip_ansi(&colored);
+    let stripped = common::strip_ansi(&colored);
     assert_eq!(plain, stripped);
 }
