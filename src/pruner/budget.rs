@@ -7,11 +7,9 @@ use crate::utils::measure::{OutputStats, count_output_stats};
 use crate::{GrepConfig, PriorityOrder, RenderConfig};
 use prunist::{
     Budget, BudgetKind, Budgets, MustKeep, MustKeepStats, PruningConfig,
-    PruningOutcome, select_best_k,
+    PruningResult, select_best_k,
 };
 use std::collections::VecDeque;
-
-type SelectionResult = PruningOutcome<NodeId>;
 
 fn is_fileset_root(order_build: &PriorityOrder) -> bool {
     order_build
@@ -121,11 +119,11 @@ fn finalize_render_from_selection(
     order_build: &mut PriorityOrder,
     config: &RenderConfig,
     header_budgeting: HeadersBudgeting,
-    selection: SelectionResult,
+    selection: PruningResult<NodeId>,
     root_is_fileset: bool,
     finalize_ctx: &FinalizeContext<'_>,
 ) -> Option<String> {
-    let PruningOutcome {
+    let PruningResult {
         top_k: k_opt,
         mut inclusion_flags,
         render_set_id,

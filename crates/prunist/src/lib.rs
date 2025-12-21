@@ -3,7 +3,7 @@ mod select;
 
 pub use search::binary_search_max;
 pub use select::{
-    MustKeep, MustKeepStats, PruningConfig, PruningContext, PruningOutcome,
+    MustKeep, MustKeepStats, PruningConfig, PruningContext, PruningResult,
     select_best_k,
 };
 

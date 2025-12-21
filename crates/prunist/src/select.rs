@@ -71,7 +71,7 @@ where
 }
 
 #[derive(Debug)]
-pub struct PruningOutcome<Id: Copy> {
+pub struct PruningResult<Id: Copy> {
     pub top_k: Option<usize>,
     pub inclusion_flags: Vec<u32>,
     pub render_set_id: u32,
@@ -248,7 +248,7 @@ fn evaluate_mid<Id: Copy, C: PruningContext<Id>>(
 )]
 pub fn select_best_k<Id: Copy, C: PruningContext<Id>>(
     cfg: PruningConfig<'_, Id, C>,
-) -> PruningOutcome<Id> {
+) -> PruningResult<Id> {
     let prep = prepare_selection(&cfg);
     let mk_info = compute_must_keep(&cfg, &prep);
     let mut search_state = SearchState {
@@ -261,7 +261,7 @@ pub fn select_best_k<Id: Copy, C: PruningContext<Id>>(
         && let Some(b) = cfg.budgets.global
         && b.cap == 0
     {
-        return PruningOutcome {
+        return PruningResult {
             top_k: Some(0),
             inclusion_flags: search_state.inclusion_flags,
             render_set_id: search_state.render_set_id,
@@ -288,7 +288,7 @@ pub fn select_best_k<Id: Copy, C: PruningContext<Id>>(
             )
         },
     );
-    PruningOutcome {
+    PruningResult {
         top_k: search_state.best_k,
         inclusion_flags: search_state.inclusion_flags,
         render_set_id: search_state.render_set_id,
