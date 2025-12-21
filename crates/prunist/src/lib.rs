@@ -3,8 +3,8 @@ mod select;
 
 pub use search::binary_search_max;
 pub use select::{
-    MustKeep, MustKeepStats, SelectionConfig, SelectionEngine,
-    SelectionOutcome, select_best_k,
+    MustKeep, MustKeepStats, PruningConfig, PruningContext, PruningOutcome,
+    select_best_k,
 };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

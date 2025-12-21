@@ -1,6 +1,6 @@
 use crate::{Budget, BudgetKind, Budgets, OutputStats, binary_search_max};
 
-pub trait SelectionEngine<Id: Copy> {
+pub trait PruningContext<Id: Copy> {
     fn total_nodes(&self) -> usize;
     fn priority_order(&self) -> &[Id];
     fn selection_order_for_slots(&self) -> Option<Vec<Id>>;
@@ -37,31 +37,31 @@ pub struct MustKeepStats {
     pub per_slot: Option<Vec<OutputStats>>,
 }
 
-pub struct SelectionConfig<'a, Id, E>
+pub struct PruningConfig<'a, Id, C>
 where
     Id: Copy,
-    E: SelectionEngine<Id>,
+    C: PruningContext<Id>,
 {
-    pub engine: &'a E,
+    pub context: &'a C,
     pub budgets: Budgets,
     pub min_k: usize,
     pub must_keep: Option<MustKeep<'a>>,
     _marker: std::marker::PhantomData<Id>,
 }
 
-impl<'a, Id, E> SelectionConfig<'a, Id, E>
+impl<'a, Id, C> PruningConfig<'a, Id, C>
 where
     Id: Copy,
-    E: SelectionEngine<Id>,
+    C: PruningContext<Id>,
 {
     pub fn new(
-        engine: &'a E,
+        context: &'a C,
         budgets: Budgets,
         min_k: usize,
         must_keep: Option<MustKeep<'a>>,
     ) -> Self {
         Self {
-            engine,
+            context,
             budgets,
             min_k,
             must_keep,
@@ -71,7 +71,7 @@ where
 }
 
 #[derive(Debug)]
-pub struct SelectionOutcome<Id: Copy> {
+pub struct PruningOutcome<Id: Copy> {
     pub top_k: Option<usize>,
     pub inclusion_flags: Vec<u32>,
     pub render_set_id: u32,
@@ -102,19 +102,19 @@ struct SearchState {
     clippy::cognitive_complexity,
     reason = "Bound derivation branches on optional budgets/slots; splitting would obscure the flow."
 )]
-fn prepare_selection<Id: Copy, E: SelectionEngine<Id>>(
-    cfg: &SelectionConfig<'_, Id, E>,
+fn prepare_selection<Id: Copy, C: PruningContext<Id>>(
+    cfg: &PruningConfig<'_, Id, C>,
 ) -> SelectionPrep<Id> {
     let per_slot_caps_active = cfg.budgets.per_slot.is_some();
-    let slot_count = cfg.engine.slot_count();
+    let slot_count = cfg.context.slot_count();
     let selection_order = if per_slot_caps_active {
-        cfg.engine.selection_order_for_slots()
+        cfg.context.selection_order_for_slots()
     } else {
         None
     };
     let selection_order_ref: &[Id] = selection_order
         .as_deref()
-        .unwrap_or_else(|| cfg.engine.priority_order());
+        .unwrap_or_else(|| cfg.context.priority_order());
     let available = selection_order_ref.len().max(1);
     let zero_global_cap =
         matches!(cfg.budgets.global, Some(Budget { cap: 0, .. }));
@@ -130,8 +130,8 @@ fn prepare_selection<Id: Copy, E: SelectionEngine<Id>>(
         Some(Budget {
             kind: BudgetKind::Bytes,
             cap,
-        }) => cfg.engine.total_nodes().min(cap.max(1)),
-        _ => cfg.engine.total_nodes(),
+        }) => cfg.context.total_nodes().min(cap.max(1)),
+        _ => cfg.context.total_nodes(),
     }
     .min(available);
     let effective_lo = capped_lo;
@@ -146,8 +146,8 @@ fn prepare_selection<Id: Copy, E: SelectionEngine<Id>>(
     }
 }
 
-fn compute_must_keep<Id: Copy, E: SelectionEngine<Id>>(
-    cfg: &SelectionConfig<'_, Id, E>,
+fn compute_must_keep<Id: Copy, C: PruningContext<Id>>(
+    cfg: &PruningConfig<'_, Id, C>,
     prep: &SelectionPrep<Id>,
 ) -> MustKeepInfo {
     let apply = cfg.must_keep.is_some();
@@ -180,16 +180,16 @@ fn compute_must_keep<Id: Copy, E: SelectionEngine<Id>>(
     clippy::cognitive_complexity,
     reason = "Render measurement + budget checks are easiest to follow as a single pass."
 )]
-fn evaluate_mid<Id: Copy, E: SelectionEngine<Id>>(
+fn evaluate_mid<Id: Copy, C: PruningContext<Id>>(
     mid: usize,
-    cfg: &SelectionConfig<'_, Id, E>,
+    cfg: &PruningConfig<'_, Id, C>,
     prep: &SelectionPrep<Id>,
     mk_info: &MustKeepInfo,
     selection_order_ref: &[Id],
     state: &mut SearchState,
 ) -> bool {
     let current_render_id = state.render_set_id;
-    cfg.engine.mark_top_k_and_ancestors(
+    cfg.context.mark_top_k_and_ancestors(
         selection_order_ref,
         mid,
         &mut state.inclusion_flags,
@@ -198,13 +198,13 @@ fn evaluate_mid<Id: Copy, E: SelectionEngine<Id>>(
     if mk_info.apply
         && let Some(mk) = cfg.must_keep.as_ref()
     {
-        cfg.engine.include_must_keep(
+        cfg.context.include_must_keep(
             &mut state.inclusion_flags,
             current_render_id,
             mk.flags,
         );
     }
-    let (render_stats, mut slot_stats) = cfg.engine.measure(
+    let (render_stats, mut slot_stats) = cfg.context.measure(
         &state.inclusion_flags,
         current_render_id,
         prep.measure_chars,
@@ -246,13 +246,13 @@ fn evaluate_mid<Id: Copy, E: SelectionEngine<Id>>(
     clippy::cognitive_complexity,
     reason = "Binary search over render sets remains branchy even after extraction."
 )]
-pub fn select_best_k<Id: Copy, E: SelectionEngine<Id>>(
-    cfg: SelectionConfig<'_, Id, E>,
-) -> SelectionOutcome<Id> {
+pub fn select_best_k<Id: Copy, C: PruningContext<Id>>(
+    cfg: PruningConfig<'_, Id, C>,
+) -> PruningOutcome<Id> {
     let prep = prepare_selection(&cfg);
     let mk_info = compute_must_keep(&cfg, &prep);
     let mut search_state = SearchState {
-        inclusion_flags: vec![0; cfg.engine.total_nodes()],
+        inclusion_flags: vec![0; cfg.context.total_nodes()],
         render_set_id: 1,
         best_k: None,
     };
@@ -261,7 +261,7 @@ pub fn select_best_k<Id: Copy, E: SelectionEngine<Id>>(
         && let Some(b) = cfg.budgets.global
         && b.cap == 0
     {
-        return SelectionOutcome {
+        return PruningOutcome {
             top_k: Some(0),
             inclusion_flags: search_state.inclusion_flags,
             render_set_id: search_state.render_set_id,
@@ -273,7 +273,7 @@ pub fn select_best_k<Id: Copy, E: SelectionEngine<Id>>(
     let selection_order_ref: &[Id] = prep
         .selection_order
         .as_deref()
-        .unwrap_or_else(|| cfg.engine.priority_order());
+        .unwrap_or_else(|| cfg.context.priority_order());
     let _ = binary_search_max(
         prep.effective_lo.max(effective_min_k),
         prep.effective_hi,
@@ -288,7 +288,7 @@ pub fn select_best_k<Id: Copy, E: SelectionEngine<Id>>(
             )
         },
     );
-    SelectionOutcome {
+    PruningOutcome {
         top_k: search_state.best_k,
         inclusion_flags: search_state.inclusion_flags,
         render_set_id: search_state.render_set_id,
@@ -365,7 +365,7 @@ mod tests {
         }
     }
 
-    impl SelectionEngine<usize> for FakeEngine {
+    impl PruningContext<usize> for FakeEngine {
         fn total_nodes(&self) -> usize {
             self.total
         }
@@ -481,7 +481,7 @@ mod tests {
     #[test]
     fn picks_largest_k_under_global_cap() {
         let engine = FakeEngine::new(5);
-        let cfg = SelectionConfig::new(
+        let cfg = PruningConfig::new(
             &engine,
             Budgets {
                 global: Some(Budget {
@@ -500,7 +500,7 @@ mod tests {
     #[test]
     fn respects_per_slot_caps() {
         let engine = FakeEngine::new(4).with_slots(2, vec![0, 0, 1, 1]);
-        let cfg = SelectionConfig::new(
+        let cfg = PruningConfig::new(
             &engine,
             Budgets {
                 global: None,
@@ -528,7 +528,7 @@ mod tests {
             },
             per_slot: None,
         };
-        let cfg = SelectionConfig::new(
+        let cfg = PruningConfig::new(
             &engine,
             Budgets {
                 global: Some(Budget {

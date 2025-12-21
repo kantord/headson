@@ -5,12 +5,12 @@ use crate::order::{NodeId, ObjectType, ROOT_PQ_ID};
 use crate::utils::measure::{OutputStats, count_output_stats};
 use crate::{GrepConfig, PriorityOrder, RenderConfig};
 use prunist::{
-    Budget, BudgetKind, Budgets, MustKeep, MustKeepStats, SelectionConfig,
-    SelectionEngine, SelectionOutcome, select_best_k,
+    Budget, BudgetKind, Budgets, MustKeep, MustKeepStats, PruningConfig,
+    PruningContext, PruningOutcome, select_best_k,
 };
 use std::collections::VecDeque;
 
-type SelectionResult = SelectionOutcome<NodeId>;
+type SelectionResult = PruningOutcome<NodeId>;
 
 fn is_fileset_root(order_build: &PriorityOrder) -> bool {
     order_build
@@ -19,13 +19,13 @@ fn is_fileset_root(order_build: &PriorityOrder) -> bool {
         .is_some_and(|t| *t == ObjectType::Fileset)
 }
 
-struct HeadsonSelectionEngine<'a> {
+struct HeadsonPruningContext<'a> {
     order_build: &'a PriorityOrder,
     measure_cfg: &'a RenderConfig,
     fileset_slots: Option<&'a FilesetSlots>,
 }
 
-impl SelectionEngine<NodeId> for HeadsonSelectionEngine<'_> {
+impl PruningContext<NodeId> for HeadsonPruningContext<'_> {
     fn total_nodes(&self) -> usize {
         self.order_build.total_nodes
     }
@@ -156,14 +156,13 @@ pub fn find_largest_render_under_budgets(
             },
         }
     });
-    let engine = HeadsonSelectionEngine {
+    let context = HeadsonPruningContext {
         order_build,
         measure_cfg: &measure_cfg,
         fileset_slots: fileset_slots.as_ref(),
     };
-    let selection = select_best_k(SelectionConfig::new(
-        &engine, budgets, min_k, must_keep,
-    ));
+    let selection =
+        select_best_k(PruningConfig::new(&context, budgets, min_k, must_keep));
     let finalize_ctx = FinalizeContext {
         budgets,
         fileset_slots: fileset_slots.as_ref(),
@@ -200,7 +199,7 @@ fn finalize_render_from_selection(
     root_is_fileset: bool,
     finalize_ctx: &FinalizeContext<'_>,
 ) -> Option<String> {
-    let SelectionOutcome {
+    let PruningOutcome {
         top_k: k_opt,
         mut inclusion_flags,
         render_set_id,
