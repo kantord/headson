@@ -161,13 +161,9 @@ pub fn find_largest_render_under_budgets(
         measure_cfg: &measure_cfg,
         fileset_slots: fileset_slots.as_ref(),
     };
-    let selection = select_best_k(SelectionConfig {
-        engine: &engine,
-        budgets,
-        min_k,
-        must_keep,
-        _marker: std::marker::PhantomData,
-    });
+    let selection = select_best_k(SelectionConfig::new(
+        &engine, budgets, min_k, must_keep,
+    ));
     let finalize_ctx = FinalizeContext {
         budgets,
         fileset_slots: fileset_slots.as_ref(),
