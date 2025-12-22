@@ -6,7 +6,10 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use content_inspector::{ContentType, inspect};
-use ignore::{WalkBuilder, overrides::OverrideBuilder};
+use ignore::{
+    WalkBuilder,
+    overrides::{Override, OverrideBuilder},
+};
 
 use crate::cli::args::{
     Cli, InputFormat, OutputFormat, get_render_config_from,
@@ -285,8 +288,14 @@ fn collect_glob_matches(
                 .context("failed to compile glob overrides")?;
             let mut walker = WalkBuilder::new(".");
             // Still sort within each glob for deterministic traversal.
-            configure_walker(&mut walker, Some(overrides), true);
-            collect_from_walker(&walker, cwd, seen_abs, inputs)?;
+            configure_walker(&mut walker, true);
+            collect_from_walker(
+                &walker,
+                cwd,
+                seen_abs,
+                inputs,
+                Some(&overrides),
+            )?;
         }
         return Ok(());
     }
@@ -302,19 +311,12 @@ fn collect_glob_matches(
         .context("failed to compile glob overrides")?;
 
     let mut walker = WalkBuilder::new(".");
-    configure_walker(&mut walker, Some(overrides), true);
-    collect_from_walker(&walker, cwd, seen_abs, inputs)?;
+    configure_walker(&mut walker, true);
+    collect_from_walker(&walker, cwd, seen_abs, inputs, Some(&overrides))?;
     Ok(())
 }
 
-fn configure_walker(
-    walker: &mut WalkBuilder,
-    overrides: Option<ignore::overrides::Override>,
-    should_sort: bool,
-) {
-    if let Some(overrides) = overrides {
-        walker.overrides(overrides);
-    }
+fn configure_walker(walker: &mut WalkBuilder, should_sort: bool) {
     walker.ignore(true);
     walker.git_ignore(true);
     walker.git_global(true);
@@ -358,8 +360,8 @@ fn collect_recursive_matches(
     no_sort: bool,
 ) -> Result<()> {
     let mut walker = WalkBuilder::new(root);
-    configure_walker(&mut walker, None, !no_sort);
-    collect_from_walker(&walker, cwd, seen_abs, inputs)?;
+    configure_walker(&mut walker, !no_sort);
+    collect_from_walker(&walker, cwd, seen_abs, inputs, None)?;
     Ok(())
 }
 
@@ -368,6 +370,7 @@ fn collect_from_walker(
     cwd: &Path,
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
+    matcher: Option<&Override>,
 ) -> Result<()> {
     for dent in walker.build() {
         let dir_entry = dent?;
@@ -380,6 +383,12 @@ fn collect_from_walker(
         }
         let path = dir_entry.into_path();
         let rel = relativize(&path, cwd).to_path_buf();
+        if let Some(matcher) = matcher {
+            let match_result = matcher.matched(&rel, false);
+            if !match_result.is_whitelist() {
+                continue;
+            }
+        }
         add_simple_input(cwd, seen_abs, inputs, &rel);
     }
     Ok(())
