@@ -205,19 +205,20 @@ fn resolve_inputs(cli: &Cli) -> Result<Vec<PathBuf>> {
         );
     }
 
-    for path in &cli.inputs {
-        if cli.recursive {
-            let dir = ensure_recursive_dir(&cwd, path)?;
-            collect_recursive_matches(
-                &dir,
+    if cli.recursive {
+        for path in &cli.inputs {
+            add_recursive_input(
                 &cwd,
+                path,
                 &mut seen_abs,
                 &mut inputs,
                 gitignore.as_ref(),
                 cli.no_sort,
             )?;
-        } else {
-            push_unique(&cwd, &mut seen_abs, &mut inputs, path);
+        }
+    } else {
+        for path in &cli.inputs {
+            add_simple_input(&cwd, &mut seen_abs, &mut inputs, path);
         }
     }
 
@@ -235,7 +236,7 @@ fn resolve_inputs(cli: &Cli) -> Result<Vec<PathBuf>> {
     Ok(inputs)
 }
 
-fn push_unique(
+fn add_simple_input(
     cwd: &Path,
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
@@ -249,6 +250,21 @@ fn push_unique(
     if seen_abs.insert(abs) {
         inputs.push(path.to_path_buf());
     }
+}
+
+fn add_recursive_input(
+    cwd: &Path,
+    path: &Path,
+    seen_abs: &mut HashSet<PathBuf>,
+    inputs: &mut Vec<PathBuf>,
+    gitignore: Option<&ignore::gitignore::Gitignore>,
+    no_sort: bool,
+) -> Result<()> {
+    let dir = ensure_recursive_dir(cwd, path)?;
+    collect_recursive_matches(
+        &dir, cwd, seen_abs, inputs, gitignore, no_sort,
+    )?;
+    Ok(())
 }
 
 fn relativize<'a>(path: &'a Path, cwd: &Path) -> &'a Path {
@@ -384,7 +400,7 @@ fn collect_from_walker(
         }) {
             continue;
         }
-        push_unique(cwd, seen_abs, inputs, &rel);
+        add_simple_input(cwd, seen_abs, inputs, &rel);
     }
     Ok(())
 }
