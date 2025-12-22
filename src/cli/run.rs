@@ -259,7 +259,31 @@ fn add_recursive_input(
     no_sort: bool,
 ) -> Result<()> {
     let dir = ensure_recursive_dir(cwd, path)?;
-    collect_recursive_matches(&dir, cwd, seen_abs, inputs, no_sort)?;
+    if let Ok(rel) = dir.strip_prefix(cwd) {
+        let rel_str = glob_path(rel);
+        let pattern = if rel_str.is_empty() {
+            "**/*".to_string()
+        } else {
+            format!("{rel_str}/**/*")
+        };
+        collect_glob_matches_in_root(
+            cwd,
+            &[pattern],
+            cwd,
+            seen_abs,
+            inputs,
+            no_sort,
+        )?;
+    } else {
+        collect_glob_matches_in_root(
+            &dir,
+            &["**/*".to_string()],
+            cwd,
+            seen_abs,
+            inputs,
+            no_sort,
+        )?;
+    }
     Ok(())
 }
 
@@ -276,44 +300,7 @@ fn collect_glob_matches(
     inputs: &mut Vec<PathBuf>,
     no_sort: bool,
 ) -> Result<()> {
-    if no_sort {
-        // Expand each glob in the order provided so --no-sort preserves user intent.
-        for pattern in patterns {
-            let mut overrides = OverrideBuilder::new(".");
-            overrides
-                .add(pattern)
-                .with_context(|| format!("invalid glob pattern: {pattern}"))?;
-            let overrides = overrides
-                .build()
-                .context("failed to compile glob overrides")?;
-            let mut walker = WalkBuilder::new(".");
-            // Still sort within each glob for deterministic traversal.
-            configure_walker(&mut walker, true);
-            collect_from_walker(
-                &walker,
-                cwd,
-                seen_abs,
-                inputs,
-                Some(&overrides),
-            )?;
-        }
-        return Ok(());
-    }
-
-    let mut overrides = OverrideBuilder::new(".");
-    for pattern in patterns {
-        overrides
-            .add(pattern)
-            .with_context(|| format!("invalid glob pattern: {pattern}"))?;
-    }
-    let overrides = overrides
-        .build()
-        .context("failed to compile glob overrides")?;
-
-    let mut walker = WalkBuilder::new(".");
-    configure_walker(&mut walker, true);
-    collect_from_walker(&walker, cwd, seen_abs, inputs, Some(&overrides))?;
-    Ok(())
+    collect_glob_matches_in_root(cwd, patterns, cwd, seen_abs, inputs, no_sort)
 }
 
 fn configure_walker(walker: &mut WalkBuilder, should_sort: bool) {
@@ -352,22 +339,66 @@ fn ensure_recursive_dir(cwd: &Path, path: &Path) -> Result<PathBuf> {
     Ok(abs)
 }
 
-fn collect_recursive_matches(
+fn collect_glob_matches_in_root(
     root: &Path,
-    cwd: &Path,
+    patterns: &[String],
+    display_root: &Path,
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
     no_sort: bool,
 ) -> Result<()> {
+    if no_sort {
+        // Expand each glob in the order provided so --no-sort preserves user intent.
+        for pattern in patterns {
+            let mut overrides = OverrideBuilder::new(root);
+            overrides
+                .add(pattern)
+                .with_context(|| format!("invalid glob pattern: {pattern}"))?;
+            let overrides = overrides
+                .build()
+                .context("failed to compile glob overrides")?;
+            let mut walker = WalkBuilder::new(root);
+            // Still sort within each glob for deterministic traversal.
+            configure_walker(&mut walker, true);
+            collect_from_walker(
+                &walker,
+                display_root,
+                root,
+                seen_abs,
+                inputs,
+                Some(&overrides),
+            )?;
+        }
+        return Ok(());
+    }
+
+    let mut overrides = OverrideBuilder::new(root);
+    for pattern in patterns {
+        overrides
+            .add(pattern)
+            .with_context(|| format!("invalid glob pattern: {pattern}"))?;
+    }
+    let overrides = overrides
+        .build()
+        .context("failed to compile glob overrides")?;
+
     let mut walker = WalkBuilder::new(root);
-    configure_walker(&mut walker, !no_sort);
-    collect_from_walker(&walker, cwd, seen_abs, inputs, None)?;
+    configure_walker(&mut walker, true);
+    collect_from_walker(
+        &walker,
+        display_root,
+        root,
+        seen_abs,
+        inputs,
+        Some(&overrides),
+    )?;
     Ok(())
 }
 
 fn collect_from_walker(
     walker: &WalkBuilder,
-    cwd: &Path,
+    display_root: &Path,
+    match_root: &Path,
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
     matcher: Option<&Override>,
@@ -382,16 +413,22 @@ fn collect_from_walker(
             continue;
         }
         let path = dir_entry.into_path();
-        let rel = relativize(&path, cwd).to_path_buf();
+        let rel = relativize(&path, display_root).to_path_buf();
         if let Some(matcher) = matcher {
-            let match_result = matcher.matched(&rel, false);
+            let match_path =
+                path.strip_prefix(match_root).unwrap_or(path.as_path());
+            let match_result = matcher.matched(match_path, false);
             if !match_result.is_whitelist() {
                 continue;
             }
         }
-        add_simple_input(cwd, seen_abs, inputs, &rel);
+        add_simple_input(display_root, seen_abs, inputs, &rel);
     }
     Ok(())
+}
+
+fn glob_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
 }
 
 fn render_single_input(
