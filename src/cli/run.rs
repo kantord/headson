@@ -48,7 +48,7 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
     render_cfg.grep_highlight = grep_cfg.regex.clone();
     let resolved_inputs = resolve_inputs(cli)?;
     if resolved_inputs.is_empty() {
-        if !cli.globs.is_empty() {
+        if !cli.globs.is_empty() || cli.recursive {
             return Ok((
                 String::new(),
                 vec!["No files matched provided globs".to_string()],
@@ -197,13 +197,31 @@ fn resolve_inputs(cli: &Cli) -> Result<Vec<PathBuf>> {
         env::current_dir().context("failed to read current directory")?;
     let mut seen_abs: HashSet<PathBuf> = HashSet::new();
     let mut inputs: Vec<PathBuf> = Vec::new();
+    let gitignore = load_gitignore(&cwd);
+
+    if cli.recursive && cli.inputs.is_empty() {
+        bail!(
+            "--recursive requires directory inputs; stdin mode is not supported"
+        );
+    }
 
     for path in &cli.inputs {
-        push_unique(&cwd, &mut seen_abs, &mut inputs, path);
+        if cli.recursive {
+            let dir = ensure_recursive_dir(&cwd, path)?;
+            collect_recursive_matches(
+                &dir,
+                &cwd,
+                &mut seen_abs,
+                &mut inputs,
+                gitignore.as_ref(),
+                cli.no_sort,
+            )?;
+        } else {
+            push_unique(&cwd, &mut seen_abs, &mut inputs, path);
+        }
     }
 
     if !cli.globs.is_empty() {
-        let gitignore = load_gitignore(&cwd);
         collect_glob_matches(
             &cli.globs,
             &cwd,
@@ -265,7 +283,7 @@ fn collect_glob_matches(
                 .context("failed to compile glob overrides")?;
             let mut walker = WalkBuilder::new(".");
             // Still sort within each glob for deterministic traversal.
-            configure_walker(&mut walker, overrides, true);
+            configure_walker(&mut walker, Some(overrides), true);
             collect_from_walker(&walker, cwd, seen_abs, inputs, gitignore)?;
         }
         return Ok(());
@@ -282,17 +300,19 @@ fn collect_glob_matches(
         .context("failed to compile glob overrides")?;
 
     let mut walker = WalkBuilder::new(".");
-    configure_walker(&mut walker, overrides, true);
+    configure_walker(&mut walker, Some(overrides), true);
     collect_from_walker(&walker, cwd, seen_abs, inputs, gitignore)?;
     Ok(())
 }
 
 fn configure_walker(
     walker: &mut WalkBuilder,
-    overrides: ignore::overrides::Override,
+    overrides: Option<ignore::overrides::Override>,
     should_sort: bool,
 ) {
-    walker.overrides(overrides);
+    if let Some(overrides) = overrides {
+        walker.overrides(overrides);
+    }
     walker.git_ignore(true);
     walker.git_global(true);
     walker.git_exclude(true);
@@ -307,6 +327,38 @@ fn configure_walker(
         walker.threads(1);
         walker.sort_by_file_name(|_, _| std::cmp::Ordering::Equal);
     }
+}
+
+fn ensure_recursive_dir(cwd: &Path, path: &Path) -> Result<PathBuf> {
+    let abs = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        cwd.join(path)
+    };
+    let meta = std::fs::metadata(&abs).with_context(|| {
+        format!("failed to read input path: {}", path.display())
+    })?;
+    if !meta.is_dir() {
+        bail!(
+            "--recursive requires directory inputs (got file: {})",
+            path.display()
+        );
+    }
+    Ok(abs)
+}
+
+fn collect_recursive_matches(
+    root: &Path,
+    cwd: &Path,
+    seen_abs: &mut HashSet<PathBuf>,
+    inputs: &mut Vec<PathBuf>,
+    gitignore: Option<&ignore::gitignore::Gitignore>,
+    no_sort: bool,
+) -> Result<()> {
+    let mut walker = WalkBuilder::new(root);
+    configure_walker(&mut walker, None, !no_sort);
+    collect_from_walker(&walker, cwd, seen_abs, inputs, gitignore)?;
+    Ok(())
 }
 
 fn collect_from_walker(

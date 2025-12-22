@@ -145,10 +145,18 @@ pub struct Cli {
     )]
     pub globs: Vec<String>,
     #[arg(
+        short = 'r',
+        long = "recursive",
+        action = ArgAction::SetTrue,
+        conflicts_with = "globs",
+        help = "Recursively expand directory inputs (like grep -r). Requires directory paths."
+    )]
+    pub recursive: bool,
+    #[arg(
         value_name = "INPUT",
         value_hint = clap::ValueHint::FilePath,
         num_args = 0..,
-        help = "Optional file paths. If omitted, reads input from stdin. Multiple input files are supported. Directories and binary files are ignored with a notice on stderr."
+        help = "Optional file paths. If omitted, reads input from stdin. Multiple input files are supported. Directories are ignored unless --recursive is set; binary files are ignored with a notice on stderr."
     )]
     pub inputs: Vec<PathBuf>,
     #[arg(

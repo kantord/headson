@@ -29,7 +29,7 @@ Available as:
 - Output formats: `auto | json | yaml | text` with styles `strict | default | detailed`
 - Structure-aware parsing: full JSON/YAML parsing (preserves tree shape under truncation)
 - Source code support: heuristic, indentation-aware summaries that keep lines atomic
-- Multi-file mode: preview many files at once (paths and `--glob ...`) with shared or per-file budgets
+- Multi-file mode: preview many files at once (paths, `--glob ...`, or `--recursive` on directories) with shared or per-file budgets
 - Repo-aware ordering: in git repos, frequent+recent files show up first (rarely touched files drift to the end; mtime fallback)
 - `grep`-like search and `tree`-like view: `--grep <regex>` and `--tree` emulate the workflows while still summarizing file contents inline
 - Fast: processes gigabyte‑scale files in seconds (mostly disk‑bound)
@@ -157,6 +157,7 @@ hson -n 20 src/main.py
 - `--indent <STR>`: indentation unit (default: two spaces)
 - `--string-cap <N>`: max graphemes to consider per string (default: 500)
 - `--grep <REGEX>`: guarantee inclusion of values/keys/lines matching the regex (ripgrep‑style). Matches + ancestors are “free” against both global and per-file caps; budgets apply to everything else. If matches consume all headroom, only the must‑keep path is shown. Colors follow the normal on/auto/off rules; when grep is active, syntax colors are suppressed and only the match highlights are colored. JSON/YAML structural punctuation is not highlighted—only the matching key/value text.
+- `-r, --recursive`: recursively expand directory inputs (like `grep -r`). Directory paths are required; stdin is not supported. Incompatible with `--glob`.
 - `--head`: prefer the beginning of arrays when truncating (keep first N). Strings are unaffected. Display styles place omission markers accordingly; strict JSON remains unannotated. Mutually exclusive with `--tail`.
 - `--tail`: prefer the end of arrays when truncating (keep last N). Strings are unaffected. Display styles place omission markers accordingly; strict JSON remains unannotated. Mutually exclusive with `--head`.
 
@@ -169,13 +170,14 @@ Notes:
 - In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
   - Unknown extensions are treated as Text (raw lines) — safe for logs and `.txt` files.
   - `--global-bytes` may truncate or omit entire files to respect the total budget.
-  - Directories and binary files are ignored; a notice is printed to stderr for each. Stdin reads the stream as‑is.
+  - Directories are ignored unless `--recursive` is set; binary files are ignored with a notice. Stdin reads the stream as‑is.
   - Head vs Tail sampling: these options bias which part of arrays are kept before rendering; strict JSON stays unannotated.
 
 #### Multi-file mode
 
 - Budgets: per-file caps (`--bytes`/`--chars`/`--lines`) apply to each input; global caps (`--global-*`) constrain the combined output when set. Default byte/char budgets scale by input count when no globals are set; line caps stay per-file unless you pass `--global-lines`.
 - One metric per level: pick at most one per-file budget flag (`--bytes` | `--chars` | `--lines`) and at most one global flag (`--global-bytes` | `--global-lines`). Mixing per-file and global kinds is allowed (e.g., per-file lines + global bytes); conflicting flags error.
+- Inputs: pass file paths directly, use `--glob <PATTERN>` to expand additional files, or `--recursive` to expand directory inputs (incompatible with `--glob`).
 - Sorting: inputs are ordered so frequently and recently touched files appear first (git metadata when available, mtime fallback). Pass `--no-sort` to preserve the order you provided and skip repo scanning.
 - Headers: multi-file output gets `==>` headers when newlines are enabled; hide them with `--no-header`. Compact and single-line modes omit headers automatically.
 - Formats: in `--format auto`, each file picks JSON/YAML/Text based on extension; unknowns fall back to Text so mixed inputs “just work.”
