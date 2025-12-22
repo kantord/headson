@@ -51,7 +51,7 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
         if !cli.globs.is_empty() || cli.recursive {
             return Ok((
                 String::new(),
-                vec!["No files matched provided globs".to_string()],
+                vec!["No files matched provided inputs".to_string()],
             ));
         }
         if cli.tree {
@@ -197,8 +197,6 @@ fn resolve_inputs(cli: &Cli) -> Result<Vec<PathBuf>> {
         env::current_dir().context("failed to read current directory")?;
     let mut seen_abs: HashSet<PathBuf> = HashSet::new();
     let mut inputs: Vec<PathBuf> = Vec::new();
-    let gitignore = load_gitignore(&cwd);
-
     if cli.recursive && cli.inputs.is_empty() {
         bail!(
             "--recursive requires directory inputs; stdin mode is not supported"
@@ -212,7 +210,6 @@ fn resolve_inputs(cli: &Cli) -> Result<Vec<PathBuf>> {
                 path,
                 &mut seen_abs,
                 &mut inputs,
-                gitignore.as_ref(),
                 cli.no_sort,
             )?;
         }
@@ -228,7 +225,6 @@ fn resolve_inputs(cli: &Cli) -> Result<Vec<PathBuf>> {
             &cwd,
             &mut seen_abs,
             &mut inputs,
-            gitignore.as_ref(),
             cli.no_sort,
         )?;
     }
@@ -257,13 +253,10 @@ fn add_recursive_input(
     path: &Path,
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
-    gitignore: Option<&ignore::gitignore::Gitignore>,
     no_sort: bool,
 ) -> Result<()> {
     let dir = ensure_recursive_dir(cwd, path)?;
-    collect_recursive_matches(
-        &dir, cwd, seen_abs, inputs, gitignore, no_sort,
-    )?;
+    collect_recursive_matches(&dir, cwd, seen_abs, inputs, no_sort)?;
     Ok(())
 }
 
@@ -273,18 +266,11 @@ fn relativize<'a>(path: &'a Path, cwd: &Path) -> &'a Path {
         .unwrap_or(path)
 }
 
-fn load_gitignore(cwd: &Path) -> Option<ignore::gitignore::Gitignore> {
-    let gi_path = cwd.join(".gitignore");
-    let (gi, err) = ignore::gitignore::Gitignore::new(gi_path);
-    if err.is_none() { Some(gi) } else { None }
-}
-
 fn collect_glob_matches(
     patterns: &[String],
     cwd: &Path,
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
-    gitignore: Option<&ignore::gitignore::Gitignore>,
     no_sort: bool,
 ) -> Result<()> {
     if no_sort {
@@ -300,7 +286,7 @@ fn collect_glob_matches(
             let mut walker = WalkBuilder::new(".");
             // Still sort within each glob for deterministic traversal.
             configure_walker(&mut walker, Some(overrides), true);
-            collect_from_walker(&walker, cwd, seen_abs, inputs, gitignore)?;
+            collect_from_walker(&walker, cwd, seen_abs, inputs)?;
         }
         return Ok(());
     }
@@ -317,7 +303,7 @@ fn collect_glob_matches(
 
     let mut walker = WalkBuilder::new(".");
     configure_walker(&mut walker, Some(overrides), true);
-    collect_from_walker(&walker, cwd, seen_abs, inputs, gitignore)?;
+    collect_from_walker(&walker, cwd, seen_abs, inputs)?;
     Ok(())
 }
 
@@ -329,6 +315,7 @@ fn configure_walker(
     if let Some(overrides) = overrides {
         walker.overrides(overrides);
     }
+    walker.ignore(true);
     walker.git_ignore(true);
     walker.git_global(true);
     walker.git_exclude(true);
@@ -368,12 +355,11 @@ fn collect_recursive_matches(
     cwd: &Path,
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
-    gitignore: Option<&ignore::gitignore::Gitignore>,
     no_sort: bool,
 ) -> Result<()> {
     let mut walker = WalkBuilder::new(root);
     configure_walker(&mut walker, None, !no_sort);
-    collect_from_walker(&walker, cwd, seen_abs, inputs, gitignore)?;
+    collect_from_walker(&walker, cwd, seen_abs, inputs)?;
     Ok(())
 }
 
@@ -382,7 +368,6 @@ fn collect_from_walker(
     cwd: &Path,
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
-    gitignore: Option<&ignore::gitignore::Gitignore>,
 ) -> Result<()> {
     for dent in walker.build() {
         let dir_entry = dent?;
@@ -395,11 +380,6 @@ fn collect_from_walker(
         }
         let path = dir_entry.into_path();
         let rel = relativize(&path, cwd).to_path_buf();
-        if gitignore.is_some_and(|gi| {
-            gi.matched_path_or_any_parents(&rel, false).is_ignore()
-        }) {
-            continue;
-        }
         add_simple_input(cwd, seen_abs, inputs, &rel);
     }
     Ok(())
