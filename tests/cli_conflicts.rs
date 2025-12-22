@@ -217,3 +217,18 @@ fn grep_show_conflicts_with_weak_grep() {
         out.stderr
     );
 }
+
+#[test]
+fn recursive_conflicts_with_glob() {
+    let out = common::run_cli_expect_fail(
+        &["--recursive", "-g", "*.json"],
+        None,
+        None,
+    );
+    let err_l = out.stderr.to_ascii_lowercase();
+    assert!(
+        err_l.contains("conflict") || err_l.contains("cannot be used with"),
+        "stderr should mention recursive/glob conflict: {}",
+        out.stderr
+    );
+}

@@ -210,6 +210,84 @@ fn recursive_rejects_file_inputs() {
 }
 
 #[test]
+fn recursive_rejects_mixed_inputs() {
+    let tmp = tempfile::tempdir().expect("tmpdir");
+    let root = tmp.path();
+    fs::create_dir_all(root.join("src")).expect("mkdirs");
+    write_json(root.join("one.json").as_path(), r#"{"a": 1}"#);
+
+    let raw = common::build_cmd_in_dir(
+        root,
+        &["--no-color", "--recursive", "src", "one.json"],
+        None,
+    )
+    .assert()
+    .failure()
+    .get_output()
+    .clone();
+    let stderr = String::from_utf8_lossy(&raw.stderr);
+    assert!(
+        stderr.contains("requires directory inputs"),
+        "expected directory-only error, got: {stderr}"
+    );
+}
+
+#[test]
+fn recursive_rejects_missing_inputs() {
+    let tmp = tempfile::tempdir().expect("tmpdir");
+    let root = tmp.path();
+
+    let raw = common::build_cmd_in_dir(
+        root,
+        &["--no-color", "--recursive", "does-not-exist"],
+        None,
+    )
+    .assert()
+    .failure()
+    .get_output()
+    .clone();
+    let stderr = String::from_utf8_lossy(&raw.stderr);
+    assert!(
+        stderr.contains("failed to read input path"),
+        "expected missing path error, got: {stderr}"
+    );
+}
+
+#[test]
+fn recursive_deduplicates_overlapping_dirs() {
+    let tmp = tempfile::tempdir().expect("tmpdir");
+    let root = tmp.path();
+    fs::create_dir_all(root.join("src/nested")).expect("mkdirs");
+    write_json(root.join("src/one.json").as_path(), r#"{"a": 1}"#);
+    write_json(root.join("src/nested/two.json").as_path(), r#"{"b": 2}"#);
+
+    let out = common::run_cli_in_dir(
+        root,
+        &[
+            "--no-color",
+            "--no-sort",
+            "-c",
+            "1000",
+            "--recursive",
+            "src",
+            "src/nested",
+        ],
+        None,
+    );
+
+    let out = out.stdout;
+    let header_two = format!(
+        "==> {} <==",
+        Path::new("src").join("nested").join("two.json").display()
+    );
+    let count_two = out.matches(&header_two).count();
+    assert_eq!(
+        1, count_two,
+        "nested file should appear once even when overlapped: {out}"
+    );
+}
+
+#[test]
 fn glob_inputs_deduplicate_overlaps_and_explicit_paths() {
     let tmp = tempfile::tempdir().expect("tmpdir");
     let root = tmp.path();
