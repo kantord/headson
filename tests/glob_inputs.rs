@@ -150,6 +150,83 @@ fn recursive_expands_recursively_and_respects_gitignore() {
 }
 
 #[test]
+fn recursive_respects_nested_gitignore_negation() {
+    let tmp = tempfile::tempdir().expect("tmpdir");
+    let root = tmp.path();
+    fs::create_dir_all(root.join("src/nested")).expect("mkdirs");
+
+    fs::write(root.join(".gitignore"), "*.log\n").expect("write gitignore");
+    fs::write(root.join("src/nested/.gitignore"), "!keep.log\n")
+        .expect("write nested gitignore");
+
+    fs::write(root.join("src/ignored.log"), "ignore")
+        .expect("write ignored log");
+    fs::write(root.join("src/nested/keep.log"), "keep")
+        .expect("write keep log");
+
+    let out = common::run_cli_in_dir(
+        root,
+        &[
+            "--no-color",
+            "--no-sort",
+            "-c",
+            "1000",
+            "--recursive",
+            "src",
+        ],
+        None,
+    );
+
+    let out = out.stdout;
+    let ignored_header =
+        format!("==> {} <==", Path::new("src").join("ignored.log").display());
+    let keep_header = format!(
+        "==> {} <==",
+        Path::new("src").join("nested").join("keep.log").display()
+    );
+    assert!(
+        !out.contains(&ignored_header),
+        "expected ignored.log to be excluded: {out}"
+    );
+    assert!(
+        out.contains(&keep_header),
+        "expected keep.log to be re-included: {out}"
+    );
+}
+
+#[test]
+fn recursive_outside_cwd_ignores_only_target_tree() {
+    let tmp = tempfile::tempdir().expect("tmpdir");
+    let cwd = tmp.path();
+    fs::write(cwd.join(".gitignore"), "*.json\n").expect("write gitignore");
+
+    let other = tempfile::tempdir().expect("tmpdir");
+    let other_root = other.path();
+    write_json(other_root.join("keep.json").as_path(), r#"{"ok": true}"#);
+
+    let out = common::run_cli_in_dir(
+        cwd,
+        &[
+            "--no-color",
+            "--no-sort",
+            "-c",
+            "1000",
+            "--recursive",
+            other_root.to_str().expect("other path"),
+        ],
+        None,
+    );
+
+    let out = out.stdout;
+    let keep_header =
+        format!("==> {} <==", other_root.join("keep.json").display());
+    assert!(
+        out.contains(&keep_header),
+        "expected keep.json from outside cwd to be included: {out}"
+    );
+}
+
+#[test]
 fn glob_no_sort_preserves_pattern_order() {
     let tmp = tempfile::tempdir().expect("tmpdir");
     let root = tmp.path();
