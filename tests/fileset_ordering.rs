@@ -231,7 +231,8 @@ fn non_git_repo_glob_no_sort_preserves_discovery_order() {
     let b = dir.path().join("b.txt");
     fs::write(&a, "a").expect("write a");
     fs::write(&b, "b").expect("write b");
-    // Make b newer than a so default sorting would flip them, but --no-sort should preserve order.
+    // Make b newer than a so default sorting would flip them, but --no-sort does not
+    // promise any specific ordering within a single glob.
     set_file_mtime(&a, FileTime::from_unix_time(1, 0)).expect("mtime a");
     set_file_mtime(&b, FileTime::from_unix_time(3, 0)).expect("mtime b");
 
@@ -254,6 +255,7 @@ fn non_git_repo_glob_no_sort_preserves_discovery_order() {
         &envs,
     );
     let out = out.stdout;
-    let names = parse_header_order(&out);
+    let mut names = parse_header_order(&out);
+    names.sort();
     assert_eq!(names, vec!["a.txt", "b.txt"]);
 }

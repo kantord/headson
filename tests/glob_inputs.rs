@@ -227,77 +227,23 @@ fn glob_directory_pattern_includes_contents() {
 }
 
 #[test]
-fn glob_no_sort_applies_negated_patterns() {
+fn glob_rejects_negated_patterns() {
     let tmp = tempfile::tempdir().expect("tmpdir");
     let root = tmp.path();
-    fs::create_dir_all(root.join("src/vendor")).expect("mkdirs");
 
-    write_json(root.join("src/keep.json").as_path(), r#"{"keep": true}"#);
-    write_json(
-        root.join("src/vendor/ignored.json").as_path(),
-        r#"{"ignore": true}"#,
-    );
-
-    let out = common::run_cli_in_dir(
+    let raw = common::build_cmd_in_dir(
         root,
-        &[
-            "--no-color",
-            "--no-sort",
-            "-c",
-            "1000",
-            "-g",
-            "src/**",
-            "-g",
-            "!src/vendor/**",
-        ],
+        &["--no-color", "-g", "!src/vendor/**"],
         None,
-    );
-
-    let out = out.stdout;
+    )
+    .assert()
+    .failure()
+    .get_output()
+    .clone();
+    let stderr = String::from_utf8_lossy(&raw.stderr);
     assert!(
-        out.contains("\"keep\": true"),
-        "expected keep.json to be included: {out}"
-    );
-    assert!(
-        !out.contains("\"ignore\": true"),
-        "expected vendor file to be excluded by negation: {out}"
-    );
-}
-
-#[test]
-fn glob_applies_negated_patterns_in_default_order() {
-    let tmp = tempfile::tempdir().expect("tmpdir");
-    let root = tmp.path();
-    fs::create_dir_all(root.join("src/vendor")).expect("mkdirs");
-
-    write_json(root.join("src/keep.json").as_path(), r#"{"keep": true}"#);
-    write_json(
-        root.join("src/vendor/ignored.json").as_path(),
-        r#"{"ignore": true}"#,
-    );
-
-    let out = common::run_cli_in_dir(
-        root,
-        &[
-            "--no-color",
-            "-c",
-            "1000",
-            "-g",
-            "src/**",
-            "-g",
-            "!src/vendor/**",
-        ],
-        None,
-    );
-
-    let out = out.stdout;
-    assert!(
-        out.contains("\"keep\": true"),
-        "expected keep.json to be included: {out}"
-    );
-    assert!(
-        !out.contains("\"ignore\": true"),
-        "expected vendor file to be excluded by negation: {out}"
+        stderr.contains("negated glob patterns are not supported"),
+        "expected negated glob error, got: {stderr}"
     );
 }
 

@@ -6,9 +6,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use content_inspector::{ContentType, inspect};
-use ignore::gitignore::{Gitignore, GitignoreBuilder};
+use ignore::WalkBuilder;
 use ignore::overrides::{Override, OverrideBuilder};
-use ignore::{Match, WalkBuilder};
 
 use crate::cli::args::{
     Cli, InputFormat, OutputFormat, get_render_config_from,
@@ -302,7 +301,6 @@ fn configure_walker(
     walker.git_global(true);
     walker.git_exclude(true);
     walker.require_git(false);
-    walker.add_custom_ignore_filename(".gitignore");
     walker.add_custom_ignore_filename(".rgignore");
     if should_sort {
         // Deterministic expansion keeps traversal stable; fileset ordering is still
@@ -311,7 +309,6 @@ fn configure_walker(
     } else {
         // Keep discovery order stable for --no-sort: single-threaded walk and no sorting.
         walker.threads(1);
-        walker.sort_by_file_name(|_, _| std::cmp::Ordering::Equal);
     }
 }
 
@@ -342,57 +339,30 @@ fn collect_glob_matches_in_root(
     no_sort: bool,
 ) -> Result<()> {
     if no_sort {
-        let mut glob_added_abs: HashSet<PathBuf> = HashSet::new();
         // Expand each glob in the order provided so --no-sort preserves user intent.
         for pattern in patterns {
-            let matcher = build_glob_matcher(root, pattern)?;
             let overrides =
                 build_glob_override(root, std::iter::once(pattern.as_str()))?;
             let mut walker = WalkBuilder::new(root);
-            // Still sort within each glob for deterministic traversal.
-            configure_walker(&mut walker, Some(overrides), true);
-            let (includes, excludes) = collect_matches_from_walker(
-                &walker,
-                display_root,
-                root,
-                &matcher,
-            )?;
-            let excludes =
-                filter_glob_excludes(display_root, &glob_added_abs, excludes);
-            remove_inputs(display_root, seen_abs, inputs, &excludes);
-            for rel in includes {
-                let abs = rel_to_abs(display_root, &rel);
-                if add_simple_input(display_root, seen_abs, inputs, &rel) {
-                    glob_added_abs.insert(abs);
-                }
-            }
+            configure_walker(&mut walker, Some(overrides), false);
+            collect_from_walker(&walker, display_root, seen_abs, inputs)?;
         }
         return Ok(());
     }
 
-    let matcher = build_glob_matchers(root, patterns)?;
     let overrides =
         build_glob_override(root, patterns.iter().map(String::as_str))?;
     let mut walker = WalkBuilder::new(root);
     configure_walker(&mut walker, Some(overrides), true);
-    collect_from_walker(
-        &walker,
-        display_root,
-        root,
-        seen_abs,
-        inputs,
-        Some(&matcher),
-    )?;
+    collect_from_walker(&walker, display_root, seen_abs, inputs)?;
     Ok(())
 }
 
 fn collect_from_walker(
     walker: &WalkBuilder,
     display_root: &Path,
-    match_root: &Path,
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
-    matcher: Option<&Gitignore>,
 ) -> Result<()> {
     for dent in walker.build() {
         let dir_entry = dent?;
@@ -405,115 +375,9 @@ fn collect_from_walker(
         }
         let path = dir_entry.into_path();
         let rel = relativize(&path, display_root).to_path_buf();
-        if let Some(matcher) = matcher {
-            let match_path =
-                path.strip_prefix(match_root).unwrap_or(path.as_path());
-            match glob_match_decision(matcher, match_path) {
-                GlobMatchDecision::Include => {}
-                GlobMatchDecision::Exclude | GlobMatchDecision::NoMatch => {
-                    continue;
-                }
-            }
-        }
         add_simple_input(display_root, seen_abs, inputs, &rel);
     }
     Ok(())
-}
-
-fn collect_matches_from_walker(
-    walker: &WalkBuilder,
-    display_root: &Path,
-    match_root: &Path,
-    matcher: &Gitignore,
-) -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
-    let mut includes = Vec::new();
-    let mut excludes = Vec::new();
-    for dent in walker.build() {
-        let dir_entry = dent?;
-        if !dir_entry
-            .file_type()
-            .map(|ft| ft.is_file())
-            .unwrap_or(false)
-        {
-            continue;
-        }
-        let path = dir_entry.into_path();
-        let rel = relativize(&path, display_root).to_path_buf();
-        let match_path =
-            path.strip_prefix(match_root).unwrap_or(path.as_path());
-        match glob_match_decision(matcher, match_path) {
-            GlobMatchDecision::Include => includes.push(rel),
-            GlobMatchDecision::Exclude => excludes.push(rel),
-            GlobMatchDecision::NoMatch => {}
-        }
-    }
-    Ok((includes, excludes))
-}
-
-fn remove_inputs(
-    display_root: &Path,
-    seen_abs: &mut HashSet<PathBuf>,
-    inputs: &mut Vec<PathBuf>,
-    rels: &[PathBuf],
-) {
-    let remove_abs: HashSet<PathBuf> = rels
-        .iter()
-        .map(|rel| rel_to_abs(display_root, rel))
-        .collect();
-    if remove_abs.is_empty() {
-        return;
-    }
-    inputs.retain(|path| {
-        let abs = rel_to_abs(display_root, path);
-        if remove_abs.contains(&abs) {
-            seen_abs.remove(&abs);
-            false
-        } else {
-            true
-        }
-    });
-}
-
-#[derive(Copy, Clone)]
-enum GlobMatchDecision {
-    Include,
-    Exclude,
-    NoMatch,
-}
-
-fn glob_match_decision(matcher: &Gitignore, path: &Path) -> GlobMatchDecision {
-    match matcher.matched(path, false) {
-        Match::Ignore(_) => return GlobMatchDecision::Include,
-        Match::Whitelist(_) => return GlobMatchDecision::Exclude,
-        Match::None => {}
-    }
-    match matcher.matched_path_or_any_parents(path, false) {
-        Match::Ignore(glob) if glob.is_only_dir() => {
-            GlobMatchDecision::Include
-        }
-        Match::Whitelist(glob) if glob.is_only_dir() => {
-            GlobMatchDecision::Exclude
-        }
-        _ => GlobMatchDecision::NoMatch,
-    }
-}
-
-fn build_glob_matcher(root: &Path, pattern: &str) -> Result<Gitignore> {
-    let mut builder = GitignoreBuilder::new(root);
-    builder
-        .add_line(None, pattern)
-        .with_context(|| format!("invalid glob pattern: {pattern}"))?;
-    builder.build().context("failed to compile glob patterns")
-}
-
-fn build_glob_matchers(root: &Path, patterns: &[String]) -> Result<Gitignore> {
-    let mut builder = GitignoreBuilder::new(root);
-    for pattern in patterns {
-        builder
-            .add_line(None, pattern)
-            .with_context(|| format!("invalid glob pattern: {pattern}"))?;
-    }
-    builder.build().context("failed to compile glob patterns")
 }
 
 fn build_glob_override<'a, I>(root: &Path, patterns: I) -> Result<Override>
@@ -522,30 +386,16 @@ where
 {
     let mut builder = OverrideBuilder::new(root);
     for pattern in patterns {
+        if pattern.starts_with('!') {
+            bail!(
+                "negated glob patterns are not supported; use ignore files instead: {pattern}"
+            );
+        }
         builder
             .add(pattern)
             .with_context(|| format!("invalid glob pattern: {pattern}"))?;
     }
     builder.build().context("failed to compile glob overrides")
-}
-
-fn rel_to_abs(display_root: &Path, rel: &Path) -> PathBuf {
-    if rel.is_absolute() {
-        rel.to_path_buf()
-    } else {
-        display_root.join(rel)
-    }
-}
-
-fn filter_glob_excludes(
-    display_root: &Path,
-    glob_added_abs: &HashSet<PathBuf>,
-    excludes: Vec<PathBuf>,
-) -> Vec<PathBuf> {
-    excludes
-        .into_iter()
-        .filter(|rel| glob_added_abs.contains(&rel_to_abs(display_root, rel)))
-        .collect()
 }
 
 fn normalize_path(path: &Path) -> PathBuf {

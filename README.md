@@ -177,7 +177,7 @@ Notes:
 
 - Budgets: per-file caps (`--bytes`/`--chars`/`--lines`) apply to each input; global caps (`--global-*`) constrain the combined output when set. Default byte/char budgets scale by input count when no globals are set; line caps stay per-file unless you pass `--global-lines`.
 - One metric per level: pick at most one per-file budget flag (`--bytes` | `--chars` | `--lines`) and at most one global flag (`--global-bytes` | `--global-lines`). Mixing per-file and global kinds is allowed (e.g., per-file lines + global bytes); conflicting flags error.
-- Inputs: pass file paths directly, use `--glob <PATTERN>` to expand additional files, or `--recursive` to expand directory inputs (incompatible with `--glob`).
+- Inputs: pass file paths directly, use `--glob <PATTERN>` to expand additional files, or `--recursive` to expand directory inputs (incompatible with `--glob`). Glob patterns are positive-only; use ignore files (`.gitignore`, `.ignore`, `.rgignore`) for exclusions.
 - Sorting: inputs are ordered so frequently and recently touched files appear first (git metadata when available, mtime fallback). Pass `--no-sort` to preserve the order you provided and skip repo scanning.
 - Headers: multi-file output gets `==>` headers when newlines are enabled; hide them with `--no-header`. Compact and single-line modes omit headers automatically.
 - Formats: in `--format auto`, each file picks JSON/YAML/Text based on extension; unknowns fall back to Text so mixed inputs “just work.”
