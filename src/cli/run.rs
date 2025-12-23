@@ -352,14 +352,15 @@ fn collect_glob_matches_in_root(
     if no_sort {
         // Expand each glob in the order provided so --no-sort preserves user intent.
         for pattern in patterns {
+            let pattern = normalize_glob_pattern(root, pattern);
             let mut overrides = OverrideBuilder::new(root);
             overrides
-                .add(pattern)
+                .add(&pattern)
                 .with_context(|| format!("invalid glob pattern: {pattern}"))?;
             let overrides = overrides
                 .build()
                 .context("failed to compile glob overrides")?;
-            let walk_root = glob_walk_root(root, pattern);
+            let walk_root = glob_walk_root(root, &pattern);
             let mut walker = WalkBuilder::new(walk_root);
             // Still sort within each glob for deterministic traversal.
             configure_walker(&mut walker, true);
@@ -375,18 +376,19 @@ fn collect_glob_matches_in_root(
         return Ok(());
     }
 
-    let mut grouped: std::collections::BTreeMap<PathBuf, Vec<&String>> =
+    let mut grouped: std::collections::BTreeMap<PathBuf, Vec<String>> =
         std::collections::BTreeMap::new();
     for pattern in patterns {
-        let walk_root = glob_walk_root(root, pattern);
+        let pattern = normalize_glob_pattern(root, pattern);
+        let walk_root = glob_walk_root(root, &pattern);
         grouped.entry(walk_root).or_default().push(pattern);
     }
 
-    for (walk_root, group) in grouped {
+    for (walk_root, group) in grouped.into_iter() {
         let mut overrides = OverrideBuilder::new(root);
         for pattern in group {
             overrides
-                .add(pattern)
+                .add(&pattern)
                 .with_context(|| format!("invalid glob pattern: {pattern}"))?;
         }
         let overrides = overrides
@@ -452,6 +454,51 @@ fn glob_walk_root(root: &Path, pattern: &str) -> PathBuf {
 
 fn strip_glob_negation(pattern: &str) -> &str {
     pattern.strip_prefix('!').unwrap_or(pattern)
+}
+
+fn normalize_glob_pattern(root: &Path, pattern: &str) -> String {
+    let (negation, raw) = split_glob_negation(pattern);
+    let expanded = expand_glob_pattern(root, raw);
+    format!("{negation}{expanded}")
+}
+
+fn split_glob_negation(pattern: &str) -> (&str, &str) {
+    match pattern.strip_prefix('!') {
+        Some(rest) => ("!", rest),
+        None => ("", pattern),
+    }
+}
+
+fn expand_glob_pattern(root: &Path, raw: &str) -> String {
+    if raw.is_empty() {
+        return raw.to_string();
+    }
+    if glob_ends_with_separator(raw) {
+        return format!("{raw}**/*");
+    }
+    if glob_has_meta(raw) {
+        return raw.to_string();
+    }
+    if glob_literal_is_dir(root, raw) {
+        return format!("{raw}/**/*");
+    }
+    raw.to_string()
+}
+
+fn glob_literal_is_dir(root: &Path, pattern: &str) -> bool {
+    let path = Path::new(pattern);
+    let abs = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    };
+    std::fs::metadata(abs)
+        .map(|meta| meta.is_dir())
+        .unwrap_or(false)
+}
+
+fn glob_ends_with_separator(pattern: &str) -> bool {
+    pattern.ends_with('/') || pattern.ends_with('\\')
 }
 
 fn literal_glob_parent(pattern: &str) -> Option<&Path> {
