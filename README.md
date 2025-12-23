@@ -170,7 +170,7 @@ Notes:
 - In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
   - Unknown extensions are treated as Text (raw lines) — safe for logs and `.txt` files.
   - `--global-bytes` may truncate or omit entire files to respect the total budget.
-  - Directories are ignored unless `--recursive` is set; binary files are ignored with a notice. Stdin reads the stream as‑is.
+  - Directories are ignored unless `--recursive` is set; binary files are ignored with a notice. Glob/recursive expansion respects `.gitignore` plus `.ignore`/`.rgignore`. Stdin reads the stream as‑is.
   - Head vs Tail sampling: these options bias which part of arrays are kept before rendering; strict JSON stays unannotated.
 
 #### Multi-file mode
