@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, bail};
 use content_inspector::{ContentType, inspect};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
+use ignore::overrides::{Override, OverrideBuilder};
 use ignore::{Match, WalkBuilder};
 
 use crate::cli::args::{
@@ -288,13 +289,21 @@ fn collect_glob_matches(
     collect_glob_matches_in_root(cwd, patterns, cwd, seen_abs, inputs, no_sort)
 }
 
-fn configure_walker(walker: &mut WalkBuilder, should_sort: bool) {
+fn configure_walker(
+    walker: &mut WalkBuilder,
+    overrides: Option<Override>,
+    should_sort: bool,
+) {
+    if let Some(overrides) = overrides {
+        walker.overrides(overrides);
+    }
     walker.ignore(true);
     walker.git_ignore(true);
     walker.git_global(true);
     walker.git_exclude(true);
     walker.require_git(false);
     walker.add_custom_ignore_filename(".gitignore");
+    walker.add_custom_ignore_filename(".rgignore");
     if should_sort {
         // Deterministic expansion keeps traversal stable; fileset ordering is still
         // resolved later (mtime/frecency or --no-sort) on the collected list.
@@ -337,9 +346,11 @@ fn collect_glob_matches_in_root(
         // Expand each glob in the order provided so --no-sort preserves user intent.
         for pattern in patterns {
             let matcher = build_glob_matcher(root, pattern)?;
+            let overrides =
+                build_glob_override(root, std::iter::once(pattern.as_str()))?;
             let mut walker = WalkBuilder::new(root);
             // Still sort within each glob for deterministic traversal.
-            configure_walker(&mut walker, true);
+            configure_walker(&mut walker, Some(overrides), true);
             let (includes, excludes) = collect_matches_from_walker(
                 &walker,
                 display_root,
@@ -360,8 +371,10 @@ fn collect_glob_matches_in_root(
     }
 
     let matcher = build_glob_matchers(root, patterns)?;
+    let overrides =
+        build_glob_override(root, patterns.iter().map(String::as_str))?;
     let mut walker = WalkBuilder::new(root);
-    configure_walker(&mut walker, true);
+    configure_walker(&mut walker, Some(overrides), true);
     collect_from_walker(
         &walker,
         display_root,
@@ -501,6 +514,19 @@ fn build_glob_matchers(root: &Path, patterns: &[String]) -> Result<Gitignore> {
             .with_context(|| format!("invalid glob pattern: {pattern}"))?;
     }
     builder.build().context("failed to compile glob patterns")
+}
+
+fn build_glob_override<'a, I>(root: &Path, patterns: I) -> Result<Override>
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    let mut builder = OverrideBuilder::new(root);
+    for pattern in patterns {
+        builder
+            .add(pattern)
+            .with_context(|| format!("invalid glob pattern: {pattern}"))?;
+    }
+    builder.build().context("failed to compile glob overrides")
 }
 
 fn rel_to_abs(display_root: &Path, rel: &Path) -> PathBuf {
