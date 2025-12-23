@@ -288,14 +288,7 @@ fn collect_glob_matches(
     collect_glob_matches_in_root(cwd, patterns, cwd, seen_abs, inputs, no_sort)
 }
 
-fn configure_walker(
-    walker: &mut WalkBuilder,
-    overrides: Option<Override>,
-    should_sort: bool,
-) {
-    if let Some(overrides) = overrides {
-        walker.overrides(overrides);
-    }
+fn configure_walker(walker: &mut WalkBuilder, should_sort: bool) {
     walker.ignore(true);
     walker.git_ignore(true);
     walker.git_global(true);
@@ -344,8 +337,15 @@ fn collect_glob_matches_in_root(
             let overrides =
                 build_glob_override(root, std::iter::once(pattern.as_str()))?;
             let mut walker = WalkBuilder::new(root);
-            configure_walker(&mut walker, Some(overrides), false);
-            collect_from_walker(&walker, display_root, seen_abs, inputs)?;
+            configure_walker(&mut walker, false);
+            collect_from_walker(
+                &walker,
+                display_root,
+                root,
+                seen_abs,
+                inputs,
+                Some(&overrides),
+            )?;
         }
         return Ok(());
     }
@@ -353,16 +353,25 @@ fn collect_glob_matches_in_root(
     let overrides =
         build_glob_override(root, patterns.iter().map(String::as_str))?;
     let mut walker = WalkBuilder::new(root);
-    configure_walker(&mut walker, Some(overrides), true);
-    collect_from_walker(&walker, display_root, seen_abs, inputs)?;
+    configure_walker(&mut walker, true);
+    collect_from_walker(
+        &walker,
+        display_root,
+        root,
+        seen_abs,
+        inputs,
+        Some(&overrides),
+    )?;
     Ok(())
 }
 
 fn collect_from_walker(
     walker: &WalkBuilder,
     display_root: &Path,
+    match_root: &Path,
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
+    matcher: Option<&Override>,
 ) -> Result<()> {
     for dent in walker.build() {
         let dir_entry = dent?;
@@ -375,6 +384,14 @@ fn collect_from_walker(
         }
         let path = dir_entry.into_path();
         let rel = relativize(&path, display_root).to_path_buf();
+        if let Some(matcher) = matcher {
+            let match_path =
+                path.strip_prefix(match_root).unwrap_or(path.as_path());
+            let match_result = matcher.matched(match_path, false);
+            if !match_result.is_whitelist() {
+                continue;
+            }
+        }
         add_simple_input(display_root, seen_abs, inputs, &rel);
     }
     Ok(())
