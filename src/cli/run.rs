@@ -196,8 +196,7 @@ fn ingest_paths(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
 fn resolve_inputs(cli: &Cli) -> Result<Vec<PathBuf>> {
     let cwd =
         env::current_dir().context("failed to read current directory")?;
-    let mut seen_abs: HashSet<PathBuf> = HashSet::new();
-    let mut inputs: Vec<PathBuf> = Vec::new();
+    let mut collector = InputCollector::new(&cwd);
     if cli.recursive && cli.inputs.is_empty() {
         bail!(
             "--recursive requires directory inputs; stdin mode is not supported"
@@ -206,31 +205,109 @@ fn resolve_inputs(cli: &Cli) -> Result<Vec<PathBuf>> {
 
     if cli.recursive {
         for path in &cli.inputs {
-            add_recursive_input(
-                &cwd,
-                path,
-                &mut seen_abs,
-                &mut inputs,
-                cli.no_sort,
-            )?;
+            collector.expand_recursive_dir(path, cli.no_sort)?;
         }
     } else {
         for path in &cli.inputs {
-            add_simple_input(&cwd, &mut seen_abs, &mut inputs, path);
+            collector.add_explicit(path);
         }
     }
 
     if !cli.globs.is_empty() {
-        collect_glob_matches(
-            &cli.globs,
-            &cwd,
-            &mut seen_abs,
-            &mut inputs,
-            cli.no_sort,
-        )?;
+        collector.expand_globs(&cli.globs, cli.no_sort)?;
     }
 
-    Ok(inputs)
+    Ok(collector.finish())
+}
+
+struct InputCollector {
+    display_root: PathBuf,
+    seen_abs: HashSet<PathBuf>,
+    inputs: Vec<PathBuf>,
+}
+
+impl InputCollector {
+    fn new(display_root: &Path) -> Self {
+        Self {
+            display_root: display_root.to_path_buf(),
+            seen_abs: HashSet::new(),
+            inputs: Vec::new(),
+        }
+    }
+
+    fn finish(self) -> Vec<PathBuf> {
+        self.inputs
+    }
+
+    fn add_explicit(&mut self, path: &Path) {
+        add_simple_input(
+            &self.display_root,
+            &mut self.seen_abs,
+            &mut self.inputs,
+            path,
+        );
+    }
+
+    fn expand_recursive_dir(
+        &mut self,
+        path: &Path,
+        no_sort: bool,
+    ) -> Result<()> {
+        let dir = ensure_recursive_dir(&self.display_root, path)?;
+        let dir_norm = normalize_path(&dir);
+        self.expand_globs_in_root(&dir_norm, &["**/*".to_string()], no_sort)
+    }
+
+    fn expand_globs(
+        &mut self,
+        patterns: &[String],
+        no_sort: bool,
+    ) -> Result<()> {
+        let root = self.display_root.clone();
+        self.expand_globs_in_root(&root, patterns, no_sort)
+    }
+
+    fn expand_globs_in_root(
+        &mut self,
+        root: &Path,
+        patterns: &[String],
+        no_sort: bool,
+    ) -> Result<()> {
+        if no_sort {
+            // Expand each glob in the order provided so --no-sort preserves user intent.
+            for pattern in patterns {
+                let overrides = build_override_matcher(
+                    root,
+                    std::iter::once(pattern.as_str()),
+                )?;
+                let mut walker = WalkBuilder::new(root);
+                configure_input_walker(&mut walker, false);
+                collect_from_walker(
+                    &walker,
+                    &self.display_root,
+                    root,
+                    &mut self.seen_abs,
+                    &mut self.inputs,
+                    Some(&overrides),
+                )?;
+            }
+            return Ok(());
+        }
+
+        let overrides =
+            build_override_matcher(root, patterns.iter().map(String::as_str))?;
+        let mut walker = WalkBuilder::new(root);
+        configure_input_walker(&mut walker, true);
+        collect_from_walker(
+            &walker,
+            &self.display_root,
+            root,
+            &mut self.seen_abs,
+            &mut self.inputs,
+            Some(&overrides),
+        )?;
+        Ok(())
+    }
 }
 
 fn add_simple_input(
@@ -252,43 +329,13 @@ fn add_simple_input(
     }
 }
 
-fn add_recursive_input(
-    cwd: &Path,
-    path: &Path,
-    seen_abs: &mut HashSet<PathBuf>,
-    inputs: &mut Vec<PathBuf>,
-    no_sort: bool,
-) -> Result<()> {
-    let dir = ensure_recursive_dir(cwd, path)?;
-    let dir_norm = normalize_path(&dir);
-    collect_glob_matches_in_root(
-        &dir_norm,
-        &["**/*".to_string()],
-        cwd,
-        seen_abs,
-        inputs,
-        no_sort,
-    )?;
-    Ok(())
-}
-
-fn relativize<'a>(path: &'a Path, cwd: &Path) -> &'a Path {
-    path.strip_prefix(cwd)
+fn display_relative_path<'a>(path: &'a Path, display_root: &Path) -> &'a Path {
+    path.strip_prefix(display_root)
         .or_else(|_| path.strip_prefix("."))
         .unwrap_or(path)
 }
 
-fn collect_glob_matches(
-    patterns: &[String],
-    cwd: &Path,
-    seen_abs: &mut HashSet<PathBuf>,
-    inputs: &mut Vec<PathBuf>,
-    no_sort: bool,
-) -> Result<()> {
-    collect_glob_matches_in_root(cwd, patterns, cwd, seen_abs, inputs, no_sort)
-}
-
-fn configure_walker(walker: &mut WalkBuilder, should_sort: bool) {
+fn configure_input_walker(walker: &mut WalkBuilder, should_sort: bool) {
     walker.ignore(true);
     walker.git_ignore(true);
     walker.git_global(true);
@@ -300,7 +347,7 @@ fn configure_walker(walker: &mut WalkBuilder, should_sort: bool) {
         // resolved later (mtime/frecency or --no-sort) on the collected list.
         walker.sort_by_file_name(std::cmp::Ord::cmp);
     } else {
-        // Keep discovery order stable for --no-sort: single-threaded walk and no sorting.
+        // Keep discovery order stable for --no-sort: single-threaded walk.
         walker.threads(1);
     }
 }
@@ -323,52 +370,10 @@ fn ensure_recursive_dir(cwd: &Path, path: &Path) -> Result<PathBuf> {
     Ok(abs)
 }
 
-fn collect_glob_matches_in_root(
-    root: &Path,
-    patterns: &[String],
-    display_root: &Path,
-    seen_abs: &mut HashSet<PathBuf>,
-    inputs: &mut Vec<PathBuf>,
-    no_sort: bool,
-) -> Result<()> {
-    if no_sort {
-        // Expand each glob in the order provided so --no-sort preserves user intent.
-        for pattern in patterns {
-            let overrides =
-                build_glob_override(root, std::iter::once(pattern.as_str()))?;
-            let mut walker = WalkBuilder::new(root);
-            configure_walker(&mut walker, false);
-            collect_from_walker(
-                &walker,
-                display_root,
-                root,
-                seen_abs,
-                inputs,
-                Some(&overrides),
-            )?;
-        }
-        return Ok(());
-    }
-
-    let overrides =
-        build_glob_override(root, patterns.iter().map(String::as_str))?;
-    let mut walker = WalkBuilder::new(root);
-    configure_walker(&mut walker, true);
-    collect_from_walker(
-        &walker,
-        display_root,
-        root,
-        seen_abs,
-        inputs,
-        Some(&overrides),
-    )?;
-    Ok(())
-}
-
 fn collect_from_walker(
     walker: &WalkBuilder,
     display_root: &Path,
-    match_root: &Path,
+    override_root: &Path,
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
     matcher: Option<&Override>,
@@ -383,10 +388,10 @@ fn collect_from_walker(
             continue;
         }
         let path = dir_entry.into_path();
-        let rel = relativize(&path, display_root).to_path_buf();
+        let rel = display_relative_path(&path, display_root).to_path_buf();
         if let Some(matcher) = matcher {
             let match_path =
-                path.strip_prefix(match_root).unwrap_or(path.as_path());
+                path.strip_prefix(override_root).unwrap_or(path.as_path());
             let match_result = matcher.matched(match_path, false);
             if !match_result.is_whitelist() {
                 continue;
@@ -397,7 +402,7 @@ fn collect_from_walker(
     Ok(())
 }
 
-fn build_glob_override<'a, I>(root: &Path, patterns: I) -> Result<Override>
+fn build_override_matcher<'a, I>(root: &Path, patterns: I) -> Result<Override>
 where
     I: IntoIterator<Item = &'a str>,
 {
