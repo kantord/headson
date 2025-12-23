@@ -6,7 +6,7 @@ use crate::serialization::output::Out;
 // - Style controls only empty/omitted decorations.
 // - Indentation and newlines come from ctx (depth, indent_unit, newline).
 // - When ctx.inline_open is true, no leading indent is emitted before the opener.
-pub trait Style {
+pub(super) trait Style {
     fn array_push_omitted(_out: &mut Out<'_>, _ctx: &ArrayCtx<'_>) {}
     fn array_push_internal_gap(
         _out: &mut Out<'_>,
@@ -93,7 +93,7 @@ pub(crate) fn push_object_items(out: &mut Out<'_>, ctx: &ObjectCtx<'_>) {
 }
 
 // A no-op style for cases where only the array item printing is desired without gap markers.
-pub struct StyleNoop;
+pub(super) struct StyleNoop;
 impl Style for StyleNoop {}
 
 // Combinators and tiny building blocks

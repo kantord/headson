@@ -7,5 +7,8 @@ license = "MIT"
 repository = "https://github.com/kantord/headson"
 homepage = "https://github.com/kantord/headson"
 publish = true
+readme = "README.md"
+keywords = ["tree", "pruning", "priority"]
+categories = ["algorithms", "data-structures"]
 
 [dependencies]

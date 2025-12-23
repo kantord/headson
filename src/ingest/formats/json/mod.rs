@@ -9,14 +9,14 @@ use crate::PriorityConfig;
 use crate::utils::tree_arena::JsonTreeArena as TreeArena;
 
 #[cfg(test)]
-pub fn build_json_tree_arena(
+pub(crate) fn build_json_tree_arena(
     input: &str,
     config: &PriorityConfig,
 ) -> Result<TreeArena> {
     build_json_tree_arena_from_bytes(input.as_bytes().to_vec(), config)
 }
 
-pub fn build_json_tree_arena_from_bytes(
+pub(crate) fn build_json_tree_arena_from_bytes(
     mut bytes: Vec<u8>,
     config: &PriorityConfig,
 ) -> Result<TreeArena> {
@@ -35,7 +35,7 @@ pub fn build_json_tree_arena_from_bytes(
 }
 
 #[cfg(test)]
-pub fn build_json_tree_arena_from_many(
+pub(crate) fn build_json_tree_arena_from_many(
     mut inputs: Vec<(String, Vec<u8>)>,
     config: &PriorityConfig,
 ) -> Result<TreeArena> {

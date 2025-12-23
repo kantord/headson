@@ -35,7 +35,7 @@ pub struct ObjectCtx<'a> {
 // Color helpers facade so templates don't pass flags around.
 // Color helpers are now provided via the Out writer in super::output.
 
-pub fn render_array(
+pub(crate) fn render_array(
     template: OutputTemplate,
     ctx: &ArrayCtx<'_>,
     out: &mut Out<'_>,
@@ -52,7 +52,7 @@ pub fn render_array(
     }
 }
 
-pub fn render_object(
+pub(crate) fn render_object(
     template: OutputTemplate,
     ctx: &ObjectCtx<'_>,
     out: &mut Out<'_>,
