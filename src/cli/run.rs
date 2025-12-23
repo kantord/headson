@@ -330,6 +330,7 @@ fn collect_glob_matches_in_root(
     no_sort: bool,
 ) -> Result<()> {
     if no_sort {
+        let mut glob_added_abs: HashSet<PathBuf> = HashSet::new();
         // Expand each glob in the order provided so --no-sort preserves user intent.
         for pattern in patterns {
             let matcher = build_glob_matcher(root, pattern)?;
@@ -342,9 +343,13 @@ fn collect_glob_matches_in_root(
                 root,
                 &matcher,
             )?;
+            let excludes =
+                filter_glob_excludes(display_root, &glob_added_abs, excludes);
             remove_inputs(display_root, seen_abs, inputs, &excludes);
             for rel in includes {
+                let abs = rel_to_abs(display_root, &rel);
                 add_simple_input(display_root, seen_abs, inputs, &rel);
+                glob_added_abs.insert(abs);
             }
         }
         return Ok(());
@@ -434,24 +439,15 @@ fn remove_inputs(
     inputs: &mut Vec<PathBuf>,
     rels: &[PathBuf],
 ) {
-    let mut remove_abs: HashSet<PathBuf> = HashSet::new();
-    for rel in rels {
-        let abs = if rel.is_absolute() {
-            rel.to_path_buf()
-        } else {
-            display_root.join(rel)
-        };
-        remove_abs.insert(abs);
-    }
+    let remove_abs: HashSet<PathBuf> = rels
+        .iter()
+        .map(|rel| rel_to_abs(display_root, rel))
+        .collect();
     if remove_abs.is_empty() {
         return;
     }
     inputs.retain(|path| {
-        let abs = if path.is_absolute() {
-            path.to_path_buf()
-        } else {
-            display_root.join(path)
-        };
+        let abs = rel_to_abs(display_root, path);
         if remove_abs.contains(&abs) {
             seen_abs.remove(&abs);
             false
@@ -492,6 +488,25 @@ fn build_glob_matchers(root: &Path, patterns: &[String]) -> Result<Gitignore> {
             .with_context(|| format!("invalid glob pattern: {pattern}"))?;
     }
     builder.build().context("failed to compile glob patterns")
+}
+
+fn rel_to_abs(display_root: &Path, rel: &Path) -> PathBuf {
+    if rel.is_absolute() {
+        rel.to_path_buf()
+    } else {
+        display_root.join(rel)
+    }
+}
+
+fn filter_glob_excludes(
+    display_root: &Path,
+    glob_added_abs: &HashSet<PathBuf>,
+    excludes: Vec<PathBuf>,
+) -> Vec<PathBuf> {
+    excludes
+        .into_iter()
+        .filter(|rel| glob_added_abs.contains(&rel_to_abs(display_root, rel)))
+        .collect()
 }
 
 fn normalize_path(path: &Path) -> PathBuf {
