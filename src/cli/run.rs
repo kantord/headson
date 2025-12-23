@@ -238,7 +238,7 @@ fn add_simple_input(
     seen_abs: &mut HashSet<PathBuf>,
     inputs: &mut Vec<PathBuf>,
     path: &Path,
-) {
+) -> bool {
     let abs = if path.is_absolute() {
         path.to_path_buf()
     } else {
@@ -246,6 +246,9 @@ fn add_simple_input(
     };
     if seen_abs.insert(abs) {
         inputs.push(path.to_path_buf());
+        true
+    } else {
+        false
     }
 }
 
@@ -348,8 +351,9 @@ fn collect_glob_matches_in_root(
             remove_inputs(display_root, seen_abs, inputs, &excludes);
             for rel in includes {
                 let abs = rel_to_abs(display_root, &rel);
-                add_simple_input(display_root, seen_abs, inputs, &rel);
-                glob_added_abs.insert(abs);
+                if add_simple_input(display_root, seen_abs, inputs, &rel) {
+                    glob_added_abs.insert(abs);
+                }
             }
         }
         return Ok(());
