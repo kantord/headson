@@ -2,6 +2,10 @@
 name = "prunist"
 version.workspace = true
 edition = "2024"
-publish = false
+description = "Experimental library for pruning tree structures based on priority rules; API may change"
+license = "MIT"
+repository = "https://github.com/kantord/headson"
+homepage = "https://github.com/kantord/headson"
+publish = true
 
 [dependencies]

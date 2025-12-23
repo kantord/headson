@@ -6,5 +6,8 @@ dependencies_update = true
 name = "headson"
 
 [[package]]
+name = "prunist"
+
+[[package]]
 name = "headson-python"
 publish = false
