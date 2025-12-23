@@ -258,32 +258,14 @@ fn add_recursive_input(
 ) -> Result<()> {
     let dir = ensure_recursive_dir(cwd, path)?;
     let dir_norm = normalize_path(&dir);
-    let cwd_norm = normalize_path(cwd);
-    if let Ok(rel) = dir_norm.strip_prefix(&cwd_norm) {
-        let rel_str = escape_glob(&glob_path(rel));
-        let pattern = if rel_str.is_empty() {
-            "**/*".to_string()
-        } else {
-            format!("{rel_str}/**/*")
-        };
-        collect_glob_matches_in_root(
-            &cwd_norm,
-            &[pattern],
-            cwd,
-            seen_abs,
-            inputs,
-            no_sort,
-        )?;
-    } else {
-        collect_glob_matches_in_root(
-            &dir_norm,
-            &["**/*".to_string()],
-            cwd,
-            seen_abs,
-            inputs,
-            no_sort,
-        )?;
-    }
+    collect_glob_matches_in_root(
+        &dir_norm,
+        &["**/*".to_string()],
+        cwd,
+        seen_abs,
+        inputs,
+        no_sort,
+    )?;
     Ok(())
 }
 
@@ -512,10 +494,6 @@ fn build_glob_matchers(root: &Path, patterns: &[String]) -> Result<Gitignore> {
     builder.build().context("failed to compile glob patterns")
 }
 
-fn glob_path(path: &Path) -> String {
-    path.to_string_lossy().replace('\\', "/")
-}
-
 fn normalize_path(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     let mut has_root = false;
@@ -535,20 +513,6 @@ fn normalize_path(path: &Path) -> PathBuf {
                 }
             }
             std::path::Component::Normal(part) => out.push(part),
-        }
-    }
-    out
-}
-
-fn escape_glob(input: &str) -> String {
-    let mut out = String::with_capacity(input.len());
-    for ch in input.chars() {
-        match ch {
-            '\\' | '*' | '?' | '[' | ']' | '{' | '}' | '!' | '#' => {
-                out.push('\\');
-                out.push(ch);
-            }
-            _ => out.push(ch),
         }
     }
     out
