@@ -265,6 +265,44 @@ fn glob_literal_directory_includes_contents() {
 }
 
 #[test]
+fn glob_no_sort_applies_negated_patterns() {
+    let tmp = tempfile::tempdir().expect("tmpdir");
+    let root = tmp.path();
+    fs::create_dir_all(root.join("src/vendor")).expect("mkdirs");
+
+    write_json(root.join("src/keep.json").as_path(), r#"{"keep": true}"#);
+    write_json(
+        root.join("src/vendor/ignored.json").as_path(),
+        r#"{"ignore": true}"#,
+    );
+
+    let out = common::run_cli_in_dir(
+        root,
+        &[
+            "--no-color",
+            "--no-sort",
+            "-c",
+            "1000",
+            "-g",
+            "src/**",
+            "-g",
+            "!src/vendor/**",
+        ],
+        None,
+    );
+
+    let out = out.stdout;
+    assert!(
+        out.contains("\"keep\": true"),
+        "expected keep.json to be included: {out}"
+    );
+    assert!(
+        !out.contains("\"ignore\": true"),
+        "expected vendor file to be excluded by negation: {out}"
+    );
+}
+
+#[test]
 fn recursive_outside_cwd_ignores_only_target_tree() {
     let tmp = tempfile::tempdir().expect("tmpdir");
     let cwd = tmp.path();
