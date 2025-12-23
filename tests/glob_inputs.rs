@@ -227,44 +227,6 @@ fn glob_directory_pattern_includes_contents() {
 }
 
 #[test]
-fn glob_literal_directory_includes_contents() {
-    let tmp = tempfile::tempdir().expect("tmpdir");
-    let root = tmp.path();
-    fs::create_dir_all(root.join("src/nested")).expect("mkdirs");
-
-    write_json(root.join("src/keep.json").as_path(), r#"{"keep": true}"#);
-    write_json(
-        root.join("src/nested/also_keep.json").as_path(),
-        r#"{"nested": true}"#,
-    );
-
-    let out = common::run_cli_in_dir(
-        root,
-        &["--no-color", "--no-sort", "-c", "1000", "-g", "src"],
-        None,
-    );
-
-    let out = out.stdout;
-    let keep_header =
-        format!("==> {} <==", Path::new("src").join("keep.json").display());
-    let nested_header = format!(
-        "==> {} <==",
-        Path::new("src")
-            .join("nested")
-            .join("also_keep.json")
-            .display()
-    );
-    assert!(
-        out.contains(&keep_header),
-        "expected keep.json to be included: {out}"
-    );
-    assert!(
-        out.contains(&nested_header),
-        "expected nested file to be included: {out}"
-    );
-}
-
-#[test]
 fn glob_no_sort_applies_negated_patterns() {
     let tmp = tempfile::tempdir().expect("tmpdir");
     let root = tmp.path();

@@ -469,10 +469,19 @@ enum GlobMatchDecision {
 }
 
 fn glob_match_decision(matcher: &Gitignore, path: &Path) -> GlobMatchDecision {
+    match matcher.matched(path, false) {
+        Match::Ignore(_) => return GlobMatchDecision::Include,
+        Match::Whitelist(_) => return GlobMatchDecision::Exclude,
+        Match::None => {}
+    }
     match matcher.matched_path_or_any_parents(path, false) {
-        Match::Ignore(_) => GlobMatchDecision::Include,
-        Match::Whitelist(_) => GlobMatchDecision::Exclude,
-        Match::None => GlobMatchDecision::NoMatch,
+        Match::Ignore(glob) if glob.is_only_dir() => {
+            GlobMatchDecision::Include
+        }
+        Match::Whitelist(glob) if glob.is_only_dir() => {
+            GlobMatchDecision::Exclude
+        }
+        _ => GlobMatchDecision::NoMatch,
     }
 }
 
