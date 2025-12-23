@@ -628,7 +628,7 @@ dependencies = [
 
 [[package]]
 name = "headson"
-version = "0.11.5"
+version = "0.12.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -658,7 +658,7 @@ dependencies = [
 
 [[package]]
 name = "headson-python"
-version = "0.11.5"
+version = "0.12.0"
 dependencies = [
  "anyhow",
  "headson",
@@ -868,9 +868,9 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "itoa"
-version = "1.0.15"
+version = "1.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
+checksum = "7ee5b5339afb4c41626dde77b7a611bd4f2c202b897852b4bcf5d03eddc61010"
 
 [[package]]
 name = "jobserver"
@@ -1164,7 +1164,7 @@ dependencies = [
 
 [[package]]
 name = "prunist"
-version = "0.11.5"
+version = "0.12.0"
 
 [[package]]
 name = "pyo3"
@@ -1386,9 +1386,9 @@ checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
 
 [[package]]
 name = "rustix"
-version = "1.1.2"
+version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd15f8a2c5551a84d56efdc1cd049089e409ac19a3072d5037a17fd70719ff3e"
+checksum = "146c9e247ccc180c1f61615433868c99f3de3ae256a30a43b49f67c2d9171f34"
 dependencies = [
  "bitflags 2.10.0",
  "errno",

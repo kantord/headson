@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0](https://github.com/kantord/headson/compare/headson-v0.11.5...headson-v0.12.0) - 2025-12-23
+
+### Added
+
+- add --recursive flag ([#429](https://github.com/kantord/headson/pull/429))
+
+### Other
+
+- *(deps)* update rust crate serde_json to v1.0.146 ([#428](https://github.com/kantord/headson/pull/428))
+- extract prunist core and pruning context ([#427](https://github.com/kantord/headson/pull/427))
+- add prunist config constructor and core tests ([#426](https://github.com/kantord/headson/pull/426))
+- create prunist crate ([#423](https://github.com/kantord/headson/pull/423))
+
 ## [0.11.5](https://github.com/kantord/headson/compare/headson-v0.11.4...headson-v0.11.5) - 2025-12-20
 
 ### Added
