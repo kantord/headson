@@ -359,7 +359,8 @@ fn collect_glob_matches_in_root(
             let overrides = overrides
                 .build()
                 .context("failed to compile glob overrides")?;
-            let mut walker = WalkBuilder::new(root);
+            let walk_root = glob_walk_root(root, pattern);
+            let mut walker = WalkBuilder::new(walk_root);
             // Still sort within each glob for deterministic traversal.
             configure_walker(&mut walker, true);
             collect_from_walker(
@@ -374,26 +375,35 @@ fn collect_glob_matches_in_root(
         return Ok(());
     }
 
-    let mut overrides = OverrideBuilder::new(root);
+    let mut grouped: std::collections::BTreeMap<PathBuf, Vec<&String>> =
+        std::collections::BTreeMap::new();
     for pattern in patterns {
-        overrides
-            .add(pattern)
-            .with_context(|| format!("invalid glob pattern: {pattern}"))?;
+        let walk_root = glob_walk_root(root, pattern);
+        grouped.entry(walk_root).or_default().push(pattern);
     }
-    let overrides = overrides
-        .build()
-        .context("failed to compile glob overrides")?;
 
-    let mut walker = WalkBuilder::new(root);
-    configure_walker(&mut walker, true);
-    collect_from_walker(
-        &walker,
-        display_root,
-        root,
-        seen_abs,
-        inputs,
-        Some(&overrides),
-    )?;
+    for (walk_root, group) in grouped {
+        let mut overrides = OverrideBuilder::new(root);
+        for pattern in group {
+            overrides
+                .add(pattern)
+                .with_context(|| format!("invalid glob pattern: {pattern}"))?;
+        }
+        let overrides = overrides
+            .build()
+            .context("failed to compile glob overrides")?;
+
+        let mut walker = WalkBuilder::new(walk_root);
+        configure_walker(&mut walker, true);
+        collect_from_walker(
+            &walker,
+            display_root,
+            root,
+            seen_abs,
+            inputs,
+            Some(&overrides),
+        )?;
+    }
     Ok(())
 }
 
@@ -427,6 +437,48 @@ fn collect_from_walker(
         add_simple_input(display_root, seen_abs, inputs, &rel);
     }
     Ok(())
+}
+
+fn glob_walk_root(root: &Path, pattern: &str) -> PathBuf {
+    let pattern = strip_glob_negation(pattern);
+    if let Some(parent) = literal_glob_parent(pattern) {
+        return root.join(parent);
+    }
+    if let Some(prefix) = glob_prefix_dir(pattern) {
+        return root.join(prefix);
+    }
+    root.to_path_buf()
+}
+
+fn strip_glob_negation(pattern: &str) -> &str {
+    pattern.strip_prefix('!').unwrap_or(pattern)
+}
+
+fn literal_glob_parent(pattern: &str) -> Option<&Path> {
+    if glob_has_meta(pattern) {
+        return None;
+    }
+    let path = Path::new(pattern);
+    path.parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+}
+
+fn glob_prefix_dir(pattern: &str) -> Option<&str> {
+    let mut last_sep: Option<usize> = None;
+    for (idx, ch) in pattern.char_indices() {
+        match ch {
+            '*' | '?' | '[' | ']' | '{' | '}' => break,
+            '/' | '\\' => last_sep = Some(idx),
+            _ => {}
+        }
+    }
+    last_sep.filter(|idx| *idx > 0).map(|idx| &pattern[..idx])
+}
+
+fn glob_has_meta(pattern: &str) -> bool {
+    pattern
+        .chars()
+        .any(|ch| matches!(ch, '*' | '?' | '[' | ']' | '{' | '}'))
 }
 
 fn glob_path(path: &Path) -> String {
