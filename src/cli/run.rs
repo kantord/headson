@@ -71,10 +71,43 @@ fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
     } else if lower.ends_with(".json") {
         headson::FilesetInputKind::Json
     } else {
-        let atomic = headson::extensions::is_code_like_name(&lower);
-        headson::FilesetInputKind::Text {
-            atomic_lines: atomic,
+        fileset_text_kind(&lower)
+    }
+}
+
+fn detect_fileset_input_kind_with_fallback(
+    name: &str,
+    bytes: &[u8],
+    prio: &headson::PriorityConfig,
+    notices: &mut IgnoreNotices,
+) -> headson::FilesetInputKind {
+    let kind = detect_fileset_input_kind(name);
+    match kind {
+        headson::FilesetInputKind::Json => {
+            if let Err(err) = headson::validate_json_bytes(bytes, prio) {
+                notices.push(format!(
+                    "Failed to parse {name} as JSON: {err}; falling back to text"
+                ));
+                return fileset_text_kind(&name.to_ascii_lowercase());
+            }
         }
+        headson::FilesetInputKind::Yaml => {
+            if let Err(err) = headson::validate_yaml_bytes(bytes, prio) {
+                notices.push(format!(
+                    "Failed to parse {name} as YAML: {err}; falling back to text"
+                ));
+                return fileset_text_kind(&name.to_ascii_lowercase());
+            }
+        }
+        headson::FilesetInputKind::Text { .. } => {}
+    }
+    kind
+}
+
+fn fileset_text_kind(lower_name: &str) -> headson::FilesetInputKind {
+    let atomic = headson::extensions::is_code_like_name(lower_name);
+    headson::FilesetInputKind::Text {
+        atomic_lines: atomic,
     }
 }
 
@@ -539,7 +572,12 @@ fn render_fileset(
     let files: Vec<headson::FilesetInput> = entries
         .into_iter()
         .map(|(name, bytes)| {
-            let kind = detect_fileset_input_kind(&name);
+            let kind = detect_fileset_input_kind_with_fallback(
+                &name,
+                &bytes,
+                &prio,
+                &mut notices,
+            );
             headson::FilesetInput { name, bytes, kind }
         })
         .collect();
@@ -575,7 +613,7 @@ fn render_single_entry(
     let mut cfg = render_cfg.clone();
     cfg.template =
         resolve_effective_template_for_single(cli.format, cfg.style, &lower);
-    cfg.primary_source_name = Some(name);
+    cfg.primary_source_name = Some(name.clone());
     let (cfg, prio, budgets) = build_effective_configs(cli, cfg, 1usize);
     let is_auto = matches!(cli.format, OutputFormat::Auto);
     let mut cfg_for_render = cfg;
@@ -600,7 +638,8 @@ fn render_single_entry(
         &prio,
         grep_cfg,
         budgets,
-    )?;
+    )
+    .with_context(|| format!("failed to parse input file: {name}"))?;
     Ok((out, notices))
 }
 

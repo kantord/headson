@@ -45,6 +45,16 @@ pub use serialization::types::{
     ColorMode, ColorStrategy, OutputTemplate, RenderConfig, Style,
 };
 
+#[doc(hidden)]
+pub fn validate_json_bytes(bytes: &[u8], cfg: &PriorityConfig) -> Result<()> {
+    ingest::formats::json::parse_json_one(bytes.to_vec(), cfg).map(|_| ())
+}
+
+#[doc(hidden)]
+pub fn validate_yaml_bytes(bytes: &[u8], cfg: &PriorityConfig) -> Result<()> {
+    ingest::formats::yaml::parse_yaml_one(bytes.to_vec(), cfg).map(|_| ())
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum TextMode {
     Plain,
