@@ -24,7 +24,7 @@ pub fn ingest_into_arena(
 ) -> Result<TreeArena> {
     match input {
         InputKind::Json(bytes) => parse_json_one(bytes, priority_cfg),
-        InputKind::Yaml(bytes) => parse_yaml_one(bytes, priority_cfg),
+        InputKind::Yaml(bytes) => parse_yaml_one(&bytes, priority_cfg),
         InputKind::Text { bytes, mode } => {
             let atomic = matches!(mode, crate::TextMode::CodeLike);
             parse_text_one_with_mode(bytes, priority_cfg, atomic)

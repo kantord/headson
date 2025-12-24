@@ -3,12 +3,12 @@ use crate::utils::extensions;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
 use super::formats::{
-    json::build_json_tree_arena_from_bytes,
+    json::build_json_tree_arena_from_slice,
     text::{
         build_text_tree_arena_from_bytes,
         build_text_tree_arena_from_bytes_with_mode,
     },
-    yaml::build_yaml_tree_arena_from_bytes,
+    yaml::build_yaml_tree_arena_from_slice,
 };
 use crate::PriorityConfig;
 
@@ -42,10 +42,15 @@ pub fn parse_fileset_multi_with_notices(
     let mut arenas: Vec<(String, JsonTreeArena)> =
         Vec::with_capacity(inputs.len());
     let mut notices: Vec<String> = Vec::new();
-    for FilesetInput { name, bytes, kind } in inputs {
+    for FilesetInput {
+        name,
+        mut bytes,
+        kind,
+    } in inputs
+    {
         let arena = match kind {
             FilesetInputKind::Json => {
-                parse_json_or_fallback(&name, &bytes, cfg, &mut notices)
+                parse_json_or_fallback(&name, &mut bytes, cfg, &mut notices)
             }
             FilesetInputKind::Yaml => {
                 parse_yaml_or_fallback(&name, &bytes, cfg, &mut notices)
@@ -61,11 +66,11 @@ pub fn parse_fileset_multi_with_notices(
 
 fn parse_json_or_fallback(
     name: &str,
-    bytes: &[u8],
+    bytes: &mut [u8],
     cfg: &PriorityConfig,
     notices: &mut Vec<String>,
 ) -> JsonTreeArena {
-    match build_json_tree_arena_from_bytes(bytes.to_vec(), cfg) {
+    match build_json_tree_arena_from_slice(bytes, cfg) {
         Ok(arena) => arena,
         Err(err) => {
             notices.push(format!(
@@ -82,7 +87,7 @@ fn parse_yaml_or_fallback(
     cfg: &PriorityConfig,
     notices: &mut Vec<String>,
 ) -> JsonTreeArena {
-    match build_yaml_tree_arena_from_bytes(bytes.to_vec(), cfg) {
+    match build_yaml_tree_arena_from_slice(bytes, cfg) {
         Ok(arena) => arena,
         Err(err) => {
             notices.push(format!(

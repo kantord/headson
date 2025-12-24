@@ -20,7 +20,14 @@ pub(crate) fn build_json_tree_arena_from_bytes(
     mut bytes: Vec<u8>,
     config: &PriorityConfig,
 ) -> Result<TreeArena> {
-    let mut de = simd_json::Deserializer::from_slice(&mut bytes)?;
+    build_json_tree_arena_from_slice(&mut bytes, config)
+}
+
+pub(crate) fn build_json_tree_arena_from_slice(
+    bytes: &mut [u8],
+    config: &PriorityConfig,
+) -> Result<TreeArena> {
+    let mut de = simd_json::Deserializer::from_slice(bytes)?;
     let builder = JsonTreeBuilder::new(
         config.array_max_items,
         config.array_sampler.into(),

@@ -8,12 +8,19 @@ use crate::ingest::sampling::{ArraySamplerKind, choose_indices};
 use yaml_rust2::Yaml;
 
 pub fn build_yaml_tree_arena_from_bytes(
-    bytes: Vec<u8>,
+    bytes: &[u8],
     config: &PriorityConfig,
 ) -> Result<JsonTreeArena> {
-    let s = String::from_utf8(bytes)
+    build_yaml_tree_arena_from_slice(bytes, config)
+}
+
+pub(crate) fn build_yaml_tree_arena_from_slice(
+    bytes: &[u8],
+    config: &PriorityConfig,
+) -> Result<JsonTreeArena> {
+    let s = std::str::from_utf8(bytes)
         .map_err(|_| anyhow!("input is not valid UTF-8 text"))?;
-    let docs = yaml_rust2::YamlLoader::load_from_str(&s)?;
+    let docs = yaml_rust2::YamlLoader::load_from_str(s)?;
     let mut b = YamlArenaBuilder::new(
         config.array_max_items,
         config.array_sampler.into(),
@@ -242,7 +249,7 @@ fn stringify_yaml_key(k: &Yaml) -> String {
 
 /// Convenience functions for the YAML ingest path.
 pub fn parse_yaml_one(
-    bytes: Vec<u8>,
+    bytes: &[u8],
     cfg: &PriorityConfig,
 ) -> Result<JsonTreeArena> {
     build_yaml_tree_arena_from_bytes(bytes, cfg)
@@ -259,7 +266,7 @@ mod tests {
         let mut cfg = PriorityConfig::new(usize::MAX, 5);
         cfg.array_sampler = ArraySamplerStrategy::Tail;
         let arena =
-            build_yaml_tree_arena_from_bytes(input, &cfg).expect("arena");
+            build_yaml_tree_arena_from_bytes(&input, &cfg).expect("arena");
         let root = &arena.nodes[arena.root_id];
         assert_eq!(root.children_len, 5, "kept 5");
         let mut orig_indices = Vec::new();
