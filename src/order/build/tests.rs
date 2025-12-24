@@ -1,16 +1,17 @@
 use super::*;
+use crate::order::FilesetRenderSlot;
 use insta::assert_snapshot;
 
 fn slot_for(
     node: NodeId,
     parent: &[Option<NodeId>],
-    fileset_children: &[NodeId],
+    fileset_slots: &[FilesetRenderSlot],
 ) -> Option<usize> {
     let mut current = node;
     loop {
         let p = parent.get(current.0).and_then(|p| *p)?;
         if p.0 == ROOT_PQ_ID {
-            return fileset_children.iter().position(|fid| *fid == current);
+            return fileset_slots.iter().position(|slot| slot.id == current);
         }
         current = p;
     }
@@ -137,7 +138,7 @@ fn fileset_round_robin_with_duplicates_and_braces() {
         },
     ]);
     let build = super::build_order(&arena, &cfg).expect("order");
-    let files = build.fileset_children.as_ref().expect("fileset roots");
+    let files = build.fileset_render_slots.as_ref().expect("fileset roots");
     let mut lines: Vec<String> = Vec::new();
     for nid in &build.by_priority {
         let Some(slot) = slot_for(*nid, &build.parent, files) else {

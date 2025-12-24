@@ -1,6 +1,6 @@
 use super::engine::RenderEngine;
 use crate::ingest::format::Format;
-use crate::order::{NodeId, ObjectType, ROOT_PQ_ID};
+use crate::order::{FilesetRenderSlot, ObjectType, ROOT_PQ_ID};
 use crate::serialization::color::{self, ColorRole};
 use crate::serialization::types::OutputTemplate;
 
@@ -34,12 +34,12 @@ impl<'a> RenderEngine<'a> {
         depth: usize,
         out: &mut crate::serialization::output::Out<'_>,
     ) {
-        let Some(children_ids) =
-            self.fileset_children().map(<[NodeId]>::to_vec)
+        let Some(children) =
+            self.fileset_children().map(<[FilesetRenderSlot]>::to_vec)
         else {
             return;
         };
-        let inputs = self.collect_tree_inputs(&children_ids, depth);
+        let inputs = self.collect_tree_inputs(&children, depth);
         if inputs.is_empty() {
             return;
         }
@@ -56,23 +56,14 @@ impl<'a> RenderEngine<'a> {
         depth: usize,
         out: &mut crate::serialization::output::Out<'_>,
     ) {
-        let Some(children_ids) = self
-            .order
-            .fileset_children
-            .as_deref()
-            .or_else(|| self.order.children.get(ROOT_PQ_ID).map(|v| &**v))
-        else {
+        let Some(children) = self.order.fileset_render_slots.as_deref() else {
             return;
         };
         let show_headers = self.should_render_fileset_headers();
-        let kept = self.render_fileset_children(
-            children_ids,
-            depth,
-            show_headers,
-            out,
-        );
+        let kept =
+            self.render_fileset_children(children, depth, show_headers, out);
         if show_headers {
-            self.render_fileset_summary(children_ids, depth, kept, out);
+            self.render_fileset_summary(children, depth, kept, out);
         }
     }
 
@@ -93,14 +84,14 @@ impl<'a> RenderEngine<'a> {
 
     fn render_fileset_children(
         &mut self,
-        children_ids: &[NodeId],
+        children: &[FilesetRenderSlot],
         depth: usize,
         show_headers: bool,
         out: &mut crate::serialization::output::Out<'_>,
     ) -> usize {
         let mut kept = 0usize;
-        for (slot_idx, &child_id) in children_ids.iter().enumerate() {
-            if self.inclusion_flags[child_id.0] != self.render_set_id {
+        for (slot_idx, child) in children.iter().enumerate() {
+            if self.inclusion_flags[child.id.0] != self.render_set_id {
                 continue;
             }
             if kept > 0 && show_headers {
@@ -109,42 +100,39 @@ impl<'a> RenderEngine<'a> {
             }
             kept += 1;
             let raw_key =
-                self.order.nodes[child_id.0].key_in_object().unwrap_or("");
+                self.order.nodes[child.id.0].key_in_object().unwrap_or("");
             if show_headers {
                 out.set_current_slot(Some(slot_idx));
                 out.push_str(&self.fileset_header_line(depth, raw_key));
             }
             out.set_current_slot(Some(slot_idx));
-            let rendered = self
-                .fileset_render_child(child_id.0, depth, raw_key, slot_idx);
+            let rendered =
+                self.fileset_render_child(child.id.0, depth, raw_key, child);
             out.push_str(&rendered);
         }
         kept
     }
 
-    fn fileset_children(&self) -> Option<&[NodeId]> {
-        self.order
-            .fileset_children
-            .as_deref()
-            .or_else(|| self.order.children.get(ROOT_PQ_ID).map(|v| &**v))
+    fn fileset_children(&self) -> Option<&[FilesetRenderSlot]> {
+        self.order.fileset_render_slots.as_deref()
     }
 
     fn collect_tree_inputs(
         &mut self,
-        children_ids: &[NodeId],
+        children: &[FilesetRenderSlot],
         depth: usize,
     ) -> TreeInputs {
         let mut inputs = TreeInputs::default();
-        for (slot_idx, &child_id) in children_ids.iter().enumerate() {
+        for (slot_idx, child) in children.iter().enumerate() {
             let raw_key =
-                self.order.nodes[child_id.0].key_in_object().unwrap_or("");
+                self.order.nodes[child.id.0].key_in_object().unwrap_or("");
             let segments = Self::split_path_segments(raw_key);
-            if self.inclusion_flags[child_id.0] != self.render_set_id {
+            if self.inclusion_flags[child.id.0] != self.render_set_id {
                 inputs.track_omission_for_path(&segments);
                 continue;
             }
-            let rendered = self
-                .fileset_render_child(child_id.0, depth, raw_key, slot_idx);
+            let rendered =
+                self.fileset_render_child(child.id.0, depth, raw_key, child);
             inputs.entries.push((segments, rendered, slot_idx));
         }
         inputs
@@ -198,7 +186,7 @@ impl<'a> RenderEngine<'a> {
 
     fn render_fileset_summary(
         &self,
-        children_ids: &[NodeId],
+        children: &[FilesetRenderSlot],
         depth: usize,
         kept: usize,
         out: &mut crate::serialization::output::Out<'_>,
@@ -208,7 +196,7 @@ impl<'a> RenderEngine<'a> {
             .metrics
             .get(ROOT_PQ_ID)
             .and_then(|m| m.object_len)
-            .unwrap_or(children_ids.len());
+            .unwrap_or(children.len());
         if total > kept && !self.config.newline.is_empty() {
             out.set_current_slot(None);
             self.fileset_push_section_gap(out);
@@ -239,18 +227,11 @@ impl<'a> RenderEngine<'a> {
         child_id: usize,
         depth: usize,
         raw_key: &str,
-        slot_idx: usize,
+        slot: &FilesetRenderSlot,
     ) -> String {
         // Suppressed entries still appear in ordering and headers; only the body is omitted.
         // This keeps parse-failed files visible without pretending they were never present.
-        if self
-            .order
-            .fileset_entry_suppressed
-            .as_ref()
-            .and_then(|entries| entries.get(slot_idx))
-            .copied()
-            .unwrap_or(false)
-        {
+        if slot.suppressed {
             return String::new();
         }
         if self.config.count_fileset_headers_in_budgets

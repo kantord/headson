@@ -177,13 +177,14 @@ pub struct PriorityOrder {
     pub total_nodes: usize,
     pub object_type: Vec<ObjectType>,
     pub code_lines: HashMap<usize, Arc<Vec<String>>>,
-    // For filesets, preserve the ingest order of top-level children so rendering
-    // can respect pre-sorting heuristics (e.g., frecency).
-    pub fileset_children: Option<Vec<NodeId>>,
-    // For filesets, mark entries that should render headers only (empty body).
-    // Note: these entries still participate in priority ordering so they can
-    // surface as empty placeholders without fully disappearing under budgets.
-    pub fileset_entry_suppressed: Option<Vec<bool>>,
+    // For filesets, preserve ingest order and suppression state for render slots.
+    pub fileset_render_slots: Option<Vec<FilesetRenderSlot>>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct FilesetRenderSlot {
+    pub id: NodeId,
+    pub suppressed: bool,
 }
 
 pub const ROOT_PQ_ID: usize = 0;
