@@ -26,6 +26,10 @@ pub enum FilesetInputKind {
     Text { atomic_lines: bool },
 }
 
+#[allow(
+    dead_code,
+    reason = "Public helper kept for external callers that only want the arena"
+)]
 pub fn parse_fileset_multi(
     inputs: Vec<FilesetInput>,
     cfg: &PriorityConfig,

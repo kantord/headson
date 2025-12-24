@@ -70,12 +70,7 @@ pub fn headson(
         // Avoid sampling away potential matches in strong grep mode.
         prio.array_max_items = usize::MAX;
     }
-    let (arena, notices) = match input {
-        InputKind::Fileset(inputs) => {
-            ingest::fileset::parse_fileset_multi_with_notices(inputs, &prio)
-        }
-        other => (crate::ingest::ingest_into_arena(other, &prio)?, Vec::new()),
-    };
+    let (arena, notices) = crate::ingest::ingest_into_arena(input, &prio)?;
     let mut order_build = order::build_order(&arena, &prio)?;
     let out = find_largest_render_under_budgets(
         &mut order_build,
