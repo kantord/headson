@@ -58,7 +58,7 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
         if cli.tree {
             bail!("--tree requires file inputs; stdin mode is not supported");
         }
-        Ok((run_from_stdin(cli, &render_cfg, &grep_cfg)?, Vec::new()))
+        Ok(run_from_stdin(cli, &render_cfg, &grep_cfg)?)
     } else {
         run_from_paths(cli, &render_cfg, &grep_cfg, &resolved_inputs)
     }
@@ -86,14 +86,14 @@ fn run_from_stdin(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
-) -> Result<String> {
+) -> Result<(String, CliWarnings)> {
     let input_bytes = read_stdin()?;
     let input_count = 1usize;
     let mut cfg = render_cfg.clone();
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
     let (cfg, prio, budgets) = build_effective_configs(cli, cfg, input_count);
     let chosen_input = cli.input_format.unwrap_or(InputFormat::Json);
-    let (out, _) = render_single_input(
+    let (out, warnings) = render_single_input(
         chosen_input,
         input_bytes,
         &cfg,
@@ -101,7 +101,7 @@ fn run_from_stdin(
         grep_cfg,
         budgets,
     )?;
-    Ok(out)
+    Ok((out, warnings))
 }
 
 fn run_from_paths(
