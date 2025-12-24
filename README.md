@@ -181,6 +181,7 @@ Notes:
 - Sorting: inputs are ordered so frequently and recently touched files appear first (git metadata when available, mtime fallback). Pass `--no-sort` to preserve the order you provided and skip repo scanning.
 - Headers: multi-file output gets `==>` headers when newlines are enabled; hide them with `--no-header`. Compact and single-line modes omit headers automatically.
 - Formats: in `--format auto`, each file picks JSON/YAML/Text based on extension; unknowns fall back to Text so mixed inputs “just work.”
+- Parse failures: in multi-file mode, JSON/YAML parse failures are reported on stderr and the file renders as a header/tree entry with an empty body.
 - Per-file caps: omission markers count toward per-file line budgets; a per-file line cap of zero suppresses the file entirely, even when headers are counted.
 
 #### Grep mode

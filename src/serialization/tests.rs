@@ -542,7 +542,7 @@ fn force_child_hooks_removed() {
 #[test]
 fn fileset_tree_headers_free_keep_slot_stats_on_body_only() {
     let cfg_prio = crate::PriorityConfig::new(usize::MAX, usize::MAX);
-    let arena = crate::ingest::fileset::parse_fileset_multi(
+    let (arena, _) = crate::ingest::fileset::parse_fileset_multi(
         vec![
             crate::ingest::fileset::FilesetInput {
                 name: "a.txt".to_string(),
@@ -625,7 +625,7 @@ fn fileset_tree_headers_free_keep_slot_stats_on_body_only() {
 #[test]
 fn fileset_tree_headers_free_scaffold_does_not_change_slot_stats() {
     let cfg_prio = crate::PriorityConfig::new(usize::MAX, usize::MAX);
-    let arena = crate::ingest::fileset::parse_fileset_multi(
+    let (arena, _) = crate::ingest::fileset::parse_fileset_multi(
         vec![
             crate::ingest::fileset::FilesetInput {
                 name: "a.txt".to_string(),
@@ -714,7 +714,7 @@ fn fileset_tree_headers_free_scaffold_does_not_change_slot_stats() {
 #[test]
 fn fileset_sections_slot_stats_respect_header_budgeting() {
     let cfg_prio = crate::PriorityConfig::new(usize::MAX, usize::MAX);
-    let arena = crate::ingest::fileset::parse_fileset_multi(
+    let (arena, _) = crate::ingest::fileset::parse_fileset_multi(
         vec![
             crate::ingest::fileset::FilesetInput {
                 name: "a.txt".to_string(),
@@ -814,7 +814,7 @@ fn fileset_sections_slot_stats_respect_header_budgeting() {
 #[test]
 fn slot_stats_match_render_for_code_and_text() {
     let cfg_prio = crate::PriorityConfig::new(usize::MAX, usize::MAX);
-    let arena = crate::ingest::fileset::parse_fileset_multi(
+    let (arena, _) = crate::ingest::fileset::parse_fileset_multi(
         vec![crate::ingest::fileset::FilesetInput {
             name: "main.rs".to_string(),
             bytes: b"fn main() {}\nprintln!(\"hi\");\n".to_vec(),

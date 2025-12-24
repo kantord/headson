@@ -32,9 +32,9 @@ pub fn ingest_into_arena(
             parse_text_one_with_mode(bytes, priority_cfg, atomic)
                 .map(|arena| (arena, Vec::<String>::new()))
         }
-        InputKind::Fileset(inputs) => Ok(
-            fileset::parse_fileset_multi_with_notices(inputs, priority_cfg),
-        ),
+        InputKind::Fileset(inputs) => {
+            Ok(fileset::parse_fileset_multi(inputs, priority_cfg))
+        }
     }
 }
 

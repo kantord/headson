@@ -26,19 +26,8 @@ pub enum FilesetInputKind {
     Text { atomic_lines: bool },
 }
 
-#[allow(
-    dead_code,
-    reason = "Public helper kept for external callers that only want the arena"
-)]
+/// Parse a fileset and return any parse notices.
 pub fn parse_fileset_multi(
-    inputs: Vec<FilesetInput>,
-    cfg: &PriorityConfig,
-) -> JsonTreeArena {
-    let (arena, _) = parse_fileset_multi_with_notices(inputs, cfg);
-    arena
-}
-
-pub fn parse_fileset_multi_with_notices(
     inputs: Vec<FilesetInput>,
     cfg: &PriorityConfig,
 ) -> (JsonTreeArena, Vec<String>) {
