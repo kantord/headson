@@ -30,7 +30,6 @@ mod serialization;
 mod utils;
 pub use grep::build_grep_config;
 pub use grep::{GrepConfig, GrepShow};
-pub use ingest::IngestOutput;
 pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
 pub use order::{

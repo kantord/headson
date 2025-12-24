@@ -18,13 +18,13 @@ pub mod sampling;
 pub use formats::{parse_json_one, parse_text_one_with_mode, parse_yaml_one};
 
 #[derive(Debug)]
-pub struct IngestOutput {
+pub(crate) struct IngestOutput {
     pub arena: TreeArena,
     pub warnings: Vec<String>,
 }
 
 /// Dispatch the appropriate ingest path for any supported input kind.
-pub fn ingest_into_arena(
+pub(crate) fn ingest_into_arena(
     input: InputKind,
     priority_cfg: &PriorityConfig,
 ) -> Result<IngestOutput> {
