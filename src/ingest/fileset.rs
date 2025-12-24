@@ -115,6 +115,11 @@ pub(crate) fn build_fileset_root(
     mut items: Vec<(String, JsonTreeArena)>,
     suppressed_entries: Vec<bool>,
 ) -> JsonTreeArena {
+    debug_assert_eq!(
+        items.len(),
+        suppressed_entries.len(),
+        "fileset suppression flags must align with fileset items"
+    );
     let mut arena = JsonTreeArena {
         root_id: 0,
         is_fileset: true,
