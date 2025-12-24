@@ -21,18 +21,18 @@ fn fileset_parse_error_falls_back_to_text() {
     );
 
     assert!(
-        out.stdout.contains("==> bad.json <=="),
-        "expected bad.json to be included: {}",
+        !out.stdout.contains("==> bad.json <=="),
+        "expected bad.json to be skipped: {}",
         out.stdout
     );
     assert!(
-        out.stdout.contains("INVALID_JSON_"),
-        "expected bad.json to fall back to text: {}",
+        !out.stdout.contains("INVALID_JSON_"),
+        "expected bad.json content to be omitted: {}",
         out.stdout
     );
     assert!(
         out.stderr.contains("bad.json")
-            && out.stderr.contains("falling back to text"),
+            && out.stderr.contains("Failed to parse"),
         "expected stderr notice about fallback: {}",
         out.stderr
     );
@@ -60,13 +60,8 @@ fn fileset_tree_parse_error_falls_back_to_text() {
     );
 
     assert!(
-        out.stdout.contains("bad.json"),
-        "expected bad.json to be present in tree: {}",
-        out.stdout
-    );
-    assert!(
-        out.stdout.contains("INVALID_JSON_"),
-        "expected bad.json to fall back to text in tree: {}",
+        !out.stdout.contains("bad.json"),
+        "expected bad.json to be skipped in tree: {}",
         out.stdout
     );
 }

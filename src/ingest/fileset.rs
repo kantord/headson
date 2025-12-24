@@ -1,5 +1,4 @@
 use crate::order::NodeKind;
-use crate::utils::extensions;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
 use super::formats::{
@@ -50,50 +49,48 @@ pub fn parse_fileset_multi_with_notices(
     {
         let arena = match kind {
             FilesetInputKind::Json => {
-                parse_json_or_fallback(&name, &mut bytes, cfg, &mut notices)
+                parse_json_or_skip(&name, &mut bytes, cfg, &mut notices)
             }
             FilesetInputKind::Yaml => {
-                parse_yaml_or_fallback(&name, &bytes, cfg, &mut notices)
+                parse_yaml_or_skip(&name, &bytes, cfg, &mut notices)
             }
             FilesetInputKind::Text { atomic_lines } => {
-                parse_text_bytes(&bytes, cfg, atomic_lines)
+                Some(parse_text_bytes(&bytes, cfg, atomic_lines))
             }
         };
-        arenas.push((name, arena));
+        if let Some(arena) = arena {
+            arenas.push((name, arena));
+        }
     }
     (build_fileset_root(arenas), notices)
 }
 
-fn parse_json_or_fallback(
+fn parse_json_or_skip(
     name: &str,
     bytes: &mut [u8],
     cfg: &PriorityConfig,
     notices: &mut Vec<String>,
-) -> JsonTreeArena {
+) -> Option<JsonTreeArena> {
     match build_json_tree_arena_from_slice(bytes, cfg) {
-        Ok(arena) => arena,
+        Ok(arena) => Some(arena),
         Err(err) => {
-            notices.push(format!(
-                "Failed to parse {name} as JSON: {err}; falling back to text"
-            ));
-            parse_text_fallback(name, bytes, cfg)
+            notices.push(format!("Failed to parse {name} as JSON: {err}"));
+            None
         }
     }
 }
 
-fn parse_yaml_or_fallback(
+fn parse_yaml_or_skip(
     name: &str,
     bytes: &[u8],
     cfg: &PriorityConfig,
     notices: &mut Vec<String>,
-) -> JsonTreeArena {
+) -> Option<JsonTreeArena> {
     match build_yaml_tree_arena_from_slice(bytes, cfg) {
-        Ok(arena) => arena,
+        Ok(arena) => Some(arena),
         Err(err) => {
-            notices.push(format!(
-                "Failed to parse {name} as YAML: {err}; falling back to text"
-            ));
-            parse_text_fallback(name, bytes, cfg)
+            notices.push(format!("Failed to parse {name} as YAML: {err}"));
+            None
         }
     }
 }
@@ -108,29 +105,6 @@ fn parse_text_bytes(
     } else {
         build_text_tree_arena_from_bytes(bytes, cfg)
     }
-}
-
-fn parse_text_fallback(
-    name: &str,
-    bytes: &[u8],
-    cfg: &PriorityConfig,
-) -> JsonTreeArena {
-    if let Some(atomic) = fallback_atomic_lines(name) {
-        parse_text_bytes(bytes, cfg, atomic)
-    } else {
-        build_text_tree_arena_from_bytes(bytes, cfg)
-    }
-}
-
-fn fallback_atomic_lines(name: &str) -> Option<bool> {
-    let lower = name.to_ascii_lowercase();
-    if lower.ends_with(".json")
-        || lower.ends_with(".yaml")
-        || lower.ends_with(".yml")
-    {
-        return None;
-    }
-    Some(extensions::is_code_like_name(&lower))
 }
 
 pub(crate) fn build_fileset_root(
