@@ -45,16 +45,6 @@ pub use serialization::types::{
     ColorMode, ColorStrategy, OutputTemplate, RenderConfig, Style,
 };
 
-#[doc(hidden)]
-pub fn validate_json_bytes(bytes: &[u8], cfg: &PriorityConfig) -> Result<()> {
-    ingest::formats::json::parse_json_one(bytes.to_vec(), cfg).map(|_| ())
-}
-
-#[doc(hidden)]
-pub fn validate_yaml_bytes(bytes: &[u8], cfg: &PriorityConfig) -> Result<()> {
-    ingest::formats::yaml::parse_yaml_one(bytes.to_vec(), cfg).map(|_| ())
-}
-
 #[derive(Copy, Clone, Debug)]
 pub enum TextMode {
     Plain,
@@ -89,4 +79,32 @@ pub fn headson(
         grep,
         budgets,
     ))
+}
+
+pub fn headson_with_notices(
+    input: InputKind,
+    config: &RenderConfig,
+    priority_cfg: &PriorityConfig,
+    grep: &GrepConfig,
+    budgets: Budgets,
+) -> Result<(String, Vec<String>)> {
+    let mut prio = *priority_cfg;
+    if grep.regex.is_some() && !grep.weak {
+        // Avoid sampling away potential matches in strong grep mode.
+        prio.array_max_items = usize::MAX;
+    }
+    let (arena, notices) = match input {
+        InputKind::Fileset(inputs) => {
+            ingest::fileset::parse_fileset_multi_with_notices(inputs, &prio)
+        }
+        other => (crate::ingest::ingest_into_arena(other, &prio)?, Vec::new()),
+    };
+    let mut order_build = order::build_order(&arena, &prio)?;
+    let out = find_largest_render_under_budgets(
+        &mut order_build,
+        config,
+        grep,
+        budgets,
+    );
+    Ok((out, notices))
 }

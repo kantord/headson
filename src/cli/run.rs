@@ -75,35 +75,6 @@ fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
     }
 }
 
-fn detect_fileset_input_kind_with_fallback(
-    name: &str,
-    bytes: &[u8],
-    prio: &headson::PriorityConfig,
-    notices: &mut IgnoreNotices,
-) -> headson::FilesetInputKind {
-    let kind = detect_fileset_input_kind(name);
-    match kind {
-        headson::FilesetInputKind::Json => {
-            if let Err(err) = headson::validate_json_bytes(bytes, prio) {
-                notices.push(format!(
-                    "Failed to parse {name} as JSON: {err}; falling back to text"
-                ));
-                return fileset_text_kind(&name.to_ascii_lowercase());
-            }
-        }
-        headson::FilesetInputKind::Yaml => {
-            if let Err(err) = headson::validate_yaml_bytes(bytes, prio) {
-                notices.push(format!(
-                    "Failed to parse {name} as YAML: {err}; falling back to text"
-                ));
-                return fileset_text_kind(&name.to_ascii_lowercase());
-            }
-        }
-        headson::FilesetInputKind::Text { .. } => {}
-    }
-    kind
-}
-
 fn fileset_text_kind(lower_name: &str) -> headson::FilesetInputKind {
     let atomic = headson::extensions::is_code_like_name(lower_name);
     headson::FilesetInputKind::Text {
@@ -572,22 +543,18 @@ fn render_fileset(
     let files: Vec<headson::FilesetInput> = entries
         .into_iter()
         .map(|(name, bytes)| {
-            let kind = detect_fileset_input_kind_with_fallback(
-                &name,
-                &bytes,
-                &prio,
-                &mut notices,
-            );
+            let kind = detect_fileset_input_kind(&name);
             headson::FilesetInput { name, bytes, kind }
         })
         .collect();
-    let out = headson::headson(
+    let (out, fallback_notices) = headson::headson_with_notices(
         headson::InputKind::Fileset(files),
         &cfg,
         &prio,
         grep_cfg,
         budgets,
     )?;
+    notices.extend(fallback_notices);
     if grep_cfg.regex.is_some()
         && matches!(grep_cfg.show, headson::GrepShow::Matching)
         && !grep_cfg.weak

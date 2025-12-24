@@ -30,7 +30,7 @@ pub fn ingest_into_arena(
             parse_text_one_with_mode(bytes, priority_cfg, atomic)
         }
         InputKind::Fileset(inputs) => {
-            fileset::parse_fileset_multi(inputs, priority_cfg)
+            Ok(fileset::parse_fileset_multi(inputs, priority_cfg))
         }
     }
 }
