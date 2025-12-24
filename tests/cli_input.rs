@@ -63,7 +63,7 @@ fn unreadable_file_path_errors_with_stderr() {
 }
 
 #[test]
-fn directories_and_binary_files_are_ignored_with_notices() {
+fn directories_and_binary_files_are_ignored_with_warnings() {
     let tmpdir = tempfile::tempdir().expect("tmpdir");
 
     let dir_path = tmpdir.path().join("subdir");
@@ -95,7 +95,7 @@ fn directories_and_binary_files_are_ignored_with_notices() {
     assert!(
         err.contains("Ignored directory:")
             && err.contains("Ignored binary file:"),
-        "stderr should contain ignore notices, got: {err:?}"
+        "stderr should contain ignore warnings, got: {err:?}"
     );
 }
 
@@ -104,7 +104,7 @@ fn directories_and_binary_files_are_ignored_with_notices() {
     clippy::cognitive_complexity,
     reason = "single test covers two flows succinctly"
 )]
-fn only_ignored_inputs_result_in_empty_output_and_notices() {
+fn only_ignored_inputs_result_in_empty_output_and_warnings() {
     let tmpdir = tempfile::tempdir().expect("tmpdir");
 
     let dir_path = tmpdir.path().join("subdir");
@@ -150,7 +150,7 @@ fn only_ignored_inputs_result_in_empty_output_and_notices() {
     assert!(
         err2.contains("Ignored directory:")
             && err2.contains("Ignored binary file:"),
-        "stderr should contain both ignore notices, got: {err2:?}"
+        "stderr should contain both ignore warnings, got: {err2:?}"
     );
 }
 

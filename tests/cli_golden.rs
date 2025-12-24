@@ -48,7 +48,7 @@ fn cli_golden_stdin_file_and_fileset() {
 }
 
 #[test]
-fn cli_notices_for_grep_and_binary_skip() {
+fn cli_warnings_for_grep_and_binary_skip() {
     let dir = tempfile::tempdir().expect("tmpdir");
     let dir_path = dir.path();
     fs::write(dir_path.join("text.txt"), b"hello world\n").unwrap();
@@ -69,5 +69,5 @@ fn cli_notices_for_grep_and_binary_skip() {
     );
 
     let snap = format!("STDOUT:\n{stdout}\nSTDERR:\n{stderr}");
-    insta::assert_snapshot!("cli_grep_and_binary_notices", snap);
+    insta::assert_snapshot!("cli_grep_and_binary_warnings", snap);
 }

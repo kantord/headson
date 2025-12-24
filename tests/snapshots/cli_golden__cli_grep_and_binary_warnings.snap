@@ -1,6 +1,6 @@
 ---
 source: tests/cli_golden.rs
-assertion_line: 97
+assertion_line: 72
 expression: snap
 ---
 STDOUT:

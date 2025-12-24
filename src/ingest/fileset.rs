@@ -19,6 +19,13 @@ pub struct FilesetInput {
     pub kind: FilesetInputKind,
 }
 
+#[derive(Debug)]
+pub(crate) struct FilesetEntry {
+    pub name: String,
+    pub arena: JsonTreeArena,
+    pub suppressed: bool,
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum FilesetInputKind {
     Json,
@@ -31,9 +38,7 @@ pub fn parse_fileset_multi(
     inputs: Vec<FilesetInput>,
     cfg: &PriorityConfig,
 ) -> (JsonTreeArena, Vec<String>) {
-    let mut arenas: Vec<(String, JsonTreeArena)> =
-        Vec::with_capacity(inputs.len());
-    let mut suppressed_entries: Vec<bool> = Vec::with_capacity(inputs.len());
+    let mut entries: Vec<FilesetEntry> = Vec::with_capacity(inputs.len());
     let mut warnings: Vec<String> = Vec::new();
     for FilesetInput {
         name,
@@ -52,10 +57,13 @@ pub fn parse_fileset_multi(
                 (parse_text_bytes(&bytes, cfg, atomic_lines), false)
             }
         };
-        arenas.push((name, arena));
-        suppressed_entries.push(suppressed);
+        entries.push(FilesetEntry {
+            name,
+            arena,
+            suppressed,
+        });
     }
-    (build_fileset_root(arenas, suppressed_entries), warnings)
+    (build_fileset_root(entries), warnings)
 }
 
 fn parse_json_or_empty(
@@ -112,18 +120,13 @@ fn empty_object_arena() -> JsonTreeArena {
 }
 
 pub(crate) fn build_fileset_root(
-    mut items: Vec<(String, JsonTreeArena)>,
-    suppressed_entries: Vec<bool>,
+    mut entries: Vec<FilesetEntry>,
 ) -> JsonTreeArena {
-    debug_assert_eq!(
-        items.len(),
-        suppressed_entries.len(),
-        "fileset suppression flags must align with fileset items"
-    );
+    let mut suppressed_entries: Vec<bool> = Vec::with_capacity(entries.len());
     let mut arena = JsonTreeArena {
         root_id: 0,
         is_fileset: true,
-        fileset_entry_suppressed: suppressed_entries,
+        fileset_entry_suppressed: Vec::new(),
         ..JsonTreeArena::default()
     };
     arena.nodes.push(JsonTreeNode {
@@ -131,13 +134,19 @@ pub(crate) fn build_fileset_root(
         ..JsonTreeNode::default()
     });
 
-    let mut root_children: Vec<usize> = Vec::with_capacity(items.len());
-    let mut root_keys: Vec<String> = Vec::with_capacity(items.len());
+    let mut root_children: Vec<usize> = Vec::with_capacity(entries.len());
+    let mut root_keys: Vec<String> = Vec::with_capacity(entries.len());
 
-    for (key, child) in items.drain(..) {
+    for FilesetEntry {
+        name,
+        arena: child,
+        suppressed,
+    } in entries.drain(..)
+    {
         let child_root = append_subtree(&mut arena, child);
         root_children.push(child_root);
-        root_keys.push(key);
+        root_keys.push(name);
+        suppressed_entries.push(suppressed);
     }
 
     let children_start = arena.children.len();
@@ -153,6 +162,7 @@ pub(crate) fn build_fileset_root(
         root.obj_keys_len = root.children_len;
         root.object_len = Some(root.children_len);
     }
+    arena.fileset_entry_suppressed = suppressed_entries;
 
     arena
 }

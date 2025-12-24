@@ -58,27 +58,28 @@ fn duplicate_lines_not_penalized_across_fileset() {
     // Two files share "dup"; each has a unique line. Cross-file duplicates should not be demoted.
     let mut cfg = PriorityConfig::new(usize::MAX, 5);
     cfg.line_budget_only = false;
-    let arena = crate::ingest::fileset::build_fileset_root(
-        vec![
-            (
-                "a".to_string(),
+    let arena = crate::ingest::fileset::build_fileset_root(vec![
+        crate::ingest::fileset::FilesetEntry {
+            name: "a".to_string(),
+            arena:
                 crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
                     b"dup\nunique_a\n",
                     &cfg,
                     true,
                 ),
-            ),
-            (
-                "b".to_string(),
+            suppressed: false,
+        },
+        crate::ingest::fileset::FilesetEntry {
+            name: "b".to_string(),
+            arena:
                 crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
                     b"dup\nunique_b\n",
                     &cfg,
                     true,
                 ),
-            ),
-        ],
-        vec![false, false],
-    );
+            suppressed: false,
+        },
+    ]);
     let build = super::build_order(&arena, &cfg).expect("order");
     let mut positions = std::collections::HashMap::new();
     for (pos, nid) in build.by_priority.iter().enumerate() {
@@ -113,27 +114,28 @@ fn duplicate_lines_not_penalized_across_fileset() {
 fn fileset_round_robin_with_duplicates_and_braces() {
     let mut cfg = PriorityConfig::new(usize::MAX, 8);
     cfg.line_budget_only = true;
-    let arena = crate::ingest::fileset::build_fileset_root(
-        vec![
-            (
-                "a.rs".to_string(),
+    let arena = crate::ingest::fileset::build_fileset_root(vec![
+        crate::ingest::fileset::FilesetEntry {
+            name: "a.rs".to_string(),
+            arena:
                 crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
                     b"fn shared() {}\n{\n}\nshared()\n",
                     &cfg,
                     true,
                 ),
-            ),
-            (
-                "b.rs".to_string(),
+            suppressed: false,
+        },
+        crate::ingest::fileset::FilesetEntry {
+            name: "b.rs".to_string(),
+            arena:
                 crate::ingest::formats::text::build_text_tree_arena_from_bytes_with_mode(
                     b"fn shared() {}\n{\n}\nunique_b()\n",
                     &cfg,
                     true,
                 ),
-            ),
-        ],
-        vec![false, false],
-    );
+            suppressed: false,
+        },
+    ]);
     let build = super::build_order(&arena, &cfg).expect("order");
     let files = build.fileset_children.as_ref().expect("fileset roots");
     let mut lines: Vec<String> = Vec::new();
