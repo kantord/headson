@@ -619,7 +619,7 @@ fn build_fileset_summary(
     if order.object_type.get(ROOT_PQ_ID) != Some(&ObjectType::Fileset) {
         return None;
     }
-    let children = order.fileset_render_slots_or_root().unwrap_or(&[]);
+    let children = order.fileset_render_slots().unwrap_or(&[]);
     let mut out = Vec::with_capacity(children.len());
     for child in children {
         let cid = child.id.0;

@@ -34,6 +34,7 @@ impl<'a> RenderEngine<'a> {
         depth: usize,
         out: &mut crate::serialization::output::Out<'_>,
     ) {
+        // Clone to avoid holding an immutable borrow of self across rendering.
         let Some(children) =
             self.fileset_children().map(<[FilesetRenderSlot]>::to_vec)
         else {
@@ -56,6 +57,7 @@ impl<'a> RenderEngine<'a> {
         depth: usize,
         out: &mut crate::serialization::output::Out<'_>,
     ) {
+        // Clone to avoid holding an immutable borrow of self across rendering.
         let Some(children) =
             self.fileset_children().map(<[FilesetRenderSlot]>::to_vec)
         else {

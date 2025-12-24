@@ -188,9 +188,7 @@ pub struct FilesetRenderSlot {
 }
 
 impl PriorityOrder {
-    pub fn fileset_render_slots_or_root(
-        &self,
-    ) -> Option<&[FilesetRenderSlot]> {
+    pub fn fileset_render_slots(&self) -> Option<&[FilesetRenderSlot]> {
         self.fileset_render_slots.as_deref()
     }
 }

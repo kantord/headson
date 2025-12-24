@@ -353,8 +353,7 @@ fn filter_fileset_without_matches(
     {
         return;
     }
-    let Some(fileset_slots) = order_build.fileset_render_slots_or_root()
-    else {
+    let Some(fileset_slots) = order_build.fileset_render_slots() else {
         return;
     };
     if fileset_slots.is_empty() {
@@ -443,7 +442,7 @@ pub(crate) fn compute_fileset_slot_map(
     {
         return None;
     }
-    let children = order_build.fileset_render_slots_or_root()?;
+    let children = order_build.fileset_render_slots()?;
     if children.is_empty() {
         return None;
     }
@@ -452,12 +451,10 @@ pub(crate) fn compute_fileset_slot_map(
     for (slot, child) in children.iter().enumerate() {
         let mut stack = vec![child.id.0];
         while let Some(node_idx) = stack.pop() {
-            if slots.get(node_idx).is_some_and(Option::is_some) {
+            if slots[node_idx].is_some() {
                 continue;
             }
-            if let Some(slot_ref) = slots.get_mut(node_idx) {
-                *slot_ref = Some(slot);
-            }
+            slots[node_idx] = Some(slot);
             if let Some(kids) = order_build.children.get(node_idx) {
                 stack.extend(kids.iter().map(|k| k.0));
             }
@@ -509,7 +506,7 @@ impl FilesetSlots {
 }
 
 fn fileset_slot_names(order_build: &PriorityOrder) -> Option<Vec<String>> {
-    let children = order_build.fileset_render_slots_or_root()?;
+    let children = order_build.fileset_render_slots()?;
     if children.is_empty() {
         return None;
     }
@@ -819,8 +816,7 @@ fn ensure_fileset_headers_for_empty_slots(
     if slots.count == 0 {
         return;
     }
-    let Some(fileset_children) = order_build.fileset_render_slots_or_root()
-    else {
+    let Some(fileset_children) = order_build.fileset_render_slots() else {
         return;
     };
     if inclusion_flags.len() < order_build.total_nodes {
