@@ -619,24 +619,9 @@ fn build_fileset_summary(
     if order.object_type.get(ROOT_PQ_ID) != Some(&ObjectType::Fileset) {
         return None;
     }
-    let fallback_slots;
-    let children =
-        if let Some(children) = order.fileset_render_slots.as_deref() {
-            children
-        } else if let Some(ids) = order.children.get(ROOT_PQ_ID) {
-            fallback_slots = ids
-                .iter()
-                .map(|id| crate::order::FilesetRenderSlot {
-                    id: *id,
-                    suppressed: false,
-                })
-                .collect::<Vec<_>>();
-            fallback_slots.as_slice()
-        } else {
-            &[]
-        };
-    let mut out = Vec::new();
-    for child in children {
+    let children = order.fileset_render_slots_or_root().unwrap_or_default();
+    let mut out = Vec::with_capacity(children.len());
+    for child in &children {
         let cid = child.id.0;
         let key = order.nodes[cid].key_in_object().unwrap_or("").to_string();
         let included_root = inclusion_flags

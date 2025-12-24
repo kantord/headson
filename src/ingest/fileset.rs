@@ -122,11 +122,9 @@ fn empty_object_arena() -> JsonTreeArena {
 pub(crate) fn build_fileset_root(
     mut entries: Vec<FilesetEntry>,
 ) -> JsonTreeArena {
-    let mut suppressed_entries: Vec<bool> = Vec::with_capacity(entries.len());
     let mut arena = JsonTreeArena {
         root_id: 0,
         is_fileset: true,
-        fileset_entry_suppressed: Vec::new(),
         ..JsonTreeArena::default()
     };
     arena.nodes.push(JsonTreeNode {
@@ -144,9 +142,11 @@ pub(crate) fn build_fileset_root(
     } in entries.drain(..)
     {
         let child_root = append_subtree(&mut arena, child);
+        if let Some(node) = arena.nodes.get_mut(child_root) {
+            node.fileset_suppressed = suppressed;
+        }
         root_children.push(child_root);
         root_keys.push(name);
-        suppressed_entries.push(suppressed);
     }
 
     let children_start = arena.children.len();
@@ -162,8 +162,6 @@ pub(crate) fn build_fileset_root(
         root.obj_keys_len = root.children_len;
         root.object_len = Some(root.children_len);
     }
-    arena.fileset_entry_suppressed = suppressed_entries;
-
     arena
 }
 

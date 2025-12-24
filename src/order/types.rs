@@ -187,4 +187,23 @@ pub struct FilesetRenderSlot {
     pub suppressed: bool,
 }
 
+impl PriorityOrder {
+    pub fn fileset_render_slots_or_root(
+        &self,
+    ) -> Option<Vec<FilesetRenderSlot>> {
+        if let Some(children) = self.fileset_render_slots.as_ref() {
+            return Some(children.clone());
+        }
+        let ids = self.children.get(ROOT_PQ_ID)?;
+        Some(
+            ids.iter()
+                .map(|id| FilesetRenderSlot {
+                    id: *id,
+                    suppressed: false,
+                })
+                .collect(),
+        )
+    }
+}
+
 pub const ROOT_PQ_ID: usize = 0;

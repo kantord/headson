@@ -823,10 +823,9 @@ pub fn build_order(
             let child_arena_id = arena.children[root.children_start + idx];
             if let Some(Some(pq_id)) = arena_to_pq.get(child_arena_id) {
                 let suppressed = arena
-                    .fileset_entry_suppressed
-                    .get(idx)
-                    .copied()
-                    .unwrap_or(false);
+                    .nodes
+                    .get(child_arena_id)
+                    .is_some_and(|node| node.fileset_suppressed);
                 let id = NodeId(*pq_id);
                 ids.push(id);
                 slots.push(FilesetRenderSlot { id, suppressed });

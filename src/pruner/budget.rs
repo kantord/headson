@@ -2,7 +2,7 @@ use super::pruning_context::HeadsonPruningContext;
 use crate::grep::{
     GrepShow, GrepState, compute_grep_state, reorder_priority_with_must_keep,
 };
-use crate::order::{NodeId, ObjectType, ROOT_PQ_ID};
+use crate::order::{NodeId, ObjectType};
 use crate::utils::measure::{OutputStats, count_output_stats};
 use crate::{GrepConfig, PriorityOrder, RenderConfig};
 use prunist::{
@@ -353,21 +353,7 @@ fn filter_fileset_without_matches(
     {
         return;
     }
-    let Some(fileset_slots) =
-        order_build.fileset_render_slots.clone().or_else(|| {
-            order_build
-                .children
-                .get(crate::order::ROOT_PQ_ID)
-                .cloned()
-                .map(|ids| {
-                    ids.into_iter()
-                        .map(|id| crate::order::FilesetRenderSlot {
-                            id,
-                            suppressed: false,
-                        })
-                        .collect::<Vec<_>>()
-                })
-        })
+    let Some(fileset_slots) = order_build.fileset_render_slots_or_root()
     else {
         return;
     };
@@ -450,24 +436,7 @@ pub(crate) fn compute_fileset_slot_map(
     {
         return None;
     }
-    let fallback_slots;
-    let children =
-        if let Some(children) = order_build.fileset_render_slots.as_deref() {
-            children
-        } else if let Some(ids) =
-            order_build.children.get(crate::order::ROOT_PQ_ID)
-        {
-            fallback_slots = ids
-                .iter()
-                .map(|id| crate::order::FilesetRenderSlot {
-                    id: *id,
-                    suppressed: false,
-                })
-                .collect::<Vec<_>>();
-            fallback_slots.as_slice()
-        } else {
-            return None;
-        };
+    let children = order_build.fileset_render_slots_or_root()?;
     if children.is_empty() {
         return None;
     }
@@ -533,22 +502,7 @@ impl FilesetSlots {
 }
 
 fn fileset_slot_names(order_build: &PriorityOrder) -> Option<Vec<String>> {
-    let fallback_slots;
-    let children =
-        if let Some(children) = order_build.fileset_render_slots.as_deref() {
-            children
-        } else if let Some(ids) = order_build.children.get(ROOT_PQ_ID) {
-            fallback_slots = ids
-                .iter()
-                .map(|id| crate::order::FilesetRenderSlot {
-                    id: *id,
-                    suppressed: false,
-                })
-                .collect::<Vec<_>>();
-            fallback_slots.as_slice()
-        } else {
-            return None;
-        };
+    let children = order_build.fileset_render_slots_or_root()?;
     if children.is_empty() {
         return None;
     }
@@ -858,22 +812,10 @@ fn ensure_fileset_headers_for_empty_slots(
     if slots.count == 0 {
         return;
     }
-    let fallback_slots;
-    let fileset_children =
-        if let Some(children) = order_build.fileset_render_slots.as_deref() {
-            children
-        } else if let Some(ids) = order_build.children.get(ROOT_PQ_ID) {
-            fallback_slots = ids
-                .iter()
-                .map(|id| crate::order::FilesetRenderSlot {
-                    id: *id,
-                    suppressed: false,
-                })
-                .collect::<Vec<_>>();
-            fallback_slots.as_slice()
-        } else {
-            return;
-        };
+    let Some(fileset_children) = order_build.fileset_render_slots_or_root()
+    else {
+        return;
+    };
     if inclusion_flags.len() < order_build.total_nodes {
         inclusion_flags.resize(order_build.total_nodes, 0);
     }
