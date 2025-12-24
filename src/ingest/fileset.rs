@@ -7,7 +7,7 @@ use super::formats::{
         build_text_tree_arena_from_bytes,
         build_text_tree_arena_from_bytes_with_mode,
     },
-    yaml::build_yaml_tree_arena_from_slice,
+    yaml::build_yaml_tree_arena_from_bytes,
 };
 use crate::PriorityConfig;
 
@@ -61,7 +61,7 @@ pub fn parse_fileset_multi(
                 cfg,
                 &mut warnings,
                 "YAML",
-                |bytes, cfg| build_yaml_tree_arena_from_slice(bytes, cfg),
+                |bytes, cfg| build_yaml_tree_arena_from_bytes(bytes, cfg),
             ),
             FilesetInputKind::Text { atomic_lines } => {
                 (parse_text_bytes(&bytes, cfg, atomic_lines), false)

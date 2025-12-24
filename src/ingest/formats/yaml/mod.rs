@@ -11,13 +11,6 @@ pub fn build_yaml_tree_arena_from_bytes(
     bytes: &[u8],
     config: &PriorityConfig,
 ) -> Result<JsonTreeArena> {
-    build_yaml_tree_arena_from_slice(bytes, config)
-}
-
-pub(crate) fn build_yaml_tree_arena_from_slice(
-    bytes: &[u8],
-    config: &PriorityConfig,
-) -> Result<JsonTreeArena> {
     let s = std::str::from_utf8(bytes)
         .map_err(|_| anyhow!("input is not valid UTF-8 text"))?;
     let docs = yaml_rust2::YamlLoader::load_from_str(s)?;
