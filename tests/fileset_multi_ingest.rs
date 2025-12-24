@@ -76,7 +76,7 @@ environments:
     ];
 
     let grep = headson::GrepConfig::default();
-    let out = headson::headson(
+    let (out, _) = headson::headson(
         headson::InputKind::Fileset(inputs),
         &render_config(),
         &priority_config(),

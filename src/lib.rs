@@ -64,29 +64,6 @@ pub fn headson(
     priority_cfg: &PriorityConfig,
     grep: &GrepConfig,
     budgets: Budgets,
-) -> Result<String> {
-    let mut prio = *priority_cfg;
-    if grep.regex.is_some() && !grep.weak {
-        // Avoid sampling away potential matches in strong grep mode.
-        prio.array_max_items = usize::MAX;
-    }
-    let arena = crate::ingest::ingest_into_arena(input, &prio)?;
-    let mut order_build = order::build_order(&arena, &prio)?;
-
-    Ok(find_largest_render_under_budgets(
-        &mut order_build,
-        config,
-        grep,
-        budgets,
-    ))
-}
-
-pub fn headson_with_notices(
-    input: InputKind,
-    config: &RenderConfig,
-    priority_cfg: &PriorityConfig,
-    grep: &GrepConfig,
-    budgets: Budgets,
 ) -> Result<(String, Vec<String>)> {
     let mut prio = *priority_cfg;
     if grep.regex.is_some() && !grep.weak {

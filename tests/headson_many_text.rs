@@ -37,7 +37,7 @@ fn headson_many_text_smoke() {
         },
     ];
     let grep = headson::GrepConfig::default();
-    let out = headson::headson(
+    let (out, _) = headson::headson(
         headson::InputKind::Fileset(inputs),
         &cfg,
         &prio,

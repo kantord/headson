@@ -93,14 +93,15 @@ fn run_from_stdin(
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
     let (cfg, prio, budgets) = build_effective_configs(cli, cfg, input_count);
     let chosen_input = cli.input_format.unwrap_or(InputFormat::Json);
-    render_single_input(
+    let (out, _) = render_single_input(
         chosen_input,
         input_bytes,
         &cfg,
         &prio,
         grep_cfg,
         budgets,
-    )
+    )?;
+    Ok(out)
 }
 
 fn run_from_paths(
@@ -455,7 +456,7 @@ fn render_single_input(
     prio: &headson::PriorityConfig,
     grep_cfg: &headson::GrepConfig,
     budgets: headson::Budgets,
-) -> Result<String> {
+) -> Result<(String, IgnoreNotices)> {
     let text_mode = if matches!(cfg.template, headson::OutputTemplate::Code) {
         headson::TextMode::CodeLike
     } else {
@@ -547,7 +548,7 @@ fn render_fileset(
             headson::FilesetInput { name, bytes, kind }
         })
         .collect();
-    let (out, fallback_notices) = headson::headson_with_notices(
+    let (out, fallback_notices) = headson::headson(
         headson::InputKind::Fileset(files),
         &cfg,
         &prio,
@@ -567,7 +568,7 @@ fn render_fileset(
 
 fn render_single_entry(
     mut entries: InputEntries,
-    notices: IgnoreNotices,
+    mut notices: IgnoreNotices,
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
@@ -577,28 +578,16 @@ fn render_single_entry(
         .expect("single-entry render expects one ingested input");
     let lower = name.to_ascii_lowercase();
     let chosen_input = select_input_format(cli, &lower);
-    let mut cfg = render_cfg.clone();
-    cfg.template =
-        resolve_effective_template_for_single(cli.format, cfg.style, &lower);
-    cfg.primary_source_name = Some(name.clone());
-    let (cfg, prio, budgets) = build_effective_configs(cli, cfg, 1usize);
-    let is_auto = matches!(cli.format, OutputFormat::Auto);
-    let mut cfg_for_render = cfg;
-    if let InputFormat::Text = chosen_input {
-        let is_code = headson::extensions::is_code_like_name(
-            cfg_for_render
-                .primary_source_name
-                .as_deref()
-                .unwrap_or_default(),
-        );
-        if is_auto
-            && is_code
-            && matches!(cfg_for_render.template, headson::OutputTemplate::Text)
-        {
-            cfg_for_render.template = headson::OutputTemplate::Code;
-        }
-    }
-    let out = render_single_input(
+    let cfg_for_render = build_single_render_config(
+        cli,
+        render_cfg,
+        &lower,
+        &name,
+        chosen_input,
+    );
+    let (cfg_for_render, prio, budgets) =
+        build_effective_configs(cli, cfg_for_render, 1usize);
+    let (out, mut fallback_notices) = render_single_input(
         chosen_input,
         bytes,
         &cfg_for_render,
@@ -607,7 +596,37 @@ fn render_single_entry(
         budgets,
     )
     .with_context(|| format!("failed to parse input file: {name}"))?;
+    if !fallback_notices.is_empty() {
+        notices.append(&mut fallback_notices);
+    }
     Ok((out, notices))
+}
+
+fn build_single_render_config(
+    cli: &Cli,
+    render_cfg: &headson::RenderConfig,
+    lower_name: &str,
+    source_name: &str,
+    chosen_input: InputFormat,
+) -> headson::RenderConfig {
+    let mut cfg = render_cfg.clone();
+    cfg.template = resolve_effective_template_for_single(
+        cli.format, cfg.style, lower_name,
+    );
+    cfg.primary_source_name = Some(source_name.to_string());
+    if let InputFormat::Text = chosen_input {
+        let is_auto = matches!(cli.format, OutputFormat::Auto);
+        let is_code = headson::extensions::is_code_like_name(
+            cfg.primary_source_name.as_deref().unwrap_or_default(),
+        );
+        if is_auto
+            && is_code
+            && matches!(cfg.template, headson::OutputTemplate::Text)
+        {
+            cfg.template = headson::OutputTemplate::Code;
+        }
+    }
+    cfg
 }
 
 fn select_input_format(cli: &Cli, lower_name: &str) -> InputFormat {

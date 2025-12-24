@@ -738,7 +738,7 @@ fn grep_highlights_for_library_calls_without_extra_config() {
         weak: false,
         show: headson::GrepShow::Matching,
     };
-    let out = headson::headson(
+    let (out, _) = headson::headson(
         InputKind::Json(br#"{"needle":1,"other":2}"#.to_vec()),
         &cfg,
         &prio,

@@ -511,7 +511,7 @@ mod tests {
         let (cfg, prio) = cfg_text();
         let input = b"a\nb\nc".to_vec();
         let grep = GrepConfig::default();
-        let out = crate::headson(
+        let (out, _) = crate::headson(
             InputKind::Text {
                 bytes: input,
                 mode: crate::TextMode::Plain,
@@ -582,7 +582,7 @@ mod tests {
         // Budget small so only some lines fit
         cfg.style = Style::Default;
         let grep = GrepConfig::default();
-        let out = crate::headson(
+        let (out, _) = crate::headson(
             InputKind::Text {
                 bytes: input.into_bytes(),
                 mode: crate::TextMode::Plain,

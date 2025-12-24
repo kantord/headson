@@ -39,7 +39,7 @@ fn yaml_coloring_applies_and_strips_to_plain() {
         per_slot: None,
     };
     let grep = headson::GrepConfig::default();
-    let plain = headson::headson(
+    let (plain, _) = headson::headson(
         headson::InputKind::Yaml(input.clone()),
         &cfg_plain,
         &prio,
@@ -47,7 +47,7 @@ fn yaml_coloring_applies_and_strips_to_plain() {
         budgets,
     )
     .expect("plain yaml");
-    let colored = headson::headson(
+    let (colored, _) = headson::headson(
         headson::InputKind::Yaml(input),
         &cfg_color,
         &prio,

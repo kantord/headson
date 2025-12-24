@@ -650,6 +650,7 @@ fn tree_omitted_folders_render_in_input_order() {
             budgets,
         )
         .expect("render tree")
+        .0
     };
 
     // Run multiple times to flush out nondeterministic ordering.
