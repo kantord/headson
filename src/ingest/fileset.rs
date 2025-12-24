@@ -1,6 +1,7 @@
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
+use super::IngestOutput;
 use super::formats::{
     json::build_json_tree_arena_from_slice,
     text::{
@@ -37,7 +38,7 @@ pub enum FilesetInputKind {
 pub fn parse_fileset_multi(
     inputs: Vec<FilesetInput>,
     cfg: &PriorityConfig,
-) -> (JsonTreeArena, Vec<String>) {
+) -> IngestOutput {
     let mut entries: Vec<FilesetEntry> = Vec::with_capacity(inputs.len());
     let mut warnings: Vec<String> = Vec::new();
     for FilesetInput {
@@ -73,7 +74,10 @@ pub fn parse_fileset_multi(
             suppressed,
         });
     }
-    (build_fileset_root(entries), warnings)
+    IngestOutput {
+        arena: build_fileset_root(entries),
+        warnings,
+    }
 }
 
 fn parse_or_empty<B, F>(

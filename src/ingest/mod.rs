@@ -51,9 +51,7 @@ pub(crate) fn ingest_into_arena(
             )
         }
         InputKind::Fileset(inputs) => {
-            let (arena, warnings) =
-                fileset::parse_fileset_multi(inputs, priority_cfg);
-            Ok(IngestOutput { arena, warnings })
+            Ok(fileset::parse_fileset_multi(inputs, priority_cfg))
         }
     }
 }
