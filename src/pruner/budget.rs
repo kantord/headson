@@ -389,14 +389,9 @@ fn filter_fileset_without_matches(
         }
     }
 
-    order_build.by_priority.retain(|node| {
-        match slot_map.get(node.0).copied().flatten() {
-            Some(slot) => keep_slots.get(slot).copied().unwrap_or(false),
-            None => true,
-        }
-    });
-
-    if !keep_fileset_children_for_tree {
+    let filtered_slots = if keep_fileset_children_for_tree {
+        None
+    } else {
         let mut filtered_slots: Vec<crate::order::FilesetRenderSlot> =
             Vec::new();
         for (slot, child) in fileset_slots.iter().enumerate() {
@@ -404,6 +399,17 @@ fn filter_fileset_without_matches(
                 filtered_slots.push(*child);
             }
         }
+        Some(filtered_slots)
+    };
+
+    order_build.by_priority.retain(|node| {
+        match slot_map.get(node.0).copied().flatten() {
+            Some(slot) => keep_slots.get(slot).copied().unwrap_or(false),
+            None => true,
+        }
+    });
+
+    if let Some(filtered_slots) = filtered_slots {
         let filtered_len = filtered_slots.len();
         order_build.fileset_render_slots = Some(filtered_slots);
         if let Some(metrics) =
