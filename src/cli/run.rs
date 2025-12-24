@@ -17,7 +17,7 @@ use crate::sorting::sort_paths_for_fileset;
 
 type InputEntry = (String, Vec<u8>);
 type InputEntries = Vec<InputEntry>;
-pub(crate) type IgnoreNotices = Vec<String>;
+pub(crate) type CliNotices = Vec<String>;
 
 fn build_effective_configs(
     cli: &Cli,
@@ -38,7 +38,7 @@ fn needs_fileset(cli: &Cli, inputs_len: usize) -> bool {
     inputs_len > 1 || cli.tree
 }
 
-pub(crate) fn run(cli: &Cli) -> Result<(String, IgnoreNotices)> {
+pub(crate) fn run(cli: &Cli) -> Result<(String, CliNotices)> {
     budget::validate(cli)?;
     let mut render_cfg = get_render_config_from(cli);
     let grep_cfg = headson::build_grep_config(
@@ -109,7 +109,7 @@ fn run_from_paths(
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
     inputs: &[PathBuf],
-) -> Result<(String, IgnoreNotices)> {
+) -> Result<(String, CliNotices)> {
     let sorted_inputs = if needs_fileset(cli, inputs.len()) && !cli.no_sort {
         sort_paths_for_fileset(inputs)
     } else {
@@ -118,7 +118,7 @@ fn run_from_paths(
     if std::env::var_os("HEADSON_FRECEN_TRACE").is_some() {
         eprintln!("run_from_paths sorted_inputs={sorted_inputs:?}");
     }
-    let (entries, ignored) = ingest_paths(&sorted_inputs)?;
+    let (entries, notices) = ingest_paths(&sorted_inputs)?;
     if std::env::var_os("HEADSON_FRECEN_TRACE").is_some() {
         eprintln!(
             "run_from_paths ingested={:?}",
@@ -126,12 +126,12 @@ fn run_from_paths(
         );
     }
     if needs_fileset(cli, inputs.len()) {
-        return render_fileset(entries, ignored, cli, render_cfg, grep_cfg);
+        return render_fileset(entries, notices, cli, render_cfg, grep_cfg);
     }
     if entries.is_empty() {
-        return Ok((String::new(), ignored));
+        return Ok((String::new(), notices));
     }
-    render_single_entry(entries, ignored, cli, render_cfg, grep_cfg)
+    render_single_entry(entries, notices, cli, render_cfg, grep_cfg)
 }
 
 fn read_stdin() -> Result<Vec<u8>> {
@@ -177,25 +177,25 @@ fn sniff_then_read_text(path: &Path) -> Result<Option<Vec<u8>>> {
     Ok(Some(buf))
 }
 
-fn ingest_paths(paths: &[PathBuf]) -> Result<(InputEntries, IgnoreNotices)> {
+fn ingest_paths(paths: &[PathBuf]) -> Result<(InputEntries, CliNotices)> {
     let mut out: InputEntries = Vec::with_capacity(paths.len());
-    let mut ignored: IgnoreNotices = Vec::new();
+    let mut notices: CliNotices = Vec::new();
     for path in paths.iter() {
         let display = path.display().to_string();
         if let Ok(meta) = std::fs::metadata(path) {
             if meta.is_dir() {
-                ignored.push(format!("Ignored directory: {display}"));
+                notices.push(format!("Ignored directory: {display}"));
                 continue;
             }
         }
         if let Some(bytes) = sniff_then_read_text(path)? {
             out.push((display, bytes))
         } else {
-            ignored.push(format!("Ignored binary file: {display}"));
+            notices.push(format!("Ignored binary file: {display}"));
             continue;
         }
     }
-    Ok((out, ignored))
+    Ok((out, notices))
 }
 
 fn resolve_inputs(cli: &Cli) -> Result<Vec<PathBuf>> {
@@ -456,7 +456,7 @@ fn render_single_input(
     prio: &headson::PriorityConfig,
     grep_cfg: &headson::GrepConfig,
     budgets: headson::Budgets,
-) -> Result<(String, IgnoreNotices)> {
+) -> Result<(String, CliNotices)> {
     let text_mode = if matches!(cfg.template, headson::OutputTemplate::Code) {
         headson::TextMode::CodeLike
     } else {
@@ -527,11 +527,11 @@ fn resolve_effective_template_for_single(
 
 fn render_fileset(
     entries: InputEntries,
-    mut notices: IgnoreNotices,
+    mut notices: CliNotices,
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
-) -> Result<(String, IgnoreNotices)> {
+) -> Result<(String, CliNotices)> {
     if !matches!(cli.format, OutputFormat::Auto) {
         bail!(
             "--format cannot be customized for filesets; remove it or set to auto"
@@ -568,11 +568,11 @@ fn render_fileset(
 
 fn render_single_entry(
     mut entries: InputEntries,
-    mut notices: IgnoreNotices,
+    mut notices: CliNotices,
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
-) -> Result<(String, IgnoreNotices)> {
+) -> Result<(String, CliNotices)> {
     let (name, bytes) = entries
         .pop()
         .expect("single-entry render expects one ingested input");
