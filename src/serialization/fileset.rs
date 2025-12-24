@@ -56,14 +56,16 @@ impl<'a> RenderEngine<'a> {
         depth: usize,
         out: &mut crate::serialization::output::Out<'_>,
     ) {
-        let Some(children) = self.order.fileset_render_slots.as_deref() else {
+        let Some(children) =
+            self.fileset_children().map(<[FilesetRenderSlot]>::to_vec)
+        else {
             return;
         };
         let show_headers = self.should_render_fileset_headers();
         let kept =
-            self.render_fileset_children(children, depth, show_headers, out);
+            self.render_fileset_children(&children, depth, show_headers, out);
         if show_headers {
-            self.render_fileset_summary(children, depth, kept, out);
+            self.render_fileset_summary(&children, depth, kept, out);
         }
     }
 
