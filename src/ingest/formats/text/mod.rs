@@ -511,7 +511,7 @@ mod tests {
         let (cfg, prio) = cfg_text();
         let input = b"a\nb\nc".to_vec();
         let grep = GrepConfig::default();
-        let (out, _) = crate::headson(
+        let out = crate::headson(
             InputKind::Text {
                 bytes: input,
                 mode: crate::TextMode::Plain,
@@ -527,7 +527,8 @@ mod tests {
                 per_slot: None,
             },
         )
-        .unwrap();
+        .unwrap()
+        .text;
         assert_eq!(out, "a\nb\nc\n");
     }
 
@@ -582,7 +583,7 @@ mod tests {
         // Budget small so only some lines fit
         cfg.style = Style::Default;
         let grep = GrepConfig::default();
-        let (out, _) = crate::headson(
+        let out = crate::headson(
             InputKind::Text {
                 bytes: input.into_bytes(),
                 mode: crate::TextMode::Plain,
@@ -598,7 +599,8 @@ mod tests {
                 per_slot: None,
             },
         )
-        .unwrap();
+        .unwrap()
+        .text;
         assert!(out.contains("…\n"));
     }
 

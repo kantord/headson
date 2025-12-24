@@ -26,7 +26,7 @@ pub enum FilesetInputKind {
     Text { atomic_lines: bool },
 }
 
-/// Parse a fileset and return any parse notices.
+/// Parse a fileset and return any parse warnings.
 pub fn parse_fileset_multi(
     inputs: Vec<FilesetInput>,
     cfg: &PriorityConfig,
@@ -34,7 +34,7 @@ pub fn parse_fileset_multi(
     let mut arenas: Vec<(String, JsonTreeArena)> =
         Vec::with_capacity(inputs.len());
     let mut suppressed_entries: Vec<bool> = Vec::with_capacity(inputs.len());
-    let mut notices: Vec<String> = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
     for FilesetInput {
         name,
         mut bytes,
@@ -43,10 +43,10 @@ pub fn parse_fileset_multi(
     {
         let (arena, suppressed) = match kind {
             FilesetInputKind::Json => {
-                parse_json_or_empty(&name, &mut bytes, cfg, &mut notices)
+                parse_json_or_empty(&name, &mut bytes, cfg, &mut warnings)
             }
             FilesetInputKind::Yaml => {
-                parse_yaml_or_empty(&name, &bytes, cfg, &mut notices)
+                parse_yaml_or_empty(&name, &bytes, cfg, &mut warnings)
             }
             FilesetInputKind::Text { atomic_lines } => {
                 (parse_text_bytes(&bytes, cfg, atomic_lines), false)
@@ -55,19 +55,19 @@ pub fn parse_fileset_multi(
         arenas.push((name, arena));
         suppressed_entries.push(suppressed);
     }
-    (build_fileset_root(arenas, suppressed_entries), notices)
+    (build_fileset_root(arenas, suppressed_entries), warnings)
 }
 
 fn parse_json_or_empty(
     name: &str,
     bytes: &mut [u8],
     cfg: &PriorityConfig,
-    notices: &mut Vec<String>,
+    warnings: &mut Vec<String>,
 ) -> (JsonTreeArena, bool) {
     match build_json_tree_arena_from_slice(bytes, cfg) {
         Ok(arena) => (arena, false),
         Err(err) => {
-            notices.push(format!("Failed to parse {name} as JSON: {err}"));
+            warnings.push(format!("Failed to parse {name} as JSON: {err}"));
             (empty_object_arena(), true)
         }
     }
@@ -77,12 +77,12 @@ fn parse_yaml_or_empty(
     name: &str,
     bytes: &[u8],
     cfg: &PriorityConfig,
-    notices: &mut Vec<String>,
+    warnings: &mut Vec<String>,
 ) -> (JsonTreeArena, bool) {
     match build_yaml_tree_arena_from_slice(bytes, cfg) {
         Ok(arena) => (arena, false),
         Err(err) => {
-            notices.push(format!("Failed to parse {name} as YAML: {err}"));
+            warnings.push(format!("Failed to parse {name} as YAML: {err}"));
             (empty_object_arena(), true)
         }
     }

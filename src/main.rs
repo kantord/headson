@@ -20,11 +20,11 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    let (output, ignore_notices) = crate::cli::run::run(&cli)?;
+    let (output, warnings) = crate::cli::run::run(&cli)?;
     println!("{output}");
 
-    for notice in ignore_notices {
-        eprintln!("{notice}");
+    for warning in warnings {
+        eprintln!("{warning}");
     }
 
     Ok(())

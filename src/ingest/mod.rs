@@ -17,23 +17,43 @@ pub mod sampling;
 )]
 pub use formats::{parse_json_one, parse_text_one_with_mode, parse_yaml_one};
 
+#[derive(Debug)]
+pub struct IngestOutput {
+    pub arena: TreeArena,
+    pub warnings: Vec<String>,
+}
+
 /// Dispatch the appropriate ingest path for any supported input kind.
 pub fn ingest_into_arena(
     input: InputKind,
     priority_cfg: &PriorityConfig,
-) -> Result<(TreeArena, Vec<String>)> {
+) -> Result<IngestOutput> {
     match input {
-        InputKind::Json(bytes) => parse_json_one(bytes, priority_cfg)
-            .map(|arena| (arena, Vec::<String>::new())),
-        InputKind::Yaml(bytes) => parse_yaml_one(&bytes, priority_cfg)
-            .map(|arena| (arena, Vec::<String>::new())),
+        InputKind::Json(bytes) => {
+            parse_json_one(bytes, priority_cfg).map(|arena| IngestOutput {
+                arena,
+                warnings: Vec::new(),
+            })
+        }
+        InputKind::Yaml(bytes) => {
+            parse_yaml_one(&bytes, priority_cfg).map(|arena| IngestOutput {
+                arena,
+                warnings: Vec::new(),
+            })
+        }
         InputKind::Text { bytes, mode } => {
             let atomic = matches!(mode, crate::TextMode::CodeLike);
-            parse_text_one_with_mode(bytes, priority_cfg, atomic)
-                .map(|arena| (arena, Vec::<String>::new()))
+            parse_text_one_with_mode(bytes, priority_cfg, atomic).map(
+                |arena| IngestOutput {
+                    arena,
+                    warnings: Vec::new(),
+                },
+            )
         }
         InputKind::Fileset(inputs) => {
-            Ok(fileset::parse_fileset_multi(inputs, priority_cfg))
+            let (arena, warnings) =
+                fileset::parse_fileset_multi(inputs, priority_cfg);
+            Ok(IngestOutput { arena, warnings })
         }
     }
 }
@@ -45,13 +65,16 @@ mod tests {
 
     #[test]
     fn parse_one_basic_shape() {
-        let (arena, notices) = parse_json_one(
+        let IngestOutput { arena, warnings } = parse_json_one(
             b"{\"a\":1}".to_vec(),
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
-        .map(|arena| (arena, Vec::<String>::new()))
+        .map(|arena| IngestOutput {
+            arena,
+            warnings: Vec::new(),
+        })
         .unwrap();
-        assert!(notices.is_empty(), "single input should be silent");
+        assert!(warnings.is_empty(), "single input should be silent");
         assert!(
             !arena.is_fileset,
             "single input should not be marked fileset"
@@ -80,21 +103,21 @@ mod tests {
     }
 
     #[test]
-    fn fileset_ingest_surfaces_parse_notices() {
+    fn fileset_ingest_surfaces_parse_warnings() {
         let inputs = vec![fileset::FilesetInput {
             name: "bad.json".to_string(),
             bytes: b"{".to_vec(),
             kind: fileset::FilesetInputKind::Json,
         }];
-        let (arena, notices) = ingest_into_arena(
+        let IngestOutput { arena, warnings } = ingest_into_arena(
             InputKind::Fileset(inputs),
             &PriorityConfig::new(usize::MAX, usize::MAX),
         )
         .unwrap();
         assert!(arena.is_fileset, "fileset input should mark arena");
         assert!(
-            notices.iter().any(|n| n.contains("Failed to parse")),
-            "expected parse notice: {notices:?}"
+            warnings.iter().any(|n| n.contains("Failed to parse")),
+            "expected parse warning: {warnings:?}"
         );
     }
 }

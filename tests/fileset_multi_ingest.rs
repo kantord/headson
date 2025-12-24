@@ -76,7 +76,7 @@ environments:
     ];
 
     let grep = headson::GrepConfig::default();
-    let (out, _) = headson::headson(
+    let out = headson::headson(
         headson::InputKind::Fileset(inputs),
         &render_config(),
         &priority_config(),
@@ -89,7 +89,8 @@ environments:
             per_slot: None,
         },
     )
-    .expect("render fileset");
+    .expect("render fileset")
+    .text;
 
     assert_snapshot!("fileset_multi_format_snapshot", out);
 }

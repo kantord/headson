@@ -155,7 +155,7 @@ fn summarize(
             &grep_cfg,
             budgets,
         )
-        .map(|(out, _)| out)
+        .map(|out| out.text)
         .map_err(to_pyerr),
         "yaml" | "yml" => headson_core::headson(
             InputKind::Yaml(input),
@@ -164,7 +164,7 @@ fn summarize(
             &grep_cfg,
             budgets,
         )
-        .map(|(out, _)| out)
+        .map(|out| out.text)
         .map_err(to_pyerr),
         "text" => headson_core::headson(
             InputKind::Text {
@@ -176,7 +176,7 @@ fn summarize(
             &grep_cfg,
             budgets,
         )
-        .map(|(out, _)| out)
+        .map(|out| out.text)
         .map_err(to_pyerr),
         other => Err(to_pyerr(anyhow::anyhow!(
             "unknown input_format: {} (expected 'json' | 'yaml' | 'text')",

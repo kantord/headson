@@ -738,14 +738,15 @@ fn grep_highlights_for_library_calls_without_extra_config() {
         weak: false,
         show: headson::GrepShow::Matching,
     };
-    let (out, _) = headson::headson(
+    let out = headson::headson(
         InputKind::Json(br#"{"needle":1,"other":2}"#.to_vec()),
         &cfg,
         &prio,
         &grep,
         budgets,
     )
-    .expect("render");
+    .expect("render")
+    .text;
     assert!(
         out.contains("\u{001b}[31mneedle\u{001b}[39m"),
         "library calls should auto-wire grep highlights when color is on: {out:?}"

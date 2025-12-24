@@ -156,7 +156,7 @@ pub struct Cli {
         value_name = "INPUT",
         value_hint = clap::ValueHint::FilePath,
         num_args = 0..,
-        help = "Optional file paths. If omitted, reads input from stdin. Multiple input files are supported. Directories are ignored unless --recursive is set; binary files are ignored with a notice on stderr."
+        help = "Optional file paths. If omitted, reads input from stdin. Multiple input files are supported. Directories are ignored unless --recursive is set; binary files are ignored with a warning on stderr."
     )]
     pub inputs: Vec<PathBuf>,
     #[arg(

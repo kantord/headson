@@ -39,22 +39,24 @@ fn yaml_coloring_applies_and_strips_to_plain() {
         per_slot: None,
     };
     let grep = headson::GrepConfig::default();
-    let (plain, _) = headson::headson(
+    let plain = headson::headson(
         headson::InputKind::Yaml(input.clone()),
         &cfg_plain,
         &prio,
         &grep,
         budgets,
     )
-    .expect("plain yaml");
-    let (colored, _) = headson::headson(
+    .expect("plain yaml")
+    .text;
+    let colored = headson::headson(
         headson::InputKind::Yaml(input),
         &cfg_color,
         &prio,
         &grep,
         budgets,
     )
-    .expect("colored yaml");
+    .expect("colored yaml")
+    .text;
 
     // Contains ANSI SGR and specific roles (blue for keys, green for strings).
     assert!(

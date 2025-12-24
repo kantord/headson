@@ -44,22 +44,24 @@ fn colored_and_plain_outputs_should_match_after_stripping() {
     };
     let grep = headson::GrepConfig::default();
 
-    let (plain, _) = headson::headson(
+    let plain = headson::headson(
         headson::InputKind::Json(input.to_vec()),
         &cfg_plain,
         &prio,
         &grep,
         budgets,
     )
-    .expect("plain render");
-    let (colored, _) = headson::headson(
+    .expect("plain render")
+    .text;
+    let colored = headson::headson(
         headson::InputKind::Json(input.to_vec()),
         &cfg_color,
         &prio,
         &grep,
         budgets,
     )
-    .expect("color render");
+    .expect("color render")
+    .text;
 
     let colored_stripped = common::strip_ansi(&colored);
 
