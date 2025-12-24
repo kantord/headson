@@ -241,6 +241,8 @@ impl<'a> RenderEngine<'a> {
         raw_key: &str,
         slot_idx: usize,
     ) -> String {
+        // Suppressed entries still appear in ordering and headers; only the body is omitted.
+        // This keeps parse-failed files visible without pretending they were never present.
         if self
             .order
             .fileset_entry_suppressed

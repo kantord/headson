@@ -181,6 +181,8 @@ pub struct PriorityOrder {
     // can respect pre-sorting heuristics (e.g., frecency).
     pub fileset_children: Option<Vec<NodeId>>,
     // For filesets, mark entries that should render headers only (empty body).
+    // Note: these entries still participate in priority ordering so they can
+    // surface as empty placeholders without fully disappearing under budgets.
     pub fileset_entry_suppressed: Option<Vec<bool>>,
 }
 
