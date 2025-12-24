@@ -71,7 +71,7 @@ fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
     } else if lower.ends_with(".json") {
         headson::FilesetInputKind::Json
     } else {
-        fileset_text_kind(&lower)
+        fileset_text_kind(name)
     }
 }
 
