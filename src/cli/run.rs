@@ -75,8 +75,9 @@ fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
     }
 }
 
-fn fileset_text_kind(lower_name: &str) -> headson::FilesetInputKind {
-    let atomic = headson::extensions::is_code_like_name(lower_name);
+fn fileset_text_kind(name: &str) -> headson::FilesetInputKind {
+    let lower = name.to_ascii_lowercase();
+    let atomic = headson::extensions::is_code_like_name(&lower);
     headson::FilesetInputKind::Text {
         atomic_lines: atomic,
     }
