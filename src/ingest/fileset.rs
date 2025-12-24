@@ -47,12 +47,22 @@ pub fn parse_fileset_multi(
     } in inputs
     {
         let (arena, suppressed) = match kind {
-            FilesetInputKind::Json => {
-                parse_json_or_empty(&name, &mut bytes, cfg, &mut warnings)
-            }
-            FilesetInputKind::Yaml => {
-                parse_yaml_or_empty(&name, &bytes, cfg, &mut warnings)
-            }
+            FilesetInputKind::Json => parse_or_empty(
+                &name,
+                &mut bytes,
+                cfg,
+                &mut warnings,
+                "JSON",
+                |bytes, cfg| build_json_tree_arena_from_slice(bytes, cfg),
+            ),
+            FilesetInputKind::Yaml => parse_or_empty(
+                &name,
+                &bytes,
+                cfg,
+                &mut warnings,
+                "YAML",
+                |bytes, cfg| build_yaml_tree_arena_from_slice(bytes, cfg),
+            ),
             FilesetInputKind::Text { atomic_lines } => {
                 (parse_text_bytes(&bytes, cfg, atomic_lines), false)
             }
@@ -66,31 +76,21 @@ pub fn parse_fileset_multi(
     (build_fileset_root(entries), warnings)
 }
 
-fn parse_json_or_empty(
+fn parse_or_empty<B, F>(
     name: &str,
-    bytes: &mut [u8],
+    bytes: B,
     cfg: &PriorityConfig,
     warnings: &mut Vec<String>,
-) -> (JsonTreeArena, bool) {
-    match build_json_tree_arena_from_slice(bytes, cfg) {
+    label: &str,
+    parse: F,
+) -> (JsonTreeArena, bool)
+where
+    F: FnOnce(B, &PriorityConfig) -> anyhow::Result<JsonTreeArena>,
+{
+    match parse(bytes, cfg) {
         Ok(arena) => (arena, false),
         Err(err) => {
-            warnings.push(format!("Failed to parse {name} as JSON: {err}"));
-            (empty_object_arena(), true)
-        }
-    }
-}
-
-fn parse_yaml_or_empty(
-    name: &str,
-    bytes: &[u8],
-    cfg: &PriorityConfig,
-    warnings: &mut Vec<String>,
-) -> (JsonTreeArena, bool) {
-    match build_yaml_tree_arena_from_slice(bytes, cfg) {
-        Ok(arena) => (arena, false),
-        Err(err) => {
-            warnings.push(format!("Failed to parse {name} as YAML: {err}"));
+            warnings.push(format!("Failed to parse {name} as {label}: {err}"));
             (empty_object_arena(), true)
         }
     }
