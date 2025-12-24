@@ -404,11 +404,12 @@ fn filter_fileset_without_matches(
                 filtered_slots.push(*child);
             }
         }
-        order_build.fileset_render_slots = Some(filtered_slots.clone());
+        let filtered_len = filtered_slots.len();
+        order_build.fileset_render_slots = Some(filtered_slots);
         if let Some(metrics) =
             order_build.metrics.get_mut(crate::order::ROOT_PQ_ID)
         {
-            metrics.object_len = Some(filtered_slots.len());
+            metrics.object_len = Some(filtered_len);
         }
     }
 
