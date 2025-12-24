@@ -115,8 +115,8 @@ impl<'a> RenderEngine<'a> {
                 out.push_str(&self.fileset_header_line(depth, raw_key));
             }
             out.set_current_slot(Some(slot_idx));
-            let rendered =
-                self.fileset_render_child(child_id.0, depth, raw_key);
+            let rendered = self
+                .fileset_render_child(child_id.0, depth, raw_key, slot_idx);
             out.push_str(&rendered);
         }
         kept
@@ -143,8 +143,8 @@ impl<'a> RenderEngine<'a> {
                 inputs.track_omission_for_path(&segments);
                 continue;
             }
-            let rendered =
-                self.fileset_render_child(child_id.0, depth, raw_key);
+            let rendered = self
+                .fileset_render_child(child_id.0, depth, raw_key, slot_idx);
             inputs.entries.push((segments, rendered, slot_idx));
         }
         inputs
@@ -239,7 +239,18 @@ impl<'a> RenderEngine<'a> {
         child_id: usize,
         depth: usize,
         raw_key: &str,
+        slot_idx: usize,
     ) -> String {
+        if self
+            .order
+            .fileset_entry_suppressed
+            .as_ref()
+            .and_then(|entries| entries.get(slot_idx))
+            .copied()
+            .unwrap_or(false)
+        {
+            return String::new();
+        }
         if self.config.count_fileset_headers_in_budgets
             && !self.node_has_included_descendants(child_id)
             && !self.node_is_included_leaf(child_id)

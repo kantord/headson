@@ -40,6 +40,7 @@ pub fn parse_fileset_multi_with_notices(
 ) -> (JsonTreeArena, Vec<String>) {
     let mut arenas: Vec<(String, JsonTreeArena)> =
         Vec::with_capacity(inputs.len());
+    let mut suppressed_entries: Vec<bool> = Vec::with_capacity(inputs.len());
     let mut notices: Vec<String> = Vec::new();
     for FilesetInput {
         name,
@@ -47,7 +48,7 @@ pub fn parse_fileset_multi_with_notices(
         kind,
     } in inputs
     {
-        let arena = match kind {
+        let (arena, suppressed) = match kind {
             FilesetInputKind::Json => {
                 parse_json_or_empty(&name, &mut bytes, cfg, &mut notices)
             }
@@ -55,12 +56,13 @@ pub fn parse_fileset_multi_with_notices(
                 parse_yaml_or_empty(&name, &bytes, cfg, &mut notices)
             }
             FilesetInputKind::Text { atomic_lines } => {
-                parse_text_bytes(&bytes, cfg, atomic_lines)
+                (parse_text_bytes(&bytes, cfg, atomic_lines), false)
             }
         };
         arenas.push((name, arena));
+        suppressed_entries.push(suppressed);
     }
-    (build_fileset_root(arenas), notices)
+    (build_fileset_root(arenas, suppressed_entries), notices)
 }
 
 fn parse_json_or_empty(
@@ -68,11 +70,14 @@ fn parse_json_or_empty(
     bytes: &mut [u8],
     cfg: &PriorityConfig,
     notices: &mut Vec<String>,
-) -> JsonTreeArena {
-    build_json_tree_arena_from_slice(bytes, cfg).unwrap_or_else(|err| {
-        notices.push(format!("Failed to parse {name} as JSON: {err}"));
-        empty_object_arena()
-    })
+) -> (JsonTreeArena, bool) {
+    match build_json_tree_arena_from_slice(bytes, cfg) {
+        Ok(arena) => (arena, false),
+        Err(err) => {
+            notices.push(format!("Failed to parse {name} as JSON: {err}"));
+            (empty_object_arena(), true)
+        }
+    }
 }
 
 fn parse_yaml_or_empty(
@@ -80,11 +85,14 @@ fn parse_yaml_or_empty(
     bytes: &[u8],
     cfg: &PriorityConfig,
     notices: &mut Vec<String>,
-) -> JsonTreeArena {
-    build_yaml_tree_arena_from_slice(bytes, cfg).unwrap_or_else(|err| {
-        notices.push(format!("Failed to parse {name} as YAML: {err}"));
-        empty_object_arena()
-    })
+) -> (JsonTreeArena, bool) {
+    match build_yaml_tree_arena_from_slice(bytes, cfg) {
+        Ok(arena) => (arena, false),
+        Err(err) => {
+            notices.push(format!("Failed to parse {name} as YAML: {err}"));
+            (empty_object_arena(), true)
+        }
+    }
 }
 
 fn parse_text_bytes(
@@ -112,10 +120,12 @@ fn empty_object_arena() -> JsonTreeArena {
 
 pub(crate) fn build_fileset_root(
     mut items: Vec<(String, JsonTreeArena)>,
+    suppressed_entries: Vec<bool>,
 ) -> JsonTreeArena {
     let mut arena = JsonTreeArena {
         root_id: 0,
         is_fileset: true,
+        fileset_entry_suppressed: suppressed_entries,
         ..JsonTreeArena::default()
     };
     arena.nodes.push(JsonTreeNode {

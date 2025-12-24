@@ -21,8 +21,13 @@ fn fileset_parse_error_renders_empty_entry() {
     );
 
     assert!(
-        out.stdout.contains("==> bad.json <==\n{}"),
-        "expected bad.json to render as empty: {}",
+        out.stdout.contains("==> bad.json <=="),
+        "expected bad.json header to render: {}",
+        out.stdout
+    );
+    assert!(
+        !out.stdout.contains("==> bad.json <==\n{}"),
+        "expected bad.json body to be empty: {}",
         out.stdout
     );
     assert!(

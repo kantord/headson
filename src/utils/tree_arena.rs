@@ -17,6 +17,8 @@ pub struct JsonTreeArena {
     // Optional full text lines for arrays (by arena node id) to support
     // downstream features like syntax highlighting even after sampling.
     pub code_lines: HashMap<usize, Arc<Vec<String>>>,
+    // For filesets: marks entries that should render headers only (empty body).
+    pub fileset_entry_suppressed: Vec<bool>,
 }
 
 #[derive(Debug, Clone)]

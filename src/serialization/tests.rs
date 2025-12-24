@@ -522,6 +522,7 @@ fn force_child_hooks_removed() {
         object_type: vec![ObjectType::Object; 3],
         code_lines: HashMap::new(),
         fileset_children: None,
+        fileset_entry_suppressed: None,
     };
     let mut flags = Vec::new();
     let render_id = 1u32;

@@ -180,6 +180,8 @@ pub struct PriorityOrder {
     // For filesets, preserve the ingest order of top-level children so rendering
     // can respect pre-sorting heuristics (e.g., frecency).
     pub fileset_children: Option<Vec<NodeId>>,
+    // For filesets, mark entries that should render headers only (empty body).
+    pub fileset_entry_suppressed: Option<Vec<bool>>,
 }
 
 pub const ROOT_PQ_ID: usize = 0;

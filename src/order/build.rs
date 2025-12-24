@@ -828,6 +828,25 @@ pub fn build_order(
     } else {
         None
     };
+    let fileset_entry_suppressed = if arena.is_fileset {
+        let root = &arena.nodes[arena.root_id];
+        let mut suppressed: Vec<bool> = Vec::with_capacity(root.children_len);
+        for idx in 0..root.children_len {
+            let child_arena_id = arena.children[root.children_start + idx];
+            if let Some(Some(_)) = arena_to_pq.get(child_arena_id) {
+                suppressed.push(
+                    arena
+                        .fileset_entry_suppressed
+                        .get(idx)
+                        .copied()
+                        .unwrap_or(false),
+                );
+            }
+        }
+        Some(suppressed)
+    } else {
+        None
+    };
 
     let total = next_pq_id;
     let mut code_lines: HashMap<usize, Arc<Vec<String>>> = HashMap::new();
@@ -848,6 +867,7 @@ pub fn build_order(
         object_type,
         code_lines,
         fileset_children,
+        fileset_entry_suppressed,
     })
 }
 
