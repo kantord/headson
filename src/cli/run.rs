@@ -71,13 +71,12 @@ fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
     } else if lower.ends_with(".json") {
         headson::FilesetInputKind::Json
     } else {
-        fileset_text_kind(name)
+        fileset_text_kind(&lower)
     }
 }
 
 fn fileset_text_kind(name: &str) -> headson::FilesetInputKind {
-    let lower = name.to_ascii_lowercase();
-    let atomic = headson::extensions::is_code_like_name(&lower);
+    let atomic = headson::extensions::is_code_like_name(name);
     headson::FilesetInputKind::Text {
         atomic_lines: atomic,
     }
