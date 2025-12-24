@@ -7,7 +7,7 @@ fn write_file(path: &std::path::Path, body: &str) {
 }
 
 #[test]
-fn fileset_parse_error_falls_back_to_text() {
+fn fileset_parse_error_renders_empty_entry() {
     let tmp = tempfile::tempdir().expect("tmpdir");
     let root = tmp.path();
 
@@ -21,8 +21,8 @@ fn fileset_parse_error_falls_back_to_text() {
     );
 
     assert!(
-        !out.stdout.contains("==> bad.json <=="),
-        "expected bad.json to be skipped: {}",
+        out.stdout.contains("==> bad.json <==\n{}"),
+        "expected bad.json to render as empty: {}",
         out.stdout
     );
     assert!(
@@ -39,7 +39,7 @@ fn fileset_parse_error_falls_back_to_text() {
 }
 
 #[test]
-fn fileset_tree_parse_error_falls_back_to_text() {
+fn fileset_tree_parse_error_renders_empty_entry() {
     let tmp = tempfile::tempdir().expect("tmpdir");
     let root = tmp.path();
 
@@ -60,8 +60,8 @@ fn fileset_tree_parse_error_falls_back_to_text() {
     );
 
     assert!(
-        !out.stdout.contains("bad.json"),
-        "expected bad.json to be skipped in tree: {}",
+        out.stdout.contains("bad.json"),
+        "expected bad.json to remain in tree: {}",
         out.stdout
     );
 }
