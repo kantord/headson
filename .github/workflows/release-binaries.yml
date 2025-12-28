@@ -51,7 +51,7 @@ jobs:
 
       - name: Install cross (musl)
         if: contains(matrix.target, '-musl')
-        uses: taiki-e/install-action@45a93d9c71692daf99a53feb97366fb6f4c3757f # v2
+        uses: taiki-e/install-action@28a9d316db64b78a951f3f8587a5d08cc97ad8eb # v2
         with:
           tool: cross
 
