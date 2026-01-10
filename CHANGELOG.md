@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.1](https://github.com/kantord/headson/compare/headson-v0.13.0...headson-v0.13.1) - 2026-01-10
+
+### Other
+
+- *(deps)* update rust crate assert_cmd to v2.1.2 ([#465](https://github.com/kantord/headson/pull/465))
+- *(deps)* update rust crate serde_json to v1.0.149 ([#461](https://github.com/kantord/headson/pull/461))
+- *(deps)* update rust crate clap_complete to v4.5.65 ([#462](https://github.com/kantord/headson/pull/462))
+- *(deps)* update rust crate insta to v1.46.0 ([#457](https://github.com/kantord/headson/pull/457))
+- *(deps)* update rust crate clap to v4.5.54 ([#456](https://github.com/kantord/headson/pull/456))
+- *(deps)* update rust crate clap_complete to v4.5.64 ([#451](https://github.com/kantord/headson/pull/451))
+- add star history chart ([#452](https://github.com/kantord/headson/pull/452))
+
 ## [0.13.0](https://github.com/kantord/headson/compare/headson-v0.12.0...headson-v0.13.0) - 2025-12-24
 
 ### Added
