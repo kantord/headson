@@ -934,3 +934,156 @@ fn strong_grep_obeys_zero_global_line_budget_for_non_matches() {
         "non-matching content should be excluded when no global line headroom remains: {stdout}"
     );
 }
+
+#[test]
+fn igrep_matches_case_insensitively() {
+    let input = br#"{"foo":"NEEDLE","bar":"other"}"#.to_vec();
+    let out = run_ok(
+        &[
+            "--no-color",
+            "--no-sort",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--igrep",
+            "needle",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout;
+    assert!(
+        stdout.contains("NEEDLE"),
+        "igrep should match case-insensitively; got: {stdout:?}"
+    );
+}
+
+#[test]
+fn igrep_guarantees_match_even_with_tiny_budget() {
+    let input = br#"{"outer":{"inner":"NeedLE"},"other":"zzzz"}"#.to_vec();
+    let out = run_ok(
+        &[
+            "--no-color",
+            "--bytes",
+            "5",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--igrep",
+            "needle",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout_ansi;
+    assert!(
+        stdout.contains("NeedLE"),
+        "igrep should guarantee match inclusion like --grep; got: {stdout:?}"
+    );
+}
+
+#[test]
+fn igrep_highlights_matches_with_color() {
+    let input = br#"{"k":"NEEDLE","x":"bar"}"#.to_vec();
+    let out = run_ok_color(
+        &[
+            "-f",
+            "json",
+            "-t",
+            "default",
+            "--igrep",
+            "needle",
+            "--no-sort",
+            "--no-header",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout_ansi;
+    assert!(
+        stdout.contains("\u{001b}[31mNEEDLE\u{001b}[39m"),
+        "igrep should highlight case-insensitive matches; got: {stdout:?}"
+    );
+}
+
+#[test]
+fn iweak_grep_matches_case_insensitively() {
+    let input = br#"{"miss":"xxxxxxxxxx","hit":"NEEDLE"}"#.to_vec();
+    let out = run_ok(
+        &[
+            "--no-color",
+            "--bytes",
+            "20",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--iweak-grep",
+            "needle",
+            "--no-sort",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout;
+    assert!(
+        stdout.contains("\"hit\""),
+        "iweak-grep should bias sampling toward case-insensitive matches: {stdout:?}"
+    );
+}
+
+#[test]
+fn iweak_grep_does_not_expand_budget() {
+    let input = br#"{"keep":"NEEDLE"}"#.to_vec();
+    let out = run_ok(
+        &[
+            "--no-color",
+            "--bytes",
+            "5",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--iweak-grep",
+            "needle",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout;
+    assert!(
+        stdout.len() <= 5,
+        "iweak-grep should not expand the user-provided byte budget; got len {}",
+        stdout.len()
+    );
+}
+
+#[test]
+fn igrep_works_with_grep_show() {
+    let dir = tempdir().unwrap();
+    let with = dir.path().join("with.json");
+    let without = dir.path().join("without.json");
+    std::fs::write(&with, br#"{"keep":"NEEDLE"}"#).unwrap();
+    std::fs::write(&without, br#"{"drop":0}"#).unwrap();
+
+    let out = run_ok_in_dir(
+        dir.path(),
+        &[
+            "--no-color",
+            "--igrep",
+            "needle",
+            "--grep-show",
+            "all",
+            "--no-sort",
+            with.file_name().unwrap().to_str().unwrap(),
+            without.file_name().unwrap().to_str().unwrap(),
+        ],
+        None,
+    );
+    let stdout = out.stdout;
+    assert!(
+        stdout.contains("NEEDLE"),
+        "igrep with --grep-show=all should include matches"
+    );
+    assert!(
+        stdout.contains("without.json"),
+        "igrep with --grep-show=all should include non-matching files"
+    );
+}

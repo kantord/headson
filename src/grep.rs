@@ -24,18 +24,29 @@ pub fn build_grep_config(
     grep: Option<&str>,
     weak_grep: Option<&str>,
     grep_show: GrepShow,
+    case_insensitive: bool,
 ) -> Result<GrepConfig> {
     match (grep, weak_grep) {
         (Some(_), Some(_)) => {
             anyhow::bail!("--grep and --weak-grep cannot be used together")
         }
         (Some(pat), None) => Ok(GrepConfig {
-            regex: Some(RegexBuilder::new(pat).unicode(true).build()?),
+            regex: Some(
+                RegexBuilder::new(pat)
+                    .unicode(true)
+                    .case_insensitive(case_insensitive)
+                    .build()?,
+            ),
             weak: false,
             show: grep_show,
         }),
         (None, Some(pat)) => Ok(GrepConfig {
-            regex: Some(RegexBuilder::new(pat).unicode(true).build()?),
+            regex: Some(
+                RegexBuilder::new(pat)
+                    .unicode(true)
+                    .case_insensitive(case_insensitive)
+                    .build()?,
+            ),
             weak: true,
             show: GrepShow::Matching,
         }),

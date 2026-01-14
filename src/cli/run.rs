@@ -19,6 +19,21 @@ type InputEntry = (String, Vec<u8>);
 type InputEntries = Vec<InputEntry>;
 pub(crate) type CliWarnings = Vec<String>;
 
+/// Resolve grep/igrep/weak-grep/iweak-grep into (strong_pattern, weak_pattern, case_insensitive).
+fn resolve_grep_patterns(cli: &Cli) -> (Option<&str>, Option<&str>, bool) {
+    if let Some(ref pat) = cli.grep {
+        (Some(pat.as_str()), None, false)
+    } else if let Some(ref pat) = cli.igrep {
+        (Some(pat.as_str()), None, true)
+    } else if let Some(ref pat) = cli.weak_grep {
+        (None, Some(pat.as_str()), false)
+    } else if let Some(ref pat) = cli.iweak_grep {
+        (None, Some(pat.as_str()), true)
+    } else {
+        (None, None, false)
+    }
+}
+
 fn build_effective_configs(
     cli: &Cli,
     mut render_cfg: headson::RenderConfig,
@@ -41,10 +56,12 @@ fn needs_fileset(cli: &Cli, inputs_len: usize) -> bool {
 pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
     budget::validate(cli)?;
     let mut render_cfg = get_render_config_from(cli);
+    let (strong_pat, weak_pat, case_insensitive) = resolve_grep_patterns(cli);
     let grep_cfg = headson::build_grep_config(
-        cli.grep.as_deref(),
-        cli.weak_grep.as_deref(),
+        strong_pat,
+        weak_pat,
         crate::cli::args::map_grep_show(cli.grep_show),
+        case_insensitive,
     )?;
     render_cfg.grep_highlight = grep_cfg.regex.clone();
     let resolved_inputs = resolve_inputs(cli)?;

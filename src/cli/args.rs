@@ -10,6 +10,7 @@ use clap_complete::Shell;
     version,
     about = "Get a small but useful preview of JSON or YAML"
 )]
+#[clap(group = clap::ArgGroup::new("strong_grep").args(["grep", "igrep"]))]
 pub struct Cli {
     #[arg(short = 'c', long = "bytes")]
     pub bytes: Option<usize>,
@@ -175,24 +176,38 @@ pub struct Cli {
     #[arg(
         long = "grep",
         value_name = "REGEX",
-        conflicts_with = "weak_grep",
+        conflicts_with_all = ["weak_grep", "igrep", "iweak_grep"],
         help = "Guarantee inclusion of values (and their ancestors) matching this regex; budgets apply to everything else."
     )]
     pub grep: Option<String>,
     #[arg(
+        long = "igrep",
+        value_name = "REGEX",
+        conflicts_with_all = ["grep", "weak_grep", "iweak_grep"],
+        help = "Case-insensitive variant of --grep."
+    )]
+    pub igrep: Option<String>,
+    #[arg(
         long = "weak-grep",
         value_name = "REGEX",
-        conflicts_with = "grep",
+        conflicts_with_all = ["grep", "igrep", "iweak_grep"],
         help = "Bias priority toward regex matches without guaranteeing inclusion or expanding budgets."
     )]
     pub weak_grep: Option<String>,
     #[arg(
+        long = "iweak-grep",
+        value_name = "REGEX",
+        conflicts_with_all = ["grep", "igrep", "weak_grep"],
+        help = "Case-insensitive variant of --weak-grep."
+    )]
+    pub iweak_grep: Option<String>,
+    #[arg(
         long = "grep-show",
         value_enum,
         default_value_t = GrepShowArg::Matching,
-        requires = "grep",
-        conflicts_with = "weak_grep",
-        help = "When using --grep, control fileset inclusion: matching (default) | all"
+        requires = "strong_grep",
+        conflicts_with_all = ["weak_grep", "iweak_grep"],
+        help = "When using --grep or --igrep, control fileset inclusion: matching (default) | all"
     )]
     pub grep_show: GrepShowArg,
     #[arg(
