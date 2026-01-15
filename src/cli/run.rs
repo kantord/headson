@@ -45,7 +45,6 @@ impl ResolvedGrepPatterns {
             parts.push(pat.clone());
         }
         for pat in case_insensitive {
-            // Wrap each case-insensitive pattern with (?i:...)
             parts.push(format!("(?i:{pat})"));
         }
 

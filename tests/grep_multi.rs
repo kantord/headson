@@ -1,8 +1,5 @@
 mod common;
 
-// Step 2: Multi-grep tests (same family)
-// These tests verify that multiple grep flags can be combined.
-
 fn run_ok(args: &[&str], stdin: Option<&[u8]>) -> common::CliOutput {
     common::run_cli(args, stdin)
 }
