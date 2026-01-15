@@ -9,7 +9,8 @@ macro_rules! conflict_test {
             let err_l = out.stderr.to_ascii_lowercase();
             assert!(
                 err_l.contains("conflict")
-                    || err_l.contains("cannot be used with"),
+                    || err_l.contains("cannot be used with")
+                    || err_l.contains("cannot be used together"),
                 "expected conflict error, got: {}",
                 out.stderr
             );
@@ -27,6 +28,26 @@ macro_rules! requires_test {
             assert!(
                 err_l.contains("require") || err_l.contains("missing"),
                 "expected requires error, got: {}",
+                out.stderr
+            );
+        }
+    };
+}
+
+/// Tests where clap may report either conflict or requires error (order-dependent)
+macro_rules! conflict_or_requires_test {
+    ($name:ident, $args:expr) => {
+        #[test]
+        fn $name() {
+            let out = common::run_cli_expect_fail($args, None, None);
+            let err_l = out.stderr.to_ascii_lowercase();
+            assert!(
+                err_l.contains("conflict")
+                    || err_l.contains("cannot be used with")
+                    || err_l.contains("cannot be used together")
+                    || err_l.contains("require")
+                    || err_l.contains("missing"),
+                "expected conflict or requires error, got: {}",
                 out.stderr
             );
         }
@@ -84,16 +105,6 @@ conflict_test!(
         "tests/fixtures/explicit/object_small.json"
     ]
 );
-conflict_test!(
-    grep_show_with_weak_grep,
-    &[
-        "--weak-grep",
-        "foo",
-        "--grep-show",
-        "all",
-        "tests/fixtures/explicit/object_small.json"
-    ]
-);
 conflict_test!(recursive_with_glob, &["--recursive", "-g", "*.json"]);
 conflict_test!(
     igrep_with_grep,
@@ -145,17 +156,6 @@ conflict_test!(
         "tests/fixtures/explicit/object_small.json"
     ]
 );
-conflict_test!(
-    grep_show_with_iweak_grep,
-    &[
-        "--iweak-grep",
-        "foo",
-        "--grep-show",
-        "all",
-        "tests/fixtures/explicit/object_small.json"
-    ]
-);
-
 // Category 2: Clap requires
 requires_test!(
     grep_show_requires_strong_grep,
@@ -166,7 +166,29 @@ requires_test!(
     ]
 );
 
-// Category 3: Runtime validation (manual tests)
+// Category 3: Clap conflict or requires (order-dependent)
+conflict_or_requires_test!(
+    grep_show_with_weak_grep,
+    &[
+        "--weak-grep",
+        "foo",
+        "--grep-show",
+        "all",
+        "tests/fixtures/explicit/object_small.json"
+    ]
+);
+conflict_or_requires_test!(
+    grep_show_with_iweak_grep,
+    &[
+        "--iweak-grep",
+        "foo",
+        "--grep-show",
+        "all",
+        "tests/fixtures/explicit/object_small.json"
+    ]
+);
+
+// Category 4: Runtime validation (manual tests)
 #[test]
 fn tree_rejected_for_stdin() {
     let out = common::run_cli_expect_fail(&["--tree"], Some(b"{}"), None);
