@@ -107,16 +107,6 @@ conflict_test!(
 );
 conflict_test!(recursive_with_glob, &["--recursive", "-g", "*.json"]);
 conflict_test!(
-    igrep_with_grep,
-    &[
-        "--grep",
-        "foo",
-        "--igrep",
-        "bar",
-        "tests/fixtures/explicit/object_small.json"
-    ]
-);
-conflict_test!(
     igrep_with_weak_grep,
     &[
         "--igrep",
@@ -140,16 +130,6 @@ conflict_test!(
     iweak_grep_with_grep,
     &[
         "--grep",
-        "foo",
-        "--iweak-grep",
-        "bar",
-        "tests/fixtures/explicit/object_small.json"
-    ]
-);
-conflict_test!(
-    iweak_grep_with_weak_grep,
-    &[
-        "--weak-grep",
         "foo",
         "--iweak-grep",
         "bar",
