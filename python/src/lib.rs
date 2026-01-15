@@ -136,9 +136,13 @@ fn summarize(
     );
     let prio = priority_config(per_file_for_priority, sampler);
     let input = text.as_bytes().to_vec();
-    let grep_cfg =
-        build_grep_config(grep, weak_grep, headson_core::GrepShow::Matching)
-            .map_err(to_pyerr)?;
+    let grep_cfg = build_grep_config(
+        grep,
+        weak_grep,
+        headson_core::GrepShow::Matching,
+        false,
+    )
+    .map_err(to_pyerr)?;
     if let Some(re) = &grep_cfg.regex {
         cfg.grep_highlight = Some(re.clone());
     }
