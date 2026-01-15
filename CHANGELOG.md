@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0](https://github.com/kantord/headson/compare/headson-v0.13.1...headson-v0.14.0) - 2026-01-15
+
+### Added
+
+- add case insensitive grep flags ([#474](https://github.com/kantord/headson/pull/474))
+
 ## [0.13.1](https://github.com/kantord/headson/compare/headson-v0.13.0...headson-v0.13.1) - 2026-01-10
 
 ### Other
