@@ -11,8 +11,8 @@ API
   - `byte_budget`: maximum output size in bytes (defaults to 500 if not set; `0` suppresses output).
   - `skew`: one of `"balanced" | "head" | "tail"`.
     - `balanced` (default), `head` keeps first N, `tail` keeps last N. Display styles place omission markers accordingly; strict JSON remains unannotated.
-  - `grep`: optional regex to guarantee inclusion of matching values/keys/lines; syntax colors are suppressed in grep mode and only matches would be highlighted—but Python bindings always disable ANSI colors, so output stays plain text.
-  - `weak_grep`: optional regex to *bias* priority toward matches without guaranteeing inclusion or expanding budgets. Cannot be combined with `grep`. Budgets remain exact; files are not filtered.
+  - `grep`: optional regex to guarantee inclusion of matching values/keys/lines; syntax colors are suppressed in grep mode and only matches would be highlighted—but Python bindings always disable ANSI colors, so output stays plain text. Case-insensitive grep (`--igrep`) is CLI-only; use `(?i)` prefix in the regex pattern for case-insensitive matching (e.g., `grep="(?i)needle"`).
+  - `weak_grep`: optional regex to *bias* priority toward matches without guaranteeing inclusion or expanding budgets. Cannot be combined with `grep`. Budgets remain exact; files are not filtered. Case-insensitive weak grep (`--iweak-grep`) is CLI-only; use `(?i)` prefix in the regex pattern for case-insensitive matching.
   - Notes:
     - For single inputs, `format="auto"` maps to the JSON family; set `format="yaml"` to emit YAML.
     - Filesets/tree layout is CLI-only; the Python binding renders one logical input buffer at a time and always uses inline content (no `tree`/header mode).

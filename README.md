@@ -156,7 +156,8 @@ hson -n 20 src/main.py
 - `--no-space`: no space after `:` in objects
 - `--indent <STR>`: indentation unit (default: two spaces)
 - `--string-cap <N>`: max graphemes to consider per string (default: 500)
-- `--grep <REGEX>`: guarantee inclusion of values/keys/lines matching the regex (ripgrep‑style). Matches + ancestors are “free” against both global and per-file caps; budgets apply to everything else. If matches consume all headroom, only the must‑keep path is shown. Colors follow the normal on/auto/off rules; when grep is active, syntax colors are suppressed and only the match highlights are colored. JSON/YAML structural punctuation is not highlighted—only the matching key/value text.
+- `--grep <REGEX>`: guarantee inclusion of values/keys/lines matching the regex (ripgrep‑style). Matches + ancestors are "free" against both global and per-file caps; budgets apply to everything else. If matches consume all headroom, only the must‑keep path is shown. Colors follow the normal on/auto/off rules; when grep is active, syntax colors are suppressed and only the match highlights are colored. JSON/YAML structural punctuation is not highlighted—only the matching key/value text.
+- `--igrep <REGEX>`: case-insensitive variant of `--grep`.
 - `-r, --recursive`: recursively expand directory inputs (like `grep -r`). Directory paths are required; stdin is not supported. Incompatible with `--glob`.
 - `--head`: prefer the beginning of arrays when truncating (keep first N). Strings are unaffected. Display styles place omission markers accordingly; strict JSON remains unannotated. Mutually exclusive with `--tail`.
 - `--tail`: prefer the end of arrays when truncating (keep last N). Strings are unaffected. Display styles place omission markers accordingly; strict JSON remains unannotated. Mutually exclusive with `--head`.
@@ -190,12 +191,12 @@ Use `--grep <REGEX>` to guarantee inclusion of values/keys/lines matching the re
 
 - Matching: values/lines are checked; object keys match too. Filenames do not match by themselves (a file must have a matching value/line/key).
 - Colors: only the matching text is highlighted; syntax colors are suppressed in grep mode. Disable color entirely with `--no-color`.
-- Weak grep: `--weak-grep <REGEX>` biases priority toward matches but does not guarantee inclusion, expand budgets, or filter files. Budgets stay exact and matches can still be pruned if they do not fit.
+- Weak grep: `--weak-grep <REGEX>` biases priority toward matches but does not guarantee inclusion, expand budgets, or filter files. Budgets stay exact and matches can still be pruned if they do not fit. Use `--iweak-grep <REGEX>` for case-insensitive weak grep.
 - Multi-file mode (strong `--grep` only):
   - Default (`--grep-show=matching`): files without matches are dropped from the render and summary. If no files match at all, the output is empty and the CLI prints a warning to stderr.
   - `--grep-show=all`: keep non-matching files in the render; only matching files are highlighted.
   - Headers respect `--no-header` as usual.
-- Mutual exclusion: `--grep-show` requires `--grep` and cannot be used with `--weak-grep`; `--weak-grep` cannot be combined with `--grep`.
+- Mutual exclusion: `--grep-show` requires `--grep` or `--igrep` and cannot be used with `--weak-grep` or `--iweak-grep`. All four grep variants (`--grep`, `--igrep`, `--weak-grep`, `--iweak-grep`) are mutually exclusive.
 - Context: there are no explicit `-C/-B/-A` style flags; per-file budgets decide how much surrounding structure/lines can stay alongside the must-keep matches.
 - Budgets: matches and ancestors always render; remaining budget determines what else can appear. Extremely tight budgets may show only the must-keep path.
 - Text/source code: works with `-i text` and source code files; when using `--format auto`, file extensions still decide ingest/rendering.
