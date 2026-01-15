@@ -19,18 +19,46 @@ type InputEntry = (String, Vec<u8>);
 type InputEntries = Vec<InputEntry>;
 pub(crate) type CliWarnings = Vec<String>;
 
-/// Resolve grep/igrep/weak-grep/iweak-grep into (strong_pattern, weak_pattern, case_insensitive).
-fn resolve_grep_patterns(cli: &Cli) -> (Option<&str>, Option<&str>, bool) {
-    if let Some(ref pat) = cli.grep {
-        (Some(pat.as_str()), None, false)
-    } else if let Some(ref pat) = cli.igrep {
-        (Some(pat.as_str()), None, true)
-    } else if let Some(ref pat) = cli.weak_grep {
-        (None, Some(pat.as_str()), false)
-    } else if let Some(ref pat) = cli.iweak_grep {
-        (None, Some(pat.as_str()), true)
-    } else {
-        (None, None, false)
+/// Resolved grep patterns from CLI flags.
+struct ResolvedGrepPatterns<'a> {
+    strong: Option<&'a str>,
+    weak: Option<&'a str>,
+    case_insensitive: bool,
+}
+
+impl<'a> ResolvedGrepPatterns<'a> {
+    fn from_cli(cli: &'a Cli) -> Self {
+        if let Some(ref pat) = cli.grep {
+            Self {
+                strong: Some(pat),
+                weak: None,
+                case_insensitive: false,
+            }
+        } else if let Some(ref pat) = cli.igrep {
+            Self {
+                strong: Some(pat),
+                weak: None,
+                case_insensitive: true,
+            }
+        } else if let Some(ref pat) = cli.weak_grep {
+            Self {
+                strong: None,
+                weak: Some(pat),
+                case_insensitive: false,
+            }
+        } else if let Some(ref pat) = cli.iweak_grep {
+            Self {
+                strong: None,
+                weak: Some(pat),
+                case_insensitive: true,
+            }
+        } else {
+            Self {
+                strong: None,
+                weak: None,
+                case_insensitive: false,
+            }
+        }
     }
 }
 
@@ -56,12 +84,12 @@ fn needs_fileset(cli: &Cli, inputs_len: usize) -> bool {
 pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
     budget::validate(cli)?;
     let mut render_cfg = get_render_config_from(cli);
-    let (strong_pat, weak_pat, case_insensitive) = resolve_grep_patterns(cli);
+    let patterns = ResolvedGrepPatterns::from_cli(cli);
     let grep_cfg = headson::build_grep_config(
-        strong_pat,
-        weak_pat,
+        patterns.strong,
+        patterns.weak,
         crate::cli::args::map_grep_show(cli.grep_show),
-        case_insensitive,
+        patterns.case_insensitive,
     )?;
     render_cfg.grep_highlight = grep_cfg.regex.clone();
     let resolved_inputs = resolve_inputs(cli)?;
