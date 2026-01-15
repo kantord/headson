@@ -232,3 +232,138 @@ fn recursive_conflicts_with_glob() {
         out.stderr
     );
 }
+
+#[test]
+fn igrep_conflicts_with_grep() {
+    let out = common::run_cli_expect_fail(
+        &[
+            "--no-color",
+            "--grep",
+            "foo",
+            "--igrep",
+            "bar",
+            "tests/fixtures/explicit/object_small.json",
+        ],
+        None,
+        None,
+    );
+    let err_l = out.stderr.to_ascii_lowercase();
+    assert!(
+        err_l.contains("conflict") || err_l.contains("cannot be used with"),
+        "stderr should mention igrep/grep conflict: {}",
+        out.stderr
+    );
+}
+
+#[test]
+fn igrep_conflicts_with_weak_grep() {
+    let out = common::run_cli_expect_fail(
+        &[
+            "--no-color",
+            "--igrep",
+            "foo",
+            "--weak-grep",
+            "bar",
+            "tests/fixtures/explicit/object_small.json",
+        ],
+        None,
+        None,
+    );
+    let err_l = out.stderr.to_ascii_lowercase();
+    assert!(
+        err_l.contains("conflict") || err_l.contains("cannot be used with"),
+        "stderr should mention igrep/weak-grep conflict: {}",
+        out.stderr
+    );
+}
+
+#[test]
+fn igrep_conflicts_with_iweak_grep() {
+    let out = common::run_cli_expect_fail(
+        &[
+            "--no-color",
+            "--igrep",
+            "foo",
+            "--iweak-grep",
+            "bar",
+            "tests/fixtures/explicit/object_small.json",
+        ],
+        None,
+        None,
+    );
+    let err_l = out.stderr.to_ascii_lowercase();
+    assert!(
+        err_l.contains("conflict") || err_l.contains("cannot be used with"),
+        "stderr should mention igrep/iweak-grep conflict: {}",
+        out.stderr
+    );
+}
+
+#[test]
+fn iweak_grep_conflicts_with_grep() {
+    let out = common::run_cli_expect_fail(
+        &[
+            "--no-color",
+            "--grep",
+            "foo",
+            "--iweak-grep",
+            "bar",
+            "tests/fixtures/explicit/object_small.json",
+        ],
+        None,
+        None,
+    );
+    let err_l = out.stderr.to_ascii_lowercase();
+    assert!(
+        err_l.contains("conflict") || err_l.contains("cannot be used with"),
+        "stderr should mention grep/iweak-grep conflict: {}",
+        out.stderr
+    );
+}
+
+#[test]
+fn iweak_grep_conflicts_with_weak_grep() {
+    let out = common::run_cli_expect_fail(
+        &[
+            "--no-color",
+            "--weak-grep",
+            "foo",
+            "--iweak-grep",
+            "bar",
+            "tests/fixtures/explicit/object_small.json",
+        ],
+        None,
+        None,
+    );
+    let err_l = out.stderr.to_ascii_lowercase();
+    assert!(
+        err_l.contains("conflict") || err_l.contains("cannot be used with"),
+        "stderr should mention weak-grep/iweak-grep conflict: {}",
+        out.stderr
+    );
+}
+
+#[test]
+fn grep_show_conflicts_with_iweak_grep() {
+    let out = common::run_cli_expect_fail(
+        &[
+            "--no-color",
+            "--iweak-grep",
+            "foo",
+            "--grep-show",
+            "all",
+            "tests/fixtures/explicit/object_small.json",
+        ],
+        None,
+        None,
+    );
+    let err_l = out.stderr.to_ascii_lowercase();
+    assert!(
+        err_l.contains("conflict")
+            || err_l.contains("cannot be used together")
+            || err_l.contains("cannot be used with")
+            || err_l.contains("requires"),
+        "stderr should mention grep-show is incompatible with iweak-grep: {}",
+        out.stderr
+    );
+}
