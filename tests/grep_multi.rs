@@ -159,3 +159,145 @@ fn mixed_weak_grep_and_iweak_grep_flags_combine() {
         "--weak-grep and --iweak-grep should combine; got: {stdout:?}"
     );
 }
+
+#[test]
+fn grep_and_weak_grep_can_be_combined() {
+    // "must" matches strong --grep (guaranteed), "bias" matches --weak-grep (priority)
+    let input = br#"{"a":"must","b":"bias","c":"other"}"#.to_vec();
+    let out = run_ok(
+        &[
+            "--no-color",
+            "--no-sort",
+            "--bytes",
+            "60",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--grep",
+            "must",
+            "--weak-grep",
+            "bias",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout;
+    assert!(
+        stdout.contains("must"),
+        "--grep match should be guaranteed; got: {stdout:?}"
+    );
+}
+
+#[test]
+fn grep_and_iweak_grep_can_be_combined() {
+    let input = br#"{"a":"must","b":"BIAS","c":"other"}"#.to_vec();
+    let out = run_ok(
+        &[
+            "--no-color",
+            "--no-sort",
+            "--bytes",
+            "60",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--grep",
+            "must",
+            "--iweak-grep",
+            "bias",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout;
+    assert!(
+        stdout.contains("must"),
+        "--grep match should be guaranteed; got: {stdout:?}"
+    );
+}
+
+#[test]
+fn igrep_and_weak_grep_can_be_combined() {
+    let input = br#"{"a":"MUST","b":"bias","c":"other"}"#.to_vec();
+    let out = run_ok(
+        &[
+            "--no-color",
+            "--no-sort",
+            "--bytes",
+            "60",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--igrep",
+            "must",
+            "--weak-grep",
+            "bias",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout;
+    assert!(
+        stdout.contains("MUST"),
+        "--igrep match should be guaranteed; got: {stdout:?}"
+    );
+}
+
+#[test]
+fn igrep_and_iweak_grep_can_be_combined() {
+    let input = br#"{"a":"MUST","b":"BIAS","c":"other"}"#.to_vec();
+    let out = run_ok(
+        &[
+            "--no-color",
+            "--no-sort",
+            "--bytes",
+            "60",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--igrep",
+            "must",
+            "--iweak-grep",
+            "bias",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout;
+    assert!(
+        stdout.contains("MUST"),
+        "--igrep match should be guaranteed; got: {stdout:?}"
+    );
+}
+
+#[test]
+fn all_four_grep_flags_can_be_combined() {
+    let input =
+        br#"{"a":"must","b":"IMUST","c":"bias","d":"IBIAS","e":"other"}"#
+            .to_vec();
+    let out = run_ok(
+        &[
+            "--no-color",
+            "--no-sort",
+            "--bytes",
+            "100",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--grep",
+            "must",
+            "--igrep",
+            "imust",
+            "--weak-grep",
+            "bias",
+            "--iweak-grep",
+            "ibias",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout;
+    assert!(
+        stdout.contains("must") && stdout.contains("IMUST"),
+        "strong grep matches should be guaranteed; got: {stdout:?}"
+    );
+}

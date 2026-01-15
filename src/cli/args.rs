@@ -178,7 +178,6 @@ pub struct Cli {
         long = "grep",
         value_name = "REGEX",
         action = ArgAction::Append,
-        conflicts_with_all = ["weak_grep", "iweak_grep"],
         help = "Guarantee inclusion of values (and their ancestors) matching this regex; budgets apply to everything else. Can be repeated."
     )]
     pub grep: Vec<String>,
@@ -186,7 +185,6 @@ pub struct Cli {
         long = "igrep",
         value_name = "REGEX",
         action = ArgAction::Append,
-        conflicts_with_all = ["weak_grep", "iweak_grep"],
         help = "Case-insensitive variant of --grep. Can be repeated and combined with --grep."
     )]
     pub igrep: Vec<String>,
@@ -194,7 +192,6 @@ pub struct Cli {
         long = "weak-grep",
         value_name = "REGEX",
         action = ArgAction::Append,
-        conflicts_with_all = ["grep", "igrep"],
         help = "Bias priority toward regex matches without guaranteeing inclusion or expanding budgets. Can be repeated."
     )]
     pub weak_grep: Vec<String>,
@@ -202,7 +199,6 @@ pub struct Cli {
         long = "iweak-grep",
         value_name = "REGEX",
         action = ArgAction::Append,
-        conflicts_with_all = ["grep", "igrep"],
         help = "Case-insensitive variant of --weak-grep. Can be repeated and combined with --weak-grep."
     )]
     pub iweak_grep: Vec<String>,
@@ -211,7 +207,6 @@ pub struct Cli {
         value_enum,
         default_value_t = GrepShowArg::Matching,
         requires = "strong_grep",
-        conflicts_with_all = ["weak_grep", "iweak_grep"],
         help = "When using --grep or --igrep, control fileset inclusion: matching (default) | all"
     )]
     pub grep_show: GrepShowArg,

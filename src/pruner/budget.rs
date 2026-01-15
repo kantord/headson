@@ -198,7 +198,7 @@ fn finalize_render_from_selection(
             grep_highlight: config
                 .grep_highlight
                 .clone()
-                .or_else(|| finalize_ctx.grep.regex.clone()),
+                .or_else(|| finalize_ctx.grep.matching_regex().cloned()),
             ..config.clone()
         },
     ))
@@ -209,15 +209,14 @@ fn strong_fileset_grep_without_matches(
     state: &Option<GrepState>,
     root_is_fileset: bool,
 ) -> bool {
-    !grep.weak
+    grep.has_strong()
         && matches!(grep.show, GrepShow::Matching)
-        && grep.regex.is_some()
         && state.is_none()
         && root_is_fileset
 }
 
 fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
-    state.as_ref().is_some_and(GrepState::is_enabled) && !grep.weak
+    state.as_ref().is_some_and(GrepState::is_enabled) && grep.has_strong()
 }
 
 fn apply_selection(
@@ -334,7 +333,7 @@ fn filter_fileset_without_matches(
     grep: &GrepConfig,
     keep_fileset_children_for_tree: bool,
 ) {
-    if grep.weak {
+    if !grep.has_strong() {
         return;
     }
     let Some(s) = state.as_mut() else {
@@ -615,7 +614,7 @@ fn must_keep_slice<'a>(
 ) -> Option<&'a [bool]> {
     state
         .as_ref()
-        .filter(|_| !grep.weak)
+        .filter(|_| grep.has_strong())
         .and_then(|s| s.is_enabled().then_some(s.must_keep.as_slice()))
 }
 

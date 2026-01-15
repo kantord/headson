@@ -15,47 +15,43 @@ pub enum GrepShow {
 /// Grep configuration threaded through the pipeline.
 #[derive(Default)]
 pub struct GrepConfig {
-    pub regex: Option<Regex>,
-    pub weak: bool,
+    pub strong_regex: Option<Regex>,
+    pub weak_regex: Option<Regex>,
     pub show: GrepShow,
+}
+
+impl GrepConfig {
+    pub fn has_strong(&self) -> bool {
+        self.strong_regex.is_some()
+    }
+
+    pub fn has_weak(&self) -> bool {
+        self.weak_regex.is_some()
+    }
+
+    /// Returns the regex to use for matching (strong takes precedence for must-keep).
+    pub fn matching_regex(&self) -> Option<&Regex> {
+        self.strong_regex.as_ref().or(self.weak_regex.as_ref())
+    }
+}
+
+fn build_regex(pat: &str) -> Result<Regex> {
+    Ok(RegexBuilder::new(pat).unicode(true).build()?)
 }
 
 pub fn build_grep_config(
     grep: Option<&str>,
     weak_grep: Option<&str>,
     grep_show: GrepShow,
-    case_insensitive: bool,
+    _case_insensitive: bool, // unused: case insensitivity embedded in patterns via (?i:...)
 ) -> Result<GrepConfig> {
-    match (grep, weak_grep) {
-        (Some(_), Some(_)) => {
-            anyhow::bail!("--grep and --weak-grep cannot be used together")
-        }
-        (Some(pat), None) => Ok(GrepConfig {
-            regex: Some(
-                RegexBuilder::new(pat)
-                    .unicode(true)
-                    .case_insensitive(case_insensitive)
-                    .build()?,
-            ),
-            weak: false,
-            show: grep_show,
-        }),
-        (None, Some(pat)) => Ok(GrepConfig {
-            regex: Some(
-                RegexBuilder::new(pat)
-                    .unicode(true)
-                    .case_insensitive(case_insensitive)
-                    .build()?,
-            ),
-            weak: true,
-            show: GrepShow::Matching,
-        }),
-        (None, None) => Ok(GrepConfig {
-            regex: None,
-            weak: false,
-            show: GrepShow::Matching,
-        }),
-    }
+    let strong_regex = grep.map(build_regex).transpose()?;
+    let weak_regex = weak_grep.map(build_regex).transpose()?;
+    Ok(GrepConfig {
+        strong_regex,
+        weak_regex,
+        show: grep_show,
+    })
 }
 
 pub(crate) struct GrepState {
@@ -126,7 +122,8 @@ pub(crate) fn compute_grep_state(
     order: &PriorityOrder,
     grep: &GrepConfig,
 ) -> Option<GrepState> {
-    let re = grep.regex.as_ref()?;
+    // Use strong_regex for must-keep; fall back to weak_regex for priority biasing
+    let re = grep.matching_regex()?;
     let mut must_keep = vec![false; order.total_nodes];
     mark_matches_and_ancestors(order, re, &mut must_keep);
     let must_keep_count = must_keep.iter().filter(|b| **b).count();

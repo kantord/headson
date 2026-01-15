@@ -85,7 +85,7 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
         crate::cli::args::map_grep_show(cli.grep_show),
         false, // case_insensitive is embedded in patterns via (?i:...)
     )?;
-    render_cfg.grep_highlight = grep_cfg.regex.clone();
+    render_cfg.grep_highlight = grep_cfg.matching_regex().cloned();
     let resolved_inputs = resolve_inputs(cli)?;
     if resolved_inputs.is_empty() {
         if !cli.globs.is_empty() || cli.recursive {
@@ -599,9 +599,8 @@ fn render_fileset(
         budgets,
     )?;
     warnings.extend(fallback_warnings);
-    if grep_cfg.regex.is_some()
+    if grep_cfg.has_strong()
         && matches!(grep_cfg.show, headson::GrepShow::Matching)
-        && !grep_cfg.weak
         && out.trim().is_empty()
     {
         warnings.push("No grep matches found".to_string());

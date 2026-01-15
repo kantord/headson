@@ -72,7 +72,7 @@ pub fn headson(
     budgets: Budgets,
 ) -> Result<RenderOutput> {
     let mut prio = *priority_cfg;
-    if grep.regex.is_some() && !grep.weak {
+    if grep.has_strong() {
         // Avoid sampling away potential matches in strong grep mode.
         prio.array_max_items = usize::MAX;
     }

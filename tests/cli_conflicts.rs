@@ -34,26 +34,6 @@ macro_rules! requires_test {
     };
 }
 
-/// Tests where clap may report either conflict or requires error (order-dependent)
-macro_rules! conflict_or_requires_test {
-    ($name:ident, $args:expr) => {
-        #[test]
-        fn $name() {
-            let out = common::run_cli_expect_fail($args, None, None);
-            let err_l = out.stderr.to_ascii_lowercase();
-            assert!(
-                err_l.contains("conflict")
-                    || err_l.contains("cannot be used with")
-                    || err_l.contains("cannot be used together")
-                    || err_l.contains("require")
-                    || err_l.contains("missing"),
-                "expected conflict or requires error, got: {}",
-                out.stderr
-            );
-        }
-    };
-}
-
 // Category 1: Clap conflicts
 conflict_test!(
     head_and_tail,
@@ -70,16 +50,6 @@ conflict_test!(
 conflict_test!(
     global_lines_and_no_newline,
     &["--no-newline", "-N", "5", "-f", "json"]
-);
-conflict_test!(
-    weak_grep_with_strong_grep,
-    &[
-        "--grep",
-        "foo",
-        "--weak-grep",
-        "foo",
-        "tests/fixtures/explicit/object_small.json"
-    ]
 );
 conflict_test!(
     tree_with_no_header,
@@ -106,36 +76,7 @@ conflict_test!(
     ]
 );
 conflict_test!(recursive_with_glob, &["--recursive", "-g", "*.json"]);
-conflict_test!(
-    igrep_with_weak_grep,
-    &[
-        "--igrep",
-        "foo",
-        "--weak-grep",
-        "bar",
-        "tests/fixtures/explicit/object_small.json"
-    ]
-);
-conflict_test!(
-    igrep_with_iweak_grep,
-    &[
-        "--igrep",
-        "foo",
-        "--iweak-grep",
-        "bar",
-        "tests/fixtures/explicit/object_small.json"
-    ]
-);
-conflict_test!(
-    iweak_grep_with_grep,
-    &[
-        "--grep",
-        "foo",
-        "--iweak-grep",
-        "bar",
-        "tests/fixtures/explicit/object_small.json"
-    ]
-);
+
 // Category 2: Clap requires
 requires_test!(
     grep_show_requires_strong_grep,
@@ -146,9 +87,8 @@ requires_test!(
     ]
 );
 
-// Category 3: Clap conflict or requires (order-dependent)
-conflict_or_requires_test!(
-    grep_show_with_weak_grep,
+requires_test!(
+    grep_show_with_weak_grep_requires_strong,
     &[
         "--weak-grep",
         "foo",
@@ -157,8 +97,8 @@ conflict_or_requires_test!(
         "tests/fixtures/explicit/object_small.json"
     ]
 );
-conflict_or_requires_test!(
-    grep_show_with_iweak_grep,
+requires_test!(
+    grep_show_with_iweak_grep_requires_strong,
     &[
         "--iweak-grep",
         "foo",
