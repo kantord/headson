@@ -34,7 +34,8 @@ impl ResolvedGrepPatterns {
     }
 
     /// Combine case-sensitive and case-insensitive patterns into a single regex.
-    /// Case-insensitive patterns are wrapped with (?i:...) for each pattern.
+    /// Each pattern is wrapped in a non-capturing group to prevent inline flags
+    /// (like `(?i)`) from leaking between patterns when joined with `|`.
     fn combine_patterns(
         case_sensitive: &[String],
         case_insensitive: &[String],
@@ -42,7 +43,7 @@ impl ResolvedGrepPatterns {
         let mut parts: Vec<String> = Vec::new();
 
         for pat in case_sensitive {
-            parts.push(pat.clone());
+            parts.push(format!("(?:{pat})"));
         }
         for pat in case_insensitive {
             parts.push(format!("(?i:{pat})"));

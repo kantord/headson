@@ -2,6 +2,50 @@ mod common;
 
 use std::ffi::OsStr;
 
+/// Test to verify regex flag leak bug: (?i) in one pattern should not affect other patterns
+#[test]
+fn inline_regex_flags_should_not_leak_between_patterns() {
+    // When using --grep '(?i)foo' --grep 'bar', the (?i) from first pattern
+    // should NOT make 'bar' case-insensitive.
+    // BAR should not be treated as a match (only "bar" lowercase should match the second pattern).
+    // With a tight budget, BAR should be truncated since it's not a match.
+    let input = br#"{"a":"FOO","b":"BAR","c":"bar"}"#.to_vec();
+    let out = common::run_cli(
+        &[
+            "--no-color",
+            "--no-sort",
+            "-f",
+            "json",
+            "-t",
+            "default", // use default style which truncates with "…"
+            "--bytes",
+            "10", // tight budget forces truncation of non-matches
+            "--grep",
+            "(?i)foo",
+            "--grep",
+            "bar",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout;
+
+    // FOO should match (via case-insensitive (?i)foo) and be guaranteed inclusion
+    assert!(
+        stdout.contains("FOO"),
+        "FOO should match via (?i)foo; got: {stdout:?}"
+    );
+    // bar should match (via case-sensitive bar) and be guaranteed inclusion
+    assert!(
+        stdout.contains("bar"),
+        "bar should match via case-sensitive pattern; got: {stdout:?}"
+    );
+    // BAR should be truncated (not a match). If fully present, the (?i) flag leaked.
+    assert!(
+        !stdout.contains("BAR"),
+        "BAR should be truncated (not a match) - if present, (?i) flag leaked; got: {stdout:?}"
+    );
+}
+
 fn run_ok(args: &[&str], stdin: Option<&[u8]>) -> common::CliOutput {
     common::run_cli(args, stdin)
 }
