@@ -178,28 +178,28 @@ pub struct Cli {
         long = "grep",
         value_name = "REGEX",
         action = ArgAction::Append,
-        help = "Guarantee inclusion of values (and their ancestors) matching this regex; budgets apply to everything else. Can be repeated."
+        help = "Guarantee inclusion of values (and their ancestors) matching this regex; budgets apply to everything else. Repeatable; multiple patterns match with OR."
     )]
     pub grep: Vec<String>,
     #[arg(
         long = "igrep",
         value_name = "REGEX",
         action = ArgAction::Append,
-        help = "Case-insensitive variant of --grep. Can be repeated and combined with --grep."
+        help = "Case-insensitive --grep. Repeatable and combinable with --grep (OR)."
     )]
     pub igrep: Vec<String>,
     #[arg(
         long = "weak-grep",
         value_name = "REGEX",
         action = ArgAction::Append,
-        help = "Bias priority toward regex matches without guaranteeing inclusion or expanding budgets. Can be repeated."
+        help = "Bias priority toward matches without guaranteeing inclusion. Repeatable; multiple patterns match with OR. Can combine with --grep/--igrep."
     )]
     pub weak_grep: Vec<String>,
     #[arg(
         long = "iweak-grep",
         value_name = "REGEX",
         action = ArgAction::Append,
-        help = "Case-insensitive variant of --weak-grep. Can be repeated and combined with --weak-grep."
+        help = "Case-insensitive --weak-grep. Repeatable and combinable with --weak-grep (OR). Can combine with --grep/--igrep."
     )]
     pub iweak_grep: Vec<String>,
     #[arg(

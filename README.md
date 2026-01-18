@@ -187,16 +187,18 @@ Notes:
 
 #### Grep mode
 
-Use `--grep <REGEX>` to guarantee inclusion of values/keys/lines matching the regex (ripgrep-style). Matches plus their ancestors are “free” against budgets; everything else must fit the remaining headroom.
+Use `--grep <REGEX>` to guarantee inclusion of values/keys/lines matching the regex (ripgrep-style). Matches plus their ancestors are "free" against budgets; everything else must fit the remaining headroom.
 
 - Matching: values/lines are checked; object keys match too. Filenames do not match by themselves (a file must have a matching value/line/key).
 - Colors: only the matching text is highlighted; syntax colors are suppressed in grep mode. Disable color entirely with `--no-color`.
-- Weak grep: `--weak-grep <REGEX>` biases priority toward matches but does not guarantee inclusion, expand budgets, or filter files. Budgets stay exact and matches can still be pruned if they do not fit. Use `--iweak-grep <REGEX>` for case-insensitive weak grep.
+- Multiple patterns: all grep flags are repeatable. Multiple patterns combine with OR semantics—values matching any pattern are included/highlighted. Example: `--grep foo --grep bar` matches "foo" or "bar".
+- Case-insensitive: use `--igrep <REGEX>` for case-insensitive matching. Can be combined with `--grep`: `--grep Foo --igrep bar` matches "Foo" (exact case) or "bar"/"BAR"/"Bar" (any case).
+- Weak grep: `--weak-grep <REGEX>` biases priority toward matches but does not guarantee inclusion, expand budgets, or filter files. Budgets stay exact and matches can still be pruned if they do not fit. Use `--iweak-grep <REGEX>` for case-insensitive weak grep. Weak grep can be combined with strong grep: strong matches are guaranteed while weak matches are prioritized.
 - Multi-file mode (strong `--grep` only):
   - Default (`--grep-show=matching`): files without matches are dropped from the render and summary. If no files match at all, the output is empty and the CLI prints a warning to stderr.
   - `--grep-show=all`: keep non-matching files in the render; only matching files are highlighted.
   - Headers respect `--no-header` as usual.
-- Mutual exclusion: `--grep-show` requires `--grep` or `--igrep` and cannot be used with `--weak-grep` or `--iweak-grep`. All four grep variants (`--grep`, `--igrep`, `--weak-grep`, `--iweak-grep`) are mutually exclusive.
+- `--grep-show` requires `--grep` or `--igrep`.
 - Context: there are no explicit `-C/-B/-A` style flags; per-file budgets decide how much surrounding structure/lines can stay alongside the must-keep matches.
 - Budgets: matches and ancestors always render; remaining budget determines what else can appear. Extremely tight budgets may show only the must-keep path.
 - Text/source code: works with `-i text` and source code files; when using `--format auto`, file extensions still decide ingest/rendering.
