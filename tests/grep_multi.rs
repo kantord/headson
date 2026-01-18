@@ -457,3 +457,41 @@ fn fileset_with_strong_and_weak_grep_show_all_includes_weak_only_files() {
         "weak match content should be present with --grep-show=all; got: {stdout:?}"
     );
 }
+
+#[test]
+fn fileset_with_no_strong_matches_but_weak_matches_renders_nothing() {
+    // When --grep pattern matches nothing but --weak-grep matches something,
+    // the fileset should render nothing (strong grep controls filtering).
+    let dir = tempfile::tempdir().unwrap();
+    let weak_only = dir.path().join("weak_only.json");
+    let other = dir.path().join("other.json");
+
+    std::fs::write(&weak_only, br#"{"a":"bias"}"#).unwrap();
+    std::fs::write(&other, br#"{"a":"other"}"#).unwrap();
+
+    let out = common::run_cli_in_dir(
+        dir.path(),
+        &[
+            "--no-color",
+            "--no-sort",
+            "--grep",
+            "nonexistent",
+            "--weak-grep",
+            "bias",
+            "weak_only.json",
+            "other.json",
+        ],
+        None,
+    );
+
+    assert!(
+        out.stdout.trim().is_empty(),
+        "fileset with no strong matches should render nothing even if weak matches exist; got: {:?}",
+        out.stdout
+    );
+    assert!(
+        out.stderr.contains("No grep matches found"),
+        "should emit notice about no grep matches; got: {:?}",
+        out.stderr
+    );
+}
