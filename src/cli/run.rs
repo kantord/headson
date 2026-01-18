@@ -78,7 +78,7 @@ fn needs_fileset(cli: &Cli, inputs_len: usize) -> bool {
 
 pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
     budget::validate(cli)?;
-    let mut render_cfg = get_render_config_from(cli);
+    let render_cfg = get_render_config_from(cli);
     let patterns = ResolvedGrepPatterns::from_cli(cli);
     let grep_cfg = headson::build_grep_config(
         patterns.strong.as_deref(),
@@ -86,7 +86,6 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
         crate::cli::args::map_grep_show(cli.grep_show),
         false, // case_insensitive is embedded in patterns via (?i:...)
     )?;
-    render_cfg.grep_highlight = grep_cfg.highlight_regex.clone();
     let resolved_inputs = resolve_inputs(cli)?;
     if resolved_inputs.is_empty() {
         if !cli.globs.is_empty() || cli.recursive {

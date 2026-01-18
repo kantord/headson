@@ -195,10 +195,7 @@ fn finalize_render_from_selection(
         &inclusion_flags,
         render_set_id,
         &crate::RenderConfig {
-            grep_highlight: config
-                .grep_highlight
-                .clone()
-                .or_else(|| finalize_ctx.grep.highlight_regex.clone()),
+            grep_highlight: finalize_ctx.grep.highlight_regex.clone(),
             ..config.clone()
         },
     ))

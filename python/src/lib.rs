@@ -118,7 +118,7 @@ fn summarize(
     weak_grep: Option<&str>,
 ) -> PyResult<String> {
     let sampler = parse_skew(skew).map_err(to_pyerr)?;
-    let mut cfg = render_config_with_sampler(format, style, sampler)
+    let cfg = render_config_with_sampler(format, style, sampler)
         .map_err(to_pyerr)?;
     let budget = byte_budget.unwrap_or(500);
     let EffectiveBudgets {
@@ -143,9 +143,6 @@ fn summarize(
         false,
     )
     .map_err(to_pyerr)?;
-    if let Some(re) = &grep_cfg.highlight_regex {
-        cfg.grep_highlight = Some(re.clone());
-    }
     let text_mode = if matches!(cfg.template, OutputTemplate::Code) {
         headson_core::TextMode::CodeLike
     } else {
