@@ -13,20 +13,22 @@ use clap_complete::Shell;
 #[clap(group = clap::ArgGroup::new("strong_grep").args(["grep", "igrep"]).multiple(true))]
 #[clap(group = clap::ArgGroup::new("weak_grep_group").args(["weak_grep", "weak_igrep"]).multiple(true))]
 pub struct Cli {
-    #[arg(short = 'c', long = "bytes")]
+    #[arg(short = 'c', long = "bytes", help_heading = "Preview Size")]
     pub bytes: Option<usize>,
     #[arg(
         short = 'u',
         long = "chars",
         value_name = "CHARS",
-        help = "Per-file Unicode character budget (adds up across files if no global chars limit)"
+        help = "Per-file Unicode character budget (adds up across files if no global chars limit)",
+        help_heading = "Preview Size"
     )]
     pub chars: Option<usize>,
     #[arg(
         short = 'n',
         long = "lines",
         value_name = "LINES",
-        help = "Per-file line budget. Pass --global-lines to also cap the total across inputs. Fileset headers/summary lines do not consume this budget."
+        help = "Per-file line budget. Pass --global-lines to also cap the total across inputs. Fileset headers/summary lines do not consume this budget.",
+        help_heading = "Preview Size"
     )]
     pub lines: Option<usize>,
     #[arg(
@@ -34,35 +36,44 @@ pub struct Cli {
         long = "count-headers",
         action = ArgAction::SetTrue,
         default_value_t = false,
-        help = "Count fileset headers/summary lines toward budgets instead of treating them as free"
+        help = "Count fileset headers/summary lines toward budgets instead of treating them as free",
+        help_heading = "Preview Size"
     )]
     pub count_headers: bool,
-    #[arg(long = "no-space", default_value_t = false)]
+    #[arg(
+        long = "no-space",
+        default_value_t = false,
+        help_heading = "Output Format"
+    )]
     pub no_space: bool,
     #[arg(
         long = "no-newline",
         default_value_t = false,
         conflicts_with_all = ["lines", "global_lines"],
-        help = "Do not add newlines in the output. Incompatible with --lines/--global-lines."
+        help = "Do not add newlines in the output. Incompatible with --lines/--global-lines.",
+        help_heading = "Output Format"
     )]
     pub no_newline: bool,
     #[arg(
         long = "no-header",
         default_value_t = false,
-        help = "Suppress fileset section headers in the output"
+        help = "Suppress fileset section headers in the output",
+        help_heading = "Multi-file Mode"
     )]
     pub no_header: bool,
     #[arg(
         long = "tree",
         default_value_t = false,
         conflicts_with_all = ["no_header", "compact", "no_newline"],
-        help = "Render filesets in a directory tree layout with inline previews"
+        help = "Render filesets in a directory tree layout with inline previews",
+        help_heading = "Multi-file Mode"
     )]
     pub tree: bool,
     #[arg(
         long = "no-sort",
         default_value_t = false,
-        help = "Keep input order for filesets (skip frecency/mtime sorting)."
+        help = "Keep input order for filesets (skip frecency/mtime sorting).",
+        help_heading = "Multi-file Mode"
     )]
     pub no_sort: bool,
     #[arg(
@@ -70,40 +81,46 @@ pub struct Cli {
         long = "compact",
         default_value_t = false,
         conflicts_with_all = ["no_space", "no_newline", "indent"],
-        help = "Compact output with no added whitespace. Not very human-readable."
+        help = "Compact output with no added whitespace. Not very human-readable.",
+        help_heading = "Output Format"
     )]
     pub compact: bool,
     #[arg(
         long = "string-cap",
         default_value_t = 500,
-        help = "Maximum string length to display"
+        help = "Maximum string length to display",
+        help_heading = "Preview Size"
     )]
     pub string_cap: usize,
     #[arg(
         short = 'C',
         long = "global-bytes",
         value_name = "BYTES",
-        help = "Total byte budget across all inputs. When combined with --bytes, the effective global limit is the smaller of the two."
+        help = "Total byte budget across all inputs. When combined with --bytes, the effective global limit is the smaller of the two.",
+        help_heading = "Preview Size"
     )]
     pub global_bytes: Option<usize>,
     #[arg(
         short = 'N',
         long = "global-lines",
         value_name = "LINES",
-        help = "Total line budget across all inputs. Fileset headers/summary lines do not consume this budget."
+        help = "Total line budget across all inputs. Fileset headers/summary lines do not consume this budget.",
+        help_heading = "Preview Size"
     )]
     pub global_lines: Option<usize>,
     #[arg(
         long = "tail",
         default_value_t = false,
-        help = "Prefer the end of arrays when truncating. Strings unaffected; JSON stays strict."
+        help = "Prefer the end of arrays when truncating. Strings unaffected; JSON stays strict.",
+        help_heading = "Preview Size"
     )]
     pub tail: bool,
     #[arg(
         long = "head",
         default_value_t = false,
         conflicts_with = "tail",
-        help = "Prefer the beginning of arrays when truncating (keep first N)."
+        help = "Prefer the beginning of arrays when truncating (keep first N).",
+        help_heading = "Preview Size"
     )]
     pub head: bool,
     #[arg(
@@ -111,7 +128,8 @@ pub struct Cli {
         long = "format",
         value_enum,
         default_value_t = OutputFormat::Auto,
-        help = "Output format: auto|json|yaml|text (filesets: auto is per-file)."
+        help = "Output format: auto|json|yaml|text (filesets: auto is per-file).",
+        help_heading = "Output Format"
     )]
     pub format: OutputFormat,
     #[arg(
@@ -119,23 +137,30 @@ pub struct Cli {
         long = "template",
         value_enum,
         default_value_t = StyleArg::Default,
-        help = "Output style: strict|default|detailed."
+        help = "Output style: strict|default|detailed.",
+        help_heading = "Output Format"
     )]
     pub style: StyleArg,
-    #[arg(long = "indent", default_value = "  ")]
+    #[arg(
+        long = "indent",
+        default_value = "  ",
+        help_heading = "Output Format"
+    )]
     pub indent: String,
     #[arg(
         long = "color",
         action = ArgAction::SetTrue,
         conflicts_with = "no_color",
-        help = "Force enable ANSI colors in output"
+        help = "Force enable ANSI colors in output",
+        help_heading = "Output Format"
     )]
     pub color: bool,
     #[arg(
         long = "no-color",
         action = ArgAction::SetTrue,
         conflicts_with = "color",
-        help = "Disable ANSI colors in output"
+        help = "Disable ANSI colors in output",
+        help_heading = "Output Format"
     )]
     pub no_color: bool,
     #[arg(
@@ -143,7 +168,8 @@ pub struct Cli {
         long = "glob",
         value_name = "PATTERN",
         num_args = 0..,
-        help = "Additional input glob(s) to expand (respects .gitignore). Can be used multiple times."
+        help = "Additional input glob(s) to expand (respects .gitignore). Can be used multiple times.",
+        help_heading = "Multi-file Mode"
     )]
     pub globs: Vec<String>,
     #[arg(
@@ -151,7 +177,8 @@ pub struct Cli {
         long = "recursive",
         action = ArgAction::SetTrue,
         conflicts_with = "globs",
-        help = "Recursively expand directory inputs (like grep -r). Requires directory paths."
+        help = "Recursively expand directory inputs (like grep -r). Requires directory paths.",
+        help_heading = "Multi-file Mode"
     )]
     pub recursive: bool,
     #[arg(
@@ -178,28 +205,32 @@ pub struct Cli {
         long = "grep",
         value_name = "REGEX",
         action = ArgAction::Append,
-        help = "Guarantee inclusion of values (and their ancestors) matching this regex; budgets apply to everything else. Repeatable; multiple patterns match with OR."
+        help = "Guarantee inclusion of values (and their ancestors) matching this regex; budgets apply to everything else. Repeatable; multiple patterns match with OR.",
+        help_heading = "Filtering"
     )]
     pub grep: Vec<String>,
     #[arg(
         long = "igrep",
         value_name = "REGEX",
         action = ArgAction::Append,
-        help = "Case-insensitive --grep. Repeatable and combinable with --grep (OR)."
+        help = "Case-insensitive --grep. Repeatable and combinable with --grep (OR).",
+        help_heading = "Filtering"
     )]
     pub igrep: Vec<String>,
     #[arg(
         long = "weak-grep",
         value_name = "REGEX",
         action = ArgAction::Append,
-        help = "Bias priority toward matches without guaranteeing inclusion. Repeatable; multiple patterns match with OR. Can combine with --grep/--igrep."
+        help = "Bias priority toward matches without guaranteeing inclusion. Repeatable; multiple patterns match with OR. Can combine with --grep/--igrep.",
+        help_heading = "Filtering"
     )]
     pub weak_grep: Vec<String>,
     #[arg(
         long = "weak-igrep",
         value_name = "REGEX",
         action = ArgAction::Append,
-        help = "Case-insensitive --weak-grep. Repeatable and combinable with --weak-grep (OR). Can combine with --grep/--igrep."
+        help = "Case-insensitive --weak-grep. Repeatable and combinable with --weak-grep (OR). Can combine with --grep/--igrep.",
+        help_heading = "Filtering"
     )]
     pub weak_igrep: Vec<String>,
     #[arg(
@@ -207,7 +238,8 @@ pub struct Cli {
         value_enum,
         default_value_t = GrepShowArg::Matching,
         requires = "strong_grep",
-        help = "When using --grep or --igrep, control fileset inclusion: matching (default) | all"
+        help = "When using --grep or --igrep, control fileset inclusion: matching (default) | all",
+        help_heading = "Filtering"
     )]
     pub grep_show: GrepShowArg,
     #[arg(
