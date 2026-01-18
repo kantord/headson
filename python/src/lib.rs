@@ -143,7 +143,7 @@ fn summarize(
         false,
     )
     .map_err(to_pyerr)?;
-    if let Some(re) = grep_cfg.matching_regex() {
+    if let Some(re) = &grep_cfg.highlight_regex {
         cfg.grep_highlight = Some(re.clone());
     }
     let text_mode = if matches!(cfg.template, OutputTemplate::Code) {

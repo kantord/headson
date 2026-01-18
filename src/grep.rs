@@ -17,6 +17,8 @@ pub enum GrepShow {
 pub struct GrepConfig {
     pub strong_regex: Option<Regex>,
     pub weak_regex: Option<Regex>,
+    /// Combined regex for highlighting (strong | weak)
+    pub highlight_regex: Option<Regex>,
     pub show: GrepShow,
 }
 
@@ -47,9 +49,19 @@ pub fn build_grep_config(
 ) -> Result<GrepConfig> {
     let strong_regex = grep.map(build_regex).transpose()?;
     let weak_regex = weak_grep.map(build_regex).transpose()?;
+
+    // Build combined regex for highlighting (strong | weak)
+    let highlight_regex = match (grep, weak_grep) {
+        (Some(s), Some(w)) => Some(build_regex(&format!("({s})|({w})"))?),
+        (Some(s), None) => Some(build_regex(s)?),
+        (None, Some(w)) => Some(build_regex(w)?),
+        (None, None) => None,
+    };
+
     Ok(GrepConfig {
         strong_regex,
         weak_regex,
+        highlight_regex,
         show: grep_show,
     })
 }

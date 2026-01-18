@@ -198,7 +198,7 @@ fn finalize_render_from_selection(
             grep_highlight: config
                 .grep_highlight
                 .clone()
-                .or_else(|| finalize_ctx.grep.matching_regex().cloned()),
+                .or_else(|| finalize_ctx.grep.highlight_regex.clone()),
             ..config.clone()
         },
     ))

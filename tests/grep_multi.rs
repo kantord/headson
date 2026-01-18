@@ -1,7 +1,14 @@
 mod common;
 
+use std::ffi::OsStr;
+
 fn run_ok(args: &[&str], stdin: Option<&[u8]>) -> common::CliOutput {
     common::run_cli(args, stdin)
+}
+
+fn run_ok_color(args: &[&str], stdin: Option<&[u8]>) -> common::CliOutput {
+    let envs = [("FORCE_COLOR", OsStr::new("1"))];
+    common::run_cli_in_dir_env(".", args, stdin, &envs)
 }
 
 #[test]
@@ -333,5 +340,34 @@ fn weak_grep_biases_priority_when_combined_with_strong() {
     assert!(
         stdout.contains("weak_match"),
         "weak match should be prioritized over non-matching filler; got: {stdout:?}"
+    );
+}
+
+#[test]
+fn both_strong_and_weak_patterns_are_highlighted() {
+    let input = br#"{"a":"strong_val","b":"weak_val"}"#.to_vec();
+    let out = run_ok_color(
+        &[
+            "-f",
+            "json",
+            "-t",
+            "default",
+            "--grep",
+            "strong",
+            "--weak-grep",
+            "weak",
+            "--no-sort",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout_ansi;
+    // Check that both "strong" and "weak" are highlighted (wrapped in ANSI red)
+    assert!(
+        stdout.contains("\x1b[31mstrong\x1b[39m"),
+        "strong pattern should be highlighted; got: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\x1b[31mweak\x1b[39m"),
+        "weak pattern should be highlighted; got: {stdout:?}"
     );
 }
