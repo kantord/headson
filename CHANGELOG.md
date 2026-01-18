@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0](https://github.com/kantord/headson/compare/headson-v0.14.0...headson-v0.15.0) - 2026-01-18
+
+### Added
+
+- split --help into different sections ([#486](https://github.com/kantord/headson/pull/486))
+- allow combining weak grep and grep ([#482](https://github.com/kantord/headson/pull/482))
+- allow multiple instances of --grep flags ([#478](https://github.com/kantord/headson/pull/478))
+
+### Other
+
+- *(deps)* update rust crate filetime to v0.2.27 ([#485](https://github.com/kantord/headson/pull/485))
+- *(deps)* update rust crate insta to v1.46.1 ([#480](https://github.com/kantord/headson/pull/480))
+
 ## [0.14.0](https://github.com/kantord/headson/compare/headson-v0.13.1...headson-v0.14.0) - 2026-01-15
 
 ### Added
