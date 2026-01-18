@@ -225,7 +225,9 @@ fn strong_fileset_grep_without_matches(
 }
 
 fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
-    state.as_ref().is_some_and(GrepState::is_enabled) && grep.has_strong()
+    let strong_match_count =
+        state.as_ref().map(|s| s.must_keep_count).unwrap_or(0);
+    grep.has_strong() && strong_match_count > 0
 }
 
 fn apply_selection(
@@ -621,10 +623,9 @@ fn must_keep_slice<'a>(
     state: &'a Option<GrepState>,
     grep: &GrepConfig,
 ) -> Option<&'a [bool]> {
-    state
-        .as_ref()
-        .filter(|_| grep.has_strong())
-        .and_then(|s| s.is_enabled().then_some(s.must_keep.as_slice()))
+    state.as_ref().filter(|_| grep.has_strong()).and_then(|s| {
+        (s.must_keep_count > 0).then_some(s.must_keep.as_slice())
+    })
 }
 
 #[allow(
