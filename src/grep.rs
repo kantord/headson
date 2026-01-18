@@ -26,15 +26,6 @@ impl GrepConfig {
     pub fn has_strong(&self) -> bool {
         self.strong_regex.is_some()
     }
-
-    pub fn has_weak(&self) -> bool {
-        self.weak_regex.is_some()
-    }
-
-    /// Returns the regex to use for matching (strong takes precedence for must-keep).
-    pub fn matching_regex(&self) -> Option<&Regex> {
-        self.strong_regex.as_ref().or(self.weak_regex.as_ref())
-    }
 }
 
 fn build_regex(pat: &str, case_insensitive: bool) -> Result<Regex> {
@@ -44,6 +35,8 @@ fn build_regex(pat: &str, case_insensitive: bool) -> Result<Regex> {
         .build()?)
 }
 
+/// Build a GrepConfig from optional pattern strings.
+/// For CLI usage, patterns should already have (?i:...) embedded for case-insensitive parts.
 pub fn build_grep_config(
     grep: Option<&str>,
     weak_grep: Option<&str>,
@@ -56,13 +49,15 @@ pub fn build_grep_config(
         .map(|p| build_regex(p, case_insensitive))
         .transpose()?;
 
-    // Build combined regex for highlighting (strong | weak)
-    let highlight_regex = match (grep, weak_grep) {
+    // Build highlight regex, reusing compiled regexes where possible
+    let highlight_regex = match (&strong_regex, &weak_regex) {
         (Some(s), Some(w)) => {
-            Some(build_regex(&format!("({s})|({w})"), case_insensitive)?)
+            // Must build combined pattern when both exist
+            let combined = format!("({})|({w})", s.as_str());
+            Some(build_regex(&combined, case_insensitive)?)
         }
-        (Some(s), None) => Some(build_regex(s, case_insensitive)?),
-        (None, Some(w)) => Some(build_regex(w, case_insensitive)?),
+        (Some(s), None) => Some(s.clone()),
+        (None, Some(w)) => Some(w.clone()),
         (None, None) => None,
     };
 
@@ -74,19 +69,13 @@ pub fn build_grep_config(
     })
 }
 
+/// Grep matching state computed from a priority order.
+/// - `all_matches`: nodes matching strong OR weak patterns (used for priority reordering)
+/// - `strong_matches`: nodes matching only strong patterns (used for guaranteed inclusion)
 pub(crate) struct GrepState {
-    /// All matches (strong + weak) - used for priority reordering
-    pub priority_boost: Vec<bool>,
-    /// Strong matches only - used for must_keep enforcement
-    pub must_keep: Vec<bool>,
-    pub priority_boost_count: usize,
-    pub must_keep_count: usize,
-}
-
-impl GrepState {
-    pub fn is_enabled(&self) -> bool {
-        self.priority_boost_count > 0
-    }
+    pub all_matches: Vec<bool>,
+    pub strong_matches: Vec<bool>,
+    pub strong_match_count: usize,
 }
 
 fn matches_ranked(
@@ -122,7 +111,7 @@ fn matches_ranked(
 fn mark_matches_and_ancestors(
     order: &PriorityOrder,
     re: &Regex,
-    must_keep: &mut [bool],
+    flags: &mut [bool],
 ) {
     for (idx, node) in order.nodes.iter().enumerate() {
         if !matches_ranked(order, idx, node, re) {
@@ -131,17 +120,17 @@ fn mark_matches_and_ancestors(
         let mut cursor = Some(NodeId(idx));
         while let Some(node_id) = cursor {
             let raw = node_id.0;
-            if must_keep[raw] {
+            if flags[raw] {
                 break;
             }
-            must_keep[raw] = true;
+            flags[raw] = true;
             cursor = order.parent.get(raw).and_then(|p| *p);
         }
     }
 }
 
-/// Find all nodes that match the regex (or whose keys match) and mark their
-/// ancestor chain for priority boosting and/or guaranteed inclusion.
+/// Compute grep state by scanning the tree.
+/// Optimized: strong matches are computed once, then weak matches are OR'd in.
 pub(crate) fn compute_grep_state(
     order: &PriorityOrder,
     grep: &GrepConfig,
@@ -151,42 +140,41 @@ pub(crate) fn compute_grep_state(
         return None;
     }
 
-    let mut priority_boost = vec![false; order.total_nodes];
-    let mut must_keep = vec![false; order.total_nodes];
+    let mut strong_matches = vec![false; order.total_nodes];
 
-    // Mark strong matches in both priority_boost and must_keep
+    // Compute strong matches once
     if let Some(re) = &grep.strong_regex {
-        mark_matches_and_ancestors(order, re, &mut priority_boost);
-        mark_matches_and_ancestors(order, re, &mut must_keep);
+        mark_matches_and_ancestors(order, re, &mut strong_matches);
     }
 
-    // Mark weak matches only in priority_boost (not must_keep)
+    // all_matches = strong_matches OR weak_matches
+    let mut all_matches = strong_matches.clone();
     if let Some(re) = &grep.weak_regex {
-        mark_matches_and_ancestors(order, re, &mut priority_boost);
+        mark_matches_and_ancestors(order, re, &mut all_matches);
     }
 
-    let priority_boost_count = priority_boost.iter().filter(|b| **b).count();
-    let must_keep_count = must_keep.iter().filter(|b| **b).count();
+    let all_match_count = all_matches.iter().filter(|b| **b).count();
+    let strong_match_count = strong_matches.iter().filter(|b| **b).count();
 
-    (priority_boost_count > 0).then_some(GrepState {
-        priority_boost,
-        must_keep,
-        priority_boost_count,
-        must_keep_count,
+    // Return Some only if there are any matches
+    (all_match_count > 0).then_some(GrepState {
+        all_matches,
+        strong_matches,
+        strong_match_count,
     })
 }
 
-/// Reorder priority so boosted nodes are visited first, preserving the
+/// Reorder priority so matched nodes are visited first, preserving the
 /// existing relative order within each bucket.
-pub(crate) fn reorder_priority_with_boost(
+pub(crate) fn reorder_priority_with_matches(
     order: &mut PriorityOrder,
-    priority_boost: &[bool],
+    all_matches: &[bool],
 ) {
     let mut seen = vec![false; order.total_nodes];
     let mut reordered: Vec<NodeId> = Vec::with_capacity(order.total_nodes);
     for &id in order.by_priority.iter() {
         let idx = id.0;
-        if priority_boost.get(idx).copied().unwrap_or(false) && !seen[idx] {
+        if all_matches.get(idx).copied().unwrap_or(false) && !seen[idx] {
             reordered.push(id);
             seen[idx] = true;
         }

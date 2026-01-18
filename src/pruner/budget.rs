@@ -1,6 +1,6 @@
 use super::pruning_context::HeadsonPruningContext;
 use crate::grep::{
-    GrepShow, GrepState, compute_grep_state, reorder_priority_with_boost,
+    GrepShow, GrepState, compute_grep_state, reorder_priority_with_matches,
 };
 use crate::order::{NodeId, ObjectType};
 use crate::utils::measure::{OutputStats, count_output_stats};
@@ -45,7 +45,7 @@ pub fn find_largest_render_under_budgets(
     let header_budgeting = header_budgeting_policy(order_build, config);
     let measure_cfg = measure_config(order_build, config, header_budgeting);
     let min_k = min_k_for(&grep_state, grep);
-    let must_keep_slice = must_keep_slice(&grep_state, grep);
+    let must_keep_slice = strong_matches_slice(&grep_state, grep);
     let must_keep = must_keep_slice.map(|flags| {
         let free_allowance = effective_budgets_with_grep(
             order_build,
@@ -219,15 +219,14 @@ fn strong_fileset_grep_without_matches(
     let Some(s) = state else {
         return true;
     };
-    // If state exists but has no strong matches (must_keep_count == 0),
+    // If state exists but has no strong matches (strong_match_count == 0),
     // still treat as "no matches" for filtering purposes
-    s.must_keep_count == 0
+    s.strong_match_count == 0
 }
 
 fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
-    let strong_match_count =
-        state.as_ref().map(|s| s.must_keep_count).unwrap_or(0);
-    grep.has_strong() && strong_match_count > 0
+    let count = state.as_ref().map(|s| s.strong_match_count).unwrap_or(0);
+    grep.has_strong() && count > 0
 }
 
 fn apply_selection(
@@ -270,7 +269,7 @@ fn include_strong_grep_must_keep(
             order_build,
             inclusion_flags,
             render_set_id,
-            &state.must_keep,
+            &state.strong_matches,
         );
     }
 }
@@ -330,7 +329,7 @@ fn reorder_if_grep(
     state: &Option<GrepState>,
 ) {
     if let Some(s) = state {
-        reorder_priority_with_boost(order_build, &s.priority_boost);
+        reorder_priority_with_matches(order_build, &s.all_matches);
     }
 }
 
@@ -350,9 +349,7 @@ fn filter_fileset_without_matches(
     let Some(s) = state.as_mut() else {
         return;
     };
-    if !s.is_enabled() {
-        return;
-    }
+    // Note: state being Some already guarantees there are matches (all_matches has entries)
     if matches!(grep.show, crate::grep::GrepShow::All) {
         return;
     }
@@ -375,7 +372,7 @@ fn filter_fileset_without_matches(
     };
 
     let mut keep_slots = vec![false; fileset_slots.len()];
-    for (idx, keep) in s.must_keep.iter().enumerate() {
+    for (idx, keep) in s.strong_matches.iter().enumerate() {
         if !*keep {
             continue;
         }
@@ -390,7 +387,7 @@ fn filter_fileset_without_matches(
         // Fallback: consider fileset children directly in case matches were only
         // recorded on the file root.
         for (slot, child) in fileset_slots.iter().enumerate() {
-            if s.must_keep.get(child.id.0).copied().unwrap_or(false) {
+            if s.strong_matches.get(child.id.0).copied().unwrap_or(false) {
                 if let Some(flag) = keep_slots.get_mut(slot) {
                     *flag = true;
                 }
@@ -428,14 +425,14 @@ fn filter_fileset_without_matches(
         }
     }
 
-    for (idx, keep) in s.must_keep.iter_mut().enumerate() {
+    for (idx, keep) in s.strong_matches.iter_mut().enumerate() {
         if let Some(slot) = slot_map.get(idx).copied().flatten() {
             if !keep_slots.get(slot).copied().unwrap_or(false) {
                 *keep = false;
             }
         }
     }
-    s.must_keep_count = s.must_keep.iter().filter(|b| **b).count();
+    s.strong_match_count = s.strong_matches.iter().filter(|b| **b).count();
 }
 
 #[allow(
@@ -602,7 +599,7 @@ fn effective_budgets_with_grep(
     Some(measure_must_keep_with_slots(
         order_build,
         measure_cfg,
-        &s.must_keep,
+        &s.strong_matches,
         measure_chars,
         fileset_slots,
     ))
@@ -612,19 +609,19 @@ fn min_k_for(state: &Option<GrepState>, grep: &GrepConfig) -> usize {
     if is_strong_grep(grep, state) {
         state
             .as_ref()
-            .map(|s| s.must_keep_count.max(1))
+            .map(|s| s.strong_match_count.max(1))
             .unwrap_or(1)
     } else {
         1
     }
 }
 
-fn must_keep_slice<'a>(
+fn strong_matches_slice<'a>(
     state: &'a Option<GrepState>,
     grep: &GrepConfig,
 ) -> Option<&'a [bool]> {
     state.as_ref().filter(|_| grep.has_strong()).and_then(|s| {
-        (s.must_keep_count > 0).then_some(s.must_keep.as_slice())
+        (s.strong_match_count > 0).then_some(s.strong_matches.as_slice())
     })
 }
 
