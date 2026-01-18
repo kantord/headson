@@ -11,7 +11,7 @@ use clap_complete::Shell;
     about = "Get a small but useful preview of JSON or YAML"
 )]
 #[clap(group = clap::ArgGroup::new("strong_grep").args(["grep", "igrep"]).multiple(true))]
-#[clap(group = clap::ArgGroup::new("weak_grep_group").args(["weak_grep", "iweak_grep"]).multiple(true))]
+#[clap(group = clap::ArgGroup::new("weak_grep_group").args(["weak_grep", "weak_igrep"]).multiple(true))]
 pub struct Cli {
     #[arg(short = 'c', long = "bytes")]
     pub bytes: Option<usize>,
@@ -196,12 +196,12 @@ pub struct Cli {
     )]
     pub weak_grep: Vec<String>,
     #[arg(
-        long = "iweak-grep",
+        long = "weak-igrep",
         value_name = "REGEX",
         action = ArgAction::Append,
         help = "Case-insensitive --weak-grep. Repeatable and combinable with --weak-grep (OR). Can combine with --grep/--igrep."
     )]
-    pub iweak_grep: Vec<String>,
+    pub weak_igrep: Vec<String>,
     #[arg(
         long = "grep-show",
         value_enum,

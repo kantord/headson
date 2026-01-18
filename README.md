@@ -193,7 +193,7 @@ Use `--grep <REGEX>` to guarantee inclusion of values/keys/lines matching the re
 - Colors: only the matching text is highlighted; syntax colors are suppressed in grep mode. Disable color entirely with `--no-color`.
 - Multiple patterns: all grep flags are repeatable. Multiple patterns combine with OR semantics—values matching any pattern are included/highlighted. Example: `--grep foo --grep bar` matches "foo" or "bar".
 - Case-insensitive: use `--igrep <REGEX>` for case-insensitive matching. Can be combined with `--grep`: `--grep Foo --igrep bar` matches "Foo" (exact case) or "bar"/"BAR"/"Bar" (any case).
-- Weak grep: `--weak-grep <REGEX>` biases priority toward matches but does not guarantee inclusion, expand budgets, or filter files. Budgets stay exact and matches can still be pruned if they do not fit. Use `--iweak-grep <REGEX>` for case-insensitive weak grep. Weak grep can be combined with strong grep: strong matches are guaranteed while weak matches are prioritized.
+- Weak grep: `--weak-grep <REGEX>` biases priority toward matches but does not guarantee inclusion, expand budgets, or filter files. Budgets stay exact and matches can still be pruned if they do not fit. Use `--weak-igrep <REGEX>` for case-insensitive weak grep. Weak grep can be combined with strong grep: strong matches are guaranteed while weak matches are prioritized.
 - Multi-file mode (strong `--grep` only):
   - Default (`--grep-show=matching`): files without matches are dropped from the render and summary. If no files match at all, the output is empty and the CLI prints a warning to stderr.
   - `--grep-show=all`: keep non-matching files in the render; only matching files are highlighted.

@@ -1007,7 +1007,7 @@ fn igrep_highlights_matches_with_color() {
 }
 
 #[test]
-fn iweak_grep_matches_case_insensitively() {
+fn weak_igrep_matches_case_insensitively() {
     let input = br#"{"miss":"xxxxxxxxxx","hit":"NEEDLE"}"#.to_vec();
     let out = run_ok(
         &[
@@ -1018,7 +1018,7 @@ fn iweak_grep_matches_case_insensitively() {
             "json",
             "-t",
             "strict",
-            "--iweak-grep",
+            "--weak-igrep",
             "needle",
             "--no-sort",
         ],
@@ -1027,12 +1027,12 @@ fn iweak_grep_matches_case_insensitively() {
     let stdout = out.stdout;
     assert!(
         stdout.contains("\"hit\""),
-        "iweak-grep should bias sampling toward case-insensitive matches: {stdout:?}"
+        "weak-igrep should bias sampling toward case-insensitive matches: {stdout:?}"
     );
 }
 
 #[test]
-fn iweak_grep_does_not_expand_budget() {
+fn weak_igrep_does_not_expand_budget() {
     let input = br#"{"keep":"NEEDLE"}"#.to_vec();
     let out = run_ok(
         &[
@@ -1043,7 +1043,7 @@ fn iweak_grep_does_not_expand_budget() {
             "json",
             "-t",
             "strict",
-            "--iweak-grep",
+            "--weak-igrep",
             "needle",
         ],
         Some(&input),
@@ -1051,7 +1051,7 @@ fn iweak_grep_does_not_expand_budget() {
     let stdout = out.stdout;
     assert!(
         stdout.len() <= 5,
-        "iweak-grep should not expand the user-provided byte budget; got len {}",
+        "weak-igrep should not expand the user-provided byte budget; got len {}",
         stdout.len()
     );
 }

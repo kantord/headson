@@ -158,7 +158,7 @@ fn multiple_weak_grep_flags_bias_toward_either_pattern() {
 }
 
 #[test]
-fn multiple_iweak_grep_flags_bias_toward_either_pattern() {
+fn multiple_weak_igrep_flags_bias_toward_either_pattern() {
     let input = br#"{"a":"FOO","b":"BAR","c":"xxxxxxxxxxxxx"}"#.to_vec();
     let out = run_ok(
         &[
@@ -170,9 +170,9 @@ fn multiple_iweak_grep_flags_bias_toward_either_pattern() {
             "json",
             "-t",
             "strict",
-            "--iweak-grep",
+            "--weak-igrep",
             "foo",
-            "--iweak-grep",
+            "--weak-igrep",
             "bar",
         ],
         Some(&input),
@@ -180,12 +180,12 @@ fn multiple_iweak_grep_flags_bias_toward_either_pattern() {
     let stdout = out.stdout;
     assert!(
         stdout.contains("FOO") || stdout.contains("BAR"),
-        "multiple --iweak-grep flags should bias toward either match case-insensitively; got: {stdout:?}"
+        "multiple --weak-igrep flags should bias toward either match case-insensitively; got: {stdout:?}"
     );
 }
 
 #[test]
-fn mixed_weak_grep_and_iweak_grep_flags_combine() {
+fn mixed_weak_grep_and_weak_igrep_flags_combine() {
     let input = br#"{"a":"foo","b":"BAR","c":"xxxxxxxxxxxxx"}"#.to_vec();
     let out = run_ok(
         &[
@@ -199,7 +199,7 @@ fn mixed_weak_grep_and_iweak_grep_flags_combine() {
             "strict",
             "--weak-grep",
             "foo",
-            "--iweak-grep",
+            "--weak-igrep",
             "bar",
         ],
         Some(&input),
@@ -207,7 +207,7 @@ fn mixed_weak_grep_and_iweak_grep_flags_combine() {
     let stdout = out.stdout;
     assert!(
         stdout.contains("foo") || stdout.contains("BAR"),
-        "--weak-grep and --iweak-grep should combine; got: {stdout:?}"
+        "--weak-grep and --weak-igrep should combine; got: {stdout:?}"
     );
 }
 
@@ -240,7 +240,7 @@ fn grep_and_weak_grep_can_be_combined() {
 }
 
 #[test]
-fn grep_and_iweak_grep_can_be_combined() {
+fn grep_and_weak_igrep_can_be_combined() {
     let input = br#"{"a":"must","b":"BIAS","c":"other"}"#.to_vec();
     let out = run_ok(
         &[
@@ -254,7 +254,7 @@ fn grep_and_iweak_grep_can_be_combined() {
             "strict",
             "--grep",
             "must",
-            "--iweak-grep",
+            "--weak-igrep",
             "bias",
         ],
         Some(&input),
@@ -294,7 +294,7 @@ fn igrep_and_weak_grep_can_be_combined() {
 }
 
 #[test]
-fn igrep_and_iweak_grep_can_be_combined() {
+fn igrep_and_weak_igrep_can_be_combined() {
     let input = br#"{"a":"MUST","b":"BIAS","c":"other"}"#.to_vec();
     let out = run_ok(
         &[
@@ -308,7 +308,7 @@ fn igrep_and_iweak_grep_can_be_combined() {
             "strict",
             "--igrep",
             "must",
-            "--iweak-grep",
+            "--weak-igrep",
             "bias",
         ],
         Some(&input),
@@ -341,7 +341,7 @@ fn all_four_grep_flags_can_be_combined() {
             "imust",
             "--weak-grep",
             "bias",
-            "--iweak-grep",
+            "--weak-igrep",
             "ibias",
         ],
         Some(&input),

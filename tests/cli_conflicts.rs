@@ -98,9 +98,9 @@ requires_test!(
     ]
 );
 requires_test!(
-    grep_show_with_iweak_grep_requires_strong,
+    grep_show_with_weak_igrep_requires_strong,
     &[
-        "--iweak-grep",
+        "--weak-igrep",
         "foo",
         "--grep-show",
         "all",

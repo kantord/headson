@@ -29,7 +29,7 @@ struct ResolvedGrepPatterns {
 impl ResolvedGrepPatterns {
     fn from_cli(cli: &Cli) -> Self {
         let strong = Self::combine_patterns(&cli.grep, &cli.igrep);
-        let weak = Self::combine_patterns(&cli.weak_grep, &cli.iweak_grep);
+        let weak = Self::combine_patterns(&cli.weak_grep, &cli.weak_igrep);
         Self { strong, weak }
     }
 
