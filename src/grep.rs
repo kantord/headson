@@ -37,24 +37,32 @@ impl GrepConfig {
     }
 }
 
-fn build_regex(pat: &str) -> Result<Regex> {
-    Ok(RegexBuilder::new(pat).unicode(true).build()?)
+fn build_regex(pat: &str, case_insensitive: bool) -> Result<Regex> {
+    Ok(RegexBuilder::new(pat)
+        .unicode(true)
+        .case_insensitive(case_insensitive)
+        .build()?)
 }
 
 pub fn build_grep_config(
     grep: Option<&str>,
     weak_grep: Option<&str>,
     grep_show: GrepShow,
-    _case_insensitive: bool, // unused: case insensitivity embedded in patterns via (?i:...)
+    case_insensitive: bool,
 ) -> Result<GrepConfig> {
-    let strong_regex = grep.map(build_regex).transpose()?;
-    let weak_regex = weak_grep.map(build_regex).transpose()?;
+    let strong_regex =
+        grep.map(|p| build_regex(p, case_insensitive)).transpose()?;
+    let weak_regex = weak_grep
+        .map(|p| build_regex(p, case_insensitive))
+        .transpose()?;
 
     // Build combined regex for highlighting (strong | weak)
     let highlight_regex = match (grep, weak_grep) {
-        (Some(s), Some(w)) => Some(build_regex(&format!("({s})|({w})"))?),
-        (Some(s), None) => Some(build_regex(s)?),
-        (None, Some(w)) => Some(build_regex(w)?),
+        (Some(s), Some(w)) => {
+            Some(build_regex(&format!("({s})|({w})"), case_insensitive)?)
+        }
+        (Some(s), None) => Some(build_regex(s, case_insensitive)?),
+        (None, Some(w)) => Some(build_regex(w, case_insensitive)?),
         (None, None) => None,
     };
 
