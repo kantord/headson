@@ -28,8 +28,10 @@ mod order;
 mod pruner;
 mod serialization;
 mod utils;
-pub use grep::build_grep_config;
-pub use grep::{GrepConfig, GrepShow};
+pub use grep::{
+    GrepConfig, GrepShow, build_grep_config, build_grep_config_from_patterns,
+    combine_patterns,
+};
 pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
 pub use order::{

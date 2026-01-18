@@ -19,42 +19,16 @@ type InputEntry = (String, Vec<u8>);
 type InputEntries = Vec<InputEntry>;
 pub(crate) type CliWarnings = Vec<String>;
 
-/// Resolved grep patterns from CLI flags.
-/// Combines multiple patterns into single regex strings with embedded (?i) for case-insensitive parts.
-struct ResolvedGrepPatterns {
-    strong: Option<String>,
-    weak: Option<String>,
-}
-
-impl ResolvedGrepPatterns {
-    fn from_cli(cli: &Cli) -> Self {
-        let strong = Self::combine_patterns(&cli.grep, &cli.igrep);
-        let weak = Self::combine_patterns(&cli.weak_grep, &cli.weak_igrep);
-        Self { strong, weak }
-    }
-
-    /// Combine case-sensitive and case-insensitive patterns into a single regex.
-    /// Each pattern is wrapped in a non-capturing group to prevent inline flags
-    /// (like `(?i)`) from leaking between patterns when joined with `|`.
-    fn combine_patterns(
-        case_sensitive: &[String],
-        case_insensitive: &[String],
-    ) -> Option<String> {
-        let mut parts: Vec<String> = Vec::new();
-
-        for pat in case_sensitive {
-            parts.push(format!("(?:{pat})"));
-        }
-        for pat in case_insensitive {
-            parts.push(format!("(?i:{pat})"));
-        }
-
-        if parts.is_empty() {
-            None
-        } else {
-            Some(parts.join("|"))
-        }
-    }
+fn build_grep_config_from_cli(
+    cli: &Cli,
+) -> anyhow::Result<headson::GrepConfig> {
+    headson::build_grep_config_from_patterns(
+        &cli.grep,
+        &cli.igrep,
+        &cli.weak_grep,
+        &cli.weak_igrep,
+        crate::cli::args::map_grep_show(cli.grep_show),
+    )
 }
 
 fn build_effective_configs(
@@ -79,13 +53,7 @@ fn needs_fileset(cli: &Cli, inputs_len: usize) -> bool {
 pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
     budget::validate(cli)?;
     let render_cfg = get_render_config_from(cli);
-    let patterns = ResolvedGrepPatterns::from_cli(cli);
-    let grep_cfg = headson::build_grep_config(
-        patterns.strong.as_deref(),
-        patterns.weak.as_deref(),
-        crate::cli::args::map_grep_show(cli.grep_show),
-        false, // case_insensitive is embedded in patterns via (?i:...)
-    )?;
+    let grep_cfg = build_grep_config_from_cli(cli)?;
     let resolved_inputs = resolve_inputs(cli)?;
     if resolved_inputs.is_empty() {
         if !cli.globs.is_empty() || cli.recursive {

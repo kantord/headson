@@ -35,8 +35,52 @@ fn build_regex(pat: &str, case_insensitive: bool) -> Result<Regex> {
         .build()?)
 }
 
+/// Combine multiple patterns into a single regex string.
+/// Case-sensitive patterns are wrapped in `(?:...)`, case-insensitive in `(?i:...)`.
+/// This prevents inline flags from leaking between patterns when joined with `|`.
+/// Returns `None` if no patterns are provided.
+pub fn combine_patterns(
+    case_sensitive: &[impl AsRef<str>],
+    case_insensitive: &[impl AsRef<str>],
+) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
+
+    for pat in case_sensitive {
+        parts.push(format!("(?:{})", pat.as_ref()));
+    }
+    for pat in case_insensitive {
+        parts.push(format!("(?i:{})", pat.as_ref()));
+    }
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("|"))
+    }
+}
+
+/// Build a GrepConfig from pattern slices.
+/// Combines case-sensitive and case-insensitive patterns with OR semantics.
+pub fn build_grep_config_from_patterns(
+    strong: &[impl AsRef<str>],
+    strong_icase: &[impl AsRef<str>],
+    weak: &[impl AsRef<str>],
+    weak_icase: &[impl AsRef<str>],
+    grep_show: GrepShow,
+) -> Result<GrepConfig> {
+    let strong_combined = combine_patterns(strong, strong_icase);
+    let weak_combined = combine_patterns(weak, weak_icase);
+    build_grep_config(
+        strong_combined.as_deref(),
+        weak_combined.as_deref(),
+        grep_show,
+        false, // case-insensitivity already embedded via (?i:...)
+    )
+}
+
 /// Build a GrepConfig from optional pattern strings.
-/// For CLI usage, patterns should already have (?i:...) embedded for case-insensitive parts.
+/// For simple cases with single patterns. Use `build_grep_config_from_patterns`
+/// for multiple patterns with mixed case-sensitivity.
 pub fn build_grep_config(
     grep: Option<&str>,
     weak_grep: Option<&str>,
