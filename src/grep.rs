@@ -55,13 +55,17 @@ pub fn build_grep_config(
 }
 
 pub(crate) struct GrepState {
+    /// All matches (strong + weak) - used for priority reordering
+    pub priority_boost: Vec<bool>,
+    /// Strong matches only - used for must_keep enforcement
     pub must_keep: Vec<bool>,
+    pub priority_boost_count: usize,
     pub must_keep_count: usize,
 }
 
 impl GrepState {
     pub fn is_enabled(&self) -> bool {
-        self.must_keep_count > 0
+        self.priority_boost_count > 0
     }
 }
 
@@ -117,33 +121,52 @@ fn mark_matches_and_ancestors(
 }
 
 /// Find all nodes that match the regex (or whose keys match) and mark their
-/// ancestor chain for guaranteed inclusion.
+/// ancestor chain for priority boosting and/or guaranteed inclusion.
 pub(crate) fn compute_grep_state(
     order: &PriorityOrder,
     grep: &GrepConfig,
 ) -> Option<GrepState> {
-    // Use strong_regex for must-keep; fall back to weak_regex for priority biasing
-    let re = grep.matching_regex()?;
+    let has_any = grep.strong_regex.is_some() || grep.weak_regex.is_some();
+    if !has_any {
+        return None;
+    }
+
+    let mut priority_boost = vec![false; order.total_nodes];
     let mut must_keep = vec![false; order.total_nodes];
-    mark_matches_and_ancestors(order, re, &mut must_keep);
+
+    // Mark strong matches in both priority_boost and must_keep
+    if let Some(re) = &grep.strong_regex {
+        mark_matches_and_ancestors(order, re, &mut priority_boost);
+        mark_matches_and_ancestors(order, re, &mut must_keep);
+    }
+
+    // Mark weak matches only in priority_boost (not must_keep)
+    if let Some(re) = &grep.weak_regex {
+        mark_matches_and_ancestors(order, re, &mut priority_boost);
+    }
+
+    let priority_boost_count = priority_boost.iter().filter(|b| **b).count();
     let must_keep_count = must_keep.iter().filter(|b| **b).count();
-    (must_keep_count > 0).then_some(GrepState {
+
+    (priority_boost_count > 0).then_some(GrepState {
+        priority_boost,
         must_keep,
+        priority_boost_count,
         must_keep_count,
     })
 }
 
-/// Reorder priority so must-keep nodes are visited first, preserving the
+/// Reorder priority so boosted nodes are visited first, preserving the
 /// existing relative order within each bucket.
-pub(crate) fn reorder_priority_with_must_keep(
+pub(crate) fn reorder_priority_with_boost(
     order: &mut PriorityOrder,
-    must_keep: &[bool],
+    priority_boost: &[bool],
 ) {
     let mut seen = vec![false; order.total_nodes];
     let mut reordered: Vec<NodeId> = Vec::with_capacity(order.total_nodes);
     for &id in order.by_priority.iter() {
         let idx = id.0;
-        if must_keep.get(idx).copied().unwrap_or(false) && !seen[idx] {
+        if priority_boost.get(idx).copied().unwrap_or(false) && !seen[idx] {
             reordered.push(id);
             seen[idx] = true;
         }

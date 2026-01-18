@@ -1,6 +1,6 @@
 use super::pruning_context::HeadsonPruningContext;
 use crate::grep::{
-    GrepShow, GrepState, compute_grep_state, reorder_priority_with_must_keep,
+    GrepShow, GrepState, compute_grep_state, reorder_priority_with_boost,
 };
 use crate::order::{NodeId, ObjectType};
 use crate::utils::measure::{OutputStats, count_output_stats};
@@ -319,7 +319,7 @@ fn reorder_if_grep(
     state: &Option<GrepState>,
 ) {
     if let Some(s) = state {
-        reorder_priority_with_must_keep(order_build, &s.must_keep);
+        reorder_priority_with_boost(order_build, &s.priority_boost);
     }
 }
 

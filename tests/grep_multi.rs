@@ -301,3 +301,37 @@ fn all_four_grep_flags_can_be_combined() {
         "strong grep matches should be guaranteed; got: {stdout:?}"
     );
 }
+
+#[test]
+fn weak_grep_biases_priority_when_combined_with_strong() {
+    // Array with: guaranteed match, weak match, and filler
+    // With tight budget, weak match should be prioritized over filler
+    let input =
+        br#"["guaranteed","weak_match","filler_aa","filler_bb"]"#.to_vec();
+    let out = run_ok(
+        &[
+            "--no-color",
+            "--no-sort",
+            "--bytes",
+            "55",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "--grep",
+            "guaranteed",
+            "--weak-grep",
+            "weak_match",
+        ],
+        Some(&input),
+    );
+    let stdout = out.stdout;
+    assert!(
+        stdout.contains("guaranteed"),
+        "strong match should be guaranteed; got: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("weak_match"),
+        "weak match should be prioritized over non-matching filler; got: {stdout:?}"
+    );
+}
