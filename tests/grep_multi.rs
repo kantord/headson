@@ -371,3 +371,89 @@ fn both_strong_and_weak_patterns_are_highlighted() {
         "weak pattern should be highlighted; got: {stdout:?}"
     );
 }
+
+#[test]
+fn fileset_with_strong_and_weak_grep_filters_on_strong_matches_only() {
+    // File with strong match, file with only weak match, file with neither.
+    // With --grep-show=matching (default), only the file with strong matches should appear.
+    let dir = tempfile::tempdir().unwrap();
+    let strong_file = dir.path().join("strong.json");
+    let weak_only_file = dir.path().join("weak_only.json");
+    let neither_file = dir.path().join("neither.json");
+
+    std::fs::write(&strong_file, br#"{"a":"needle"}"#).unwrap();
+    std::fs::write(&weak_only_file, br#"{"a":"bias"}"#).unwrap();
+    std::fs::write(&neither_file, br#"{"a":"other"}"#).unwrap();
+
+    let out = common::run_cli_in_dir(
+        dir.path(),
+        &[
+            "--no-color",
+            "--no-sort",
+            "--grep",
+            "needle",
+            "--weak-grep",
+            "bias",
+            "strong.json",
+            "weak_only.json",
+            "neither.json",
+        ],
+        None,
+    );
+    let stdout = out.stdout;
+
+    assert!(
+        stdout.contains("needle"),
+        "file with strong match should be included; got: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("weak_only.json"),
+        "file with only weak match should be filtered out by --grep-show=matching; got: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("neither.json"),
+        "file with no matches should be filtered out; got: {stdout:?}"
+    );
+}
+
+#[test]
+fn fileset_with_strong_and_weak_grep_show_all_includes_weak_only_files() {
+    // With --grep-show=all, files with only weak matches should still appear.
+    let dir = tempfile::tempdir().unwrap();
+    let strong_file = dir.path().join("strong.json");
+    let weak_only_file = dir.path().join("weak_only.json");
+
+    std::fs::write(&strong_file, br#"{"a":"needle"}"#).unwrap();
+    std::fs::write(&weak_only_file, br#"{"a":"bias"}"#).unwrap();
+
+    let out = common::run_cli_in_dir(
+        dir.path(),
+        &[
+            "--no-color",
+            "--no-sort",
+            "--grep",
+            "needle",
+            "--weak-grep",
+            "bias",
+            "--grep-show",
+            "all",
+            "strong.json",
+            "weak_only.json",
+        ],
+        None,
+    );
+    let stdout = out.stdout;
+
+    assert!(
+        stdout.contains("needle"),
+        "file with strong match should be included; got: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("weak_only.json"),
+        "file with only weak match should be included with --grep-show=all; got: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("bias"),
+        "weak match content should be present with --grep-show=all; got: {stdout:?}"
+    );
+}
