@@ -67,19 +67,25 @@ In multi-file mode, inputs are ordered so frequently and recently touched files 
 
 Using Cargo:
 
-    cargo install headson
+```sh
+cargo install headson
+```
 
 > Note: the package is called `headson`, but the installed CLI command is `hson`. All examples below use `hson ...`.
 
 From source:
 
-    cargo build --release
-    target/release/hson --help
+```sh
+cargo build --release
+target/release/hson --help
+```
 
 
 ## Usage
 
-    hson [FLAGS] [INPUT...]
+```text
+hson [FLAGS] [INPUT...]
+```
 
 - INPUT (optional, repeatable): file path(s). If omitted, reads from stdin. Multiple input files are supported.
 - Prints the preview to stdout. On parse errors, exits non‑zero and prints an error to stderr.
@@ -239,13 +245,17 @@ Use `--tree` to render multi-file output as a directory tree (like `tree`) with 
 
 - Single file (auto):
 
-      hson -c 200 notes.txt
+  ```sh
+  hson -c 200 notes.txt
+  ```
 
 - Force Text ingest/output (useful when mixing with other extensions, or when the extension suggests JSON/YAML):
 
-      hson -c 200 -i text -f text notes.txt
-      # Force text ingest even if the file looks like JSON
-      hson -i text notes.json
+  ```sh
+  hson -c 200 -i text -f text notes.txt
+  # Force text ingest even if the file looks like JSON
+  hson -i text notes.json
+  ```
 
 - Styles on Text:
   - default: omission as a standalone `…` line.
@@ -264,7 +274,9 @@ For source code files, headson uses an indentation-aware heuristic to build an o
 
 Show help:
 
-    hson --help
+```sh
+hson --help
+```
 
 Note: flags align with head/tail conventions (`-c/--bytes`, `-C/--global-bytes`).
 

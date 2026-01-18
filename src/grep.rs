@@ -12,19 +12,73 @@ pub enum GrepShow {
     All,
 }
 
+/// Pattern configuration for grep, designed to make invalid states unrepresentable.
+/// The highlight regex is always derivable from the pattern state.
+#[derive(Default)]
+pub enum GrepPatterns {
+    /// No grep patterns configured
+    #[default]
+    None,
+    /// Only strong (filtering) pattern
+    StrongOnly(Regex),
+    /// Only weak (highlighting) pattern
+    WeakOnly(Regex),
+    /// Both strong and weak patterns, with precomputed combined highlight regex
+    Both {
+        strong: Regex,
+        weak: Regex,
+        highlight: Regex,
+    },
+}
+
+impl GrepPatterns {
+    /// Returns the strong (filtering) regex if configured.
+    pub fn strong(&self) -> Option<&Regex> {
+        match self {
+            Self::StrongOnly(r) | Self::Both { strong: r, .. } => Some(r),
+            _ => None,
+        }
+    }
+
+    /// Returns the weak (highlight-only) regex if configured.
+    pub fn weak(&self) -> Option<&Regex> {
+        match self {
+            Self::WeakOnly(r) | Self::Both { weak: r, .. } => Some(r),
+            _ => None,
+        }
+    }
+
+    /// Returns the highlight regex (strong | weak combined).
+    /// No cloning needed - returns a reference.
+    pub fn highlight(&self) -> Option<&Regex> {
+        match self {
+            Self::None => None,
+            Self::StrongOnly(r) | Self::WeakOnly(r) => Some(r),
+            Self::Both { highlight, .. } => Some(highlight),
+        }
+    }
+
+    /// Returns true if a strong (filtering) pattern is configured.
+    pub fn has_strong(&self) -> bool {
+        matches!(self, Self::StrongOnly(_) | Self::Both { .. })
+    }
+
+    /// Returns true if any pattern (strong or weak) is configured.
+    pub fn is_active(&self) -> bool {
+        !matches!(self, Self::None)
+    }
+}
+
 /// Grep configuration threaded through the pipeline.
 #[derive(Default)]
 pub struct GrepConfig {
-    pub strong_regex: Option<Regex>,
-    pub weak_regex: Option<Regex>,
-    /// Combined regex for highlighting (strong | weak)
-    pub highlight_regex: Option<Regex>,
+    pub patterns: GrepPatterns,
     pub show: GrepShow,
 }
 
 impl GrepConfig {
     pub fn has_strong(&self) -> bool {
-        self.strong_regex.is_some()
+        self.patterns.has_strong()
     }
 }
 
@@ -87,39 +141,42 @@ pub fn build_grep_config(
     grep_show: GrepShow,
     case_insensitive: bool,
 ) -> Result<GrepConfig> {
-    let strong_regex =
-        grep.map(|p| build_regex(p, case_insensitive)).transpose()?;
-    let weak_regex = weak_grep
-        .map(|p| build_regex(p, case_insensitive))
-        .transpose()?;
-
-    // Build highlight regex, reusing compiled regexes where possible
-    let highlight_regex = match (&strong_regex, &weak_regex) {
+    let patterns = match (grep, weak_grep) {
         (Some(s), Some(w)) => {
-            // Must build combined pattern when both exist
-            let combined = format!("({})|({w})", s.as_str());
-            Some(build_regex(&combined, case_insensitive)?)
+            let strong = build_regex(s, case_insensitive)?;
+            let weak = build_regex(w, case_insensitive)?;
+            // Combine patterns without redundant parens - | has lowest precedence
+            let combined = format!("{}|{}", strong.as_str(), weak.as_str());
+            let highlight = build_regex(&combined, case_insensitive)?;
+            GrepPatterns::Both {
+                strong,
+                weak,
+                highlight,
+            }
         }
-        (Some(s), None) => Some(s.clone()),
-        (None, Some(w)) => Some(w.clone()),
-        (None, None) => None,
+        (Some(s), None) => {
+            GrepPatterns::StrongOnly(build_regex(s, case_insensitive)?)
+        }
+        (None, Some(w)) => {
+            GrepPatterns::WeakOnly(build_regex(w, case_insensitive)?)
+        }
+        (None, None) => GrepPatterns::None,
     };
 
     Ok(GrepConfig {
-        strong_regex,
-        weak_regex,
-        highlight_regex,
+        patterns,
         show: grep_show,
     })
 }
 
 /// Grep matching state computed from a priority order.
-/// - `all_matches`: nodes matching strong OR weak patterns (used for priority reordering)
-/// - `strong_matches`: nodes matching only strong patterns (used for guaranteed inclusion)
+/// - `matched_nodes`: nodes matching any grep pattern (strong OR weak), used for priority boosting
+/// - `guaranteed_nodes`: nodes matching strong patterns only, must be included in output
+/// - `guaranteed_count`: count of nodes in `guaranteed_nodes` (used for filtering decisions)
 pub(crate) struct GrepState {
-    pub all_matches: Vec<bool>,
-    pub strong_matches: Vec<bool>,
-    pub strong_match_count: usize,
+    pub matched_nodes: Vec<bool>,
+    pub guaranteed_nodes: Vec<bool>,
+    pub guaranteed_count: usize,
 }
 
 fn matches_ranked(
@@ -174,51 +231,50 @@ fn mark_matches_and_ancestors(
 }
 
 /// Compute grep state by scanning the tree.
-/// Optimized: strong matches are computed once, then weak matches are OR'd in.
+/// Returns `None` if no grep patterns are configured.
+/// Returns `Some(GrepState)` if grep is active, even with zero matches.
+/// This makes the semantics clear: `None` = grep disabled, `Some` = grep enabled.
 pub(crate) fn compute_grep_state(
     order: &PriorityOrder,
     grep: &GrepConfig,
 ) -> Option<GrepState> {
-    let has_any = grep.strong_regex.is_some() || grep.weak_regex.is_some();
-    if !has_any {
+    if !grep.patterns.is_active() {
         return None;
     }
 
-    let mut strong_matches = vec![false; order.total_nodes];
+    let mut guaranteed_nodes = vec![false; order.total_nodes];
 
-    // Compute strong matches once
-    if let Some(re) = &grep.strong_regex {
-        mark_matches_and_ancestors(order, re, &mut strong_matches);
+    // Compute guaranteed (strong) matches once
+    if let Some(re) = grep.patterns.strong() {
+        mark_matches_and_ancestors(order, re, &mut guaranteed_nodes);
     }
 
-    // all_matches = strong_matches OR weak_matches
-    let mut all_matches = strong_matches.clone();
-    if let Some(re) = &grep.weak_regex {
-        mark_matches_and_ancestors(order, re, &mut all_matches);
+    // matched_nodes = guaranteed_nodes OR weak matches
+    let mut matched_nodes = guaranteed_nodes.clone();
+    if let Some(re) = grep.patterns.weak() {
+        mark_matches_and_ancestors(order, re, &mut matched_nodes);
     }
 
-    let all_match_count = all_matches.iter().filter(|b| **b).count();
-    let strong_match_count = strong_matches.iter().filter(|b| **b).count();
+    let guaranteed_count = guaranteed_nodes.iter().filter(|b| **b).count();
 
-    // Return Some only if there are any matches
-    (all_match_count > 0).then_some(GrepState {
-        all_matches,
-        strong_matches,
-        strong_match_count,
+    Some(GrepState {
+        matched_nodes,
+        guaranteed_nodes,
+        guaranteed_count,
     })
 }
 
-/// Reorder priority so matched nodes are visited first, preserving the
+/// Reorder priority so grep-matched nodes are visited first, preserving the
 /// existing relative order within each bucket.
-pub(crate) fn reorder_priority_with_matches(
+pub(crate) fn reorder_priority_for_grep(
     order: &mut PriorityOrder,
-    all_matches: &[bool],
+    matched_nodes: &[bool],
 ) {
     let mut seen = vec![false; order.total_nodes];
     let mut reordered: Vec<NodeId> = Vec::with_capacity(order.total_nodes);
     for &id in order.by_priority.iter() {
         let idx = id.0;
-        if all_matches.get(idx).copied().unwrap_or(false) && !seen[idx] {
+        if matched_nodes.get(idx).copied().unwrap_or(false) && !seen[idx] {
             reordered.push(id);
             seen[idx] = true;
         }

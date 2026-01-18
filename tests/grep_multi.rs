@@ -7,17 +7,15 @@ use std::ffi::OsStr;
 fn inline_regex_flags_should_not_leak_between_patterns() {
     // When using --grep '(?i)foo' --grep 'bar', the (?i) from first pattern
     // should NOT make 'bar' case-insensitive.
-    // BAR should not be treated as a match (only "bar" lowercase should match the second pattern).
-    // With a tight budget, BAR should be truncated since it's not a match.
-    let input = br#"{"a":"FOO","b":"BAR","c":"bar"}"#.to_vec();
-    let out = common::run_cli(
+    // BAR should be truncated (not a match) since only "bar" lowercase matches.
+    assert_grep_output(
         &[
             "--no-color",
             "--no-sort",
             "-f",
             "json",
             "-t",
-            "default", // use default style which truncates with "…"
+            "default",
             "--bytes",
             "10", // tight budget forces truncation of non-matches
             "--grep",
@@ -25,24 +23,9 @@ fn inline_regex_flags_should_not_leak_between_patterns() {
             "--grep",
             "bar",
         ],
-        Some(&input),
-    );
-    let stdout = out.stdout;
-
-    // FOO should match (via case-insensitive (?i)foo) and be guaranteed inclusion
-    assert!(
-        stdout.contains("FOO"),
-        "FOO should match via (?i)foo; got: {stdout:?}"
-    );
-    // bar should match (via case-sensitive bar) and be guaranteed inclusion
-    assert!(
-        stdout.contains("bar"),
-        "bar should match via case-sensitive pattern; got: {stdout:?}"
-    );
-    // BAR should be truncated (not a match). If fully present, the (?i) flag leaked.
-    assert!(
-        !stdout.contains("BAR"),
-        "BAR should be truncated (not a match) - if present, (?i) flag leaked; got: {stdout:?}"
+        br#"{"a":"FOO","b":"BAR","c":"bar"}"#,
+        &["FOO", "bar"], // FOO matches (?i)foo, bar matches case-sensitive bar
+        &["BAR"],        // BAR should be truncated - if present, (?i) leaked
     );
 }
 
@@ -55,10 +38,33 @@ fn run_ok_color(args: &[&str], stdin: Option<&[u8]>) -> common::CliOutput {
     common::run_cli_in_dir_env(".", args, stdin, &envs)
 }
 
+/// Test helper to reduce boilerplate in grep tests.
+/// Runs CLI with given args and input, then asserts output contains/excludes expected strings.
+fn assert_grep_output(
+    args: &[&str],
+    input: &[u8],
+    must_contain: &[&str],
+    must_not_contain: &[&str],
+) {
+    let out = run_ok(args, Some(input));
+    let stdout = &out.stdout;
+    for expected in must_contain {
+        assert!(
+            stdout.contains(expected),
+            "expected {expected:?} in output; got: {stdout:?}"
+        );
+    }
+    for unexpected in must_not_contain {
+        assert!(
+            !stdout.contains(unexpected),
+            "unexpected {unexpected:?} in output; got: {stdout:?}"
+        );
+    }
+}
+
 #[test]
 fn multiple_grep_flags_match_either_pattern() {
-    let input = br#"{"a":"foo","b":"bar","c":"other"}"#.to_vec();
-    let out = run_ok(
+    assert_grep_output(
         &[
             "--no-color",
             "--no-sort",
@@ -71,19 +77,15 @@ fn multiple_grep_flags_match_either_pattern() {
             "--grep",
             "bar",
         ],
-        Some(&input),
-    );
-    let stdout = out.stdout;
-    assert!(
-        stdout.contains("foo") && stdout.contains("bar"),
-        "multiple --grep flags should match either pattern; got: {stdout:?}"
+        br#"{"a":"foo","b":"bar","c":"other"}"#,
+        &["foo", "bar"],
+        &[],
     );
 }
 
 #[test]
 fn multiple_igrep_flags_match_either_pattern() {
-    let input = br#"{"a":"FOO","b":"BAR","c":"other"}"#.to_vec();
-    let out = run_ok(
+    assert_grep_output(
         &[
             "--no-color",
             "--no-sort",
@@ -96,19 +98,15 @@ fn multiple_igrep_flags_match_either_pattern() {
             "--igrep",
             "bar",
         ],
-        Some(&input),
-    );
-    let stdout = out.stdout;
-    assert!(
-        stdout.contains("FOO") && stdout.contains("BAR"),
-        "multiple --igrep flags should match either pattern case-insensitively; got: {stdout:?}"
+        br#"{"a":"FOO","b":"BAR","c":"other"}"#,
+        &["FOO", "BAR"],
+        &[],
     );
 }
 
 #[test]
 fn mixed_grep_and_igrep_flags_combine() {
-    let input = br#"{"a":"foo","b":"BAR","c":"other"}"#.to_vec();
-    let out = run_ok(
+    assert_grep_output(
         &[
             "--no-color",
             "--no-sort",
@@ -121,12 +119,9 @@ fn mixed_grep_and_igrep_flags_combine() {
             "--igrep",
             "bar",
         ],
-        Some(&input),
-    );
-    let stdout = out.stdout;
-    assert!(
-        stdout.contains("foo") && stdout.contains("BAR"),
-        "--grep and --igrep should combine: foo (case-sensitive) + bar (case-insensitive); got: {stdout:?}"
+        br#"{"a":"foo","b":"BAR","c":"other"}"#,
+        &["foo", "BAR"],
+        &[],
     );
 }
 

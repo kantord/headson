@@ -29,8 +29,8 @@ mod pruner;
 mod serialization;
 mod utils;
 pub use grep::{
-    GrepConfig, GrepShow, build_grep_config, build_grep_config_from_patterns,
-    combine_patterns,
+    GrepConfig, GrepPatterns, GrepShow, build_grep_config,
+    build_grep_config_from_patterns, combine_patterns,
 };
 pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use order::types::{ArrayBias, ArraySamplerStrategy};

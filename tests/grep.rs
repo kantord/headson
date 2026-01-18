@@ -734,9 +734,9 @@ fn grep_highlights_for_library_calls_without_extra_config() {
         per_slot: None,
     };
     let grep = GrepConfig {
-        strong_regex: Some(regex::Regex::new("needle").unwrap()),
-        weak_regex: None,
-        highlight_regex: Some(regex::Regex::new("needle").unwrap()),
+        patterns: headson::GrepPatterns::StrongOnly(
+            regex::Regex::new("needle").unwrap(),
+        ),
         show: headson::GrepShow::Matching,
     };
     let out = headson::headson(
