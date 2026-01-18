@@ -539,3 +539,42 @@ fn fileset_with_no_strong_matches_but_weak_matches_renders_nothing() {
         out.stderr
     );
 }
+
+#[test]
+fn fileset_tree_with_only_weak_matches_is_empty_and_warns() {
+    // In tree mode, --grep-show=matching still filters by strong matches only.
+    // Weak-only matches should not make files appear.
+    let dir = tempfile::tempdir().unwrap();
+    let weak_only = dir.path().join("weak_only.json");
+    let other = dir.path().join("other.json");
+
+    std::fs::write(&weak_only, br#"{"a":"bias"}"#).unwrap();
+    std::fs::write(&other, br#"{"a":"other"}"#).unwrap();
+
+    let out = common::run_cli_in_dir(
+        dir.path(),
+        &[
+            "--no-color",
+            "--no-sort",
+            "--tree",
+            "--grep",
+            "nonexistent",
+            "--weak-grep",
+            "bias",
+            "weak_only.json",
+            "other.json",
+        ],
+        None,
+    );
+
+    assert!(
+        out.stdout.trim().is_empty(),
+        "tree fileset should be empty when no strong matches exist (weak matches do not include files); got: {:?}",
+        out.stdout
+    );
+    assert!(
+        out.stderr.contains("No grep matches found"),
+        "tree fileset should warn when no strong matches exist; got: {:?}",
+        out.stderr
+    );
+}

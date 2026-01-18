@@ -209,10 +209,19 @@ fn strong_fileset_grep_without_matches(
     state: &Option<GrepState>,
     root_is_fileset: bool,
 ) -> bool {
-    grep.has_strong()
-        && matches!(grep.show, GrepShow::Matching)
-        && state.is_none()
-        && root_is_fileset
+    if !grep.has_strong()
+        || !matches!(grep.show, GrepShow::Matching)
+        || !root_is_fileset
+    {
+        return false;
+    }
+    // No grep state at all means no matches
+    let Some(s) = state else {
+        return true;
+    };
+    // If state exists but has no strong matches (must_keep_count == 0),
+    // still treat as "no matches" for filtering purposes
+    s.must_keep_count == 0
 }
 
 fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
