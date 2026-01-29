@@ -44,7 +44,7 @@ impl JsonTreeBuilder {
         id
     }
 
-    fn push_default(&self) -> usize {
+    pub(crate) fn push_default(&self) -> usize {
         let mut a = self.arena.borrow_mut();
         let id = a.nodes.len();
         a.nodes.push(JsonTreeNode::default());
@@ -90,7 +90,7 @@ impl JsonTreeBuilder {
         })
     }
 
-    fn finish_array(
+    pub(crate) fn finish_array(
         &self,
         id: usize,
         kept: usize,

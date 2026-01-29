@@ -269,6 +269,7 @@ pub enum StyleArg {
 #[derive(Copy, Clone, Debug, ValueEnum)]
 pub enum InputFormat {
     Json,
+    Jsonl,
     Yaml,
     Text,
 }

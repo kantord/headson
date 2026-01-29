@@ -91,6 +91,7 @@ impl<'a> RenderEngine<'a> {
             config.template,
         );
         let omitted = self.leaf.omitted_for(id, kept).unwrap_or(0);
+        let is_jsonl_root = id == ROOT_PQ_ID && self.order.is_jsonl_root;
         let ctx = ArrayCtx {
             children: children_pairs,
             children_len: kept,
@@ -100,6 +101,7 @@ impl<'a> RenderEngine<'a> {
             omitted_at_start: config.prefer_tail_arrays,
             source_hint: self.leaf.source_hint(id),
             code_highlight: self.leaf.code_highlights_for(id, config.template),
+            is_jsonl_root,
         };
         render_array(config.template, &ctx, out)
     }
@@ -279,6 +281,7 @@ impl<'a> RenderEngine<'a> {
             omitted_at_start: config.prefer_tail_arrays,
             source_hint: self.leaf.source_hint(id),
             code_highlight: self.leaf.code_highlights_for(id, template),
+            is_jsonl_root: id == ROOT_PQ_ID && self.order.is_jsonl_root,
         };
         render_array(template, &ctx, out)
     }

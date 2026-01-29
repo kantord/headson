@@ -15,7 +15,9 @@ pub mod sampling;
     unused_imports,
     reason = "Re-exported helpers need to stay public even when unused internally"
 )]
-pub use formats::{parse_json_one, parse_text_one_with_mode, parse_yaml_one};
+pub use formats::{
+    parse_json_one, parse_jsonl_one, parse_text_one_with_mode, parse_yaml_one,
+};
 
 #[derive(Debug)]
 pub(crate) struct IngestOutput {
@@ -31,6 +33,12 @@ pub(crate) fn ingest_into_arena(
     match input {
         InputKind::Json(bytes) => {
             parse_json_one(bytes, priority_cfg).map(|arena| IngestOutput {
+                arena,
+                warnings: Vec::new(),
+            })
+        }
+        InputKind::Jsonl(bytes) => {
+            parse_jsonl_one(bytes, priority_cfg).map(|arena| IngestOutput {
                 arena,
                 warnings: Vec::new(),
             })

@@ -20,6 +20,7 @@ pub struct ArrayCtx<'a> {
     pub omitted_at_start: bool,
     pub source_hint: Option<&'a str>,
     pub code_highlight: Option<Arc<Vec<String>>>,
+    pub is_jsonl_root: bool,
 }
 
 pub struct ObjectCtx<'a> {

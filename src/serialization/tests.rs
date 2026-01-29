@@ -292,6 +292,7 @@ fn mk_gap_ctx() -> super::templates::ArrayCtx<'static> {
         omitted_at_start: false,
         source_hint: None,
         code_highlight: None,
+        is_jsonl_root: false,
     }
 }
 
@@ -521,6 +522,7 @@ fn force_child_hooks_removed() {
         total_nodes: 3,
         object_type: vec![ObjectType::Object; 3],
         code_lines: HashMap::new(),
+        is_jsonl_root: false,
         fileset_render_slots: None,
     };
     let mut flags = Vec::new();

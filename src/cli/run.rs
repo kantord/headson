@@ -75,6 +75,8 @@ fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
     let lower = name.to_ascii_lowercase();
     if lower.ends_with(".yaml") || lower.ends_with(".yml") {
         headson::FilesetInputKind::Yaml
+    } else if lower.ends_with(".jsonl") || lower.ends_with(".ndjson") {
+        headson::FilesetInputKind::Jsonl
     } else if lower.ends_with(".json") {
         headson::FilesetInputKind::Json
     } else {
@@ -484,6 +486,13 @@ fn render_single_input(
             grep_cfg,
             budgets,
         ),
+        InputFormat::Jsonl => headson::headson(
+            headson::InputKind::Jsonl(bytes),
+            cfg,
+            prio,
+            grep_cfg,
+            budgets,
+        ),
         InputFormat::Text => headson::headson(
             headson::InputKind::Text {
                 bytes,
@@ -523,7 +532,10 @@ fn resolve_effective_template_for_single(
         OutputFormat::Auto => {
             if lower_name.ends_with(".yaml") || lower_name.ends_with(".yml") {
                 headson::OutputTemplate::Yaml
-            } else if lower_name.ends_with(".json") {
+            } else if lower_name.ends_with(".jsonl")
+                || lower_name.ends_with(".ndjson")
+                || lower_name.ends_with(".json")
+            {
                 headson::map_json_template_for_style(style)
             } else {
                 // Unknown extension: prefer text template.
@@ -639,24 +651,39 @@ fn build_single_render_config(
     cfg
 }
 
-fn select_input_format(cli: &Cli, lower_name: &str) -> InputFormat {
-    let is_yaml_ext =
+fn is_jsonl_ext(name: &str) -> bool {
+    name.ends_with(".jsonl") || name.ends_with(".ndjson")
+}
+
+fn detect_input_format_from_ext(lower_name: &str) -> InputFormat {
+    let is_yaml =
         lower_name.ends_with(".yaml") || lower_name.ends_with(".yml");
+    if is_yaml {
+        InputFormat::Yaml
+    } else if is_jsonl_ext(lower_name) {
+        InputFormat::Jsonl
+    } else if lower_name.ends_with(".json") {
+        InputFormat::Json
+    } else {
+        InputFormat::Text
+    }
+}
+
+fn select_input_format(cli: &Cli, lower_name: &str) -> InputFormat {
+    if let Some(fmt) = cli.input_format {
+        return fmt;
+    }
     match cli.format {
-        OutputFormat::Auto => {
-            if let Some(fmt) = cli.input_format {
-                fmt
-            } else if is_yaml_ext {
-                InputFormat::Yaml
-            } else if lower_name.ends_with(".json") {
-                InputFormat::Json
+        OutputFormat::Auto => detect_input_format_from_ext(lower_name),
+        OutputFormat::Json => {
+            if is_jsonl_ext(lower_name) {
+                InputFormat::Jsonl
             } else {
-                InputFormat::Text
+                InputFormat::Json
             }
         }
-        OutputFormat::Json => cli.input_format.unwrap_or(InputFormat::Json),
-        OutputFormat::Yaml => cli.input_format.unwrap_or(InputFormat::Yaml),
-        OutputFormat::Text => cli.input_format.unwrap_or(InputFormat::Text),
+        OutputFormat::Yaml => InputFormat::Yaml,
+        OutputFormat::Text => InputFormat::Text,
     }
 }
 

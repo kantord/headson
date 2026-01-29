@@ -3,7 +3,9 @@ use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
 use super::IngestOutput;
 use super::formats::{
-    json::build_json_tree_arena_from_slice,
+    json::{
+        build_json_tree_arena_from_slice, build_jsonl_tree_arena_from_slice,
+    },
     text::{
         build_text_tree_arena_from_bytes,
         build_text_tree_arena_from_bytes_with_mode,
@@ -30,6 +32,7 @@ pub(crate) struct FilesetEntry {
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum FilesetInputKind {
     Json,
+    Jsonl,
     Yaml,
     Text { atomic_lines: bool },
 }
@@ -55,6 +58,14 @@ pub fn parse_fileset_multi(
                 &mut warnings,
                 "JSON",
                 |bytes, cfg| build_json_tree_arena_from_slice(bytes, cfg),
+            ),
+            FilesetInputKind::Jsonl => parse_or_empty(
+                &name,
+                &mut bytes,
+                cfg,
+                &mut warnings,
+                "JSONL",
+                |bytes, cfg| build_jsonl_tree_arena_from_slice(bytes, cfg),
             ),
             FilesetInputKind::Yaml => parse_or_empty(
                 &name,

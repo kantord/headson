@@ -66,6 +66,60 @@ pub(crate) fn build_json_tree_arena_from_many(
     Ok(arena)
 }
 
+/// Parse JSONL (newline-delimited JSON) into a tree arena.
+/// Each non-empty line is parsed as independent JSON. The result is an array
+/// whose children are the parsed lines, with 1-based line numbers stored as
+/// array indices. The root node is marked with `is_jsonl_root = true`.
+pub fn parse_jsonl_one(
+    bytes: Vec<u8>,
+    cfg: &PriorityConfig,
+) -> Result<TreeArena> {
+    let text = String::from_utf8(bytes)?;
+    let builder =
+        JsonTreeBuilder::new(cfg.array_max_items, cfg.array_sampler.into());
+    let root_id = builder.push_default();
+    let mut child_ids: Vec<usize> = Vec::new();
+    let mut line_numbers: Vec<usize> = Vec::new();
+
+    for (line_idx, line) in text.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let mut line_bytes = line.as_bytes().to_vec();
+        let mut de = simd_json::Deserializer::from_slice(&mut line_bytes)
+            .map_err(|e| {
+                anyhow::anyhow!("JSONL line {}: {}", line_idx + 1, e)
+            })?;
+        let seed = builder.seed();
+        let child_id: usize = seed.deserialize(&mut de).map_err(|e| {
+            anyhow::anyhow!("JSONL line {}: {}", line_idx + 1, e)
+        })?;
+        child_ids.push(child_id);
+        line_numbers.push(line_idx + 1);
+    }
+
+    let kept = child_ids.len();
+    builder.finish_array(root_id, kept, kept, child_ids, line_numbers);
+
+    let mut arena = builder.finish();
+    arena.root_id = root_id;
+    arena.is_jsonl_root = true;
+
+    if let Some(node) = arena.nodes.get_mut(root_id) {
+        node.array_len = Some(kept);
+    }
+
+    Ok(arena)
+}
+
+/// Parse JSONL from a mutable byte slice (for fileset use).
+pub(crate) fn build_jsonl_tree_arena_from_slice(
+    bytes: &mut [u8],
+    cfg: &PriorityConfig,
+) -> Result<TreeArena> {
+    parse_jsonl_one(bytes.to_vec(), cfg)
+}
+
 /// Convenience functions for the JSON ingest path.
 pub fn parse_json_one(
     bytes: Vec<u8>,

@@ -14,6 +14,8 @@ pub struct JsonTreeArena {
     // True when root is a synthetic wrapper object for multi-input ingest.
     // Used to trigger fileset-specific rendering (section headers and summary).
     pub is_fileset: bool,
+    // True when root is a synthetic array wrapping JSONL lines.
+    pub is_jsonl_root: bool,
     // Optional full text lines for arrays (by arena node id) to support
     // downstream features like syntax highlighting even after sampling.
     pub code_lines: HashMap<usize, Arc<Vec<String>>>,

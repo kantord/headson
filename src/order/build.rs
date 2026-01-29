@@ -855,6 +855,7 @@ pub fn build_order(
         total_nodes: total,
         object_type,
         code_lines,
+        is_jsonl_root: arena.is_jsonl_root,
         fileset_render_slots,
     })
 }

@@ -177,6 +177,8 @@ pub struct PriorityOrder {
     pub total_nodes: usize,
     pub object_type: Vec<ObjectType>,
     pub code_lines: HashMap<usize, Arc<Vec<String>>>,
+    // True when the root is a synthetic JSONL array.
+    pub is_jsonl_root: bool,
     // For filesets, preserve ingest order and suppression state for render slots.
     pub fileset_render_slots: Option<Vec<FilesetRenderSlot>>,
 }

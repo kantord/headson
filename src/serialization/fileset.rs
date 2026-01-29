@@ -264,7 +264,7 @@ impl<'a> RenderEngine<'a> {
     fn fileset_template_for(&self, raw_key: &str) -> OutputTemplate {
         match Format::from_filename(raw_key) {
             Format::Yaml => OutputTemplate::Yaml,
-            Format::Json => match self.config.style {
+            Format::Json | Format::Jsonl => match self.config.style {
                 crate::serialization::types::Style::Strict => {
                     OutputTemplate::Json
                 }

@@ -3,6 +3,7 @@
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Format {
     Json,
+    Jsonl,
     Yaml,
     Unknown,
 }
@@ -17,6 +18,8 @@ impl Format {
         use std::path::Path;
         const EXT_FORMATS: &[(&str, Format)] = &[
             ("json", Format::Json),
+            ("jsonl", Format::Jsonl),
+            ("ndjson", Format::Jsonl),
             ("yaml", Format::Yaml),
             ("yml", Format::Yaml),
         ];
@@ -47,6 +50,9 @@ mod tests {
         assert_eq!(Format::from_filename("c.yml"), Format::Yaml);
         assert_eq!(Format::from_filename("d.JSON"), Format::Json);
         assert_eq!(Format::from_filename("e.YmL"), Format::Yaml);
+        assert_eq!(Format::from_filename("f.jsonl"), Format::Jsonl);
+        assert_eq!(Format::from_filename("g.ndjson"), Format::Jsonl);
+        assert_eq!(Format::from_filename("h.JSONL"), Format::Jsonl);
         assert_eq!(Format::from_filename("noext"), Format::Unknown);
         assert_eq!(Format::from_filename("weird.tar.gz"), Format::Unknown);
     }
