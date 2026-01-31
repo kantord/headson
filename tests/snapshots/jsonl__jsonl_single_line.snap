@@ -2,7 +2,7 @@
 source: tests/jsonl.rs
 expression: out
 ---
-1:   {
-    "id": 1,
-    "name": "Alice"
-  }
+1: {
+  "id": 1,
+  "name": "Alice"
+}

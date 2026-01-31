@@ -2,17 +2,17 @@
 source: tests/jsonl.rs
 expression: out.stdout
 ---
-1:   {
-    "id": 1,
-    "name": "Alice"
-  }
+1: {
+  "id": 1,
+  "name": "Alice"
+}
 …
-3:   {
-    "id": 2,
-    "name": "Bob"
-  }
+3: {
+  "id": 2,
+  "name": "Bob"
+}
 …
-5:   {
-    "id": 3,
-    "name": "Charlie"
-  }
+5: {
+  "id": 3,
+  "name": "Charlie"
+}

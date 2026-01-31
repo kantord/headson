@@ -85,13 +85,14 @@ impl<'a> RenderEngine<'a> {
         out: &mut Out<'_>,
     ) {
         let config = self.config;
+        let is_jsonl_root = self.order.jsonl_root_ids.contains(&id);
         let (children_pairs, kept) = self.gather_array_children_with_template(
             id,
             depth,
             config.template,
+            is_jsonl_root,
         );
         let omitted = self.leaf.omitted_for(id, kept).unwrap_or(0);
-        let is_jsonl_root = self.order.jsonl_root_ids.contains(&id);
         let ctx = ArrayCtx {
             children: children_pairs,
             children_len: kept,
@@ -195,7 +196,9 @@ impl<'a> RenderEngine<'a> {
         id: usize,
         depth: usize,
         template: crate::serialization::types::OutputTemplate,
+        is_jsonl_root: bool,
     ) -> (Vec<ArrayChildPair>, usize) {
+        let child_depth = if is_jsonl_root { depth } else { depth + 1 };
         let Some(children_ids) = self.order.children.get(id) else {
             return (Vec::new(), 0);
         };
@@ -209,7 +212,7 @@ impl<'a> RenderEngine<'a> {
             let child_kind = self.order.nodes[child_id.0].display_kind();
             let rendered = self.render_node_to_string_with_template(
                 child_id.0,
-                depth + 1,
+                child_depth,
                 false,
                 template,
             );
@@ -269,8 +272,13 @@ impl<'a> RenderEngine<'a> {
         template: crate::serialization::types::OutputTemplate,
     ) {
         let config = self.config;
-        let (children_pairs, kept) =
-            self.gather_array_children_with_template(id, depth, template);
+        let is_jsonl_root = self.order.jsonl_root_ids.contains(&id);
+        let (children_pairs, kept) = self.gather_array_children_with_template(
+            id,
+            depth,
+            template,
+            is_jsonl_root,
+        );
         let omitted = self.leaf.omitted_for(id, kept).unwrap_or(0);
         let ctx = ArrayCtx {
             children: children_pairs,
@@ -281,7 +289,7 @@ impl<'a> RenderEngine<'a> {
             omitted_at_start: config.prefer_tail_arrays,
             source_hint: self.leaf.source_hint(id),
             code_highlight: self.leaf.code_highlights_for(id, template),
-            is_jsonl_root: self.order.jsonl_root_ids.contains(&id),
+            is_jsonl_root,
         };
         render_array(template, &ctx, out)
     }
