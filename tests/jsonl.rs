@@ -395,3 +395,127 @@ fn jsonl_file_with_empty_lines() {
     assert!(out.stdout.contains("5:"), "should show original line 5");
     assert_snapshot!("jsonl_file_with_empty_lines", out.stdout);
 }
+
+// ---------------------------------------------------------------------------
+// K. Grep + JSONL
+// ---------------------------------------------------------------------------
+
+#[test]
+fn jsonl_grep_keeps_matching_line_with_tiny_budget() {
+    let input = concat!(
+        r#"{"id": 1, "name": "Alice"}"#,
+        "\n",
+        r#"{"id": 2, "name": "Bob"}"#,
+        "\n",
+        r#"{"id": 3, "name": "needle"}"#,
+        "\n",
+        r#"{"id": 4, "name": "Diana"}"#,
+        "\n",
+    );
+    let out = common::run_cli(
+        &[
+            "--no-color",
+            "--bytes",
+            "10",
+            "-f",
+            "json",
+            "-t",
+            "strict",
+            "-i",
+            "jsonl",
+            "--grep",
+            "needle",
+        ],
+        Some(input.as_bytes()),
+    );
+    assert!(
+        out.stdout.contains("needle"),
+        "strong grep should guarantee matched JSONL line is present even with tiny budget; got: {:?}",
+        out.stdout
+    );
+}
+
+#[test]
+fn jsonl_grep_preserves_line_numbers() {
+    let input = concat!(
+        r#"{"id": 1, "val": "skip"}"#,
+        "\n",
+        r#"{"id": 2, "val": "needle"}"#,
+        "\n",
+        r#"{"id": 3, "val": "skip"}"#,
+        "\n",
+    );
+    let out = common::run_template_budget_no_color(
+        input,
+        "pseudo",
+        10000,
+        &["-i", "jsonl", "--grep", "needle"],
+    );
+    // Line 2 contains the match; its line number should appear in output
+    assert!(
+        out.contains("2:"),
+        "grep output should preserve original JSONL line numbers; got: {out:?}"
+    );
+    assert!(out.contains("needle"), "matched value should be present");
+}
+
+// ---------------------------------------------------------------------------
+// L. Fileset with JSONL files
+// ---------------------------------------------------------------------------
+
+#[test]
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Fileset JSONL integration test aggregates multiple assertions"
+)]
+fn jsonl_in_fileset_with_json() {
+    use tempfile::tempdir;
+
+    let dir = tempdir().unwrap();
+    let jsonl_path = dir.path().join("data.jsonl");
+    let json_path = dir.path().join("config.json");
+    std::fs::write(
+        &jsonl_path,
+        concat!(r#"{"line": 1}"#, "\n", r#"{"line": 2}"#, "\n",),
+    )
+    .unwrap();
+    std::fs::write(&json_path, r#"{"key": "value"}"#).unwrap();
+
+    let out = common::run_cli_in_dir(
+        dir.path(),
+        &[
+            "--no-color",
+            "-c",
+            "10000",
+            "--no-sort",
+            jsonl_path.file_name().unwrap().to_str().unwrap(),
+            json_path.file_name().unwrap().to_str().unwrap(),
+        ],
+        None,
+    );
+    // Both files should appear in the fileset output
+    assert!(
+        out.stdout.contains("data.jsonl"),
+        "JSONL file should appear in fileset output"
+    );
+    assert!(
+        out.stdout.contains("config.json"),
+        "JSON file should appear in fileset output"
+    );
+    // The JSONL data should be parsed (not treated as plain text)
+    assert!(
+        out.stdout.contains("line"),
+        "JSONL content should be parsed as structured data in fileset"
+    );
+    // JSONL entries inside a fileset should show line numbers
+    assert!(
+        out.stdout.contains("1:"),
+        "JSONL in fileset should show line number 1; got: {:?}",
+        out.stdout
+    );
+    assert!(
+        out.stdout.contains("2:"),
+        "JSONL in fileset should show line number 2; got: {:?}",
+        out.stdout
+    );
+}

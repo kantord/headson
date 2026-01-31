@@ -179,8 +179,17 @@ fn summarize(
         )
         .map(|out| out.text)
         .map_err(to_pyerr),
+        "jsonl" | "ndjson" => headson_core::headson(
+            InputKind::Jsonl(input),
+            &cfg,
+            &prio,
+            &grep_cfg,
+            budgets,
+        )
+        .map(|out| out.text)
+        .map_err(to_pyerr),
         other => Err(to_pyerr(anyhow::anyhow!(
-            "unknown input_format: {} (expected 'json' | 'yaml' | 'text')",
+            "unknown input_format: {} (expected 'json' | 'jsonl' | 'yaml' | 'text')",
             other
         ))),
     })

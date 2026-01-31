@@ -196,6 +196,7 @@ fn append_subtree(dest: &mut JsonTreeArena, src: JsonTreeArena) -> usize {
         obj_keys,
         arr_indices,
         code_lines,
+        jsonl_root_ids,
         ..
     } = src;
 
@@ -218,6 +219,9 @@ fn append_subtree(dest: &mut JsonTreeArena, src: JsonTreeArena) -> usize {
     dest.arr_indices.extend(arr_indices);
     for (arena_idx, lines) in code_lines {
         dest.code_lines.insert(arena_idx + node_offset, lines);
+    }
+    for id in jsonl_root_ids {
+        dest.jsonl_root_ids.insert(id + node_offset);
     }
 
     node_offset + root_id

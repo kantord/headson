@@ -844,6 +844,13 @@ pub fn build_order(
             code_lines.insert(*pq_id, Arc::clone(lines));
         }
     }
+    let mut jsonl_root_pq_ids =
+        std::collections::HashSet::with_capacity(arena.jsonl_root_ids.len());
+    for arena_idx in &arena.jsonl_root_ids {
+        if let Some(Some(pq_id)) = arena_to_pq.get(*arena_idx) {
+            jsonl_root_pq_ids.insert(*pq_id);
+        }
+    }
     Ok(PriorityOrder {
         metrics,
         nodes,
@@ -855,7 +862,7 @@ pub fn build_order(
         total_nodes: total,
         object_type,
         code_lines,
-        is_jsonl_root: arena.is_jsonl_root,
+        jsonl_root_ids: jsonl_root_pq_ids,
         fileset_render_slots,
     })
 }
