@@ -107,7 +107,7 @@ fn render_jsonl_root(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
 }
 
 pub(super) fn render_array(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
-    if ctx.is_jsonl_root {
+    if ctx.is_jsonl_root && !out.is_compact_mode() {
         if ctx.children_len == 0 && ctx.omitted > 0 {
             out.push_comment(format!("/* {} more items */", ctx.omitted));
         } else if ctx.children_len > 0 {
