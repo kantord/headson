@@ -85,8 +85,8 @@ impl<'a> RenderEngine<'a> {
         out: &mut Out<'_>,
     ) {
         let config = self.config;
-        let is_jsonl_root =
-            self.order.is_jsonl_root.get(id).copied().unwrap_or(false);
+        let is_jsonl_root = self.order.object_type.get(id)
+            == Some(&crate::order::types::ObjectType::JsonlRoot);
         let (children_pairs, kept) = self.gather_array_children_with_template(
             id,
             depth,
@@ -273,8 +273,8 @@ impl<'a> RenderEngine<'a> {
         template: crate::serialization::types::OutputTemplate,
     ) {
         let config = self.config;
-        let is_jsonl_root =
-            self.order.is_jsonl_root.get(id).copied().unwrap_or(false);
+        let is_jsonl_root = self.order.object_type.get(id)
+            == Some(&crate::order::types::ObjectType::JsonlRoot);
         let (children_pairs, kept) = self.gather_array_children_with_template(
             id,
             depth,

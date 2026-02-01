@@ -844,11 +844,10 @@ pub fn build_order(
             code_lines.insert(*pq_id, Arc::clone(lines));
         }
     }
-    let mut is_jsonl_root = vec![false; total];
     for (arena_idx, node) in arena.nodes.iter().enumerate() {
         if node.is_jsonl_root {
             if let Some(Some(pq_id)) = arena_to_pq.get(arena_idx) {
-                is_jsonl_root[*pq_id] = true;
+                object_type[*pq_id] = ObjectType::JsonlRoot;
             }
         }
     }
@@ -863,7 +862,6 @@ pub fn build_order(
         total_nodes: total,
         object_type,
         code_lines,
-        is_jsonl_root,
         fileset_render_slots,
     })
 }

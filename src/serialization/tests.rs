@@ -522,7 +522,6 @@ fn force_child_hooks_removed() {
         total_nodes: 3,
         object_type: vec![ObjectType::Object; 3],
         code_lines: HashMap::new(),
-        is_jsonl_root: vec![false; 3],
         fileset_render_slots: None,
     };
     let mut flags = Vec::new();

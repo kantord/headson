@@ -76,6 +76,7 @@ pub enum NodeKind {
 pub enum ObjectType {
     Object,
     Fileset,
+    JsonlRoot,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -177,8 +178,6 @@ pub struct PriorityOrder {
     pub total_nodes: usize,
     pub object_type: Vec<ObjectType>,
     pub code_lines: HashMap<usize, Arc<Vec<String>>>,
-    // Per PQ-ID flag: true for synthetic JSONL root arrays.
-    pub is_jsonl_root: Vec<bool>,
     // For filesets, preserve ingest order and suppression state for render slots.
     pub fileset_render_slots: Option<Vec<FilesetRenderSlot>>,
 }
