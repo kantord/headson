@@ -70,14 +70,11 @@ pub(crate) fn build_json_tree_arena_from_many(
 fn jsonl_line_offsets(text: &str) -> Vec<(usize, usize)> {
     let mut offsets = Vec::new();
     let mut pos = 0usize;
-    for (line_idx, line) in text.lines().enumerate() {
+    for (line_idx, raw_line) in text.split('\n').enumerate() {
         let start = pos;
-        pos += line.len();
-        // account for the newline character consumed by .lines()
-        if pos < text.len() {
-            pos += 1;
-        }
-        if !line.trim().is_empty() {
+        // +1 for the '\n' delimiter (absent after the last segment)
+        pos += raw_line.len() + 1;
+        if !raw_line.trim().is_empty() {
             offsets.push((start, line_idx + 1));
         }
     }
@@ -115,7 +112,7 @@ pub fn parse_jsonl_one(
     for &sampled_idx in &kept_indices {
         let (byte_start, line_num) = line_offsets[sampled_idx];
         let line = &text[byte_start..];
-        let line = line.split('\n').next().unwrap_or("");
+        let line = line.split('\n').next().unwrap_or("").trim_end();
         let mut line_bytes = line.as_bytes().to_vec();
         let mut de = simd_json::Deserializer::from_slice(&mut line_bytes)
             .map_err(|e| anyhow::anyhow!("JSONL line {line_num}: {e}"))?;
