@@ -3,6 +3,7 @@ use anyhow::Result;
 use crate::order::PriorityConfig;
 use crate::utils::tree_arena::JsonTreeArena as TreeArena;
 
+use crate::grep::GrepConfig;
 use crate::InputKind;
 
 pub mod fileset;
@@ -25,10 +26,43 @@ pub(crate) struct IngestOutput {
     pub warnings: Vec<String>,
 }
 
+/// Build a predicate that returns true for JSONL line indices matching the
+/// strong grep pattern. When no grep is active, returns a no-op.
+///
+/// Uses a single regex scan over the entire text and maps match positions
+/// back to line indices, avoiding per-line regex overhead.
+fn jsonl_grep_predicate(
+    bytes: &[u8],
+    grep: &GrepConfig,
+) -> Box<dyn Fn(usize) -> bool> {
+    let Some(re) = grep.patterns.strong() else {
+        return Box::new(|_| false);
+    };
+    let Ok(text) = std::str::from_utf8(bytes) else {
+        return Box::new(|_| false);
+    };
+    let offsets = formats::json::jsonl_line_offsets(text);
+    if offsets.is_empty() {
+        return Box::new(|_| false);
+    }
+    // Single regex pass: find all match positions and map to line indices.
+    let mut matching = vec![false; offsets.len()];
+    for m in re.find_iter(text) {
+        let pos = m.start();
+        // Binary search for the line containing this byte position.
+        let idx = offsets.partition_point(|&(start, _)| start <= pos);
+        if idx > 0 {
+            matching[idx - 1] = true;
+        }
+    }
+    Box::new(move |i: usize| matching.get(i).copied().unwrap_or(false))
+}
+
 /// Dispatch the appropriate ingest path for any supported input kind.
 pub(crate) fn ingest_into_arena(
     input: InputKind,
     priority_cfg: &PriorityConfig,
+    grep: &GrepConfig,
 ) -> Result<IngestOutput> {
     match input {
         InputKind::Json(bytes) => {
@@ -38,10 +72,12 @@ pub(crate) fn ingest_into_arena(
             })
         }
         InputKind::Jsonl(bytes) => {
-            parse_jsonl_one(&bytes, priority_cfg).map(|arena| IngestOutput {
-                arena,
-                warnings: Vec::new(),
-            })
+            let must_include = jsonl_grep_predicate(&bytes, grep);
+            parse_jsonl_one(&bytes, priority_cfg, |i| must_include(i))
+                .map(|arena| IngestOutput {
+                    arena,
+                    warnings: Vec::new(),
+                })
         }
         InputKind::Yaml(bytes) => {
             parse_yaml_one(&bytes, priority_cfg).map(|arena| IngestOutput {
@@ -118,6 +154,7 @@ mod tests {
         let IngestOutput { arena, warnings } = ingest_into_arena(
             InputKind::Fileset(inputs),
             &PriorityConfig::new(usize::MAX, usize::MAX),
+            &GrepConfig::default(),
         )
         .unwrap();
         assert!(arena.is_fileset, "fileset input should mark arena");

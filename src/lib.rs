@@ -76,12 +76,14 @@ pub fn headson(
     budgets: Budgets,
 ) -> Result<RenderOutput> {
     let mut prio = *priority_cfg;
-    if grep.has_strong() {
+    let is_jsonl = matches!(input, InputKind::Jsonl(_));
+    if grep.has_strong() && !is_jsonl {
         // Avoid sampling away potential matches in strong grep mode.
+        // JSONL handles this via must_include in the sampler instead.
         prio.array_max_items = usize::MAX;
     }
     let crate::ingest::IngestOutput { arena, warnings } =
-        crate::ingest::ingest_into_arena(input, &prio)?;
+        crate::ingest::ingest_into_arena(input, &prio, grep)?;
     let mut order_build = order::build_order(&arena, &prio)?;
     let out = find_largest_render_under_budgets(
         &mut order_build,
