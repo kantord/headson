@@ -129,7 +129,8 @@ impl TextArenaBuilder {
             n.arr_indices_len = 0;
             return id;
         }
-        let idxs = choose_indices(self.sampler, total, self.array_cap, |_| false);
+        let idxs =
+            choose_indices(self.sampler, total, self.array_cap, |_| false);
         let kept = idxs.len().min(self.array_cap);
         let children_start = self.arena.children.len();
         for &orig_index in idxs.iter().take(kept) {
@@ -192,7 +193,8 @@ impl TextArenaBuilder {
         lines: &[String],
         total: usize,
     ) {
-        let idxs = choose_indices(self.sampler, total, self.array_cap, |_| false);
+        let idxs =
+            choose_indices(self.sampler, total, self.array_cap, |_| false);
         let kept = idxs.len().min(self.array_cap);
         let children_start = self.arena.children.len();
         let mut pushed = 0usize;

@@ -159,7 +159,12 @@ impl YamlArenaBuilder {
         match y {
             Yaml::Array(v) => {
                 let total = v.len();
-                let idxs = choose_indices(self.sampler, total, self.array_cap, |_| false);
+                let idxs = choose_indices(
+                    self.sampler,
+                    total,
+                    self.array_cap,
+                    |_| false,
+                );
                 let mut child_ids = Vec::with_capacity(idxs.len());
                 for i in &idxs {
                     if let Some(item) = v.get(*i) {

@@ -150,6 +150,10 @@ pub fn choose_indices(
 /// At most `cap` extra required indices are added (sampled from the required
 /// set using the same head/mid/tail distribution) to avoid blowing up when
 /// most items match.
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "Linear collect-and-merge logic reads clearest as a single function"
+)]
 fn merge_required(
     sampled: Vec<usize>,
     total: usize,
@@ -161,8 +165,8 @@ fn merge_required(
         seen[i] = true;
     }
     let mut extra: Vec<usize> = Vec::new();
-    for i in 0..total {
-        if !seen[i] && must_include(i) {
+    for (i, &already) in seen.iter().enumerate() {
+        if !already && must_include(i) {
             extra.push(i);
         }
     }
@@ -260,8 +264,7 @@ mod tests {
     #[test]
     fn must_include_with_zero_cap() {
         let total = 10usize;
-        let indices =
-            choose_indices_default(total, 0, |i| i == 3 || i == 7);
+        let indices = choose_indices_default(total, 0, |i| i == 3 || i == 7);
         assert_eq!(indices, vec![3, 7]);
     }
 

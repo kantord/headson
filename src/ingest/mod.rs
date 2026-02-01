@@ -3,8 +3,8 @@ use anyhow::Result;
 use crate::order::PriorityConfig;
 use crate::utils::tree_arena::JsonTreeArena as TreeArena;
 
-use crate::grep::GrepConfig;
 use crate::InputKind;
+use crate::grep::GrepConfig;
 
 pub mod fileset;
 pub mod format;
@@ -73,11 +73,12 @@ pub(crate) fn ingest_into_arena(
         }
         InputKind::Jsonl(bytes) => {
             let must_include = jsonl_grep_predicate(&bytes, grep);
-            parse_jsonl_one(&bytes, priority_cfg, |i| must_include(i))
-                .map(|arena| IngestOutput {
+            parse_jsonl_one(&bytes, priority_cfg, &*must_include).map(
+                |arena| IngestOutput {
                     arena,
                     warnings: Vec::new(),
-                })
+                },
+            )
         }
         InputKind::Yaml(bytes) => {
             parse_yaml_one(&bytes, priority_cfg).map(|arena| IngestOutput {
