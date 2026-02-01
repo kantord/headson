@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0](https://github.com/kantord/headson/compare/headson-v0.15.0...headson-v0.16.0) - 2026-02-01
+
+### Added
+
+- support jsonl ([#500](https://github.com/kantord/headson/pull/500))
+
+### Other
+
+- sample JSONL lines during ingest ([#503](https://github.com/kantord/headson/pull/503))
+
 ## [0.15.0](https://github.com/kantord/headson/compare/headson-v0.14.0...headson-v0.15.0) - 2026-01-18
 
 ### Added
