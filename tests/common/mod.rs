@@ -54,7 +54,9 @@ fn capture_output(raw: Output) -> CliOutput {
     dead_code,
     reason = "test helpers are used selectively across per-test crates"
 )]
+/// Runs the CLI and asserts success; stdout/stderr are captured in `CliOutput`.
 pub fn run_cli(args: &[&str], stdin: Option<&[u8]>) -> CliOutput {
+    // Note: this helper asserts success; use *_expect_fail for non-zero exits.
     let raw = build_cmd(args, stdin).assert().get_output().clone();
     let out = capture_output(raw);
     assert!(out.success(), "cli should succeed");
@@ -65,11 +67,13 @@ pub fn run_cli(args: &[&str], stdin: Option<&[u8]>) -> CliOutput {
     dead_code,
     reason = "test helpers are used selectively across per-test crates"
 )]
+/// Runs the CLI in `dir` and asserts success; stdout/stderr are captured in `CliOutput`.
 pub fn run_cli_in_dir(
     dir: impl AsRef<std::path::Path>,
     args: &[&str],
     stdin: Option<&[u8]>,
 ) -> CliOutput {
+    // Note: this helper asserts success; use *_expect_fail for non-zero exits.
     let raw = build_cmd_in_dir(dir, args, stdin)
         .assert()
         .get_output()
@@ -96,6 +100,7 @@ pub fn build_cmd_in_dir(
     dead_code,
     reason = "test helpers are used selectively across per-test crates"
 )]
+/// Runs the CLI in `dir` with `envs` and asserts success; stdout/stderr are captured in `CliOutput`.
 pub fn run_cli_in_dir_env(
     dir: impl AsRef<std::path::Path>,
     args: &[&str],
@@ -129,6 +134,7 @@ pub fn build_cmd_in_dir_env(
 }
 
 #[allow(dead_code, reason = "test helpers used ad-hoc across tests")]
+/// Runs the CLI with `--no-color` and asserts success; stdout/stderr are captured in `CliOutput`.
 pub fn run_cli_no_color(args: &[&str], stdin: Option<&[u8]>) -> CliOutput {
     let mut with_flags: Vec<&str> = Vec::with_capacity(args.len() + 1);
     with_flags.push("--no-color");

@@ -673,18 +673,7 @@ fn select_input_format(cli: &Cli, lower_name: &str) -> InputFormat {
     if let Some(fmt) = cli.input_format {
         return fmt;
     }
-    match cli.format {
-        OutputFormat::Auto => detect_input_format_from_ext(lower_name),
-        OutputFormat::Json => {
-            if is_jsonl_ext(lower_name) {
-                InputFormat::Jsonl
-            } else {
-                InputFormat::Json
-            }
-        }
-        OutputFormat::Yaml => InputFormat::Yaml,
-        OutputFormat::Text => InputFormat::Text,
-    }
+    detect_input_format_from_ext(lower_name)
 }
 
 #[cfg(test)]
