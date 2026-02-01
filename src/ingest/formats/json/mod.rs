@@ -86,6 +86,7 @@ pub fn parse_jsonl_one(
         if line.trim().is_empty() {
             continue;
         }
+        // simd-json requires a mutable slice for in-place parsing
         let mut line_bytes = line.as_bytes().to_vec();
         let mut de = simd_json::Deserializer::from_slice(&mut line_bytes)
             .map_err(|e| {

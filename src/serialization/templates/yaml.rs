@@ -89,9 +89,67 @@ fn render_array_pretty(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     push_array_omitted_end(ctx, out);
 }
 
+fn push_yaml_omission(out: &mut Out<'_>, depth: usize, count: usize) {
+    match out.style() {
+        crate::serialization::types::Style::Strict => {}
+        crate::serialization::types::Style::Default => {
+            out.push_indent(depth);
+            out.push_comment("# …");
+            out.push_newline();
+        }
+        crate::serialization::types::Style::Detailed => {
+            out.push_indent(depth);
+            out.push_comment(format!("# {count} more items"));
+            out.push_newline();
+        }
+    }
+}
+
+fn push_jsonl_gap_yaml(
+    out: &mut Out<'_>,
+    ctx: &ArrayCtx<'_>,
+    prev_index: Option<usize>,
+    orig_index: usize,
+) {
+    if let Some(prev) = prev_index {
+        if orig_index > prev.saturating_add(1) {
+            let gap = orig_index - prev - 1;
+            push_yaml_omission(out, ctx.depth, gap);
+        }
+    } else if ctx.omitted_at_start && ctx.omitted > 0 {
+        push_yaml_omission(out, ctx.depth, ctx.omitted);
+    }
+}
+
+fn render_jsonl_multidoc(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
+    let mut prev_index: Option<usize> = None;
+    for (i, (orig_index, (_kind, item))) in ctx.children.iter().enumerate() {
+        push_jsonl_gap_yaml(out, ctx, prev_index, *orig_index);
+        out.push_str("---");
+        out.push_newline();
+        out.push_str(item);
+        if !item.ends_with('\n') {
+            out.push_newline();
+        }
+        prev_index = Some(*orig_index);
+        let _ = i;
+    }
+    if !ctx.omitted_at_start && ctx.omitted > 0 {
+        push_yaml_omission(out, ctx.depth, ctx.omitted);
+    }
+}
+
 pub(super) fn render_array(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     if out.is_compact_mode() {
         super::json::render_array(ctx, out);
+        return;
+    }
+    if ctx.is_jsonl_root && ctx.children_len > 0 {
+        render_jsonl_multidoc(ctx, out);
+        return;
+    }
+    if ctx.is_jsonl_root && ctx.children_len == 0 && ctx.omitted > 0 {
+        push_yaml_omission(out, ctx.depth, ctx.omitted);
         return;
     }
     if ctx.children_len == 0 {

@@ -283,15 +283,16 @@ fn jsonl_yaml_output() {
         10000,
         &["-i", "jsonl"],
     );
-    // YAML output should be a normal sequence, no line numbers
+    // YAML output should use multi-document mode (--- separators), not array syntax
     assert!(
-        !out.contains("1:"),
-        "YAML output should not have line number prefixes"
+        out.contains("---"),
+        "YAML output should use multi-document separators"
     );
     assert!(
-        out.contains("- id:") || out.contains("  id:"),
-        "should render as YAML"
+        !out.contains("- id:"),
+        "YAML output should not use array item syntax for JSONL root"
     );
+    assert!(out.contains("id:"), "should render as YAML");
     assert_snapshot!(out);
 }
 
