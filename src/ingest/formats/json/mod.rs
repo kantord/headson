@@ -104,10 +104,10 @@ pub fn parse_jsonl_one(
 
     let mut arena = builder.finish();
     arena.root_id = root_id;
-    arena.jsonl_root_ids.insert(root_id);
 
     if let Some(node) = arena.nodes.get_mut(root_id) {
         node.array_len = Some(kept);
+        node.is_jsonl_root = true;
     }
 
     Ok(arena)

@@ -4,7 +4,7 @@ use crate::order::{
     NodeId, ObjectType, PriorityOrder, RankedNode, build_order,
 };
 use insta::assert_snapshot;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 fn assert_yaml_valid(s: &str) {
     let _: serde_yaml::Value =
@@ -522,7 +522,7 @@ fn force_child_hooks_removed() {
         total_nodes: 3,
         object_type: vec![ObjectType::Object; 3],
         code_lines: HashMap::new(),
-        jsonl_root_ids: HashSet::new(),
+        is_jsonl_root: vec![false; 3],
         fileset_render_slots: None,
     };
     let mut flags = Vec::new();

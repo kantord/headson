@@ -1,5 +1,5 @@
 use crate::{ArrayBias, order::NodeKind};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Debug, Default, Clone)]
@@ -14,8 +14,6 @@ pub struct JsonTreeArena {
     // True when root is a synthetic wrapper object for multi-input ingest.
     // Used to trigger fileset-specific rendering (section headers and summary).
     pub is_fileset: bool,
-    // Arena node IDs of synthetic arrays wrapping JSONL lines.
-    pub jsonl_root_ids: HashSet<usize>,
     // Optional full text lines for arrays (by arena node id) to support
     // downstream features like syntax highlighting even after sampling.
     pub code_lines: HashMap<usize, Arc<Vec<String>>>,
@@ -41,6 +39,8 @@ pub struct JsonTreeNode {
     pub prefers_parent_line: bool,
     // For filesets: marks entries that should render headers only (empty body).
     pub fileset_suppressed: bool,
+    // True for the synthetic root array node wrapping JSONL lines.
+    pub is_jsonl_root: bool,
 }
 
 impl Default for JsonTreeNode {
@@ -60,6 +60,7 @@ impl Default for JsonTreeNode {
             array_bias_override: None,
             prefers_parent_line: false,
             fileset_suppressed: false,
+            is_jsonl_root: false,
         }
     }
 }

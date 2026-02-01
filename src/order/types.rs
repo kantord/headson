@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Copy, Clone, Debug)]
@@ -177,8 +177,8 @@ pub struct PriorityOrder {
     pub total_nodes: usize,
     pub object_type: Vec<ObjectType>,
     pub code_lines: HashMap<usize, Arc<Vec<String>>>,
-    // PQ IDs of nodes that are synthetic JSONL arrays.
-    pub jsonl_root_ids: HashSet<usize>,
+    // Per PQ-ID flag: true for synthetic JSONL root arrays.
+    pub is_jsonl_root: Vec<bool>,
     // For filesets, preserve ingest order and suppression state for render slots.
     pub fileset_render_slots: Option<Vec<FilesetRenderSlot>>,
 }
