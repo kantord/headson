@@ -66,48 +66,75 @@ pub(crate) fn build_json_tree_arena_from_many(
     Ok(arena)
 }
 
+/// Collect (byte_start, 1-based line number) for every non-empty line.
+fn jsonl_line_offsets(text: &str) -> Vec<(usize, usize)> {
+    let mut offsets = Vec::new();
+    let mut pos = 0usize;
+    for (line_idx, line) in text.lines().enumerate() {
+        let start = pos;
+        pos += line.len();
+        // account for the newline character consumed by .lines()
+        if pos < text.len() {
+            pos += 1;
+        }
+        if !line.trim().is_empty() {
+            offsets.push((start, line_idx + 1));
+        }
+    }
+    offsets
+}
+
 /// Parse JSONL (newline-delimited JSON) into a tree arena.
 /// Each non-empty line is parsed as independent JSON. The result is an array
 /// whose children are the parsed lines, with 1-based line numbers stored as
 /// array indices. The root node is marked with `is_jsonl_root = true`.
+///
+/// Lines are sampled using the same strategy as JSON arrays (controlled by
+/// `PriorityConfig::array_max_items` and `array_sampler`), so only a subset
+/// of lines is actually parsed for large inputs.
 pub fn parse_jsonl_one(
     bytes: &[u8],
     cfg: &PriorityConfig,
 ) -> Result<TreeArena> {
+    use crate::ingest::sampling::{ArraySamplerKind, choose_indices};
+
     let text = std::str::from_utf8(bytes)
         .map_err(|e| anyhow::anyhow!("JSONL input is not valid UTF-8: {e}"))?;
-    let builder =
-        JsonTreeBuilder::new(cfg.array_max_items, cfg.array_sampler.into());
-    let root_id = builder.push_default();
-    let mut child_ids: Vec<usize> = Vec::new();
-    let mut line_numbers: Vec<usize> = Vec::new();
 
-    for (line_idx, line) in text.lines().enumerate() {
-        if line.trim().is_empty() {
-            continue;
-        }
-        // simd-json requires a mutable slice for in-place parsing
+    let line_offsets = jsonl_line_offsets(text);
+    let total = line_offsets.len();
+    let sampler_kind: ArraySamplerKind = cfg.array_sampler.into();
+    let kept_indices =
+        choose_indices(sampler_kind, total, cfg.array_max_items);
+
+    let builder = JsonTreeBuilder::new(cfg.array_max_items, sampler_kind);
+    let root_id = builder.push_default();
+    let mut child_ids: Vec<usize> = Vec::with_capacity(kept_indices.len());
+    let mut line_numbers: Vec<usize> = Vec::with_capacity(kept_indices.len());
+
+    for &sampled_idx in &kept_indices {
+        let (byte_start, line_num) = line_offsets[sampled_idx];
+        let line = &text[byte_start..];
+        let line = line.split('\n').next().unwrap_or("");
         let mut line_bytes = line.as_bytes().to_vec();
         let mut de = simd_json::Deserializer::from_slice(&mut line_bytes)
-            .map_err(|e| {
-                anyhow::anyhow!("JSONL line {}: {}", line_idx + 1, e)
-            })?;
+            .map_err(|e| anyhow::anyhow!("JSONL line {line_num}: {e}"))?;
         let seed = builder.seed();
-        let child_id: usize = seed.deserialize(&mut de).map_err(|e| {
-            anyhow::anyhow!("JSONL line {}: {}", line_idx + 1, e)
-        })?;
+        let child_id: usize = seed
+            .deserialize(&mut de)
+            .map_err(|e| anyhow::anyhow!("JSONL line {line_num}: {e}"))?;
         child_ids.push(child_id);
-        line_numbers.push(line_idx + 1);
+        line_numbers.push(line_num);
     }
 
     let kept = child_ids.len();
-    builder.finish_array(root_id, kept, kept, child_ids, line_numbers);
+    builder.finish_array(root_id, kept, total, child_ids, line_numbers);
 
     let mut arena = builder.finish();
     arena.root_id = root_id;
 
     if let Some(node) = arena.nodes.get_mut(root_id) {
-        node.array_len = Some(kept);
+        node.array_len = Some(total);
         node.is_jsonl_root = true;
     }
 
