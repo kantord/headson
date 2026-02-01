@@ -74,7 +74,8 @@ pub fn parse_jsonl_one(
     bytes: Vec<u8>,
     cfg: &PriorityConfig,
 ) -> Result<TreeArena> {
-    let text = String::from_utf8(bytes)?;
+    let text = String::from_utf8(bytes)
+        .map_err(|e| anyhow::anyhow!("JSONL input is not valid UTF-8: {e}"))?;
     let builder =
         JsonTreeBuilder::new(cfg.array_max_items, cfg.array_sampler.into());
     let root_id = builder.push_default();
