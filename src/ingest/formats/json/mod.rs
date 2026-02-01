@@ -114,9 +114,9 @@ pub fn parse_jsonl_one(
     Ok(arena)
 }
 
-/// Parse JSONL from a mutable byte slice (for fileset use).
+/// Parse JSONL from a byte slice (for fileset use).
 pub(crate) fn build_jsonl_tree_arena_from_slice(
-    bytes: &mut [u8],
+    bytes: &[u8],
     cfg: &PriorityConfig,
 ) -> Result<TreeArena> {
     parse_jsonl_one(bytes, cfg)

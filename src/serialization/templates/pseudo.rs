@@ -61,6 +61,8 @@ fn render_array_nonempty(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     });
 }
 
+// JSONL rendering is intentionally duplicated across js/pseudo templates for simplicity.
+// See also: push_jsonl_gap and render_jsonl_root in js.rs.
 fn push_jsonl_gap(
     out: &mut Out<'_>,
     ctx: &ArrayCtx<'_>,

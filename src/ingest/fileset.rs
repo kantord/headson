@@ -61,7 +61,7 @@ pub fn parse_fileset_multi(
             ),
             FilesetInputKind::Jsonl => parse_or_empty(
                 &name,
-                &mut bytes,
+                &bytes,
                 cfg,
                 &mut warnings,
                 "JSONL",
