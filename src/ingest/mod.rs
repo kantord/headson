@@ -38,7 +38,7 @@ pub(crate) fn ingest_into_arena(
             })
         }
         InputKind::Jsonl(bytes) => {
-            parse_jsonl_one(bytes, priority_cfg).map(|arena| IngestOutput {
+            parse_jsonl_one(&bytes, priority_cfg).map(|arena| IngestOutput {
                 arena,
                 warnings: Vec::new(),
             })

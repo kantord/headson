@@ -123,7 +123,7 @@ fn push_jsonl_gap_yaml(
 
 fn render_jsonl_multidoc(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
     let mut prev_index: Option<usize> = None;
-    for (i, (orig_index, (_kind, item))) in ctx.children.iter().enumerate() {
+    for (orig_index, (_kind, item)) in ctx.children.iter() {
         push_jsonl_gap_yaml(out, ctx, prev_index, *orig_index);
         out.push_str("---");
         out.push_newline();
@@ -132,7 +132,6 @@ fn render_jsonl_multidoc(ctx: &ArrayCtx<'_>, out: &mut Out<'_>) {
             out.push_newline();
         }
         prev_index = Some(*orig_index);
-        let _ = i;
     }
     if !ctx.omitted_at_start && ctx.omitted > 0 {
         push_yaml_omission(out, ctx.depth, ctx.omitted);

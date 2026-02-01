@@ -71,10 +71,10 @@ pub(crate) fn build_json_tree_arena_from_many(
 /// whose children are the parsed lines, with 1-based line numbers stored as
 /// array indices. The root node is marked with `is_jsonl_root = true`.
 pub fn parse_jsonl_one(
-    bytes: Vec<u8>,
+    bytes: &[u8],
     cfg: &PriorityConfig,
 ) -> Result<TreeArena> {
-    let text = String::from_utf8(bytes)
+    let text = std::str::from_utf8(bytes)
         .map_err(|e| anyhow::anyhow!("JSONL input is not valid UTF-8: {e}"))?;
     let builder =
         JsonTreeBuilder::new(cfg.array_max_items, cfg.array_sampler.into());
@@ -119,7 +119,7 @@ pub(crate) fn build_jsonl_tree_arena_from_slice(
     bytes: &mut [u8],
     cfg: &PriorityConfig,
 ) -> Result<TreeArena> {
-    parse_jsonl_one(bytes.to_vec(), cfg)
+    parse_jsonl_one(bytes, cfg)
 }
 
 /// Convenience functions for the JSON ingest path.
