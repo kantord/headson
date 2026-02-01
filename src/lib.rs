@@ -33,6 +33,7 @@ pub use grep::{
     build_grep_config_from_patterns, combine_patterns,
 };
 pub use ingest::fileset::{FilesetInput, FilesetInputKind};
+pub use ingest::format::Format;
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
 pub use order::{
     NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,

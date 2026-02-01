@@ -72,15 +72,13 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
 }
 
 fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
-    let lower = name.to_ascii_lowercase();
-    if lower.ends_with(".yaml") || lower.ends_with(".yml") {
-        headson::FilesetInputKind::Yaml
-    } else if lower.ends_with(".jsonl") || lower.ends_with(".ndjson") {
-        headson::FilesetInputKind::Jsonl
-    } else if lower.ends_with(".json") {
-        headson::FilesetInputKind::Json
-    } else {
-        fileset_text_kind(&lower)
+    match headson::Format::from_filename(name) {
+        headson::Format::Json => headson::FilesetInputKind::Json,
+        headson::Format::Jsonl => headson::FilesetInputKind::Jsonl,
+        headson::Format::Yaml => headson::FilesetInputKind::Yaml,
+        headson::Format::Unknown => {
+            fileset_text_kind(&name.to_ascii_lowercase())
+        }
     }
 }
 
@@ -651,21 +649,12 @@ fn build_single_render_config(
     cfg
 }
 
-fn is_jsonl_ext(name: &str) -> bool {
-    name.ends_with(".jsonl") || name.ends_with(".ndjson")
-}
-
-fn detect_input_format_from_ext(lower_name: &str) -> InputFormat {
-    let is_yaml =
-        lower_name.ends_with(".yaml") || lower_name.ends_with(".yml");
-    if is_yaml {
-        InputFormat::Yaml
-    } else if is_jsonl_ext(lower_name) {
-        InputFormat::Jsonl
-    } else if lower_name.ends_with(".json") {
-        InputFormat::Json
-    } else {
-        InputFormat::Text
+fn detect_input_format_from_ext(name: &str) -> InputFormat {
+    match headson::Format::from_filename(name) {
+        headson::Format::Json => InputFormat::Json,
+        headson::Format::Jsonl => InputFormat::Jsonl,
+        headson::Format::Yaml => InputFormat::Yaml,
+        headson::Format::Unknown => InputFormat::Text,
     }
 }
 
