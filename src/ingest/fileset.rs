@@ -1,17 +1,17 @@
+use crate::grep::GrepConfig;
 use crate::order::NodeKind;
 use crate::utils::tree_arena::{JsonTreeArena, JsonTreeNode};
 
 use super::IngestOutput;
 use super::formats::{
-    json::{
-        build_json_tree_arena_from_slice, build_jsonl_tree_arena_from_slice,
-    },
+    json::build_json_tree_arena_from_slice,
     text::{
         build_text_tree_arena_from_bytes,
         build_text_tree_arena_from_bytes_with_mode,
     },
     yaml::build_yaml_tree_arena_from_bytes,
 };
+use super::jsonl_grep_predicate;
 use crate::PriorityConfig;
 
 /// Input descriptor for a single file in a multi-format fileset ingest.
@@ -41,7 +41,19 @@ pub enum FilesetInputKind {
 pub fn parse_fileset_multi(
     inputs: Vec<FilesetInput>,
     cfg: &PriorityConfig,
+    grep: &GrepConfig,
 ) -> IngestOutput {
+    let has_strong_grep = grep.has_strong();
+    // For non-JSONL formats under strong grep, disable array sampling so
+    // we don't accidentally sample away matching lines.
+    let non_jsonl_cfg = if has_strong_grep {
+        let mut c = *cfg;
+        c.array_max_items = usize::MAX;
+        c
+    } else {
+        *cfg
+    };
+
     let mut entries: Vec<FilesetEntry> = Vec::with_capacity(inputs.len());
     let mut warnings: Vec<String> = Vec::new();
     for FilesetInput {
@@ -54,26 +66,35 @@ pub fn parse_fileset_multi(
             FilesetInputKind::Json => parse_or_empty(
                 &name,
                 &mut bytes,
-                cfg,
+                &non_jsonl_cfg,
                 &mut warnings,
                 "JSON",
-                |bytes, cfg| build_json_tree_arena_from_slice(bytes, cfg),
+                |bytes, c| build_json_tree_arena_from_slice(bytes, c),
             ),
-            FilesetInputKind::Jsonl => parse_or_empty(
-                &name,
-                &bytes,
-                cfg,
-                &mut warnings,
-                "JSONL",
-                |bytes, cfg| build_jsonl_tree_arena_from_slice(bytes, cfg),
-            ),
+            FilesetInputKind::Jsonl => {
+                let must_include = jsonl_grep_predicate(&bytes, grep);
+                parse_or_empty(
+                    &name,
+                    &bytes,
+                    cfg,
+                    &mut warnings,
+                    "JSONL",
+                    |bytes, c| {
+                        crate::ingest::formats::json::parse_jsonl_one(
+                            bytes,
+                            c,
+                            &*must_include,
+                        )
+                    },
+                )
+            }
             FilesetInputKind::Yaml => parse_or_empty(
                 &name,
                 &bytes,
-                cfg,
+                &non_jsonl_cfg,
                 &mut warnings,
                 "YAML",
-                |bytes, cfg| build_yaml_tree_arena_from_bytes(bytes, cfg),
+                |bytes, c| build_yaml_tree_arena_from_bytes(bytes, c),
             ),
             FilesetInputKind::Text { atomic_lines } => {
                 (parse_text_bytes(&bytes, cfg, atomic_lines), false)

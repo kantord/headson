@@ -560,6 +560,7 @@ fn fileset_tree_headers_free_keep_slot_stats_on_body_only() {
             },
         ],
         &cfg_prio,
+        &crate::GrepConfig::default(),
     )
     .arena;
     let order = build_order(&arena, &cfg_prio).unwrap();
@@ -644,6 +645,7 @@ fn fileset_tree_headers_free_scaffold_does_not_change_slot_stats() {
             },
         ],
         &cfg_prio,
+        &crate::GrepConfig::default(),
     )
     .arena;
     let order = build_order(&arena, &cfg_prio).unwrap();
@@ -734,6 +736,7 @@ fn fileset_sections_slot_stats_respect_header_budgeting() {
             },
         ],
         &cfg_prio,
+        &crate::GrepConfig::default(),
     )
     .arena;
     let order = build_order(&arena, &cfg_prio).unwrap();
@@ -826,6 +829,7 @@ fn slot_stats_match_render_for_code_and_text() {
             },
         }],
         &cfg_prio,
+        &crate::GrepConfig::default(),
     )
     .arena;
     let order = build_order(&arena, &cfg_prio).unwrap();

@@ -77,7 +77,8 @@ pub fn headson(
 ) -> Result<RenderOutput> {
     let mut prio = *priority_cfg;
     let is_jsonl = matches!(input, InputKind::Jsonl(_));
-    if grep.has_strong() && !is_jsonl {
+    let is_fileset = matches!(input, InputKind::Fileset(_));
+    if grep.has_strong() && !is_jsonl && !is_fileset {
         // Avoid sampling away potential matches in strong grep mode.
         // JSONL handles this via must_include in the sampler instead.
         prio.array_max_items = usize::MAX;

@@ -31,7 +31,7 @@ pub(crate) struct IngestOutput {
 ///
 /// Uses a single regex scan over the entire text and maps match positions
 /// back to line indices, avoiding per-line regex overhead.
-fn jsonl_grep_predicate(
+pub(crate) fn jsonl_grep_predicate(
     bytes: &[u8],
     grep: &GrepConfig,
 ) -> Box<dyn Fn(usize) -> bool> {
@@ -96,7 +96,7 @@ pub(crate) fn ingest_into_arena(
             )
         }
         InputKind::Fileset(inputs) => {
-            Ok(fileset::parse_fileset_multi(inputs, priority_cfg))
+            Ok(fileset::parse_fileset_multi(inputs, priority_cfg, grep))
         }
     }
 }
