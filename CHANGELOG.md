@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.1](https://github.com/kantord/headson/compare/headson-v0.16.0...headson-v0.16.1) - 2026-02-02
+
+### Other
+
+- optimize sampling for grep mode in jsonl files ([#504](https://github.com/kantord/headson/pull/504))
+
 ## [0.16.0](https://github.com/kantord/headson/compare/headson-v0.15.0...headson-v0.16.0) - 2026-02-01
 
 ### Added
