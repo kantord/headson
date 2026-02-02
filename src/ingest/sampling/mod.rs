@@ -258,4 +258,63 @@ mod tests {
         let indices = choose_indices_default(total, cap, |i| i == 0);
         assert_eq!(indices, (0..total).collect::<Vec<_>>());
     }
+
+    #[test]
+    fn head_sampler_includes_required_beyond_cap() {
+        let total = 20usize;
+        let cap = 3usize;
+        // Head keeps 0,1,2 — force index 17 to also be included
+        let indices = choose_indices_head(total, cap, |i| i == 17);
+        assert_eq!(&indices[..3], &[0, 1, 2]);
+        assert!(
+            indices.contains(&17),
+            "must_include index should be present: {indices:?}"
+        );
+        for w in indices.windows(2) {
+            assert!(w[0] < w[1], "indices should be sorted: {indices:?}");
+        }
+    }
+
+    #[test]
+    fn head_sampler_no_duplicates_when_required_already_sampled() {
+        let total = 10usize;
+        let cap = 5usize;
+        // Index 2 is already in head range 0..5
+        let indices = choose_indices_head(total, cap, |i| i == 2);
+        assert_eq!(indices, (0..5).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn tail_sampler_includes_required_beyond_cap() {
+        let total = 20usize;
+        let cap = 3usize;
+        // Tail keeps 17,18,19 — force index 2 to also be included
+        let indices = choose_indices_tail(total, cap, |i| i == 2);
+        assert!(indices.contains(&2), "must_include index should be present");
+        assert!(indices.contains(&17));
+        assert_eq!(indices, vec![2, 17, 18, 19]);
+    }
+
+    #[test]
+    fn tail_sampler_no_duplicates_when_required_already_sampled() {
+        let total = 10usize;
+        let cap = 5usize;
+        // Index 7 is already in tail range 5..10
+        let indices = choose_indices_tail(total, cap, |i| i == 7);
+        assert_eq!(indices, (5..10).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn tail_sampler_with_zero_cap_returns_only_required() {
+        let total = 10usize;
+        let indices = choose_indices_tail(total, 0, |i| i == 4 || i == 8);
+        assert_eq!(indices, vec![4, 8]);
+    }
+
+    #[test]
+    fn head_sampler_with_zero_cap_returns_only_required() {
+        let total = 10usize;
+        let indices = choose_indices_head(total, 0, |i| i == 4 || i == 8);
+        assert_eq!(indices, vec![4, 8]);
+    }
 }

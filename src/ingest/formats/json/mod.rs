@@ -67,7 +67,7 @@ pub(crate) fn build_json_tree_arena_from_many(
 }
 
 /// Collect (byte_start, 1-based line number) for every non-empty line.
-pub fn jsonl_line_offsets(text: &str) -> Vec<(usize, usize)> {
+pub(crate) fn jsonl_line_offsets(text: &str) -> Vec<(usize, usize)> {
     let mut offsets = Vec::new();
     let mut pos = 0usize;
     for (line_idx, raw_line) in text.split('\n').enumerate() {

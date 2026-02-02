@@ -104,6 +104,7 @@ pub(crate) fn ingest_into_arena(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::grep::{GrepConfig, GrepPatterns, GrepShow};
     use crate::order::NodeKind;
 
     #[test]
@@ -143,6 +144,85 @@ mod tests {
         assert_eq!(arena.nodes[root].kind, NodeKind::Object);
         // Expect two top-level entries
         assert_eq!(arena.nodes[root].object_len.unwrap_or(0), 2);
+    }
+
+    fn grep_with_strong(pattern: &str) -> GrepConfig {
+        GrepConfig {
+            patterns: GrepPatterns::StrongOnly(
+                regex::Regex::new(pattern).unwrap(),
+            ),
+            show: GrepShow::Matching,
+        }
+    }
+
+    #[test]
+    fn jsonl_grep_predicate_marks_matching_lines() {
+        let input = b"{\"a\":1}\n{\"b\":2}\n{\"c\":3}\n";
+        let grep = grep_with_strong("b");
+        let pred = jsonl_grep_predicate(input, &grep);
+        assert!(!pred(0), "line 0 should not match");
+        assert!(pred(1), "line 1 should match 'b'");
+        assert!(!pred(2), "line 2 should not match");
+    }
+
+    #[test]
+    fn jsonl_grep_predicate_multiple_matches() {
+        let input = b"{\"x\":1}\n{\"x\":2}\n{\"y\":3}\n{\"x\":4}\n";
+        let grep = grep_with_strong("x");
+        let pred = jsonl_grep_predicate(input, &grep);
+        assert!(pred(0));
+        assert!(pred(1));
+        assert!(!pred(2));
+        assert!(pred(3));
+    }
+
+    #[test]
+    fn jsonl_grep_predicate_no_strong_pattern_returns_noop() {
+        let input = b"{\"a\":1}\n{\"b\":2}\n";
+        let grep = GrepConfig::default(); // no patterns
+        let pred = jsonl_grep_predicate(input, &grep);
+        assert!(!pred(0));
+        assert!(!pred(1));
+    }
+
+    #[test]
+    fn jsonl_grep_predicate_skips_empty_lines() {
+        // Empty lines are excluded from offsets, so indices are dense
+        let input = b"{\"a\":1}\n\n{\"b\":2}\n";
+        let grep = grep_with_strong("b");
+        let pred = jsonl_grep_predicate(input, &grep);
+        // Only 2 non-empty lines: index 0 = {"a":1}, index 1 = {"b":2}
+        assert!(!pred(0));
+        assert!(pred(1));
+    }
+
+    #[test]
+    fn jsonl_grep_predicate_match_on_first_line() {
+        let input = b"{\"needle\":true}\n{\"other\":false}\n";
+        let grep = grep_with_strong("needle");
+        let pred = jsonl_grep_predicate(input, &grep);
+        assert!(pred(0), "match on first line should work");
+        assert!(!pred(1));
+    }
+
+    #[test]
+    fn jsonl_grep_predicate_match_on_last_line() {
+        let input = b"{\"a\":1}\n{\"needle\":true}";
+        let grep = grep_with_strong("needle");
+        let pred = jsonl_grep_predicate(input, &grep);
+        assert!(!pred(0));
+        assert!(
+            pred(1),
+            "match on last line (no trailing newline) should work"
+        );
+    }
+
+    #[test]
+    fn jsonl_grep_predicate_out_of_bounds_returns_false() {
+        let input = b"{\"a\":1}\n{\"b\":2}\n";
+        let grep = grep_with_strong("a");
+        let pred = jsonl_grep_predicate(input, &grep);
+        assert!(!pred(99), "out of bounds index should return false");
     }
 
     #[test]
