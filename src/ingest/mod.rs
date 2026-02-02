@@ -26,6 +26,22 @@ pub(crate) struct IngestOutput {
     pub warnings: Vec<String>,
 }
 
+/// Return a copy of `cfg` with array sampling disabled when strong grep is
+/// active. Non-JSONL formats need this to avoid sampling away matches;
+/// JSONL handles it via `merge_required` in the sampler instead.
+pub(crate) fn grep_adjusted_cfg(
+    cfg: &PriorityConfig,
+    grep: &GrepConfig,
+) -> PriorityConfig {
+    if grep.has_strong() {
+        let mut c = *cfg;
+        c.array_max_items = usize::MAX;
+        c
+    } else {
+        *cfg
+    }
+}
+
 /// Build a predicate that returns true for JSONL line indices matching the
 /// strong grep pattern. When no grep is active, returns a no-op.
 ///
@@ -66,7 +82,8 @@ pub(crate) fn ingest_into_arena(
 ) -> Result<IngestOutput> {
     match input {
         InputKind::Json(bytes) => {
-            parse_json_one(bytes, priority_cfg).map(|arena| IngestOutput {
+            let cfg = grep_adjusted_cfg(priority_cfg, grep);
+            parse_json_one(bytes, &cfg).map(|arena| IngestOutput {
                 arena,
                 warnings: Vec::new(),
             })
@@ -81,19 +98,21 @@ pub(crate) fn ingest_into_arena(
             )
         }
         InputKind::Yaml(bytes) => {
-            parse_yaml_one(&bytes, priority_cfg).map(|arena| IngestOutput {
+            let cfg = grep_adjusted_cfg(priority_cfg, grep);
+            parse_yaml_one(&bytes, &cfg).map(|arena| IngestOutput {
                 arena,
                 warnings: Vec::new(),
             })
         }
         InputKind::Text { bytes, mode } => {
+            let cfg = grep_adjusted_cfg(priority_cfg, grep);
             let atomic = matches!(mode, crate::TextMode::CodeLike);
-            parse_text_one_with_mode(bytes, priority_cfg, atomic).map(
-                |arena| IngestOutput {
+            parse_text_one_with_mode(bytes, &cfg, atomic).map(|arena| {
+                IngestOutput {
                     arena,
                     warnings: Vec::new(),
-                },
-            )
+                }
+            })
         }
         InputKind::Fileset(inputs) => {
             Ok(fileset::parse_fileset_multi(inputs, priority_cfg, grep))

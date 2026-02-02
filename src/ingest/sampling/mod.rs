@@ -47,18 +47,13 @@ fn accept_index(i: u64) -> bool {
 }
 
 /// Choose indices using the default policy (keep-first, greedy, random accept).
-/// Items for which `must_include(i)` returns true are always kept.
 #[allow(
     clippy::cognitive_complexity,
     reason = "Single function mirrors JSON streaming sampler phases"
 )]
-pub fn choose_indices_default(
-    total: usize,
-    cap: usize,
-    must_include: impl Fn(usize) -> bool,
-) -> Vec<usize> {
+pub fn choose_indices_default(total: usize, cap: usize) -> Vec<usize> {
     if cap == 0 || total == 0 {
-        return collect_required(total, &must_include);
+        return Vec::new();
     }
     if cap >= total {
         return (0..total).collect();
@@ -71,7 +66,7 @@ pub fn choose_indices_default(
     }
     if out.len() >= cap || out.len() >= total {
         out.truncate(cap.min(total));
-        return merge_required(out, total, &must_include);
+        return out;
     }
     // Greedy phase: take a portion of remaining capacity linearly
     let mut idx = keep_first;
@@ -84,7 +79,7 @@ pub fn choose_indices_default(
         g += 1;
     }
     if out.len() >= cap || idx >= total {
-        return merge_required(out, total, &must_include);
+        return out;
     }
     // Random phase: use accept_index on logical index to thin remaining
     while out.len() < cap && idx < total {
@@ -93,67 +88,47 @@ pub fn choose_indices_default(
         }
         idx += 1;
     }
-    merge_required(out, total, &must_include)
+    out
 }
 
 /// Choose head prefix indices.
-/// Items for which `must_include(i)` returns true are always kept.
-pub fn choose_indices_head(
-    total: usize,
-    cap: usize,
-    must_include: impl Fn(usize) -> bool,
-) -> Vec<usize> {
+pub fn choose_indices_head(total: usize, cap: usize) -> Vec<usize> {
     let kept = total.min(cap);
-    let out: Vec<usize> = (0..kept).collect();
-    merge_required(out, total, &must_include)
+    (0..kept).collect()
 }
 
 /// Choose tail suffix indices.
-/// Items for which `must_include(i)` returns true are always kept.
-pub fn choose_indices_tail(
-    total: usize,
-    cap: usize,
-    must_include: impl Fn(usize) -> bool,
-) -> Vec<usize> {
+pub fn choose_indices_tail(total: usize, cap: usize) -> Vec<usize> {
     if cap == 0 || total == 0 {
-        return collect_required(total, &must_include);
+        return Vec::new();
     }
     let kept = total.min(cap);
     let start = total.saturating_sub(kept);
-    let out: Vec<usize> = (start..total).collect();
-    merge_required(out, total, &must_include)
+    (start..total).collect()
 }
 
 /// Dispatcher: choose indices for a given sampler kind.
-/// Items for which `must_include(i)` returns true are always kept,
-/// regardless of the sampling strategy or cap.
 pub fn choose_indices(
     kind: ArraySamplerKind,
     total: usize,
     cap: usize,
-    must_include: impl Fn(usize) -> bool,
 ) -> Vec<usize> {
     match kind {
-        ArraySamplerKind::Default => {
-            choose_indices_default(total, cap, must_include)
-        }
-        ArraySamplerKind::Head => {
-            choose_indices_head(total, cap, must_include)
-        }
-        ArraySamplerKind::Tail => {
-            choose_indices_tail(total, cap, must_include)
-        }
+        ArraySamplerKind::Default => choose_indices_default(total, cap),
+        ArraySamplerKind::Head => choose_indices_head(total, cap),
+        ArraySamplerKind::Tail => choose_indices_tail(total, cap),
     }
 }
 
 /// Merge required indices into an already-chosen set, preserving sorted order.
-/// All required indices are unconditionally kept — correctness demands that
-/// `must_include` items are never silently dropped.
+///
+/// Use this as a post-step after `choose_indices` when certain indices must
+/// be unconditionally kept (e.g., JSONL lines matching a grep pattern).
 #[allow(
     clippy::cognitive_complexity,
     reason = "Linear collect-and-merge logic reads clearest as a single function"
 )]
-fn merge_required(
+pub fn merge_required(
     sampled: Vec<usize>,
     total: usize,
     must_include: &impl Fn(usize) -> bool,
@@ -188,14 +163,6 @@ fn merge_required(
     result
 }
 
-/// Collect only the required indices (used when cap is 0).
-fn collect_required(
-    total: usize,
-    must_include: &impl Fn(usize) -> bool,
-) -> Vec<usize> {
-    (0..total).filter(|&i| must_include(i)).collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -204,7 +171,7 @@ mod tests {
     fn default_sampler_returns_all_when_cap_not_binding() {
         let total = 10usize;
         let cap = total + 5;
-        let indices = choose_indices_default(total, cap, |_| false);
+        let indices = choose_indices_default(total, cap);
         assert_eq!(indices, (0..total).collect::<Vec<_>>());
     }
 
@@ -212,16 +179,17 @@ mod tests {
     fn default_sampler_respects_cap_when_smaller() {
         let total = 10usize;
         let cap = 3usize;
-        let indices = choose_indices_default(total, cap, |_| false);
+        let indices = choose_indices_default(total, cap);
         assert!(indices.len() <= cap);
     }
 
     #[test]
-    fn must_include_adds_missing_indices() {
+    fn merge_required_adds_missing_indices() {
         let total = 20usize;
         let cap = 3usize;
+        let sampled = choose_indices_default(total, cap);
         // Force index 15 to be included even though cap is 3
-        let indices = choose_indices_default(total, cap, |i| i == 15);
+        let indices = merge_required(sampled, total, &|i| i == 15);
         assert!(
             indices.contains(&15),
             "must_include index should be present: {indices:?}"
@@ -231,11 +199,11 @@ mod tests {
     }
 
     #[test]
-    fn must_include_preserves_sorted_order() {
+    fn merge_required_preserves_sorted_order() {
         let total = 100usize;
         let cap = 5usize;
-        let indices =
-            choose_indices_default(total, cap, |i| i == 50 || i == 90);
+        let sampled = choose_indices_default(total, cap);
+        let indices = merge_required(sampled, total, &|i| i == 50 || i == 90);
         for w in indices.windows(2) {
             assert!(w[0] < w[1], "indices should be sorted: {indices:?}");
         }
@@ -244,27 +212,30 @@ mod tests {
     }
 
     #[test]
-    fn must_include_with_zero_cap() {
+    fn merge_required_with_zero_cap() {
         let total = 10usize;
-        let indices = choose_indices_default(total, 0, |i| i == 3 || i == 7);
+        let sampled = choose_indices_default(total, 0);
+        let indices = merge_required(sampled, total, &|i| i == 3 || i == 7);
         assert_eq!(indices, vec![3, 7]);
     }
 
     #[test]
-    fn must_include_no_duplicates_when_already_sampled() {
+    fn merge_required_no_duplicates_when_already_sampled() {
         let total = 10usize;
         let cap = 10usize;
+        let sampled = choose_indices_default(total, cap);
         // All indices already sampled; must_include shouldn't duplicate
-        let indices = choose_indices_default(total, cap, |i| i == 0);
+        let indices = merge_required(sampled, total, &|i| i == 0);
         assert_eq!(indices, (0..total).collect::<Vec<_>>());
     }
 
     #[test]
-    fn head_sampler_includes_required_beyond_cap() {
+    fn head_sampler_merge_includes_required_beyond_cap() {
         let total = 20usize;
         let cap = 3usize;
+        let sampled = choose_indices_head(total, cap);
         // Head keeps 0,1,2 — force index 17 to also be included
-        let indices = choose_indices_head(total, cap, |i| i == 17);
+        let indices = merge_required(sampled, total, &|i| i == 17);
         assert_eq!(&indices[..3], &[0, 1, 2]);
         assert!(
             indices.contains(&17),
@@ -276,45 +247,50 @@ mod tests {
     }
 
     #[test]
-    fn head_sampler_no_duplicates_when_required_already_sampled() {
+    fn head_sampler_merge_no_duplicates_when_already_sampled() {
         let total = 10usize;
         let cap = 5usize;
+        let sampled = choose_indices_head(total, cap);
         // Index 2 is already in head range 0..5
-        let indices = choose_indices_head(total, cap, |i| i == 2);
+        let indices = merge_required(sampled, total, &|i| i == 2);
         assert_eq!(indices, (0..5).collect::<Vec<_>>());
     }
 
     #[test]
-    fn tail_sampler_includes_required_beyond_cap() {
+    fn tail_sampler_merge_includes_required_beyond_cap() {
         let total = 20usize;
         let cap = 3usize;
+        let sampled = choose_indices_tail(total, cap);
         // Tail keeps 17,18,19 — force index 2 to also be included
-        let indices = choose_indices_tail(total, cap, |i| i == 2);
+        let indices = merge_required(sampled, total, &|i| i == 2);
         assert!(indices.contains(&2), "must_include index should be present");
         assert!(indices.contains(&17));
         assert_eq!(indices, vec![2, 17, 18, 19]);
     }
 
     #[test]
-    fn tail_sampler_no_duplicates_when_required_already_sampled() {
+    fn tail_sampler_merge_no_duplicates_when_already_sampled() {
         let total = 10usize;
         let cap = 5usize;
+        let sampled = choose_indices_tail(total, cap);
         // Index 7 is already in tail range 5..10
-        let indices = choose_indices_tail(total, cap, |i| i == 7);
+        let indices = merge_required(sampled, total, &|i| i == 7);
         assert_eq!(indices, (5..10).collect::<Vec<_>>());
     }
 
     #[test]
-    fn tail_sampler_with_zero_cap_returns_only_required() {
+    fn tail_sampler_merge_with_zero_cap_returns_only_required() {
         let total = 10usize;
-        let indices = choose_indices_tail(total, 0, |i| i == 4 || i == 8);
+        let sampled = choose_indices_tail(total, 0);
+        let indices = merge_required(sampled, total, &|i| i == 4 || i == 8);
         assert_eq!(indices, vec![4, 8]);
     }
 
     #[test]
-    fn head_sampler_with_zero_cap_returns_only_required() {
+    fn head_sampler_merge_with_zero_cap_returns_only_required() {
         let total = 10usize;
-        let indices = choose_indices_head(total, 0, |i| i == 4 || i == 8);
+        let sampled = choose_indices_head(total, 0);
+        let indices = merge_required(sampled, total, &|i| i == 4 || i == 8);
         assert_eq!(indices, vec![4, 8]);
     }
 }

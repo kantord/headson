@@ -11,7 +11,7 @@ use super::formats::{
     },
     yaml::build_yaml_tree_arena_from_bytes,
 };
-use super::jsonl_grep_predicate;
+use super::{grep_adjusted_cfg, jsonl_grep_predicate};
 use crate::PriorityConfig;
 
 /// Input descriptor for a single file in a multi-format fileset ingest.
@@ -43,16 +43,7 @@ pub fn parse_fileset_multi(
     cfg: &PriorityConfig,
     grep: &GrepConfig,
 ) -> IngestOutput {
-    let has_strong_grep = grep.has_strong();
-    // For non-JSONL formats under strong grep, disable array sampling so
-    // we don't accidentally sample away matching lines.
-    let non_jsonl_cfg = if has_strong_grep {
-        let mut c = *cfg;
-        c.array_max_items = usize::MAX;
-        c
-    } else {
-        *cfg
-    };
+    let non_jsonl_cfg = grep_adjusted_cfg(cfg, grep);
 
     let mut entries: Vec<FilesetEntry> = Vec::with_capacity(inputs.len());
     let mut warnings: Vec<String> = Vec::new();
