@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use super::scoring::DEFAULT_SAFETY_CAP;
+
 #[derive(Copy, Clone, Debug)]
 pub struct PriorityConfig {
     pub max_string_graphemes: usize,
@@ -14,6 +16,9 @@ pub struct PriorityConfig {
     // Indicates that rendering may favor structural breadth over deep string
     // expansion under line-capped previews.
     pub line_budget_only: bool,
+    /// Hard ceiling on priority queue nodes to prevent degenerate inputs
+    /// from exhausting memory/time. Default is 2,000,000.
+    pub safety_cap: usize,
 }
 
 impl PriorityConfig {
@@ -25,6 +30,7 @@ impl PriorityConfig {
             array_bias: ArrayBias::HeadMidTail,
             array_sampler: ArraySamplerStrategy::Default,
             line_budget_only: false,
+            safety_cap: DEFAULT_SAFETY_CAP,
         }
     }
 
@@ -51,6 +57,7 @@ impl PriorityConfig {
             array_bias: ArrayBias::HeadMidTail,
             array_sampler,
             line_budget_only,
+            safety_cap: DEFAULT_SAFETY_CAP,
         }
     }
 }
@@ -180,6 +187,8 @@ pub struct PriorityOrder {
     pub code_lines: HashMap<usize, Arc<Vec<String>>>,
     // For filesets, preserve ingest order and suppression state for render slots.
     pub fileset_render_slots: Option<Vec<FilesetRenderSlot>>,
+    /// True if the priority queue expansion hit the safety cap (2M nodes).
+    pub safety_cap_hit: bool,
 }
 
 #[derive(Copy, Clone, Debug)]

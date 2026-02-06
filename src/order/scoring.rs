@@ -1,6 +1,6 @@
-// Hard ceiling on number of PQ nodes built to prevent degenerate inputs
-// from blowing up memory/time while exploring the frontier.
-pub(crate) const SAFETY_CAP: usize = 2_000_000;
+/// Hard ceiling on number of PQ nodes built to prevent degenerate inputs
+/// from blowing up memory/time while exploring the frontier.
+pub const DEFAULT_SAFETY_CAP: usize = 2_000_000;
 
 /// Root starts at a fixed minimal score so its children naturally follow.
 pub(crate) const ROOT_BASE_SCORE: u128 = 1;

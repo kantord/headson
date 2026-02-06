@@ -789,6 +789,7 @@ pub fn build_order(
         arena_index: Some(root_ar),
     }));
 
+    let mut safety_cap_hit = false;
     while let Some(Reverse(entry)) = heap.pop() {
         let mut scope = Scope {
             arena,
@@ -800,7 +801,7 @@ pub fn build_order(
             nodes: &mut nodes,
             scores: &mut scores,
             heap: &mut heap,
-            safety_cap: SAFETY_CAP,
+            safety_cap: config.safety_cap,
             object_type: &mut object_type,
             index_in_parent_array: &mut index_in_parent_array,
             arena_to_pq: &mut arena_to_pq,
@@ -809,7 +810,8 @@ pub fn build_order(
             duplicate_counts: &duplicate_counts,
         };
         scope.process_entry(&entry, &mut order);
-        if next_pq_id >= SAFETY_CAP {
+        if next_pq_id >= config.safety_cap {
+            safety_cap_hit = true;
             break;
         }
     }
@@ -863,6 +865,7 @@ pub fn build_order(
         object_type,
         code_lines,
         fileset_render_slots,
+        safety_cap_hit,
     })
 }
 

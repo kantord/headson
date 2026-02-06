@@ -36,7 +36,8 @@ pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use ingest::format::Format;
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
 pub use order::{
-    NodeId, NodeKind, PriorityConfig, PriorityOrder, RankedNode, build_order,
+    DEFAULT_SAFETY_CAP, NodeId, NodeKind, PriorityConfig, PriorityOrder,
+    RankedNode, build_order,
 };
 pub use utils::extensions;
 pub use utils::templates::map_json_template_for_style;
@@ -75,9 +76,17 @@ pub fn headson(
     grep: &GrepConfig,
     budgets: Budgets,
 ) -> Result<RenderOutput> {
-    let crate::ingest::IngestOutput { arena, warnings } =
-        crate::ingest::ingest_into_arena(input, priority_cfg, grep)?;
+    let crate::ingest::IngestOutput {
+        arena,
+        mut warnings,
+    } = crate::ingest::ingest_into_arena(input, priority_cfg, grep)?;
     let mut order_build = order::build_order(&arena, priority_cfg)?;
+    if order_build.safety_cap_hit {
+        warnings.push(format!(
+            "warning: input truncated (exceeded {} node safety cap)",
+            priority_cfg.safety_cap
+        ));
+    }
     let out = find_largest_render_under_budgets(
         &mut order_build,
         config,
@@ -88,4 +97,74 @@ pub fn headson(
         text: out,
         warnings,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_render_config() -> RenderConfig {
+        RenderConfig {
+            template: OutputTemplate::Pseudo,
+            indent_unit: "  ".to_string(),
+            space: " ".to_string(),
+            newline: "\n".to_string(),
+            color_mode: ColorMode::Off,
+            color_enabled: false,
+            style: serialization::types::Style::Default,
+            prefer_tail_arrays: false,
+            string_free_prefix_graphemes: None,
+            debug: false,
+            primary_source_name: None,
+            show_fileset_headers: false,
+            fileset_tree: false,
+            count_fileset_headers_in_budgets: false,
+            grep_highlight: None,
+        }
+    }
+
+    #[test]
+    fn safety_cap_warning_emitted_when_exceeded() {
+        // Use a tiny safety cap so we can trigger it with minimal input.
+        // An array [1,2,3,4,5] generates: 1 root array + 5 children = 6 nodes.
+        // With safety_cap=5, we should hit the cap.
+        let mut priority_cfg = PriorityConfig::new(usize::MAX, usize::MAX);
+        priority_cfg.safety_cap = 5;
+
+        let result = headson(
+            InputKind::Json(b"[1,2,3,4,5]".to_vec()),
+            &test_render_config(),
+            &priority_cfg,
+            &GrepConfig::default(),
+            Budgets::default(),
+        )
+        .expect("headson should succeed");
+
+        assert!(
+            result.warnings.iter().any(|w| w.contains("safety cap")),
+            "expected safety cap warning, got: {:?}",
+            result.warnings
+        );
+    }
+
+    #[test]
+    fn no_safety_cap_warning_when_not_exceeded() {
+        // With default (2M) cap, a small input should not trigger warning.
+        let priority_cfg = PriorityConfig::new(usize::MAX, usize::MAX);
+
+        let result = headson(
+            InputKind::Json(b"[1,2,3]".to_vec()),
+            &test_render_config(),
+            &priority_cfg,
+            &GrepConfig::default(),
+            Budgets::default(),
+        )
+        .expect("headson should succeed");
+
+        assert!(
+            !result.warnings.iter().any(|w| w.contains("safety cap")),
+            "unexpected safety cap warning: {:?}",
+            result.warnings
+        );
+    }
 }
