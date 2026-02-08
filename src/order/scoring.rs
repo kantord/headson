@@ -13,7 +13,15 @@ pub(crate) const ARRAY_INDEX_CUBIC_WEIGHT: u128 = 1_000_000_000_000;
 /// Maximum index that can be safely cubed and multiplied by
 /// `ARRAY_INDEX_CUBIC_WEIGHT` without overflowing `u128`.
 /// 698_000_000³ × 10¹² ≈ 3.40 × 10³⁸ < u128::MAX ≈ 3.40 × 10³⁸.
-pub(crate) const CUBIC_INDEX_CAP: u128 = 698_000_000;
+const CUBIC_INDEX_CAP: u128 = 698_000_000;
+
+/// Cubic penalty for an array distance value. Caps the input to prevent
+/// `u128` overflow, so indices beyond [`CUBIC_INDEX_CAP`] all receive the
+/// same maximum penalty.
+pub(crate) fn cubic_penalty(distance: u128) -> u128 {
+    let d = distance.min(CUBIC_INDEX_CAP);
+    d * d * d * ARRAY_INDEX_CUBIC_WEIGHT
+}
 
 /// Small base increment so object properties appear right after their object.
 pub(crate) const OBJECT_CHILD_BASE_INCREMENT: u128 = 1;
