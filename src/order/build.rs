@@ -372,7 +372,7 @@ impl<'a> Scope<'a> {
     ) -> u128 {
         match bias {
             super::types::ArrayBias::Head => {
-                let ii = i as u128;
+                let ii = (i as u128).min(CUBIC_INDEX_CAP);
                 ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT
             }
             super::types::ArrayBias::HeadMidTail => {
@@ -383,13 +383,15 @@ impl<'a> Scope<'a> {
                 let d_mid_hi = (i as isize - mid_hi as isize).abs();
                 let d_mid_lo = (i as isize - mid_lo as isize).abs();
                 let d_mid = d_mid_hi.min(d_mid_lo);
-                let d = d_head.min(d_tail).min(d_mid).unsigned_abs() as u128;
+                let d = (d_head.min(d_tail).min(d_mid).unsigned_abs() as u128)
+                    .min(CUBIC_INDEX_CAP);
                 d * d * d * ARRAY_INDEX_CUBIC_WEIGHT
             }
             super::types::ArrayBias::HeadTail => {
                 let d_head = i as isize;
                 let d_tail = kept.saturating_sub(1) as isize - i as isize;
-                let d = d_head.min(d_tail).unsigned_abs() as u128;
+                let d = (d_head.min(d_tail).unsigned_abs() as u128)
+                    .min(CUBIC_INDEX_CAP);
                 d * d * d * ARRAY_INDEX_CUBIC_WEIGHT
             }
         }
@@ -404,7 +406,7 @@ impl<'a> Scope<'a> {
     ) -> u128 {
         if self.config.prefer_tail_arrays {
             let idx_for_priority = kept.saturating_sub(1).saturating_sub(i);
-            let ii = idx_for_priority as u128;
+            let ii = (idx_for_priority as u128).min(CUBIC_INDEX_CAP);
             return ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT;
         }
         let bias = self.resolved_bias(arena_id, depth);

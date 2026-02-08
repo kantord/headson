@@ -10,6 +10,10 @@ pub(crate) const ARRAY_CHILD_BASE_INCREMENT: u128 = 1;
 /// Strong cubic index term to bias earlier array items far ahead of later ones.
 /// The large multiplier ensures array index dominates depth ties.
 pub(crate) const ARRAY_INDEX_CUBIC_WEIGHT: u128 = 1_000_000_000_000;
+/// Maximum index that can be safely cubed and multiplied by
+/// `ARRAY_INDEX_CUBIC_WEIGHT` without overflowing `u128`.
+/// 698_000_000³ × 10¹² ≈ 3.40 × 10³⁸ < u128::MAX ≈ 3.40 × 10³⁸.
+pub(crate) const CUBIC_INDEX_CAP: u128 = 698_000_000;
 
 /// Small base increment so object properties appear right after their object.
 pub(crate) const OBJECT_CHILD_BASE_INCREMENT: u128 = 1;

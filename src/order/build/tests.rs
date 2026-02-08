@@ -266,3 +266,17 @@ fn code_array_is_brace_only_matches_single_child() {
     let array_id = 1usize;
     assert!(super::code_array_is_brace_only(&arena, array_id));
 }
+
+#[test]
+fn bias_extra_does_not_overflow_on_large_array_index() {
+    // ARRAY_INDEX_CUBIC_WEIGHT = 10^12, u128::MAX ≈ 3.4 * 10^38
+    // 699_000_000^3 * 10^12 ≈ 3.42 * 10^38 > u128::MAX
+    // The score for a larger index must always be >= the score for a smaller one.
+    // Currently this panics in debug (overflow) and wraps in release (broken ordering).
+    let small = Scope::bias_extra(ArrayBias::Head, 698_000_000, 700_000_000);
+    let large = Scope::bias_extra(ArrayBias::Head, 699_000_000, 700_000_000);
+    assert!(
+        large >= small,
+        "score must not wrap: bias_extra(699M)={large} < bias_extra(698M)={small}"
+    );
+}
