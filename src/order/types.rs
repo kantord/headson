@@ -187,7 +187,7 @@ pub struct PriorityOrder {
     pub code_lines: HashMap<usize, Arc<Vec<String>>>,
     // For filesets, preserve ingest order and suppression state for render slots.
     pub fileset_render_slots: Option<Vec<FilesetRenderSlot>>,
-    /// True if the priority queue expansion hit the safety cap (2M nodes).
+    /// True if the priority queue expansion hit the safety cap.
     pub safety_cap_hit: bool,
 }
 
