@@ -3,9 +3,10 @@
 </h1>
 
 <p align="center">
-  <a href="#features">Features</a> ·
+  <a href="#quickstart">Quickstart</a> ·
+  <a href="#common-problems">Common problems</a> ·
   <a href="#install">Install</a> ·
-  <a href="#usage">Usage</a> ·
+  <a href="#usage-reference">Usage reference</a> ·
   <a href="#python-bindings">Python bindings</a>
 </p>
 
@@ -14,54 +15,193 @@
   <br/>
 </p>
 
-`head`/`tail` for JSON, YAML — but structure‑aware. Get a compact preview that shows both the shape and representative values of your data, all within a strict byte budget. (Just like `head`/`tail`, `hson` can also work with unstructured text files.)
+## Your JSON file is too big to open. Now what?
 
-Available as:
-- CLI: [Install](#install) · [Usage](#usage)
-- Python library: [Install](#python-bindings-install) · [Usage](#python-bindings-usage)
+`head -c` breaks your JSON mid-value. Your editor chokes on gigabyte files. You just want to see the shape of the data.
+
+**headson** (`hson`) is a structure-aware `head`/`tail` for JSON, YAML, JSONL/NDJSON, and text. It parses the full tree, then produces a compact preview that preserves structure and representative values — all within a strict byte, character, or line budget.
+
+Available as a CLI (`hson`) and a [Python library](#python-bindings) (`headson.summarize(...)`).
 
 ![Codecov](https://img.shields.io/codecov/c/github/kantord/headson?style=flat-square) ![Crates.io Version](https://img.shields.io/crates/v/headson?style=flat-square) ![PyPI - Version](https://img.shields.io/pypi/v/headson?style=flat-square)
 
+## Quickstart
 
-## Features
+```bash
+# Preview a big JSON file (default 500-byte budget)
+hson data.json
 
-- Budgeted output: specify exactly how much you want to see (bytes/chars/lines; per-file and global caps)
-- Output formats: `auto | json | yaml | text` with styles `strict | default | detailed`
-- Structure-aware parsing: full JSON/YAML parsing (preserves tree shape under truncation)
-- Source code support: heuristic, indentation-aware summaries that keep lines atomic
-- Multi-file mode: preview many files at once (paths, `--glob ...`, or `--recursive` on directories) with shared or per-file budgets
-- Repo-aware ordering: in git repos, frequent+recent files show up first (rarely touched files drift to the end; mtime fallback)
-- `grep`-like search and `tree`-like view: `--grep <regex>` and `--tree` emulate the workflows while still summarizing file contents inline
-- Fast: processes gigabyte‑scale files in seconds (mostly disk‑bound)
-- Available as a CLI app and as a Python library
+# Get a valid, parseable JSON snippet under a byte budget
+hson -c 500 -t strict data.json
 
-### Extra features
+# Preview JSONL / NDJSON logs (auto-detected from extension)
+hson logs.jsonl
 
-#### Source code mode
+# Preview many files with a single total budget
+hson -c 200 -C 2000 data/*.json configs/*.yaml
 
-For source code files, headson uses an indentation-aware heuristic to build an outline, then picks representative lines from across that structure (while keeping lines atomic so omissions never split a line). Syntax highlighting is available when colors are enabled.
+# Find errors in JSON logs — matching keys/values stay visible with full path context
+hson --grep 'error|warning' -c 200 -C 2000 logs/*.json
+```
 
-![Code demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/code.gif)
+<a id="common-problems"></a>
 
-Learn more: [Source code support](#source-code-support)
+## Solve these common problems
 
-#### Grep mode
+### How do I preview a huge JSON file without crashing my editor?
 
-Guarantee that matching keys/values stay in view under tight budgets (supports multi-file mode via `--glob`).
+```bash
+hson data.json                  # 500-byte default preview
+hson -c 2000 data.json          # larger preview
+hson -n 30 data.json            # or cap at 30 lines
+```
+
+`hson` parses the file fully, scores every node by structural importance, then emits a compact preview that preserves the tree shape and surfaces representative values. You see the overall structure without loading the file into an editor.
+
+### `head -c` breaks my JSON — how can I preview it safely?
+
+`head -c` cuts at a raw byte offset, often mid-key or mid-value:
+
+```bash
+head -c 80 users.json
+# {"users":[{"id":1,"name":"Ana","roles":["admin","dev"]},{"id":2,"name":"Bo"}],"me
+```
+
+`hson` respects structure — truncation never breaks a key or value:
+
+```bash
+hson -c 120 users.json
+# {
+#   "meta": { "count": 2, ... }
+#   "users": [
+#     { "id": 1, "name": "Ana", "roles": [ "admin", ... ] }
+#     ...
+#   ]
+# }
+```
+
+### How do I get a valid JSON snippet from a giant file for testing?
+
+```bash
+hson -c 500 -t strict data.json
+```
+
+`-t strict` produces valid, parseable JSON — no omission markers, no comments. Pruned children become empty objects/arrays; long strings are truncated. Pipe it to `jq` or use it as test fixture input.
+
+```bash
+# Confirm it's valid JSON
+hson -c 500 -t strict data.json | jq .
+```
+
+### How do I preview JSONL / NDJSON logs quickly?
+
+```bash
+# From a file (auto-detected from .jsonl or .ndjson extension)
+hson logs.jsonl
+
+# From stdin (specify -i jsonl)
+cat stream.jsonl | hson -c 1000 -i jsonl
+
+# Show the tail end of logs
+hson -c 500 --tail logs.jsonl
+```
+
+JSONL entries are displayed with their original line numbers. Under tight budgets, `hson` samples from the head, middle, and tail of the file so you see representative entries from across the log.
+
+### How do I grep JSON but keep matching paths/parents visible?
+
+```bash
+hson --grep 'error' -c 500 data.json
+```
+
+`--grep` guarantees that matching values (and their ancestor keys) stay in the output, even under tight budgets. Everything else fills the remaining space.
+
+```bash
+# Multiple patterns (OR)
+hson --grep 'error' --grep 'warning' logs.json
+
+# Case-insensitive
+hson --igrep 'error' logs.json
+
+# Search across many files — only files with matches are shown
+hson --grep 'error' -c 200 -C 2000 logs/*.json
+
+# Soft bias (prioritize matches, but don't guarantee them)
+hson --weak-grep 'important' -c 200 data.json
+```
 
 ![Grep demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/grep.gif)
 
-#### Tree mode
+### How do I preview many JSON/YAML files at once with a single total budget?
 
-Preview many files at once in a directory tree layout (inline previews, round‑robin fairness; supports multi-file mode via `--glob`).
+```bash
+# Per-file cap + global cap
+hson -c 200 -C 2000 data/*.json configs/*.yaml
+
+# Or use globs (respects .gitignore)
+hson --glob 'src/**/*.json' --glob 'config/**/*.yaml' -c 200 -C 2000
+```
+
+In a git repo, files are automatically sorted by frecency (frequently + recently touched files first). Each file gets a fair share of the budget via round-robin selection.
+
+![Sorting demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/sort.gif)
+
+### How do I get a tree view of a directory with inline previews?
+
+```bash
+hson --tree -r -c 200 -C 2000 src/
+# or with globs
+hson --tree --glob 'src/**/*' -c 200 -C 2000
+```
+
+Renders a directory tree with inline structured previews per file. Code files get line numbers and syntax highlighting; JSON/YAML files show their tree structure.
 
 ![Tree demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/tree.gif)
 
-#### Sorting
+### How do I make an LLM-friendly preview of huge JSON/YAML under a strict budget?
 
-In multi-file mode, inputs are ordered so frequently and recently touched files show up first, and rarely touched files drift to the end (using git history when available, with mtime fallback). Use a global byte budget (`--global-bytes`) to get an up‑to‑date repo snapshot within a strict overall limit (and `--chars` when you want a per-file character cap).
+```bash
+# Strict JSON for machine consumption (~500 bytes ≈ 125–250 tokens)
+hson -c 2000 -t strict data.json
 
-![Sorting demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/sort.gif)
+# Default style for human-readable LLM context (... markers show where content was trimmed)
+hson -c 4000 data.json
+
+# Repo snapshot for AI code review
+hson --tree -r -c 100 -C 4000 .
+```
+
+Byte budgets map roughly to token budgets (1 byte ≈ 0.25–0.5 tokens for English/code). Use `-t strict` when the LLM needs to parse the output as JSON; use the default style when it just needs readable context.
+
+In Python:
+
+```python
+import headson
+preview = headson.summarize(huge_json_string, byte_budget=2000, style="strict")
+```
+
+## Features
+
+- **Budgeted output**: bytes (`-c`), characters (`-u`), or lines (`-n`); per-file and global caps
+- **Output formats**: `auto | json | yaml | text` with styles `strict | default | detailed`
+- **Structure-aware**: full JSON/YAML/JSONL parsing preserves tree shape under truncation
+- **Source code support**: indentation-aware outlines with syntax highlighting for 130+ languages
+- **Multi-file mode**: paths, `--glob`, or `--recursive`; shared or per-file budgets
+- **Repo-aware ordering**: frequently + recently touched files surface first (git history + mtime fallback)
+- **Grep**: `--grep <regex>` guarantees matching values stay visible with ancestor context
+- **Tree view**: `--tree` renders a directory tree with inline previews
+- **JSONL/NDJSON**: auto-detected from extension; line numbers preserved in output
+- **Python library**: `pip install headson` for the same engine in scripts and notebooks
+
+### Source code mode
+
+For source code files, headson uses an indentation-aware heuristic to build an outline, then picks representative lines (keeping lines atomic — omissions never split a line). Syntax highlighting is available when colors are enabled.
+
+```bash
+hson -n 20 src/main.py
+```
+
+![Code demo](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/tapes/code.gif)
 
 ## Install
 
@@ -71,7 +211,7 @@ Using Cargo:
 cargo install headson
 ```
 
-> Note: the package is called `headson`, but the installed CLI command is `hson`. All examples below use `hson ...`.
+> Note: the package is called `headson`, but the installed CLI command is `hson`. All examples use `hson ...`.
 
 From source:
 
@@ -80,273 +220,148 @@ cargo build --release
 target/release/hson --help
 ```
 
+Shell completions:
 
-## Usage
+```sh
+hson --completions bash > ~/.local/share/bash-completion/completions/hson
+hson --completions zsh > ~/.zsh/completions/_hson
+hson --completions fish > ~/.config/fish/completions/hson.fish
+```
+
+## Usage reference
 
 ```text
 hson [FLAGS] [INPUT...]
 ```
 
-- INPUT (optional, repeatable): file path(s). If omitted, reads from stdin. Multiple input files are supported.
-- Prints the preview to stdout. On parse errors, exits non‑zero and prints an error to stderr.
+- `INPUT` (optional, repeatable): file path(s). If omitted, reads from stdin.
+- Prints the preview to stdout. On parse errors, exits non-zero with an error on stderr.
 
-### Quick examples
+### Common flags
 
-Peek a JSON stream from stdin:
-
-```bash
-curl -sS 'https://pokeapi.co/api/v2/pokemon?limit=151' | hson -c 800
-```
-
-Preview many files with a single total budget:
-
-```bash
-hson -c 200 -C 1200 logs/*.json
-```
-
-Machine-readable preview (strict JSON):
-
-```bash
-hson -c 200 -f json -t strict data.json
-```
-
-YAML with detailed comments:
-
-```bash
-hson -c 400 -f yaml -t detailed config.yaml
-```
-
-Keep matches visible (grep-like) while still summarizing structure:
-
-```bash
-hson --grep 'error|warning' -c 200 -C 1200 logs/*.json
-```
-
-Tree-like view with inline previews:
-
-```bash
-hson --tree --glob 'src/**/*' -c 160 -C 1200
-```
-
-Source code outline (keeps lines intact; omits blocks under tight budgets):
-
-```bash
-hson -n 20 src/main.py
-```
-
-### Detailed documentation
-
-- [Common flags](#common-flags)
-- [Multi-file mode](#multi-file-mode)
-- [Grep mode](#grep-mode)
-- [Tree mode](#tree-mode)
-- [Budget modes](#budget-modes)
-- [Text mode](#text-mode)
-- [Source code support](#source-code-support)
-
-#### Common flags
-
-- `-c, --bytes <BYTES>`: per‑file output budget (bytes). For multiple inputs, default total budget is `<BYTES> * number_of_inputs`.
-- `-u, --chars <CHARS>`: per‑file output budget (Unicode code points). Behaves like `--bytes` but counts characters instead of bytes.
-- `-C, --global-bytes <BYTES>`: total output budget across all inputs. With `--bytes`, the effective total is the smaller of the two.
+- `-c, --bytes <BYTES>`: per-file output budget (bytes). Default is 500 when no budget is set. For multiple inputs, default total is `<BYTES> * input_count`.
+- `-u, --chars <CHARS>`: per-file output budget (Unicode code points). Behaves like `--bytes` but counts characters.
+- `-n, --lines <LINES>`: per-file line budget. Add `--global-lines` for an aggregate cap.
+- `-C, --global-bytes <BYTES>`: total byte budget across all inputs. With `--bytes`, the effective total is the smaller of the two.
+- `-N, --global-lines <LINES>`: total line budget across all inputs.
+- `-H, --count-headers`: count fileset headers/summary lines toward budgets (they're free by default).
 - `-f, --format <auto|json|yaml|text>`: output format (default: `auto`).
-  - Auto: stdin → JSON family; multi-file mode → per‑file based on extension (`.json` → JSON family, `.yaml`/`.yml` → YAML, unknown → Text).
+  - Auto: stdin defaults to JSON; files are detected by extension (`.json` → JSON, `.yaml`/`.yml` → YAML, `.jsonl`/`.ndjson` → JSONL, others → Text).
 - `-t, --template <strict|default|detailed>`: output style (default: `default`).
-  - JSON family: `strict` → strict JSON; `default` → Pseudo; `detailed` → JS with inline comments.
-  - YAML: always YAML; style only affects comments (`strict` none, `default` “# …”, `detailed` “# N more …”).
-- `-i, --input-format <json|yaml|text>`: ingestion format (default: `json`). In multi-file mode with `--format auto`, ingestion is chosen by extensions.
-- `-m, --compact`: no indentation, no spaces, no newlines
-- `--no-newline`: single line output
-- `--no-header`: suppress per-file section headers (useful when embedding output in scripts)
-- `--tree`: render multi-file previews as a directory tree with inline previews (keeps code line numbers); uses per-file auto formatting.
-- `--no-space`: no space after `:` in objects
-- `--indent <STR>`: indentation unit (default: two spaces)
-- `--string-cap <N>`: max graphemes to consider per string (default: 500)
-- `--grep <REGEX>`: guarantee inclusion of values/keys/lines matching the regex (ripgrep‑style). Matches + ancestors are "free" against both global and per-file caps; budgets apply to everything else. If matches consume all headroom, only the must‑keep path is shown. Colors follow the normal on/auto/off rules; when grep is active, syntax colors are suppressed and only the match highlights are colored. JSON/YAML structural punctuation is not highlighted—only the matching key/value text.
-- `--igrep <REGEX>`: case-insensitive variant of `--grep`.
-- `-r, --recursive`: recursively expand directory inputs (like `grep -r`). Directory paths are required; stdin is not supported. Incompatible with `--glob`.
-- `--head`: prefer the beginning of arrays when truncating (keep first N). Strings are unaffected. Display styles place omission markers accordingly; strict JSON remains unannotated. Mutually exclusive with `--tail`.
-- `--tail`: prefer the end of arrays when truncating (keep last N). Strings are unaffected. Display styles place omission markers accordingly; strict JSON remains unannotated. Mutually exclusive with `--head`.
+  - `strict`: valid JSON/YAML with no omission markers.
+  - `default`: human-readable with `...` omission markers.
+  - `detailed`: JS-style comments (`/* N more items */`) or YAML comments (`# N more items`).
+- `-i, --input-format <json|jsonl|yaml|text>`: ingestion format override (default: `json` for stdin; auto-detected for files).
+- `-m, --compact`: no indentation, no spaces, no newlines.
+- `--no-newline`: single-line output. Incompatible with `--lines`/`--global-lines`.
+- `--head`: prefer the beginning of arrays when truncating. Mutually exclusive with `--tail`.
+- `--tail`: prefer the end of arrays when truncating. Mutually exclusive with `--head`.
+- `--string-cap <N>`: max graphemes per string (default: 500).
+- `--color` / `--no-color`: force enable/disable ANSI colors (default: auto-detect TTY).
+- `--indent <STR>`: indentation unit (default: two spaces).
 
-Notes:
+### Multi-file mode
 
-- Multiple inputs:
-  - With newlines enabled, file sections are rendered with human‑readable headers (pass `--no-header` to suppress them). In compact/single‑line modes, headers are omitted.
-  - Order: in git repos, files are ordered so frequently and recently touched files show up first, with mtime fallback; pass `--no-sort` to keep the original input order without repo scanning.
-  - Fairness: file contents are interleaved round‑robin during selection so tight budgets don’t starve later files.
-- In `--format auto`, each file uses its own best format: JSON family for `.json`, YAML for `.yaml`/`.yml`.
-  - Unknown extensions are treated as Text (raw lines) — safe for logs and `.txt` files.
-  - `--global-bytes` may truncate or omit entire files to respect the total budget.
-  - Directories are ignored unless `--recursive` is set; binary files are ignored with a warning. Glob/recursive expansion respects `.gitignore` plus `.ignore`/`.rgignore`. Stdin reads the stream as‑is.
-  - Head vs Tail sampling: these options bias which part of arrays are kept before rendering; strict JSON stays unannotated.
+- Budgets: per-file caps apply to each input; global caps (`--global-bytes`/`--global-lines`) constrain the combined output. Default byte budgets scale by input count when no globals are set.
+- One metric per level: pick at most one per-file budget (`--bytes` | `--chars` | `--lines`) and at most one global (`--global-bytes` | `--global-lines`). Mixing per-file and global kinds is allowed (e.g., `-n 3 -C 120`).
+- Inputs: pass file paths directly, use `--glob <PATTERN>` to expand files (respects `.gitignore`), or `--recursive` to expand directories (incompatible with `--glob`).
+- Sorting: inputs are ordered by frecency (git history + mtime fallback). Pass `--no-sort` to keep input order and skip repo scanning.
+- Headers: multi-file output gets `==> filename <==` headers; hide with `--no-header`. Compact/single-line modes omit headers automatically.
+- Formats: in `--format auto`, each file picks its renderer by extension. Unknown extensions fall back to Text.
+- Fairness: file contents are interleaved round-robin so tight budgets don't starve later files.
+- Parse failures: reported on stderr; the file renders as a header with an empty body.
+- Binary files: detected and skipped with a stderr warning.
 
-#### Multi-file mode
+### Grep mode
 
-- Budgets: per-file caps (`--bytes`/`--chars`/`--lines`) apply to each input; global caps (`--global-*`) constrain the combined output when set. Default byte/char budgets scale by input count when no globals are set; line caps stay per-file unless you pass `--global-lines`.
-- One metric per level: pick at most one per-file budget flag (`--bytes` | `--chars` | `--lines`) and at most one global flag (`--global-bytes` | `--global-lines`). Mixing per-file and global kinds is allowed (e.g., per-file lines + global bytes); conflicting flags error.
-- Inputs: pass file paths directly, use `--glob <PATTERN>` to expand additional files, or `--recursive` to expand directory inputs (incompatible with `--glob`). Glob patterns are positive-only; use ignore files (`.gitignore`, `.ignore`, `.rgignore`) for exclusions.
-- Sorting: inputs are ordered so frequently and recently touched files appear first (git metadata when available, mtime fallback). Pass `--no-sort` to preserve the order you provided and skip repo scanning.
-- Headers: multi-file output gets `==>` headers when newlines are enabled; hide them with `--no-header`. Compact and single-line modes omit headers automatically.
-- Formats: in `--format auto`, each file picks JSON/YAML/Text based on extension; unknowns fall back to Text so mixed inputs “just work.”
-- Parse failures: in multi-file mode, JSON/YAML parse failures are reported on stderr and the file renders as a header/tree entry with an empty body (when headers/tree entries are visible). In compact/no‑newline output, fileset rendering falls back to a plain object, so parse failures may appear as `{}` like valid empty objects.
-- Per-file caps: omission markers count toward per-file line budgets; a per-file line cap of zero suppresses the file entirely, even when headers are counted.
+Use `--grep <REGEX>` to guarantee that matching values/keys/lines (and their ancestors) appear in the output. Budgets apply to everything else.
 
-#### Grep mode
+- `--igrep <REGEX>`: case-insensitive variant.
+- `--weak-grep <REGEX>` / `--weak-igrep <REGEX>`: bias priority toward matches without guaranteeing inclusion. Combinable with strong grep.
+- Multiple patterns: all grep flags are repeatable with OR semantics (`--grep foo --grep bar`).
+- Multi-file filtering: by default (`--grep-show matching`), files without matches are dropped. Use `--grep-show all` to keep them.
+- Colors: only matching text is highlighted; syntax colors are suppressed in grep mode.
+- Context: no `-C/-B/-A` flags; per-file budgets decide how much surrounding structure stays alongside must-keep matches.
 
-Use `--grep <REGEX>` to guarantee inclusion of values/keys/lines matching the regex (ripgrep-style). Matches plus their ancestors are "free" against budgets; everything else must fit the remaining headroom.
+### Tree mode
 
-- Matching: values/lines are checked; object keys match too. Filenames do not match by themselves (a file must have a matching value/line/key).
-- Colors: only the matching text is highlighted; syntax colors are suppressed in grep mode. Disable color entirely with `--no-color`.
-- Multiple patterns: all grep flags are repeatable. Multiple patterns combine with OR semantics—values matching any pattern are included/highlighted. Example: `--grep foo --grep bar` matches "foo" or "bar".
-- Case-insensitive: use `--igrep <REGEX>` for case-insensitive matching. Can be combined with `--grep`: `--grep Foo --igrep bar` matches "Foo" (exact case) or "bar"/"BAR"/"Bar" (any case).
-- Weak grep: `--weak-grep <REGEX>` biases priority toward matches but does not guarantee inclusion, expand budgets, or filter files. Budgets stay exact and matches can still be pruned if they do not fit. Use `--weak-igrep <REGEX>` for case-insensitive weak grep. Weak grep can be combined with strong grep: strong matches are guaranteed while weak matches are prioritized.
-- Multi-file mode (strong `--grep` only):
-  - Default (`--grep-show=matching`): files without matches are dropped from the render and summary. If no files match at all, the output is empty and the CLI prints a warning to stderr.
-  - `--grep-show=all`: keep non-matching files in the render; only matching files are highlighted.
-  - Headers respect `--no-header` as usual.
-- `--grep-show` requires `--grep` or `--igrep`.
-- Context: there are no explicit `-C/-B/-A` style flags; per-file budgets decide how much surrounding structure/lines can stay alongside the must-keep matches.
-- Budgets: matches and ancestors always render; remaining budget determines what else can appear. Extremely tight budgets may show only the must-keep path.
-- Text/source code: works with `-i text` and source code files; when using `--format auto`, file extensions still decide ingest/rendering.
+Use `--tree` for a directory tree layout with inline previews instead of `==>` headers.
 
-#### Tree mode
+- Layout: classic tree branches with continuous guides; code line numbers stay visible.
+- Budgets: tree scaffolding is free by default (set `--count-headers` to charge it). Tight global caps can omit entire files (`... N more items`).
+- Sorting: respects `--no-sort`; otherwise uses frecency ordering before tree grouping.
+- Compatible with grep: matches are shown inside the tree.
 
-Use `--tree` to render multi-file output as a directory tree (like `tree`) with inline structured previews instead of per-file headers. Works with grep/weak-grep; matches are shown inside the tree.
+### Budget modes
 
-- Layout: classic tree branches (`├─`, `│`, `└─`) with continuous guides; code gutters stay visible under the tree prefix.
-- Headers: `--tree` is mutually exclusive with `--no-header`; tree mode never prints `==>` headers and relies on the tree structure instead. Files are still auto-formatted per extension (`--format` must be `auto` in multi-file mode).
-- Budgets: tree scaffolding is treated like headers (free unless you set `--count-headers`); per-file budgets always apply to file content and omission markers, and global caps apply only when provided. Tight budgets can truncate file previews within the tree, and entire files may be omitted under tiny global line budgets—omitted entries are reported as `… N more items` on the relevant folder/root. When scaffold is free, the final output can exceed the requested caps by the tree gutters/indentation; set `--count-headers` if those characters must be bounded.
-- Empty sections: under very small per-file caps (or a tiny global cap, if set), files or code blocks may render only their header/tree entry with no body; omission markers appear only when at least one child fits. This is expected when nothing fits beneath the budget.
-- Sorting: respects `--no-sort`; otherwise uses the usual repo-aware ordering (frequent+recent first; mtime fallback) before tree grouping.
-- Fairness: file contents are interleaved round‑robin in the priority order so later files still surface under tight budgets.
-#### Budget modes
+- **Bytes** (`-c`/`-C`): measures UTF-8 bytes. Default per-file budget is 500 bytes when no other budget is set.
+- **Characters** (`-u`): measures Unicode code points.
+- **Lines** (`-n`/`-N`): caps line count. Headers don't count unless `-H` is set. Incompatible with `--no-newline`.
+- All active budgets are enforced simultaneously; the strictest cap wins.
+- When only lines are specified, no implicit byte cap applies.
 
-- Bytes (`-c/--bytes`, `-C/--global-bytes`)
-  - Measures UTF‑8 bytes in the output.
-  - Default per‑file budget is 500 bytes when neither `--lines` nor `--chars` is provided.
-  - Multiple inputs: total default budget is `<BYTES> * number_of_inputs`; `--global-bytes` caps the total.
+### Text and source code
 
-- Characters (`-u/--chars`)
-  - Measures Unicode code points (not grapheme clusters).
+- Text files are detected by extension (anything not JSON/YAML/JSONL). Force with `-i text -f text`.
+- Source code files (~130 extensions) get indentation-aware outlines: block-introducing lines (function/class headers) are prioritized; omissions never split a line.
+- With colors enabled, source code gets syntax highlighting and line numbers. Gaps in line numbers signal omitted blocks.
+- Styles: `default` shows `...` markers, `detailed` shows `... N more lines ...`, `strict` omits markers entirely.
 
-- Lines (`-n/--lines`, `-N/--global-lines`)
-  - Caps the number of lines in the output.
-  - Incompatible with `--no-newline`.
-  - Multiple inputs: `<LINES>` is enforced per file; add `--global-lines` if you also need an aggregate cap.
-  - Per-file headers, blank separators, and summary lines do not count toward the line cap by default; only actual content lines are considered. Pass `-H/--count-headers` to include headers/summaries in the line budget.
-  - Tiny caps may yield omission markers instead of bodies (e.g., `…` for text/code, `{…}`/`[…]` for objects/arrays); a single-line file still renders when it fits.
+## How it compares
 
-- Interactions and precedence
-  - All active budgets are enforced simultaneously. The render must satisfy all of: bytes (if set), chars (if set), and lines (if set). The strictest cap wins.
-  - Outputs stay non-empty unless you explicitly set a per-file cap of zero; in that case that slot can be suppressed entirely (matching the CLI’s `-n 0` semantics). Extremely tight nonzero caps that cannot fit even an omission marker can also yield empty output; multi-file/tree output may show only omission counts in that scenario.
-  - When only lines are specified, no implicit byte cap applies. When neither lines nor chars are specified, a 500‑byte default applies.
-
-#### Text mode
-
-- Single file (auto):
-
-  ```sh
-  hson -c 200 notes.txt
-  ```
-
-- Force Text ingest/output (useful when mixing with other extensions, or when the extension suggests JSON/YAML):
-
-  ```sh
-  hson -c 200 -i text -f text notes.txt
-  # Force text ingest even if the file looks like JSON
-  hson -i text notes.json
-  ```
-
-- Styles on Text:
-  - default: omission as a standalone `…` line.
-  - detailed: omission as `… N more lines …`.
-  - strict: no array‑level omission line (individual long lines may still truncate with `…`).
-
-> **Note:** In multi-file mode, each file uses its own auto format/template. When you need to preview a directory of mixed formats, skip `-f text` and let `-f auto` pick the right renderer for each entry.
-
-#### Source code support
-
-For source code files, headson uses an indentation-aware heuristic to build an outline, then samples representative lines from across that structure.
-
-- Lines are kept atomic: omission markers never split a line in half.
-- Under tight budgets, it tends to keep block-introducing lines (like function/class headers) and omit less relevant blocks from the middle.
-- With colors enabled, you also get syntax highlighting and line numbers.
-
-Show help:
-
-```sh
-hson --help
-```
-
-Note: flags align with head/tail conventions (`-c/--bytes`, `-C/--global-bytes`).
-
-## What’s wrong with just using head/tail?
-
-Input:
-
-```json
-{"users":[{"id":1,"name":"Ana","roles":["admin","dev"]},{"id":2,"name":"Bo"}],"meta":{"count":2,"source":"db"}}
-```
-
-If you `head -c` a JSON file/stream, you can cut it in the middle of a value and end up with a confusing snippet:
-
-```bash
-head -c 80 users.json
-# {"users":[{"id":1,"name":"Ana","roles":["admin","dev"]},{"id":2,"name":"Bo"}],"me
-```
-
-With `hson`, you still get a compact preview, but it stays structure-aware:
-
-```bash
-hson -c 120 -f json -t default users.json
-# {
-#   users: [
-#     { id: 1, name: "Ana", roles: [ "admin", … ] },
-#     …
-#   ]
-#   meta: { count: 2, … }
-# }
-```
-
-If you need machine-readable output, use strict mode:
-
-```bash
-hson -c 120 -f json -t strict users.json
-# {"users":[{"id":1,"name":"Ana","roles":["admin"]}],"meta":{"count":2}}
-```
+- **`head`/`tail`**: byte/line-based truncation that breaks JSON/YAML structure.
+- **`jq`**: powerful query language, but you need to write filters to get a compact preview. `hson` is zero-config.
+- **`fx`/`jless`**: interactive TUI browsers for exploration. `hson` is non-interactive — designed for piping, scripting, and strict output budgets.
 
 ## Python Bindings
 
-A thin Python extension module is available on PyPI as `headson`.
+A thin Python extension module on PyPI.
 
 <a id="python-bindings-install"></a>
+
 ### Install
 
-`pip install headson` (ABI3 wheels for Python 3.10+ on Linux/macOS/Windows).
+```sh
+pip install headson
+```
+
+ABI3 wheels for Python 3.10+ on Linux/macOS/Windows.
 
 <a id="python-bindings-usage"></a>
+
 ### Usage
 
-API:
+```python
+headson.summarize(
+    text: str,
+    *,
+    format: str = "auto",         # "auto" | "json" | "yaml" | "text" | "code"
+    style: str = "default",       # "strict" | "default" | "detailed"
+    input_format: str = "json",   # "json" | "jsonl" | "ndjson" | "yaml" | "text"
+    byte_budget: int | None = None,  # default: 500 bytes
+    skew: str = "balanced",       # "balanced" | "head" | "tail"
+    grep: str | None = None,      # regex for guaranteed inclusion
+    weak_grep: str | None = None, # regex for priority bias (no guarantee)
+) -> str
+```
 
-- `headson.summarize(text: str, *, format: str = "auto", style: str = "default", input_format: str = "json", byte_budget: int | None = None, skew: str = "balanced") -> str`
-  - `format`: `"auto" | "json" | "yaml"` (auto maps to JSON family for single inputs)
-  - `style`: `"strict" | "default" | "detailed"`
-  - `input_format`: `"json" | "yaml"` (ingestion)
-  - `byte_budget`: maximum output size in bytes (default: 500)
-  - `skew`: `"balanced" | "head" | "tail"` (affects display styles; strict JSON remains unannotated)
+- `style="strict"` produces valid JSON/YAML with no markers.
+- `grep` guarantees matching values appear; prefix with `(?i)` for case-insensitive.
+- Colors are always off in the Python API.
+- Fileset/tree mode is not available (single input only).
 
-Examples:
+### Examples
 
 ```python
 import json
 import headson
 
+# Valid JSON snippet
 data = {"foo": [1, 2, 3], "bar": {"x": "y"}}
 preview = headson.summarize(json.dumps(data), format="json", style="strict", byte_budget=200)
 print(preview)
 
-# Prefer the tail of arrays (annotations show with style="default"/"detailed")
+# Tail of a large array with detailed comments
 print(
     headson.summarize(
         json.dumps(list(range(100))),
@@ -357,9 +372,16 @@ print(
     )
 )
 
-# YAML support
+# YAML
 doc = "root:\n  items: [1,2,3,4,5,6,7,8,9,10]\n"
 print(headson.summarize(doc, format="yaml", style="default", input_format="yaml", byte_budget=60))
+
+# JSONL
+logs = '{"level":"info","msg":"ok"}\n{"level":"error","msg":"fail"}\n'
+print(headson.summarize(logs, input_format="jsonl", byte_budget=200))
+
+# Grep — guarantee a match appears
+print(headson.summarize('{"needle":123,"other":456}', grep="needle"))
 ```
 
 # Algorithm
@@ -367,16 +389,11 @@ print(headson.summarize(doc, format="yaml", style="default", input_format="yaml"
 ![Algorithm overview](https://raw.githubusercontent.com/kantord/headson/main/docs/assets/algorithm.svg)
 
 ## Footnotes
- - <sup><b>[1]</b></sup> <b>Optimized tree representation</b>: An arena‑style tree stored in flat, contiguous buffers. Each node records its kind and value plus index ranges into shared child and key arrays. Arrays are ingested in a single pass and may be deterministically pre‑sampled: the first element is always kept; additional elements are selected via a fixed per‑index inclusion test; for kept elements, original indices are stored and full lengths are counted. This enables accurate omission info and internal gap markers later, while minimizing pointer chasing.
+ - <sup><b>[1]</b></sup> <b>Optimized tree representation</b>: An arena-style tree stored in flat, contiguous buffers. Each node records its kind and value plus index ranges into shared child and key arrays. Arrays are ingested in a single pass and may be deterministically pre-sampled: the first element is always kept; additional elements are selected via a fixed per-index inclusion test; for kept elements, original indices are stored and full lengths are counted. This enables accurate omission info and internal gap markers later, while minimizing pointer chasing.
  - <sup><b>[2]</b></sup> <b>Priority order</b>: Nodes are scored so previews surface representative structure and values first. Arrays can favor head/mid/tail coverage (default) or strictly the head; tail preference flips head/tail when configured. Object properties are ordered by key, and strings expand by grapheme with early characters prioritized over very deep expansions.
- - <sup><b>[3]</b></sup> <b>Choose top N nodes (binary search)</b>: Iteratively picks N so that the rendered preview fits within the byte budget, looping between “choose N” and a render attempt to converge quickly.
- - <sup><b>[4]</b></sup> <b>Render attempt</b>: Serializes the currently included nodes using the selected template. Omission summaries and per-file section headers appear in display templates (pseudo/js); json remains strict. For arrays, display templates may insert internal gap markers between non‑contiguous kept items using original indices.
+ - <sup><b>[3]</b></sup> <b>Choose top N nodes (binary search)</b>: Iteratively picks N so that the rendered preview fits within the byte budget, looping between "choose N" and a render attempt to converge quickly.
+ - <sup><b>[4]</b></sup> <b>Render attempt</b>: Serializes the currently included nodes using the selected template. Omission summaries and per-file section headers appear in display templates (pseudo/js); json remains strict. For arrays, display templates may insert internal gap markers between non-contiguous kept items using original indices.
  - <sup><b>[5]</b></sup> <b>Diagram source</b>: The Algorithm diagram is generated from `docs/diagrams/algorithm.mmd`. Regenerate the SVG with `cargo make diagrams` before releasing.
-
-## Comparison with alternatives
-
-- `head`/`tail`: byte/line-based, so output often breaks structure in JSON/YAML or surfaces uninteresting details.
-- `jq`: powerful, but you usually need to write filters to get a compact preview of large JSON.
 
 ## License
 
@@ -384,5 +401,3 @@ MIT
 
 
 [![Star History Chart](https://api.star-history.com/svg?repos=kantord/headson&type=date&legend=top-left)](https://www.star-history.com/#kantord/headson&type=date&legend=top-left)
-
-
