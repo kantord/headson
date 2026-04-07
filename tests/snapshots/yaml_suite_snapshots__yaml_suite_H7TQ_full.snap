@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_full
+expression: full
 ---
-- fail: true
+- name: "Extra words on %YAML directive"
   from: "@ingydotnet"
-  name: "Extra words on %YAML directive"
   tags: directive
-  tree: "+STR\n"
+  fail: true
   yaml: "%YAML 1.2 foo\n---\n"
+  tree: "+STR\n"

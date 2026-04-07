@@ -2,11 +2,11 @@
 source: tests/yaml_suite_snapshots.rs
 expression: med
 ---
-- dump: "plain: text lines\nquoted: \"text lines\"\nblock: \"text\\n \\tlines\\n\"\n"
-  emit: "plain: text lines\nquoted: \"text lines\"\nblock: |\n  text\n   »lines\n"
+- name: Spec Example 6.4. Line Prefixes
   from: "http://www.yaml.org/spec/1.2/spec.html#id2778720"
-  json: "{\n  \"plain\": \"text lines\",\n  \"quoted\": \"text lines\",\n  \"block\": \"tex…"
-  name: Spec Example 6.4. Line Prefixes
   tags: spec scalar literal double upto-1.2 whitespace
+  yaml: "plain: text\n  lines\nquoted: \"text\n  —»lines\"\nblock: |\n  text\n   »lin…"
   tree: "+STR\n +DOC\n  +MAP\n   =VAL :plain\n   =VAL :text lines\n   =VAL :quoted…"
-  yaml: "plain: text\n  lines\nquoted: \"text\n  —»lines\"\nblock: |\n  text\n   »li…"
+  json: "{\n  \"plain\": \"text lines\",\n  \"quoted\": \"text lines\",\n  \"block\": \"te…"
+  dump: "plain: text lines\nquoted: \"text lines\"\nblock: \"text\\n \\tlines\\n\"\n"
+  emit: "plain: text lines\nquoted: \"text lines\"\nblock: |\n  text\n   »lines\n"

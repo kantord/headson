@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: med
 ---
-- dump: "a!\"#$%&'()*+,-./09:;<=>?@AZ[\\]^_`az{|}~: safe\n?foo: safe question mark\n:foo: safe colon\n-foo: safe dash\nthi…"
+- name: Allowed characters in keys
   from: "@perlpunk"
-  json: "{\n  \"a!\\\"#$%&'()*+,-./09:;<=>?@AZ[\\\\]^_`az{|}~\": \"safe\",\n  \"?foo\": \"safe question mark\",\n  \":foo\": \"safe co…"
-  name: Allowed characters in keys
   tags: mapping scalar
+  yaml: "a!\"#$%&'()*+,-./09:;<=>?@AZ[\\]^_`az{|}~: safe\n?foo: safe question mark\n:foo: safe colon\n-foo: safe dash\nthi…"
   tree: "+STR\n +DOC\n  +MAP\n   =VAL :a!\"#$%&'()*+,-./09:;<=>?@AZ[\\\\]^_`az{|}~\n   =VAL :safe\n   =VAL :?foo\n   =VAL :sa…"
-  yaml: "a!\"#$%&'()*+,-./09:;<=>?@AZ[\\]^_`az{|}~: safe\n?foo: safe question mark\n:foo: safe colon\n-foo: safe dash\nth…"
+  json: "{\n  \"a!\\\"#$%&'()*+,-./09:;<=>?@AZ[\\\\]^_`az{|}~\": \"safe\",\n  \"?foo\": \"safe question mark\",\n  \":foo\": \"safe co…"
+  dump: "a!\"#$%&'()*+,-./09:;<=>?@AZ[\\]^_`az{|}~: safe\n?foo: safe question mark\n:foo: safe colon\n-foo: safe dash\nth…"

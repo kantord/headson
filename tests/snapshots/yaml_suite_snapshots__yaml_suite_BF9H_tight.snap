@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- fail: true
+- name: Trailing…
   from: "@perlpun…"
-  name: Trailing…
   tags: comment …
-  tree: "+STR\n +D…"
-  yaml: "---\npla…"
+  fail: true
+  yaml: "---\nplai…"
+  tree: "+STR\n +…"

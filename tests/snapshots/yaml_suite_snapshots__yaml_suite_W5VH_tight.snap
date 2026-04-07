@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- from: "@perlpu…"
-  json: "{\n  \"a…"
-  name: Allowe…
+- name: Allowed…
+  from: "@perlp…"
   tags: alias …
-  tree: "+STR\n …"
   yaml: "a: &:@…"
+  tree: "+STR\n …"
+  json: "{\n  \"a…"

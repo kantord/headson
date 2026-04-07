@@ -3,19 +3,18 @@ source: tests/e2e_head.rs
 expression: stdout
 ---
 {
+  "users": [
+    {
+      "id": 1,
+      "name": "…"
+      …
+    },
+    { … }
+  ],
   "meta": {
-    "next": null,
     "page": 1,
     "pageSize": 20,
-    "tags": [
-      "…",
-      …
-      "…"
-      …
-    ]
-  },
-  "users": [
-    { … },
-    { … }
-  ]
+    "next": null,
+    "tags": [ … ]
+  }
 }

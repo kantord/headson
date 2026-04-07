@@ -3,11 +3,14 @@ source: tests/e2e_tail.rs
 expression: stdout
 ---
 {
-  "deep": [
-    /* 1 more items */,
-    { /* 1 more properties */ }
+  "matrix": [
+    /* 2 more items */,
+    [ /* 3 more items */ ]
   ],
-  "matrix": [ /* 3 more items */ ],
+  "strings": [
+    /* 6 more items */,
+    "…"
+  ],
   "objects": [ /* 3 more items */ ],
-  "strings": [ /* 7 more items */ ]
+  "deep": [ /* 2 more items */ ]
 }

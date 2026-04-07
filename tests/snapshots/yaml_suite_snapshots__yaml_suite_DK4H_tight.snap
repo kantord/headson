@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- fail: true
+- name: Implicit…
   from: "@perlpun…"
-  name: Implicit…
   tags: error fl…
-  tree: "+STR\n +D…"
-  yaml: "---\n[ k…"
+  fail: true
+  yaml: "---\n[ ke…"
+  tree: "+STR\n +…"

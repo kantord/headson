@@ -1,9 +1,9 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_full
+expression: full
 ---
-- from: NimYAML tests
-  name: Block Mapping with Missing Keys
+- name: Block Mapping with Missing Keys
+  from: NimYAML tests
   tags: duplicate-key mapping empty-key
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :\n   =VAL :a\n   =VAL :\n   =VAL :b\n  -MAP\n -DOC\n-STR\n"
   yaml: ": a\n: b\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :\n   =VAL :a\n   =VAL :\n   =VAL :b\n  -MAP\n -DOC\n-STR\n"

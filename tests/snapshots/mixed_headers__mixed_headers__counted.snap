@@ -10,10 +10,10 @@ expression: normalized
 }
 
 ==> tests/fixtures/mixed_headers/b.yaml <==
+name: demo
 items:
   - one
   - two
-name: demo
 
 
 ==> tests/fixtures/mixed_headers/c.txt <==

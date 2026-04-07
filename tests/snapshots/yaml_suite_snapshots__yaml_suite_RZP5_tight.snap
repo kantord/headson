@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "a: \"dou…"
+- name: Various…
   from: "XW4D, …"
-  name: Variou…
   tags: anchor…
-  tree: "+STR\n …"
   yaml: "a: \"do…"
+  tree: "+STR\n …"
+  dump: "a: \"do…"

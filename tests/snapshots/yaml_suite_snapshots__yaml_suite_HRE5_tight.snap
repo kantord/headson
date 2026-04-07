@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- fail: true
+- name: Double q…
   from: "https://…"
-  name: Double q…
   tags: double e…
-  tree: "+STR\n +D…"
-  yaml: "---\ndou…"
+  fail: true
+  yaml: "---\ndoub…"
+  tree: "+STR\n +…"

@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- fail: true
+- name: Directive without document
   from: AdaYaml tests
-  name: Directive without document
   tags: error directive document
-  tree: "+STR\n"
+  fail: true
   yaml: "%YAML 1.2\n...\n"
+  tree: "+STR\n"

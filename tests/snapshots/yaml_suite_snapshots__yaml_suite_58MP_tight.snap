@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "x: :…"
+- name: Flow…
   from: "@ing…"
-  json: "{\n  …"
-  name: Flow…
   tags: edge…
+  yaml: "{x: …"
   tree: +STR…
-  yaml: "{x:…"
+  json: "{\n  …"
+  dump: "x: …"

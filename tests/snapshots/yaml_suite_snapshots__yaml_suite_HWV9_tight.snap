@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: ""
+- name: Document-end…
   from: "@perlpunk"
-  json: ""
-  name: Document-end…
   tags: footer
-  tree: "+STR\n-STR\n"
   yaml: "...\n"
+  tree: "+STR\n-STR\n"
+  json: ""
+  dump: ""

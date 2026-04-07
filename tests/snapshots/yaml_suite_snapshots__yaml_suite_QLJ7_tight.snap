@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- fail: true
+- name: Tag shortha…
   from: IRC
-  name: Tag shortha…
   tags: error direc…
-  tree: "+STR\n +DOC…"
+  fail: true
   yaml: "%TAG !pref…"
+  tree: "+STR\n +DOC…"

@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "- - : e…"
+- name: Empty i…
   from: "@perlpu…"
-  name: Empty i…
-  tags: empty-…
-  tree: "+STR\n …"
+  tags: empty-k…
   yaml: "- [ : …"
+  tree: "+STR\n …"
+  dump: "- - : …"

@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- fail: true
+- name: Trailing comment in multiline plain scalar
   from: "@perlpunk"
-  name: Trailing comment in multiline plain scalar
   tags: comment error scalar
-  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :plain\n   =VAL :a b\n"
+  fail: true
   yaml: "---\nplain: a\n       b # end of scalar\n       c\n"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :plain\n   =VAL :a b\n"

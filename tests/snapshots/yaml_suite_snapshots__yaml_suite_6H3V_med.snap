@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "'foo: bar\\': baz'\n"
+- name: Backslashes in singlequotes
   from: "@perlpunk"
-  json: "{\n  \"foo: bar\\\\\": \"baz'\"\n}\n"
-  name: Backslashes in singlequotes
   tags: scalar single
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL 'foo: bar\\\\\n   =VAL :baz'\n  -MAP\n -DOC\n-STR\n"
   yaml: "'foo: bar\\': baz'\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL 'foo: bar\\\\\n   =VAL :baz'\n  -MAP\n -DOC\n-STR\n"
+  json: "{\n  \"foo: bar\\\\\": \"baz'\"\n}\n"
+  dump: "'foo: bar\\': baz'\n"

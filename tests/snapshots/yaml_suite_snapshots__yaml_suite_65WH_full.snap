@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_full
+expression: full
 ---
-- from: "https://github.com/ingydotnet/yaml-pegex-pm/blob/master/test/sequence.tml"
-  json: "[\n  \"foo\"\n]\n"
-  name: Single Entry Block Sequence
+- name: Single Entry Block Sequence
+  from: "https://github.com/ingydotnet/yaml-pegex-pm/blob/master/test/sequence.tml"
   tags: sequence
-  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :foo\n  -SEQ\n -DOC\n-STR\n"
   yaml: "- foo\n"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL :foo\n  -SEQ\n -DOC\n-STR\n"
+  json: "[\n  \"foo\"\n]\n"

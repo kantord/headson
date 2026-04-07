@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: med
 ---
-- dump: "name: Mark McGwire\naccomplishment: >\n  Mark set a major league home run record in 1998.\nstats: …"
+- name: Spec Example 2.16. Indentation determines scope
   from: "http://www.yaml.org/spec/1.2/spec.html#id2761083"
-  json: "{\n  \"name\": \"Mark McGwire\",\n  \"accomplishment\": \"Mark set a major league home run record in 199…"
-  name: Spec Example 2.16. Indentation determines scope
   tags: spec folded literal
+  yaml: "name: Mark McGwire\naccomplishment: >\n  Mark set a major league\n  home run record in 1998.\nstats…"
   tree: "+STR\n +DOC\n  +MAP\n   =VAL :name\n   =VAL :Mark McGwire\n   =VAL :accomplishment\n   =VAL >Mark set…"
-  yaml: "name: Mark McGwire\naccomplishment: >\n  Mark set a major league\n  home run record in 1998.\nstat…"
+  json: "{\n  \"name\": \"Mark McGwire\",\n  \"accomplishment\": \"Mark set a major league home run record in 199…"
+  dump: "name: Mark McGwire\naccomplishment: >\n  Mark set a major league home run record in 1998.\nstats:…"

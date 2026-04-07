@@ -2,23 +2,23 @@
 source: tests/yaml_suite_snapshots.rs
 expression: med
 ---
-- emit: "1 leading \ttab"…
+- name: Leading tabs in d…
   from: "@ingydotnet"
-  json: "1 leading \ttab"…
-  name: Leading tabs in d…
   tags: double whitespace
-  tree: "+STR\n +DOC\n  =VAL…"
   yaml: "\"1 leading\n    \\t…"
-- emit: "\"3 leading tab\"\n"
+  tree: "+STR\n +DOC\n  =VAL…"
+  json: "1 leading \ttab"…
+  emit: "1 leading \ttab"…
+- yaml: "\"3 leading\n    ——…"
+  tree: "+STR\n +DOC\n  =VAL…"
   json: "\"3 leading tab\"\n"
+  emit: "\"3 leading tab\"\n"
+- yaml: "\"4 leading\n    \\t…"
   tree: "+STR\n +DOC\n  =VAL…"
-  yaml: "\"3 leading\n    ——…"
-- emit: "4 leading \t  ta…
   json: "4 leading \t  ta…
-  tree: "+STR\n +DOC\n  =VAL…"
-  yaml: "\"4 leading\n    \\t…"
-- emit: "\"6 leading tab\"\n"
+  emit: "4 leading \t  ta…
+- yaml: "\"6 leading\n    —…"
+  tree: "+STR\n +DOC\n  =VA…"
   json: "\"6 leading tab\"\n"
-  tree: "+STR\n +DOC\n  =VAL…"
-  yaml: "\"6 leading\n    —…"
+  emit: "\"6 leading tab\"\n"
 # 2 more items

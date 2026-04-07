@@ -1,17 +1,17 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_full
+expression: full
 ---
-- dump: "- |+\n↵\n↵\n...\n"
+- name: Trailing whitespace in streams
   from: "@ingydotnet"
-  json: "[\n  \"\\n\\n\"\n]\n"
-  name: Trailing whitespace in streams
   tags: literal
-  tree: "+STR\n +DOC\n  +SEQ\n   =VAL |\\n\\n\n  -SEQ\n -DOC\n-STR\n"
   yaml: "- |+\n↵\n↵\n"
-- dump: "- |+\n\n...\n"
-  json: "[\n  \"\\n\"\n]\n"
+  tree: "+STR\n +DOC\n  +SEQ\n   =VAL |\\n\\n\n  -SEQ\n -DOC\n-STR\n"
+  json: "[\n  \"\\n\\n\"\n]\n"
+  dump: "- |+\n↵\n↵\n...\n"
+- yaml: "- |+\n␣␣␣\n"
   tree: "+STR\n +DOC\n  +SEQ\n   =VAL |\\n\n  -SEQ\n -DOC\n-STR\n"
-  yaml: "- |+\n␣␣␣\n"
-- dump: "- |+\n\n...\n"
-  yaml: "- |+\n␣␣␣∎\n"
+  json: "[\n  \"\\n\"\n]\n"
+  dump: "- |+\n\n...\n"
+- yaml: "- |+\n␣␣␣∎\n"
+  dump: "- |+\n\n...\n"

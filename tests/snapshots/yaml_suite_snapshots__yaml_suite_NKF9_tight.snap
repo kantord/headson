@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- emit: "---\nkey…"
+- name: Empty k…
   from: "@perlp…"
-  name: Empty …
   tags: empty-…
-  tree: "+STR\n …"
   yaml: "---\nke…"
+  tree: "+STR\n …"
+  emit: "---\nke…"

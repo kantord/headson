@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "- |-…"
+- name: Bloc…
   from: "@per…"
-  json: "[\n  …"
-  name: Bloc…
   tags: inde…
+  yaml: "- |2…"
   tree: +STR…
-  yaml: "- |…"
+  json: "[\n  …"
+  dump: "- |…"

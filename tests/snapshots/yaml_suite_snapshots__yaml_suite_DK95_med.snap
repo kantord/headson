@@ -2,19 +2,19 @@
 source: tests/yaml_suite_snapshots.rs
 expression: med
 ---
-- emit: "---\nfoo: bar\n"
+- name: Tabs that look like indenta…
   from: "@ingydotnet"
-  json: "{\n  \"foo\" : \"bar\"\n}\n"
-  name: Tabs that look like indenta…
   tags: indent whitespace
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :…"
   yaml: "foo:\n ———»bar\n"
-- emit: "---\nfoo: 1\nbar: 2\n"
-  json: "{\n  \"foo\" : 1,\n  \"bar\" : 2\n…"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :…"
+  json: "{\n  \"foo\" : \"bar\"\n}\n"
+  emit: "---\nfoo: bar\n"
+- yaml: "foo: 1\n————»\nbar: 2\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :…"
+  json: "{\n  \"foo\" : 1,\n  \"bar\" : 2…"
+  emit: "---\nfoo: 1\nbar: 2\n"
+- yaml: "foo: \"bar\n ———» ——» baz ——…"
   tree: "+STR\n +DOC\n  +MAP\n   =VAL …"
-  yaml: "foo: 1\n————»\nbar: 2\n"
-- emit: "---\nfoo: \"bar baz \\t \\t \"\n"
   json: "{\n  \"foo\" : \"bar baz \\t \\t…"
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL …"
-  yaml: "foo: \"bar\n ———» ——» baz ——…"
+  emit: "---\nfoo: \"bar baz \\t \\t \"\n"
 # 6 more items

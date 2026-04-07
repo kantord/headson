@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- fail: true
+- name: Invalid mapping in plain multiline
   from: "@perlpunk"
-  name: Invalid mapping in plain multiline
   tags: error mapping
-  tree: "+STR\n +DOC\n"
+  fail: true
   yaml: "this\n is\n  invalid: x\n"
+  tree: "+STR\n +DOC\n"

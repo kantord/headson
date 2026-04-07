@@ -17,11 +17,11 @@ expression: out
 ==> settings.yaml <==
 environments:
   prod:
-    region: eu-west-1
     replicas: 4
+    region: eu-west-1
   staging:
-    region: us-east-1
     replicas: 1
+    region: us-east-1
 
 
 ==> script.sh <==

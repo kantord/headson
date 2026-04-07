@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- fail: true
+- name: Multiline…
   from: "@ingydotn…"
-  name: Multiline…
   tags: indent
-  tree: "+STR\n +DO…"
-  yaml: - - "bar…
+  fail: true
+  yaml: "- - \"bar\n…"
+  tree: "+STR\n +D…"

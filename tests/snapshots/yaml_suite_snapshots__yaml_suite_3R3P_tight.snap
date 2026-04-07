@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "&seq…"
+- name: Sing…
   from: "@per…"
-  json: "[\n  …"
-  name: Sing…
   tags: anch…
+  yaml: "&seq…"
   tree: +STR…
-  yaml: "&se…"
+  json: "[\n  …"
+  dump: "&se…"

@@ -3,12 +3,6 @@ source: tests/e2e_tail.rs
 expression: stdout
 ---
 {
-  "deep": [
-    …,
-    {
-      "a": [ … ]
-    }
-  ],
   "matrix": [
     …,
     [
@@ -16,12 +10,18 @@ expression: stdout
       9
     ]
   ],
-  "objects": [
-    …,
-    { … }
-  ],
   "strings": [
     …,
-    "…"
+    "s…"
+  ],
+  "objects": [
+    …,
+    {
+      "k": "…"
+    }
+  ],
+  "deep": [
+    …,
+    { … }
   ]
 }

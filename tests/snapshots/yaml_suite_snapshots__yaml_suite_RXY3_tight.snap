@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- fail: true
-  from: "@perlpunk"
-  name: Invalid …
+- name: Invalid …
+  from: "@perlpun…"
   tags: footer s…
-  tree: "+STR\n +D…"
-  yaml: "---\n'\n..…"
+  fail: true
+  yaml: "---\n'\n.…"
+  tree: "+STR\n +…"

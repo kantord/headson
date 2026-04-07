@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_full
+expression: full
 ---
-- fail: true
+- name: Flow sequence with invalid comma at the beginning
   from: "@perlpunk"
-  name: Flow sequence with invalid comma at the beginning
   tags: error flow sequence
-  tree: "+STR\n +DOC ---\n  +SEQ []\n"
+  fail: true
   yaml: "---\n[ , a, b, c ]\n"
+  tree: "+STR\n +DOC ---\n  +SEQ []\n"

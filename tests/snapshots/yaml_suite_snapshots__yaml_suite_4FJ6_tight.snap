@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "---\n- …"
+- name: Nested…
   from: "@perlp…"
-  name: Nested…
   tags: comple…
-  tree: "+STR\n …"
   yaml: "---\n[\n…"
+  tree: "+STR\n …"
+  dump: "---\n- …"

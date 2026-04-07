@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- from: "https:/…"
-  json: "{\n  \"fo…"
-  name: Multipl…
+- name: Multipl…
+  from: "https:/…"
   tags: mapping
+  yaml: "foo: bl…"
   tree: "+STR\n …"
-  yaml: "foo: b…"
+  json: "{\n  \"f…"

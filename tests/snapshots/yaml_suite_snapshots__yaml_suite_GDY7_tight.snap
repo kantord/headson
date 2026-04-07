@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- fail: true
+- name: Comment t…
   from: "@perlpunk"
-  name: Comment t…
   tags: comment e…
-  tree: "+STR\n +D…"
+  fail: true
   yaml: "key: val…"
+  tree: "+STR\n +D…"

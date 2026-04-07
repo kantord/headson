@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_full
+expression: full
 ---
-- from: NimYAML tests
-  json: "\"foo: bar\\\": baz\"\n"
-  name: Colon in Double Quoted String
+- name: Colon in Double Quoted String
+  from: NimYAML tests
   tags: mapping scalar 1.3-err
-  tree: "+STR\n +DOC\n  =VAL \"foo: bar\": baz\n -DOC\n-STR\n"
   yaml: "\"foo: bar\\\": baz\"\n"
+  tree: "+STR\n +DOC\n  =VAL \"foo: bar\": baz\n -DOC\n-STR\n"
+  json: "\"foo: bar\\\": baz\"\n"

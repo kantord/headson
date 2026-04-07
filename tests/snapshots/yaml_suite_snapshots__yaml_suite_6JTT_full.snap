@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_full
+expression: full
 ---
-- fail: true
+- name: Flow sequence without closing bracket
   from: "@perlpunk"
-  name: Flow sequence without closing bracket
   tags: error flow sequence
-  tree: "+STR\n +DOC ---\n  +SEQ []\n   +SEQ []\n    =VAL :a\n    =VAL :b\n    =VAL :c\n   -SEQ\n"
+  fail: true
   yaml: "---\n[ [ a, b, c ]\n"
+  tree: "+STR\n +DOC ---\n  +SEQ []\n   +SEQ []\n    =VAL :a\n    =VAL :b\n    =VAL :c\n   -SEQ\n"

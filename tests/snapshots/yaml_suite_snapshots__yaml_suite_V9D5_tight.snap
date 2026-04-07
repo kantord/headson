@@ -2,8 +2,8 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- from: "http://www.…"
-  name: Spec Exampl…
+- name: Spec Exampl…
+  from: "http://www.…"
   tags: complex-key…
-  tree: "+STR\n +DOC…"
   yaml: "- sun: yel…"
+  tree: "+STR\n +DOC…"

@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: ""
-  from: "@perlpu…"
-  json: ""
-  name: Commen…
+- name: Comment…
+  from: "@perlp…"
   tags: commen…
-  tree: "+STR\n-…"
   yaml: "# comm…"
+  tree: "+STR\n-…"
+  json: ""
+  dump: ""

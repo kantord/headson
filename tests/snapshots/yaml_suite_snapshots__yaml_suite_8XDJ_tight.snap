@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- fail: true
+- name: Comment …
   from: "https://…"
-  name: Comment …
   tags: error co…
-  tree: "+STR\n +D…"
+  fail: true
   yaml: "key: wor…"
+  tree: "+STR\n +D…"

@@ -1,21 +1,21 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_full
+expression: full
 ---
-- also: ZYU8
-  fail: true
+- name: Directive variants
   from: "@ingydotnet"
-  name: Directive variants
   tags: directive
-  tree: "+STR\n"
-  yaml: "%YAML 1.1#...\n---\n"
-- dump: null
+  also: ZYU8
   fail: true
+  yaml: "%YAML 1.1#...\n---\n"
+  tree: "+STR\n"
+- fail: true
   yaml: "%YAML 1.2\n---\n%YAML 1.2\n---\n"
-- dump: "---\n"
-  json: "null\n"
+  dump: null
+- yaml: "%YAML  1.1\n---\n"
   tree: "+STR\n +DOC ---\n  =VAL :\n -DOC\n-STR\n"
-  yaml: "%YAML  1.1\n---\n"
+  json: "null\n"
+  dump: "---\n"
 - yaml: "%YAML ——» 1.1\n---\n"
 - yaml: "%YAML 1.1  # comment\n---\n"
 - note: These 2 are reserved directives

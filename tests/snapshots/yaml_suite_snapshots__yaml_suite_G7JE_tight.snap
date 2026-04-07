@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- fail: true
+- name: Multilin…
   from: "@perlpun…"
-  name: Multilin…
   tags: error ma…
-  tree: "+STR\n +D…"
+  fail: true
   yaml: "a\\nb: 1…"
+  tree: "+STR\n +…"

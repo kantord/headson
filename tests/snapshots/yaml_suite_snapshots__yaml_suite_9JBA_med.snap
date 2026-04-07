@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- fail: true
+- name: Invalid comment after end of flow sequence
   from: "@perlpunk"
-  name: Invalid comment after end of flow sequence
   tags: comment error flow sequence
-  tree: "+STR\n +DOC ---\n  +SEQ []\n   =VAL :a\n   =VAL :b\n   =VAL :c\n  -SEQ\n"
+  fail: true
   yaml: "---\n[ a, b, c, ]#invalid\n"
+  tree: "+STR\n +DOC ---\n  +SEQ []\n   =VAL :a\n   =VAL :b\n   =VAL :c\n  -SEQ\n"

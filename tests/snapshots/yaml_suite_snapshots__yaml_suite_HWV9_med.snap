@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: ""
+- name: Document-end marker
   from: "@perlpunk"
-  json: ""
-  name: Document-end marker
   tags: footer
-  tree: "+STR\n-STR\n"
   yaml: "...\n"
+  tree: "+STR\n-STR\n"
+  json: ""
+  dump: ""

@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- emit: ":\n"
+- name: Empty Lines at End of Document
   from: NimYAML tests
-  name: Empty Lines at End of Document
   tags: empty-key whitespace
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :\n   =VAL :\n  -MAP\n -DOC\n-STR\n"
   yaml: ":\n↵\n↵\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :\n   =VAL :\n  -MAP\n -DOC\n-STR\n"
+  emit: ":\n"

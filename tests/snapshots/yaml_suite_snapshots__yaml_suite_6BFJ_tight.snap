@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "--- &ma…"
+- name: Mapping…
   from: "@perlpu…"
-  name: Mappin…
   tags: anchor…
-  tree: "+STR\n …"
   yaml: "---\n&m…"
+  tree: "+STR\n …"
+  dump: "--- &m…"

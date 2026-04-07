@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_full
+expression: full
 ---
-- dump: "a: 1.3\nfifteen: d\n"
+- name: Mixed Block Mapping (explicit to implicit)
   from: NimYAML tests
-  json: "{\n  \"a\": 1.3,\n  \"fifteen\": \"d\"\n}\n"
-  name: Mixed Block Mapping (explicit to implicit)
   tags: explicit-key mapping
-  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n   =VAL :1.3\n   =VAL :fifteen\n   =VAL :d\n  -MAP\n -DOC\n-STR\n"
   yaml: "? a\n: 1.3\nfifteen: d\n"
+  tree: "+STR\n +DOC\n  +MAP\n   =VAL :a\n   =VAL :1.3\n   =VAL :fifteen\n   =VAL :d\n  -MAP\n -DOC\n-STR\n"
+  json: "{\n  \"a\": 1.3,\n  \"fifteen\": \"d\"\n}\n"
+  dump: "a: 1.3\nfifteen: d\n"

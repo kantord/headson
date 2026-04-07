@@ -509,28 +509,11 @@ impl<'a> Scope<'a> {
         }
     }
 
-    #[allow(
-        clippy::cognitive_complexity,
-        reason = "Object child expansion handles sorting by key, scoring, and PQ wiring in one place for clarity"
-    )]
     fn expand_object_children(&mut self, entry: &Entry, arena_id: usize) {
         let node = &self.arena.nodes[arena_id];
-        let mut items: Vec<(usize, usize)> =
-            Vec::with_capacity(node.children_len);
         for i in 0..node.children_len {
             let key_idx = node.obj_keys_start + i;
             let child_arena_id = self.arena.children[node.children_start + i];
-            items.push((key_idx, child_arena_id));
-        }
-        items.sort_by(|a, b| {
-            let ka = &self.arena.obj_keys[a.0];
-            let kb = &self.arena.obj_keys[b.0];
-            match ka.cmp(kb) {
-                std::cmp::Ordering::Equal => a.0.cmp(&b.0),
-                other => other,
-            }
-        });
-        for (key_idx, child_arena_id) in items {
             let child_kind = self.arena.nodes[child_arena_id].kind;
             let child_priority_index = *self.next_pq_id;
             *self.next_pq_id += 1;

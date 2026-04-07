@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- fail: true
+- name: Need doc…
   from: "@ingydot…"
-  name: Need doc…
   tags: directiv…
-  tree: "+STR\n +D…"
-  yaml: "!foo \"b…"
+  fail: true
+  yaml: "!foo \"ba…"
+  tree: "+STR\n +…"

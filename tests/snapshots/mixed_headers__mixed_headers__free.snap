@@ -1,6 +1,6 @@
 ---
 source: tests/mixed_headers.rs
-expression: out
+expression: normalized
 ---
 ==> tests/fixtures/mixed_headers/a.json <==
 {
@@ -10,10 +10,10 @@ expression: out
 }
 
 ==> tests/fixtures/mixed_headers/b.yaml <==
+name: demo
 items:
   - one
   - two
-name: demo
 
 
 ==> tests/fixtures/mixed_headers/c.txt <==

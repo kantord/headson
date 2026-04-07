@@ -1,17 +1,17 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "--- a ...x b\n"
-  emit: "--- \"a ...x b\"\n"
+- name: Scalar doc with '...' in content
   from: "@ingydotnet"
-  json: "\"a ...x b\"\n"
-  name: Scalar doc with '...' in content
   tags: double scalar
-  tree: "+STR\n +DOC ---\n  =VAL \"a ...x b\n -DOC\n-STR\n"
   yaml: "--- \"a\n...x\nb\"\n"
-- dump: null
-  emit: null
-  fail: true
-  tree: "+STR\n +DOC ---\n"
+  tree: "+STR\n +DOC ---\n  =VAL \"a ...x b\n -DOC\n-STR\n"
+  json: "\"a ...x b\"\n"
+  dump: "--- a ...x b\n"
+  emit: "--- \"a ...x b\"\n"
+- fail: true
   yaml: "--- \"a\n... x\nb\"\n"
+  tree: "+STR\n +DOC ---\n"
+  dump: null
+  emit: null

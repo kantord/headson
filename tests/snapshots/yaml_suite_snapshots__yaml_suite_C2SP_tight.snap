@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- fail: true
-  from: "@perlpunk"
-  name: Flow Mapp…
+- name: Flow Map…
+  from: "@perlpun…"
   tags: error fl…
-  tree: "+STR\n +D…"
+  fail: true
   yaml: "[23\n]: 4…"
+  tree: "+STR\n +…"

@@ -3,10 +3,45 @@ source: tests/e2e_head.rs
 expression: stdout
 ---
 {
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice Wonderland",
+      "roles": [
+        "admin",
+        "editor",
+        "viewer"
+      ],
+      "profile": {
+        "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed d…",
+        "social": {
+          "twitter": "@alice",
+          "github": "alice",
+          "web": "https://example.com/users/alice"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "Bob Builder",
+      "roles": [
+        "contributor",
+        "viewer"
+      ],
+      "profile": {
+        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco la…",
+        "social": {
+          "twitter": "@buildWithBob",
+          "github": "bobbuilder",
+          "web": "https://bob.example.org"
+        }
+      }
+    }
+  ],
   "meta": {
-    "next": null,
     "page": 1,
     "pageSize": 20,
+    "next": null,
     "tags": [
       "alpha",
       /* 1 more items */
@@ -15,40 +50,5 @@ expression: stdout
       "epsilon"
       /* 2 more items */
     ]
-  },
-  "users": [
-    {
-      "id": 1,
-      "name": "Alice Wonderland",
-      "profile": {
-        "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed d…",
-        "social": {
-          "github": "alice",
-          "twitter": "@alice",
-          "web": "https://example.com/users/alice"
-        }
-      },
-      "roles": [
-        "admin",
-        "editor",
-        "viewer"
-      ]
-    },
-    {
-      "id": 2,
-      "name": "Bob Builder",
-      "profile": {
-        "bio": "Ut enim ad minim veniam, quis nostrud exercitation ullamco la…",
-        "social": {
-          "github": "bobbuilder",
-          "twitter": "@buildWithBob",
-          "web": "https://bob.example.org"
-        }
-      },
-      "roles": [
-        "contributor",
-        "viewer"
-      ]
-    }
-  ]
+  }
 }

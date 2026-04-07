@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: ""
-  from: "http://…"
-  json: ""
-  name: Spec E…
+- name: Spec Ex…
+  from: "http:/…"
   tags: spec c…
-  tree: "+STR\n-…"
   yaml: "  # Co…"
+  tree: "+STR\n-…"
+  json: ""
+  dump: ""

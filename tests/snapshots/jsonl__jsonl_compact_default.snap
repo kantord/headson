@@ -2,4 +2,4 @@
 source: tests/jsonl.rs
 expression: out
 ---
-[{"email":"alice@example.com","id":1,"name":"Alice"},{"email":"bob@example.com","id":2,"name":"Bob"},{"email":"charlie@example.com","id":3,"name":"Charlie"},{"email":"diana@example.com","id":4,"name":"Diana"},{"email":"eve@example.com","id":5,"name":"Eve"}]
+[{"id":1,"name":"Alice","email":"alice@example.com"},{"id":2,"name":"Bob","email":"bob@example.com"},{"id":3,"name":"Charlie","email":"charlie@example.com"},{"id":4,"name":"Diana","email":"diana@example.com"},{"id":5,"name":"Eve","email":"eve@example.com"}]

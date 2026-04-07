@@ -3,27 +3,27 @@ source: tests/jsonl.rs
 expression: out
 ---
 1: {
-  "email": "alice@example.com",
   "id": 1,
-  "name": "Alice"
+  "name": "Alice",
+  "email": "alice@example.com"
 }
 2: {
-  "email": "bob@example.com",
   "id": 2,
-  "name": "Bob"
+  "name": "Bob",
+  "email": "bob@example.com"
 }
 3: {
-  "email": "charlie@example.com",
   "id": 3,
-  "name": "Charlie"
+  "name": "Charlie",
+  "email": "charlie@example.com"
 }
 4: {
-  "email": "diana@example.com",
   "id": 4,
-  "name": "Diana"
+  "name": "Diana",
+  "email": "diana@example.com"
 }
 5: {
-  "email": "eve@example.com",
   "id": 5,
-  "name": "Eve"
+  "name": "Eve",
+  "email": "eve@example.com"
 }

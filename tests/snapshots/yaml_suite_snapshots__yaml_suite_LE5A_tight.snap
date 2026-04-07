@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- from: "http://…"
-  json: "[\n  \"a…"
-  name: Spec E…
+- name: Spec Ex…
+  from: "http:/…"
   tags: spec t…
-  tree: "+STR\n …"
   yaml: "- !!st…"
+  tree: "+STR\n …"
+  json: "[\n  \"a…"

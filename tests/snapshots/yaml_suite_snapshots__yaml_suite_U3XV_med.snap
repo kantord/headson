@@ -2,10 +2,10 @@
 source: tests/yaml_suite_snapshots.rs
 expression: med
 ---
-- dump: "---\ntop1: &node1\n  &k1 key1: one\ntop2: &node2\n  key2: two\ntop3:\n  &k3 key3: three\ntop4: &node4\n  &k4 k…"
+- name: Node and Mapping Key Anchors
   from: "@perlpunk"
-  json: "{\n  \"top1\": {\n    \"key1\": \"one\"\n  },\n  \"top2\": {\n    \"key2\": \"two\"\n  },\n  \"top3\": {\n    \"key3\": \"three…"
-  name: Node and Mapping Key Anchors
   tags: anchor comment 1.3-err
+  yaml: "---\ntop1: &node1\n  &k1 key1: one\ntop2: &node2 # comment\n  key2: two\ntop3:\n  &k3 key3: three\ntop4:\n  &n…"
   tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :top1\n   +MAP &node1\n    =VAL &k1 :key1\n    =VAL :one\n   -MAP\n   =VAL :t…"
-  yaml: "---\ntop1: &node1\n  &k1 key1: one\ntop2: &node2 # comment\n  key2: two\ntop3:\n  &k3 key3: three\ntop4:\n  &…"
+  json: "{\n  \"top1\": {\n    \"key1\": \"one\"\n  },\n  \"top2\": {\n    \"key2\": \"two\"\n  },\n  \"top3\": {\n    \"key3\": \"three…"
+  dump: "---\ntop1: &node1\n  &k1 key1: one\ntop2: &node2\n  key2: two\ntop3:\n  &k3 key3: three\ntop4: &node4\n  &k4 …"

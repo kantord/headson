@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- dump: "? - flo…"
+- name: Implici…
   from: "@perlpu…"
-  name: Implici…
-  tags: comple…
-  tree: "+STR\n …"
+  tags: complex…
   yaml: "[flow]…"
+  tree: "+STR\n …"
+  dump: "? - fl…"

@@ -1,11 +1,11 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_med
+expression: med
 ---
-- dump: "---\ntab: \"\\tstring\"\n"
+- name: Doublequoted scalar starting with a tab
   from: "@perlpunk"
-  json: "{\n  \"tab\": \"\\tstring\"\n}\n"
-  name: Doublequoted scalar starting with a tab
   tags: double scalar
-  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :tab\n   =VAL \"\\tstring\n  -MAP\n -DOC\n-STR\n"
   yaml: "---\ntab: \"\\tstring\"\n"
+  tree: "+STR\n +DOC ---\n  +MAP\n   =VAL :tab\n   =VAL \"\\tstring\n  -MAP\n -DOC\n-STR\n"
+  json: "{\n  \"tab\": \"\\tstring\"\n}\n"
+  dump: "---\ntab: \"\\tstring\"\n"

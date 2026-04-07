@@ -1,10 +1,10 @@
 ---
 source: tests/yaml_suite_snapshots.rs
-expression: out_full
+expression: full
 ---
-- fail: true
+- name: Invalid comma in tag
   from: "@perlpunk"
-  name: Invalid comma in tag
   tags: error tag
-  tree: "+STR\n +DOC\n  +SEQ\n"
+  fail: true
   yaml: "- !!str, xxx\n"
+  tree: "+STR\n +DOC\n  +SEQ\n"

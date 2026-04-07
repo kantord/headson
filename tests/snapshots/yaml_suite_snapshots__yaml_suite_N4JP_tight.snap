@@ -2,9 +2,9 @@
 source: tests/yaml_suite_snapshots.rs
 expression: tight
 ---
-- fail: true
+- name: Bad inde…
   from: "@perlpun…"
-  name: Bad inde…
   tags: error ma…
-  tree: "+STR\n +D…"
-  yaml: "map:\n  …"
+  fail: true
+  yaml: "map:\n  k…"
+  tree: "+STR\n +…"
