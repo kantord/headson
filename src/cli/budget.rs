@@ -48,6 +48,16 @@ pub(crate) fn validate(cli: &Cli) -> Result<()> {
             "only one global budget (--global-bytes/--global-lines) can be set at once"
         );
     }
+    if cli.count_matches
+        && cli.grep.is_empty()
+        && cli.igrep.is_empty()
+        && cli.weak_grep.is_empty()
+        && cli.weak_igrep.is_empty()
+    {
+        bail!(
+            "--count-matches requires at least one grep flag (--grep, --igrep, --weak-grep, --weak-igrep)"
+        );
+    }
     Ok(())
 }
 

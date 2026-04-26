@@ -4,7 +4,7 @@ use crate::grep::{
 };
 use crate::order::{NodeId, ObjectType};
 use crate::utils::measure::{OutputStats, count_output_stats};
-use crate::{GrepConfig, PriorityOrder, RenderConfig};
+use crate::{GrepConfig, MatchSummary, PriorityOrder, RenderConfig};
 use prunist::{
     Budget, BudgetKind, Budgets, MustKeep, MustKeepStats, PruningConfig,
     PruningResult, select_best_k,
@@ -18,21 +18,58 @@ fn is_fileset_root(order_build: &PriorityOrder) -> bool {
         .is_some_and(|t| *t == ObjectType::Fileset)
 }
 
+fn compute_match_summary(
+    grep_state: &Option<GrepState>,
+    inclusion_flags: &[u32],
+    render_set_id: u32,
+) -> Option<MatchSummary> {
+    let state = grep_state.as_ref()?;
+    let total: usize = state.direct_matches.iter().filter(|b| **b).count();
+    let shown: usize = state
+        .direct_matches
+        .iter()
+        .enumerate()
+        .filter(|(i, b)| {
+            **b && inclusion_flags.get(*i).copied().unwrap_or(0)
+                == render_set_id
+        })
+        .count();
+    Some(MatchSummary {
+        shown,
+        hidden: total.saturating_sub(shown),
+    })
+}
+
+fn match_summary_zero_shown(
+    grep_state: &Option<GrepState>,
+) -> Option<MatchSummary> {
+    let state = grep_state.as_ref()?;
+    let total: usize = state.direct_matches.iter().filter(|b| **b).count();
+    Some(MatchSummary {
+        shown: 0,
+        hidden: total,
+    })
+}
+
 pub fn find_largest_render_under_budgets(
     order_build: &mut PriorityOrder,
     config: &RenderConfig,
     grep: &GrepConfig,
     budgets: Budgets,
-) -> String {
+) -> (String, Option<MatchSummary>) {
     let total = order_build.total_nodes;
     if total == 0 {
-        return String::new();
+        let summary = grep.patterns.is_active().then_some(MatchSummary {
+            shown: 0,
+            hidden: 0,
+        });
+        return (String::new(), summary);
     }
     let root_is_fileset = is_fileset_root(order_build);
     let mut grep_state = compute_grep_state(order_build, grep);
     if strong_fileset_grep_without_matches(grep, &grep_state, root_is_fileset)
     {
-        return String::new();
+        return (String::new(), match_summary_zero_shown(&grep_state));
     }
     filter_fileset_without_matches(
         order_build,
@@ -103,7 +140,7 @@ pub fn find_largest_render_under_budgets(
         selection,
         &finalize_ctx,
     )
-    .unwrap_or_default()
+    .unwrap_or_else(|| (String::new(), match_summary_zero_shown(&grep_state)))
 }
 
 struct FinalizeContext<'a> {
@@ -122,7 +159,7 @@ fn finalize_render_from_selection(
     config: &RenderConfig,
     selection: PruningResult<NodeId>,
     ctx: &FinalizeContext<'_>,
-) -> Option<String> {
+) -> Option<(String, Option<MatchSummary>)> {
     let PruningResult {
         top_k: k_opt,
         mut inclusion_flags,
@@ -190,7 +227,7 @@ fn finalize_render_from_selection(
         );
     }
 
-    Some(crate::serialization::render_from_render_set(
+    let text = crate::serialization::render_from_render_set(
         order_build,
         &inclusion_flags,
         render_set_id,
@@ -198,7 +235,10 @@ fn finalize_render_from_selection(
             grep_highlight: ctx.grep.patterns.highlight().cloned(),
             ..config.clone()
         },
-    ))
+    );
+    let summary =
+        compute_match_summary(ctx.grep_state, &inclusion_flags, render_set_id);
+    Some((text, summary))
 }
 
 fn strong_fileset_grep_without_matches(

@@ -55,7 +55,7 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
     let render_cfg = get_render_config_from(cli);
     let grep_cfg = build_grep_config_from_cli(cli)?;
     let resolved_inputs = resolve_inputs(cli)?;
-    if resolved_inputs.is_empty() {
+    let (out, mut warnings, match_summary) = if resolved_inputs.is_empty() {
         if !cli.globs.is_empty() || cli.recursive {
             return Ok((
                 String::new(),
@@ -65,10 +65,19 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
         if cli.tree {
             bail!("--tree requires file inputs; stdin mode is not supported");
         }
-        Ok(run_from_stdin(cli, &render_cfg, &grep_cfg)?)
+        run_from_stdin(cli, &render_cfg, &grep_cfg)?
     } else {
-        run_from_paths(cli, &render_cfg, &grep_cfg, &resolved_inputs)
+        run_from_paths(cli, &render_cfg, &grep_cfg, &resolved_inputs)?
+    };
+    if cli.count_matches {
+        if let Some(summary) = match_summary {
+            warnings.push(format!(
+                "{} matches shown, {} hidden",
+                summary.shown, summary.hidden
+            ));
+        }
     }
+    Ok((out, warnings))
 }
 
 fn detect_fileset_input_kind(name: &str) -> headson::FilesetInputKind {
@@ -93,14 +102,14 @@ fn run_from_stdin(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
-) -> Result<(String, CliWarnings)> {
+) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
     let input_bytes = read_stdin()?;
     let input_count = 1usize;
     let mut cfg = render_cfg.clone();
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
     let (cfg, prio, budgets) = build_effective_configs(cli, cfg, input_count);
     let chosen_input = cli.input_format.unwrap_or(InputFormat::Json);
-    let (out, warnings) = render_single_input(
+    let (out, warnings, match_summary) = render_single_input(
         chosen_input,
         input_bytes,
         &cfg,
@@ -108,7 +117,7 @@ fn run_from_stdin(
         grep_cfg,
         budgets,
     )?;
-    Ok((out, warnings))
+    Ok((out, warnings, match_summary))
 }
 
 fn run_from_paths(
@@ -116,7 +125,7 @@ fn run_from_paths(
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
     inputs: &[PathBuf],
-) -> Result<(String, CliWarnings)> {
+) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
     let sorted_inputs = if needs_fileset(cli, inputs.len()) && !cli.no_sort {
         sort_paths_for_fileset(inputs)
     } else {
@@ -136,7 +145,7 @@ fn run_from_paths(
         return render_fileset(entries, warnings, cli, render_cfg, grep_cfg);
     }
     if entries.is_empty() {
-        return Ok((String::new(), warnings));
+        return Ok((String::new(), warnings, None));
     }
     render_single_entry(entries, warnings, cli, render_cfg, grep_cfg)
 }
@@ -463,7 +472,7 @@ fn render_single_input(
     prio: &headson::PriorityConfig,
     grep_cfg: &headson::GrepConfig,
     budgets: headson::Budgets,
-) -> Result<(String, CliWarnings)> {
+) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
     let text_mode = if matches!(cfg.template, headson::OutputTemplate::Code) {
         headson::TextMode::CodeLike
     } else {
@@ -502,7 +511,7 @@ fn render_single_input(
             budgets,
         ),
     }
-    .map(|out| (out.text, out.warnings))
+    .map(|out| (out.text, out.warnings, out.match_summary))
 }
 
 fn resolve_effective_template_for_stdin(
@@ -549,7 +558,7 @@ fn render_fileset(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
-) -> Result<(String, CliWarnings)> {
+) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
     if !matches!(cli.format, OutputFormat::Auto) {
         bail!(
             "--format cannot be customized for filesets; remove it or set to auto"
@@ -569,6 +578,7 @@ fn render_fileset(
     let headson::RenderOutput {
         text: out,
         warnings: fallback_warnings,
+        match_summary,
     } = headson::headson(
         headson::InputKind::Fileset(files),
         &cfg,
@@ -583,7 +593,7 @@ fn render_fileset(
     {
         warnings.push("No grep matches found".to_string());
     }
-    Ok((out, warnings))
+    Ok((out, warnings, match_summary))
 }
 
 fn render_single_entry(
@@ -592,7 +602,7 @@ fn render_single_entry(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
-) -> Result<(String, CliWarnings)> {
+) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
     let (name, bytes) = entries
         .pop()
         .expect("single-entry render expects one ingested input");
@@ -607,7 +617,7 @@ fn render_single_entry(
     );
     let (cfg_for_render, prio, budgets) =
         build_effective_configs(cli, cfg_for_render, 1usize);
-    let (out, mut fallback_warnings) = render_single_input(
+    let (out, mut fallback_warnings, match_summary) = render_single_input(
         chosen_input,
         bytes,
         &cfg_for_render,
@@ -619,7 +629,7 @@ fn render_single_entry(
     if !fallback_warnings.is_empty() {
         warnings.append(&mut fallback_warnings);
     }
-    Ok((out, warnings))
+    Ok((out, warnings, match_summary))
 }
 
 fn build_single_render_config(
@@ -705,6 +715,205 @@ mod tests {
         assert!(
             out.contains("\"a\"") || out.contains("a"),
             "auto mode should still treat .json as json when -i is absent"
+        );
+    }
+
+    #[test]
+    fn count_matches_without_grep_flag_returns_error() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("data.json");
+        fs::write(&path, "{\"a\":1}").unwrap();
+
+        let cli = Cli::parse_from([
+            "hson",
+            "--count-matches",
+            path.to_str().unwrap(),
+        ]);
+
+        let result = run(&cli);
+        assert!(
+            result.is_err(),
+            "--count-matches without any grep flag must return an error, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn count_matches_with_grep_succeeds() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("data.json");
+        fs::write(&path, "{\"a\":1}").unwrap();
+
+        let cli = Cli::parse_from([
+            "hson",
+            "--count-matches",
+            "--grep",
+            "a",
+            path.to_str().unwrap(),
+        ]);
+
+        let result = run(&cli);
+        assert!(
+            result.is_ok(),
+            "--count-matches combined with --grep must succeed, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn count_matches_with_weak_grep_succeeds() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("data.json");
+        fs::write(&path, "{\"a\":1}").unwrap();
+
+        let cli = Cli::parse_from([
+            "hson",
+            "--count-matches",
+            "--weak-grep",
+            "a",
+            path.to_str().unwrap(),
+        ]);
+
+        let result = run(&cli);
+        assert!(
+            result.is_ok(),
+            "--count-matches combined with --weak-grep must succeed, got: {result:?}"
+        );
+    }
+
+    // --- count_matches summary-in-warnings tests ---
+
+    /// With --count-matches and --grep, loose budget: all matches shown.
+    /// The warnings vec must contain exactly one line "N matches shown, 0 hidden".
+    #[test]
+    fn count_matches_summary_in_warnings_when_all_shown() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("data.json");
+        // Three keys that each contain "match" somewhere in their string value;
+        // 10 000-byte budget is ample so nothing is hidden.
+        fs::write(&path, r#"{"x": "match1", "y": "match2", "z": "match3"}"#)
+            .unwrap();
+
+        let cli = Cli::parse_from([
+            "hson",
+            "--count-matches",
+            "--grep",
+            "match",
+            "--bytes",
+            "10000",
+            path.to_str().unwrap(),
+        ]);
+
+        let (_, warnings) = run(&cli).expect("run must succeed");
+        let summary = warnings
+            .iter()
+            .find(|w| w.contains("shown") && w.contains("hidden"))
+            .cloned();
+        assert!(
+            summary.is_some(),
+            "warnings must contain a 'shown/hidden' summary line, got: {warnings:?}"
+        );
+        let summary = summary.unwrap();
+        assert!(
+            summary.ends_with("0 hidden"),
+            "all matches fit in budget, so hidden must be 0; got: {summary:?}"
+        );
+        // Shown count must be non-zero (the three values each matched).
+        let shown_count: usize = summary
+            .split_whitespace()
+            .next()
+            .and_then(|s| s.parse().ok())
+            .expect("summary starts with an integer shown count");
+        assert!(
+            shown_count > 0,
+            "at least one match must be shown; got: {summary:?}"
+        );
+    }
+
+    /// With --count-matches and --weak-grep under a very tight line budget,
+    /// some matches must be hidden (N hidden > 0).
+    #[test]
+    fn count_matches_summary_in_warnings_when_some_hidden() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("data.json");
+        // Six matches spread across many lines; --lines 1 forces tight truncation.
+        fs::write(
+            &path,
+            r#"{
+  "a": "match1",
+  "b": "match2",
+  "c": "match3",
+  "d": "match4",
+  "e": "match5",
+  "f": "match6"
+}"#,
+        )
+        .unwrap();
+
+        let cli = Cli::parse_from([
+            "hson",
+            "--count-matches",
+            "--weak-grep",
+            "match",
+            "--lines",
+            "1",
+            path.to_str().unwrap(),
+        ]);
+
+        let (_, warnings) = run(&cli).expect("run must succeed");
+        let summary = warnings
+            .iter()
+            .find(|w| w.contains("shown") && w.contains("hidden"))
+            .cloned();
+        assert!(
+            summary.is_some(),
+            "warnings must contain a 'shown/hidden' summary line, got: {warnings:?}"
+        );
+        let summary = summary.unwrap();
+        // Extract the hidden count (last integer token before "hidden").
+        let hidden_count: usize = summary
+            .split_whitespace()
+            .rev()
+            .nth(1) // word before "hidden"
+            .and_then(|s| s.trim_end_matches(',').parse().ok())
+            .expect("summary contains a hidden count");
+        assert!(
+            hidden_count > 0,
+            "tight budget must hide at least one match; got: {summary:?}"
+        );
+    }
+
+    /// With --count-matches and --grep, when the pattern matches nothing,
+    /// warnings must still contain "0 matches shown, 0 hidden".
+    #[test]
+    fn count_matches_summary_unconditional_zero_matches() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("data.json");
+        fs::write(&path, r#"{"a": 1, "b": 2}"#).unwrap();
+
+        let cli = Cli::parse_from([
+            "hson",
+            "--count-matches",
+            "--grep",
+            "THIS_PATTERN_NEVER_MATCHES_XYZZY",
+            path.to_str().unwrap(),
+        ]);
+
+        let (_, warnings) = run(&cli).expect("run must succeed");
+        let summary = warnings
+            .iter()
+            .find(|w| w.contains("shown") && w.contains("hidden"))
+            .cloned();
+        assert!(
+            summary.is_some(),
+            "warnings must contain a summary line even when nothing matched, got: {warnings:?}"
+        );
+        let summary = summary.unwrap();
+        assert!(
+            summary.contains("0 matches shown"),
+            "zero-match summary must say '0 matches shown'; got: {summary:?}"
+        );
+        assert!(
+            summary.ends_with("0 hidden"),
+            "zero-match summary must say '0 hidden'; got: {summary:?}"
         );
     }
 }
