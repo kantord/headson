@@ -173,10 +173,13 @@ pub fn build_grep_config(
 /// - `matched_nodes`: nodes matching any grep pattern (strong OR weak), used for priority boosting
 /// - `guaranteed_nodes`: nodes matching strong patterns only, must be included in output
 /// - `guaranteed_count`: count of nodes in `guaranteed_nodes` (used for filtering decisions)
+/// - `direct_matches`: nodes whose own content directly matches any pattern (excludes ancestors
+///   pulled in for structural context) — used for match counting
 pub(crate) struct GrepState {
     pub matched_nodes: Vec<bool>,
     pub guaranteed_nodes: Vec<bool>,
     pub guaranteed_count: usize,
+    pub direct_matches: Vec<bool>,
 }
 
 fn matches_ranked(
@@ -257,10 +260,22 @@ pub(crate) fn compute_grep_state(
 
     let guaranteed_count = guaranteed_nodes.iter().filter(|b| **b).count();
 
+    let mut direct_matches = vec![false; order.total_nodes];
+    for (idx, node) in order.nodes.iter().enumerate() {
+        let re_strong = grep.patterns.strong();
+        let re_weak = grep.patterns.weak();
+        if re_strong.is_some_and(|re| matches_ranked(order, idx, node, re))
+            || re_weak.is_some_and(|re| matches_ranked(order, idx, node, re))
+        {
+            direct_matches[idx] = true;
+        }
+    }
+
     Some(GrepState {
         matched_nodes,
         guaranteed_nodes,
         guaranteed_count,
+        direct_matches,
     })
 }
 
