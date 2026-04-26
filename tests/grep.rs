@@ -738,6 +738,7 @@ fn grep_highlights_for_library_calls_without_extra_config() {
             regex::Regex::new("needle").unwrap(),
         ),
         show: headson::GrepShow::Matching,
+        force_strong_inclusion: true,
     };
     let out = headson::headson(
         InputKind::Json(br#"{"needle":1,"other":2}"#.to_vec()),

@@ -182,9 +182,14 @@ mod tests {
         // A 1-line global budget would normally suppress most output, but strong
         // grep must override it and include all matching nodes.
         let input = br#"{"alpha": "needle one", "beta": "no match here", "gamma": "needle two"}"#;
-        let grep_cfg =
-            build_grep_config(Some("needle"), None, GrepShow::Matching, false)
-                .expect("valid grep pattern");
+        let grep_cfg = build_grep_config(
+            Some("needle"),
+            None,
+            GrepShow::Matching,
+            false,
+            true,
+        )
+        .expect("valid grep pattern");
         let priority_cfg = PriorityConfig::new(usize::MAX, usize::MAX);
         // Tight global budget: 1 line — far too small to render all 4 nodes
         // (root object + 3 values) without grep forcing matches in.
@@ -228,6 +233,7 @@ mod tests {
             None,
             GrepShow::Matching,
             false,
+            true,
         )
         .expect("valid grep pattern");
         let priority_cfg = PriorityConfig::new(usize::MAX, usize::MAX);
@@ -269,9 +275,14 @@ mod tests {
             "e": "target five"
         }"#;
         let total_matches: usize = 5;
-        let grep_cfg =
-            build_grep_config(None, Some("target"), GrepShow::Matching, false)
-                .expect("valid weak grep pattern");
+        let grep_cfg = build_grep_config(
+            None,
+            Some("target"),
+            GrepShow::Matching,
+            false,
+            false,
+        )
+        .expect("valid weak grep pattern");
         let priority_cfg = PriorityConfig::new(usize::MAX, usize::MAX);
         // 4-line budget: enough to show the object braces plus ~2 values,
         // not enough to show all 5 matches.
@@ -324,9 +335,14 @@ mod tests {
             "e": "target five"
         }"#;
         let total_matches: usize = 5;
-        let grep_cfg =
-            build_grep_config(None, Some("target"), GrepShow::Matching, false)
-                .expect("valid weak grep pattern");
+        let grep_cfg = build_grep_config(
+            None,
+            Some("target"),
+            GrepShow::Matching,
+            false,
+            false,
+        )
+        .expect("valid weak grep pattern");
         let priority_cfg = PriorityConfig::new(usize::MAX, usize::MAX);
 
         let result = headson(

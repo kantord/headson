@@ -262,7 +262,7 @@ fn strong_fileset_grep_without_matches(
 
 fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
     let count = state.as_ref().map(|s| s.guaranteed_count).unwrap_or(0);
-    grep.has_strong() && count > 0
+    grep.has_strong() && grep.force_strong_inclusion && count > 0
 }
 
 fn apply_selection(
@@ -649,9 +649,12 @@ fn guaranteed_nodes_slice<'a>(
     state: &'a Option<GrepState>,
     grep: &GrepConfig,
 ) -> Option<&'a [bool]> {
-    state.as_ref().filter(|_| grep.has_strong()).and_then(|s| {
-        (s.guaranteed_count > 0).then_some(s.guaranteed_nodes.as_slice())
-    })
+    state
+        .as_ref()
+        .filter(|_| grep.has_strong() && grep.force_strong_inclusion)
+        .and_then(|s| {
+            (s.guaranteed_count > 0).then_some(s.guaranteed_nodes.as_slice())
+        })
 }
 
 #[allow(

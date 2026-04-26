@@ -74,6 +74,9 @@ impl GrepPatterns {
 pub struct GrepConfig {
     pub patterns: GrepPatterns,
     pub show: GrepShow,
+    /// When true (--grep/--igrep), matching nodes are forced into the output
+    /// regardless of budget. When false (--capped-grep), budget is the hard cap.
+    pub force_strong_inclusion: bool,
 }
 
 impl GrepConfig {
@@ -121,6 +124,7 @@ pub fn build_grep_config_from_patterns(
     weak: &[impl AsRef<str>],
     weak_icase: &[impl AsRef<str>],
     grep_show: GrepShow,
+    force_strong_inclusion: bool,
 ) -> Result<GrepConfig> {
     let strong_combined = combine_patterns(strong, strong_icase);
     let weak_combined = combine_patterns(weak, weak_icase);
@@ -129,6 +133,7 @@ pub fn build_grep_config_from_patterns(
         weak_combined.as_deref(),
         grep_show,
         false, // case-insensitivity already embedded via (?i:...)
+        force_strong_inclusion,
     )
 }
 
@@ -140,6 +145,7 @@ pub fn build_grep_config(
     weak_grep: Option<&str>,
     grep_show: GrepShow,
     case_insensitive: bool,
+    force_strong_inclusion: bool,
 ) -> Result<GrepConfig> {
     let patterns = match (grep, weak_grep) {
         (Some(s), Some(w)) => {
@@ -166,6 +172,7 @@ pub fn build_grep_config(
     Ok(GrepConfig {
         patterns,
         show: grep_show,
+        force_strong_inclusion,
     })
 }
 
