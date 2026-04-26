@@ -141,6 +141,7 @@ fn summarize(
         weak_grep,
         headson_core::GrepShow::Matching,
         false,
+        grep.is_some(),
     )
     .map_err(to_pyerr)?;
     let text_mode = if matches!(cfg.template, OutputTemplate::Code) {

@@ -10,7 +10,7 @@ use clap_complete::Shell;
     version,
     about = "Get a small but useful preview of JSON or YAML"
 )]
-#[clap(group = clap::ArgGroup::new("strong_grep").args(["grep", "igrep"]).multiple(true))]
+#[clap(group = clap::ArgGroup::new("strong_grep").args(["grep", "igrep", "capped_grep", "capped_igrep"]).multiple(true))]
 #[clap(group = clap::ArgGroup::new("weak_grep_group").args(["weak_grep", "weak_igrep"]).multiple(true))]
 pub struct Cli {
     #[arg(short = 'c', long = "bytes", help_heading = "Preview Size")]
@@ -233,6 +233,24 @@ pub struct Cli {
         help_heading = "Filtering"
     )]
     pub weak_igrep: Vec<String>,
+    #[arg(
+        long = "capped-grep",
+        value_name = "PATTERN",
+        action = ArgAction::Append,
+        default_value = None,
+        help = "Like --grep but respects the budget boundary (no forced inclusion).",
+        help_heading = "Filtering"
+    )]
+    pub capped_grep: Vec<String>,
+    #[arg(
+        long = "capped-igrep",
+        value_name = "PATTERN",
+        action = ArgAction::Append,
+        default_value = None,
+        help = "Like --igrep but respects the budget boundary (no forced inclusion).",
+        help_heading = "Filtering"
+    )]
+    pub capped_igrep: Vec<String>,
     #[arg(
         long = "count-matches",
         action = ArgAction::SetTrue,

@@ -22,12 +22,18 @@ pub(crate) type CliWarnings = Vec<String>;
 fn build_grep_config_from_cli(
     cli: &Cli,
 ) -> anyhow::Result<headson::GrepConfig> {
+    let mut strong: Vec<&str> = cli.grep.iter().map(String::as_str).collect();
+    strong.extend(cli.capped_grep.iter().map(String::as_str));
+    let mut strong_icase: Vec<&str> =
+        cli.igrep.iter().map(String::as_str).collect();
+    strong_icase.extend(cli.capped_igrep.iter().map(String::as_str));
     headson::build_grep_config_from_patterns(
-        &cli.grep,
-        &cli.igrep,
+        &strong,
+        &strong_icase,
         &cli.weak_grep,
         &cli.weak_igrep,
         crate::cli::args::map_grep_show(cli.grep_show),
+        !cli.grep.is_empty() || !cli.igrep.is_empty(),
     )
 }
 

@@ -171,6 +171,7 @@ mod tests {
                 regex::Regex::new(pattern).unwrap(),
             ),
             show: GrepShow::Matching,
+            force_strong_inclusion: true,
         }
     }
 

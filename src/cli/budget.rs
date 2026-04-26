@@ -53,9 +53,27 @@ pub(crate) fn validate(cli: &Cli) -> Result<()> {
         && cli.igrep.is_empty()
         && cli.weak_grep.is_empty()
         && cli.weak_igrep.is_empty()
+        && cli.capped_grep.is_empty()
+        && cli.capped_igrep.is_empty()
     {
         bail!(
-            "--count-matches requires at least one grep flag (--grep, --igrep, --weak-grep, --weak-igrep)"
+            "--count-matches requires at least one grep flag (--grep, --igrep, --weak-grep, --weak-igrep, --capped-grep, --capped-igrep)"
+        );
+    }
+    let has_grep = !cli.grep.is_empty() || !cli.igrep.is_empty();
+    let has_capped =
+        !cli.capped_grep.is_empty() || !cli.capped_igrep.is_empty();
+    if has_grep && has_capped {
+        // GrepConfig.force_strong_inclusion is a single bool shared by all
+        // strong-slot patterns. When --grep is present it is set to true,
+        // which forces every strong-slot pattern (including --capped-grep ones)
+        // past the budget — silently defeating the "capped" semantics.
+        // Until the two pattern sets are stored separately, combining them
+        // produces surprising output, so we reject it explicitly.
+        // Use --weak-grep alongside --grep for soft priority without forcing.
+        bail!(
+            "--capped-grep/--capped-igrep cannot be combined with --grep/--igrep; \
+             use --weak-grep or --weak-igrep for soft priority alongside a hard --grep"
         );
     }
     Ok(())

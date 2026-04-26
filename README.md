@@ -200,11 +200,12 @@ Use `--grep <REGEX>` to guarantee inclusion of values/keys/lines matching the re
 - Multiple patterns: all grep flags are repeatable. Multiple patterns combine with OR semantics—values matching any pattern are included/highlighted. Example: `--grep foo --grep bar` matches "foo" or "bar".
 - Case-insensitive: use `--igrep <REGEX>` for case-insensitive matching. Can be combined with `--grep`: `--grep Foo --igrep bar` matches "Foo" (exact case) or "bar"/"BAR"/"Bar" (any case).
 - Weak grep: `--weak-grep <REGEX>` biases priority toward matches but does not guarantee inclusion, expand budgets, or filter files. Budgets stay exact and matches can still be pruned if they do not fit. Use `--weak-igrep <REGEX>` for case-insensitive weak grep. Weak grep can be combined with strong grep: strong matches are guaranteed while weak matches are prioritized.
-- Multi-file mode (strong `--grep` only):
+- Capped grep: `--capped-grep <REGEX>` is the middle ground between `--grep` and `--weak-grep`. Like `--grep`, it filters non-matching files in multi-file mode and moves matches to the front of the priority queue. Unlike `--grep`, the budget is always the hard cap — matches are never forced past it. Use `--capped-igrep <REGEX>` for case-insensitive matching. Cannot be combined with `--grep`/`--igrep`; use `--weak-grep` for soft priority alongside a hard `--grep`. Pair with `--count-matches` to see how many matches the budget cut.
+- Multi-file mode (`--grep` and `--capped-grep`):
   - Default (`--grep-show=matching`): files without matches are dropped from the render and summary. If no files match at all, the output is empty and the CLI prints a warning to stderr.
   - `--grep-show=all`: keep non-matching files in the render; only matching files are highlighted.
   - Headers respect `--no-header` as usual.
-- `--grep-show` requires `--grep` or `--igrep`.
+- `--grep-show` requires `--grep`, `--igrep`, `--capped-grep`, or `--capped-igrep`.
 - Context: there are no explicit `-C/-B/-A` style flags; per-file budgets decide how much surrounding structure/lines can stay alongside the must-keep matches.
 - Budgets: matches and ancestors always render; remaining budget determines what else can appear. Extremely tight budgets may show only the must-keep path.
 - Text/source code: works with `-i text` and source code files; when using `--format auto`, file extensions still decide ingest/rendering.
