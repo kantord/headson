@@ -234,6 +234,14 @@ pub struct Cli {
     )]
     pub weak_igrep: Vec<String>,
     #[arg(
+        long = "count-matches",
+        action = ArgAction::SetTrue,
+        default_value_t = false,
+        help = "Print a summary of matched/hidden counts to stderr. Requires at least one grep flag.",
+        help_heading = "Filtering"
+    )]
+    pub count_matches: bool,
+    #[arg(
         long = "grep-show",
         value_enum,
         default_value_t = GrepShowArg::Matching,

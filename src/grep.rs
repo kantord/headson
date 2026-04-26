@@ -233,6 +233,20 @@ fn mark_matches_and_ancestors(
     }
 }
 
+fn mark_direct_matches(order: &PriorityOrder, grep: &GrepConfig) -> Vec<bool> {
+    let re_strong = grep.patterns.strong();
+    let re_weak = grep.patterns.weak();
+    let mut flags = vec![false; order.total_nodes];
+    for (idx, node) in order.nodes.iter().enumerate() {
+        if re_strong.is_some_and(|re| matches_ranked(order, idx, node, re))
+            || re_weak.is_some_and(|re| matches_ranked(order, idx, node, re))
+        {
+            flags[idx] = true;
+        }
+    }
+    flags
+}
+
 /// Compute grep state by scanning the tree.
 /// Returns `None` if no grep patterns are configured.
 /// Returns `Some(GrepState)` if grep is active, even with zero matches.
@@ -260,16 +274,7 @@ pub(crate) fn compute_grep_state(
 
     let guaranteed_count = guaranteed_nodes.iter().filter(|b| **b).count();
 
-    let mut direct_matches = vec![false; order.total_nodes];
-    for (idx, node) in order.nodes.iter().enumerate() {
-        let re_strong = grep.patterns.strong();
-        let re_weak = grep.patterns.weak();
-        if re_strong.is_some_and(|re| matches_ranked(order, idx, node, re))
-            || re_weak.is_some_and(|re| matches_ranked(order, idx, node, re))
-        {
-            direct_matches[idx] = true;
-        }
-    }
+    let direct_matches = mark_direct_matches(order, grep);
 
     Some(GrepState {
         matched_nodes,

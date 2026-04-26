@@ -49,10 +49,17 @@ pub use serialization::types::{
     ColorMode, ColorStrategy, OutputTemplate, RenderConfig, Style,
 };
 
+#[derive(Debug, Clone, Copy)]
+pub struct MatchSummary {
+    pub shown: usize,
+    pub hidden: usize,
+}
+
 #[derive(Debug)]
 pub struct RenderOutput {
     pub text: String,
     pub warnings: Vec<String>,
+    pub match_summary: Option<MatchSummary>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -87,15 +94,16 @@ pub fn headson(
             priority_cfg.safety_cap
         ));
     }
-    let out = find_largest_render_under_budgets(
+    let (text, match_summary) = find_largest_render_under_budgets(
         &mut order_build,
         config,
         grep,
         budgets,
     );
     Ok(RenderOutput {
-        text: out,
+        text,
         warnings,
+        match_summary,
     })
 }
 
@@ -165,6 +173,184 @@ mod tests {
             !result.warnings.iter().any(|w| w.contains("safety cap")),
             "unexpected safety cap warning: {:?}",
             result.warnings
+        );
+    }
+
+    #[test]
+    fn strong_grep_match_summary_hidden_zero_under_tight_budget() {
+        // JSON object with 3 keys: two contain "needle", one does not.
+        // A 1-line global budget would normally suppress most output, but strong
+        // grep must override it and include all matching nodes.
+        let input = br#"{"alpha": "needle one", "beta": "no match here", "gamma": "needle two"}"#;
+        let grep_cfg =
+            build_grep_config(Some("needle"), None, GrepShow::Matching, false)
+                .expect("valid grep pattern");
+        let priority_cfg = PriorityConfig::new(usize::MAX, usize::MAX);
+        // Tight global budget: 1 line — far too small to render all 4 nodes
+        // (root object + 3 values) without grep forcing matches in.
+        let budgets = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Lines,
+                cap: 1,
+            }),
+            per_slot: None,
+        };
+
+        let result = headson(
+            InputKind::Json(input.to_vec()),
+            &test_render_config(),
+            &priority_cfg,
+            &grep_cfg,
+            budgets,
+        )
+        .expect("headson should succeed");
+
+        let summary = result
+            .match_summary
+            .expect("match_summary must be Some when grep is active");
+        assert_eq!(
+            summary.hidden, 0,
+            "strong grep must force all matches into output; hidden should be 0, got {:?}",
+            result.match_summary
+        );
+        assert_eq!(
+            summary.shown, 2,
+            "exactly 2 values match 'needle'; shown should be 2, got {:?}",
+            result.match_summary
+        );
+    }
+
+    #[test]
+    fn strong_grep_match_summary_zero_matches() {
+        let input = br#"{"alpha": "apple", "beta": "banana"}"#;
+        let grep_cfg = build_grep_config(
+            Some("zzznomatch"),
+            None,
+            GrepShow::Matching,
+            false,
+        )
+        .expect("valid grep pattern");
+        let priority_cfg = PriorityConfig::new(usize::MAX, usize::MAX);
+
+        let result = headson(
+            InputKind::Json(input.to_vec()),
+            &test_render_config(),
+            &priority_cfg,
+            &grep_cfg,
+            Budgets::default(),
+        )
+        .expect("headson should succeed");
+
+        let summary = result
+            .match_summary
+            .expect("match_summary must be Some when grep is active");
+        assert_eq!(
+            summary.shown, 0,
+            "pattern matches nothing; shown should be 0, got {:?}",
+            result.match_summary
+        );
+        assert_eq!(
+            summary.hidden, 0,
+            "pattern matches nothing; hidden should be 0, got {:?}",
+            result.match_summary
+        );
+    }
+
+    #[test]
+    fn weak_grep_match_summary_has_hidden_under_tight_budget() {
+        // JSON object with 5 keys, all values contain "target".
+        // Pseudo rendering (one key-value per line plus { and }) needs 7 lines
+        // for the full object. A 4-line global budget fits only a subset.
+        let input = br#"{
+            "a": "target one",
+            "b": "target two",
+            "c": "target three",
+            "d": "target four",
+            "e": "target five"
+        }"#;
+        let total_matches: usize = 5;
+        let grep_cfg =
+            build_grep_config(None, Some("target"), GrepShow::Matching, false)
+                .expect("valid weak grep pattern");
+        let priority_cfg = PriorityConfig::new(usize::MAX, usize::MAX);
+        // 4-line budget: enough to show the object braces plus ~2 values,
+        // not enough to show all 5 matches.
+        let budgets = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Lines,
+                cap: 4,
+            }),
+            per_slot: None,
+        };
+
+        let result = headson(
+            InputKind::Json(input.to_vec()),
+            &test_render_config(),
+            &priority_cfg,
+            &grep_cfg,
+            budgets,
+        )
+        .expect("headson should succeed");
+
+        let summary = result
+            .match_summary
+            .expect("match_summary must be Some when grep is active");
+        assert_eq!(
+            summary.shown + summary.hidden,
+            total_matches,
+            "shown + hidden must equal total direct matches ({}); got shown={} hidden={}",
+            total_matches,
+            summary.shown,
+            summary.hidden,
+        );
+        assert!(
+            summary.hidden > 0,
+            "tight budget must cause some weak-grep matches to be hidden; \
+             got shown={} hidden={}",
+            summary.shown,
+            summary.hidden,
+        );
+    }
+
+    #[test]
+    fn weak_grep_match_summary_all_shown_under_loose_budget() {
+        // Same 5-value object as the tight-budget test; with default (no) budget
+        // all matches should appear in the output.
+        let input = br#"{
+            "a": "target one",
+            "b": "target two",
+            "c": "target three",
+            "d": "target four",
+            "e": "target five"
+        }"#;
+        let total_matches: usize = 5;
+        let grep_cfg =
+            build_grep_config(None, Some("target"), GrepShow::Matching, false)
+                .expect("valid weak grep pattern");
+        let priority_cfg = PriorityConfig::new(usize::MAX, usize::MAX);
+
+        let result = headson(
+            InputKind::Json(input.to_vec()),
+            &test_render_config(),
+            &priority_cfg,
+            &grep_cfg,
+            Budgets::default(),
+        )
+        .expect("headson should succeed");
+
+        let summary = result
+            .match_summary
+            .expect("match_summary must be Some when grep is active");
+        assert_eq!(
+            summary.shown, total_matches,
+            "loose budget must show all {} matches; got shown={} hidden={}",
+            total_matches, summary.shown, summary.hidden,
+        );
+        assert_eq!(
+            summary.hidden, 0,
+            "no matches should be hidden under a loose budget; \
+             got shown={} hidden={}",
+            summary.shown, summary.hidden,
         );
     }
 }
