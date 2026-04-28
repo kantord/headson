@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{ArgAction, Parser, ValueEnum};
+use clap::{ArgAction, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
 /// Top-level CLI flags and enums.
@@ -269,12 +269,56 @@ pub struct Cli {
     )]
     pub grep_show: GrepShowArg,
     #[arg(
+        long = "session",
+        value_name = "SESSION_ID",
+        help = "Activate an explore session by ID. Equivalent to HSON_SESSION=ID.",
+        help_heading = "Explore"
+    )]
+    pub session: Option<String>,
+    #[arg(
+        long = "no-record",
+        action = ArgAction::SetTrue,
+        default_value_t = false,
+        help = "Apply session penalty without recording breadcrumbs or incrementing step count.",
+        help_heading = "Explore"
+    )]
+    pub no_record: bool,
+    #[arg(
         long = "completions",
         value_name = "SHELL",
         value_enum,
         help = "Print shell completions for the given shell"
     )]
     pub completions: Option<Shell>,
+    #[command(subcommand)]
+    pub subcommand: Option<TopSubcommand>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum TopSubcommand {
+    /// Manage explore sessions (novelty-bias mode)
+    Explore(ExploreArgs),
+}
+
+#[derive(clap::Args, Debug)]
+pub struct ExploreArgs {
+    #[command(subcommand)]
+    pub command: ExploreSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ExploreSubcommand {
+    /// Start a new explore session and print the session ID to stdout
+    Start {
+        /// Optional human-readable label for this session
+        label: Option<String>,
+    },
+    /// Show the current session status
+    Status,
+    /// Clear breadcrumb memory (query log and label are preserved)
+    Clear,
+    /// Print the query log for the current session in chronological order
+    List,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]

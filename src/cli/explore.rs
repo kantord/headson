@@ -1,0 +1,511 @@
+use anyhow::Result;
+use uuid::Uuid;
+
+use crate::cli::args::{Cli, ExploreSubcommand};
+use crate::cli::session_middleware::{active_session_id, session_file_path};
+
+pub(crate) fn run_subcommand(
+    cmd: &ExploreSubcommand,
+    cli: &Cli,
+) -> Result<String> {
+    match cmd {
+        ExploreSubcommand::Start { label } => {
+            let id = Uuid::new_v4().to_string();
+            let path = session_file_path(&id);
+            if let Some(parent) = path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            let cwd = std::env::current_dir()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+            let resolved_label = match label {
+                Some(l) => l.clone(),
+                None => format!("Explore session started originally in {cwd}"),
+            };
+            let session =
+                crate::session::Session::new(id.clone(), resolved_label);
+            crate::session::io::save_to_path(&session, &path).map_err(
+                |e| anyhow::anyhow!("failed to create session file: {e}"),
+            )?;
+            Ok(id)
+        }
+        ExploreSubcommand::Status => {
+            let Some(id) = active_session_id(cli) else {
+                return Ok(
+                    "No active session. Run `hson explore start` to begin."
+                        .to_string(),
+                );
+            };
+            let path = session_file_path(&id);
+            let session =
+                crate::session::io::load_or_create(&path, &id, None, "");
+            Ok(format!(
+                "Session: {}\nLabel:   {}\nSteps:   {}",
+                session.id, session.label, session.step_count
+            ))
+        }
+        ExploreSubcommand::Clear => {
+            let Some(id) = active_session_id(cli) else {
+                return Ok(
+                    "No active session. Run `hson explore start` to begin."
+                        .to_string(),
+                );
+            };
+            let path = session_file_path(&id);
+            let mut session =
+                crate::session::io::load_or_create(&path, &id, None, "");
+            session.clear();
+            crate::session::io::save_to_path(&session, &path)
+                .map_err(|e| anyhow::anyhow!("failed to save session: {e}"))?;
+            Ok(String::new())
+        }
+        ExploreSubcommand::List => {
+            let Some(id) = active_session_id(cli) else {
+                return Ok(
+                    "No active session. Run `hson explore start` to begin."
+                        .to_string(),
+                );
+            };
+            let path = session_file_path(&id);
+            let session =
+                crate::session::io::load_or_create(&path, &id, None, "");
+            let lines: Vec<String> = session
+                .queries
+                .iter()
+                .map(|q| {
+                    format!("[{}] {} {}", q.timestamp, q.cwd, q.argv.join(" "))
+                })
+                .collect();
+            Ok(lines.join("\n"))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::args::ExploreSubcommand;
+    use crate::session::io::{load_from_path, save_to_path};
+    use crate::session::{Breadcrumb, QueryEntry, Session};
+    use clap::Parser;
+    use serial_test::serial;
+    use tempfile::tempdir;
+
+    /// Build a minimal Cli with an optional --session value and no inputs.
+    /// XDG_STATE_HOME must already be set before this is called.
+    fn make_cli(session_id: Option<&str>) -> Cli {
+        let mut args = vec!["hson"];
+        if let Some(id) = session_id {
+            args.push("--session");
+            args.push(id);
+        }
+        Cli::parse_from(args)
+    }
+
+    /// Step 36: `explore start` with no label returns a bare UUID string — no
+    /// trailing whitespace or newline, matches the canonical UUID pattern.
+    #[test]
+    #[serial]
+    fn explore_start_returns_uuid_string() {
+        let state_dir = tempdir().unwrap();
+        let old_state = std::env::var("XDG_STATE_HOME").ok();
+        let old_session = std::env::var("HSON_SESSION").ok();
+        unsafe {
+            std::env::set_var("XDG_STATE_HOME", state_dir.path());
+            std::env::remove_var("HSON_SESSION");
+        }
+
+        let cli = make_cli(None);
+        let result =
+            run_subcommand(&ExploreSubcommand::Start { label: None }, &cli);
+
+        unsafe {
+            match old_state {
+                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
+                None => std::env::remove_var("XDG_STATE_HOME"),
+            }
+            match old_session {
+                Some(v) => std::env::set_var("HSON_SESSION", v),
+                None => std::env::remove_var("HSON_SESSION"),
+            }
+        }
+
+        let output = result.expect("run_subcommand(Start) must succeed");
+        let uuid_re = regex::Regex::new(
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        )
+        .unwrap();
+        assert!(
+            uuid_re.is_match(output.trim()),
+            "expected UUID string (no trailing whitespace/newline), got: {output:?}"
+        );
+        assert_eq!(
+            output,
+            output.trim(),
+            "output must have no leading/trailing whitespace; got: {output:?}"
+        );
+    }
+
+    /// Step 37: `explore start --label "my label"` stores `label = Some("my label")`
+    /// in the session file on disk.
+    #[test]
+    #[serial]
+    fn explore_start_with_label_stores_label_in_session_file() {
+        let state_dir = tempdir().unwrap();
+        let old_state = std::env::var("XDG_STATE_HOME").ok();
+        let old_session = std::env::var("HSON_SESSION").ok();
+        unsafe {
+            std::env::set_var("XDG_STATE_HOME", state_dir.path());
+            std::env::remove_var("HSON_SESSION");
+        }
+
+        let cli = make_cli(None);
+        let result = run_subcommand(
+            &ExploreSubcommand::Start {
+                label: Some("my label".to_string()),
+            },
+            &cli,
+        );
+
+        let output = result.expect("run_subcommand(Start) must succeed");
+
+        // Load the session file that was just created
+        let session_path = state_dir
+            .path()
+            .join("headson")
+            .join("sessions")
+            .join(format!("{output}.json"));
+
+        unsafe {
+            match old_state {
+                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
+                None => std::env::remove_var("XDG_STATE_HOME"),
+            }
+            match old_session {
+                Some(v) => std::env::set_var("HSON_SESSION", v),
+                None => std::env::remove_var("HSON_SESSION"),
+            }
+        }
+
+        assert!(
+            session_path.exists(),
+            "session file must exist at {session_path:?}"
+        );
+        let session = load_from_path(&session_path)
+            .expect("session file must be valid JSON");
+        assert_eq!(
+            session.label, "my label",
+            "session.label must be 'my label'; got: {:?}",
+            session.label
+        );
+    }
+
+    /// Step 38: `explore start` with no label stores a label that contains the
+    /// last path component of the current working directory.
+    #[test]
+    #[serial]
+    fn explore_start_no_label_stores_cwd_derived_label() {
+        let state_dir = tempdir().unwrap();
+        let old_state = std::env::var("XDG_STATE_HOME").ok();
+        let old_session = std::env::var("HSON_SESSION").ok();
+        unsafe {
+            std::env::set_var("XDG_STATE_HOME", state_dir.path());
+            std::env::remove_var("HSON_SESSION");
+        }
+
+        let cwd = std::env::current_dir()
+            .expect("must be able to get cwd")
+            .to_string_lossy()
+            .into_owned();
+        let last_component = std::path::Path::new(&cwd)
+            .file_name()
+            .expect("cwd must have a last component")
+            .to_string_lossy()
+            .into_owned();
+
+        let cli = make_cli(None);
+        let result =
+            run_subcommand(&ExploreSubcommand::Start { label: None }, &cli);
+
+        let output = result.expect("run_subcommand(Start) must succeed");
+
+        let session_path = state_dir
+            .path()
+            .join("headson")
+            .join("sessions")
+            .join(format!("{output}.json"));
+
+        unsafe {
+            match old_state {
+                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
+                None => std::env::remove_var("XDG_STATE_HOME"),
+            }
+            match old_session {
+                Some(v) => std::env::set_var("HSON_SESSION", v),
+                None => std::env::remove_var("HSON_SESSION"),
+            }
+        }
+
+        assert!(
+            session_path.exists(),
+            "session file must exist at {session_path:?}"
+        );
+        let session = load_from_path(&session_path)
+            .expect("session file must be valid JSON");
+        assert!(
+            session.label.contains(&last_component),
+            "session.label must contain last cwd component '{last_component}'; got: {:?}",
+            session.label
+        );
+    }
+
+    /// Step 39: `explore status` with a session containing step_count=3 returns
+    /// a string that mentions the step count ("3") and the session ID.
+    #[test]
+    #[serial]
+    fn explore_status_shows_step_count_and_uuid() {
+        let state_dir = tempdir().unwrap();
+        let session_id = "step39-status-test-session";
+
+        // Write a session file with step_count=3
+        let sessions_dir = state_dir.path().join("headson").join("sessions");
+        std::fs::create_dir_all(&sessions_dir).unwrap();
+        let session_path = sessions_dir.join(format!("{session_id}.json"));
+        let mut session =
+            Session::new(session_id.to_string(), "test label".to_string());
+        session.step_count = 3;
+        save_to_path(&session, &session_path).unwrap();
+
+        let old_state = std::env::var("XDG_STATE_HOME").ok();
+        let old_session = std::env::var("HSON_SESSION").ok();
+        unsafe {
+            std::env::set_var("XDG_STATE_HOME", state_dir.path());
+            std::env::remove_var("HSON_SESSION");
+        }
+
+        let cli = make_cli(Some(session_id));
+        let result = run_subcommand(&ExploreSubcommand::Status, &cli);
+
+        unsafe {
+            match old_state {
+                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
+                None => std::env::remove_var("XDG_STATE_HOME"),
+            }
+            match old_session {
+                Some(v) => std::env::set_var("HSON_SESSION", v),
+                None => std::env::remove_var("HSON_SESSION"),
+            }
+        }
+
+        let output = result.expect("run_subcommand(Status) must succeed");
+        assert!(
+            output.contains("3"),
+            "status output must contain the step count '3'; got: {output:?}"
+        );
+        assert!(
+            output.contains(session_id),
+            "status output must contain the session ID '{session_id}'; got: {output:?}"
+        );
+    }
+
+    /// Step 40: `explore status` with no active session returns Ok and a helpful
+    /// message that includes "start" (suggesting `hson explore start`).
+    #[test]
+    #[serial]
+    fn explore_status_no_session_prints_helpful_message() {
+        let state_dir = tempdir().unwrap();
+        let old_state = std::env::var("XDG_STATE_HOME").ok();
+        let old_session = std::env::var("HSON_SESSION").ok();
+        unsafe {
+            std::env::set_var("XDG_STATE_HOME", state_dir.path());
+            std::env::remove_var("HSON_SESSION");
+        }
+
+        let cli = make_cli(None);
+        let result = run_subcommand(&ExploreSubcommand::Status, &cli);
+
+        unsafe {
+            match old_state {
+                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
+                None => std::env::remove_var("XDG_STATE_HOME"),
+            }
+            match old_session {
+                Some(v) => std::env::set_var("HSON_SESSION", v),
+                None => std::env::remove_var("HSON_SESSION"),
+            }
+        }
+
+        let output = result.expect(
+            "run_subcommand(Status) with no session must return Ok, not Err",
+        );
+        assert!(
+            output.contains("start"),
+            "no-session status output must contain 'start' (suggesting hson explore start); got: {output:?}"
+        );
+    }
+
+    /// Step 41: `explore clear` zeroes breadcrumbs and step_count but preserves
+    /// existing queries in the session file.
+    #[test]
+    #[serial]
+    fn explore_clear_zeroes_breadcrumbs_preserves_queries() {
+        let state_dir = tempdir().unwrap();
+        let session_id = "step41-clear-test-session";
+
+        // Create a session with breadcrumbs and a query
+        let sessions_dir = state_dir.path().join("headson").join("sessions");
+        std::fs::create_dir_all(&sessions_dir).unwrap();
+        let session_path = sessions_dir.join(format!("{session_id}.json"));
+        let mut session =
+            Session::new(session_id.to_string(), "clear test".to_string());
+        session.record_breadcrumb("a.json", "users.0", 1);
+        session.record_breadcrumb("b.json", "items.1", 2);
+        session.queries.push(QueryEntry {
+            step: 1,
+            timestamp: "2026-01-01T00:00:00Z".to_string(),
+            cwd: "/home/user/project".to_string(),
+            argv: vec!["src/".to_string()],
+        });
+        save_to_path(&session, &session_path).unwrap();
+
+        let old_state = std::env::var("XDG_STATE_HOME").ok();
+        let old_session = std::env::var("HSON_SESSION").ok();
+        unsafe {
+            std::env::set_var("XDG_STATE_HOME", state_dir.path());
+            std::env::remove_var("HSON_SESSION");
+        }
+
+        let cli = make_cli(Some(session_id));
+        let result = run_subcommand(&ExploreSubcommand::Clear, &cli);
+
+        unsafe {
+            match old_state {
+                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
+                None => std::env::remove_var("XDG_STATE_HOME"),
+            }
+            match old_session {
+                Some(v) => std::env::set_var("HSON_SESSION", v),
+                None => std::env::remove_var("HSON_SESSION"),
+            }
+        }
+
+        result.expect("run_subcommand(Clear) must succeed");
+
+        // Reload and verify
+        let updated = load_from_path(&session_path)
+            .expect("session file must still be valid after clear");
+        assert!(
+            updated.breadcrumbs.is_empty(),
+            "breadcrumbs must be empty after clear; got: {:?}",
+            updated.breadcrumbs
+        );
+        assert_eq!(
+            updated.step_count, 0,
+            "step_count must be 0 after clear; got: {}",
+            updated.step_count
+        );
+        assert!(
+            !updated.queries.is_empty(),
+            "queries must be preserved after clear; got empty"
+        );
+    }
+
+    /// Step 42: `explore list` returns all recorded queries in chronological
+    /// order (ascending timestamp / step order).
+    #[test]
+    #[serial]
+    fn explore_list_prints_queries_chronologically() {
+        let state_dir = tempdir().unwrap();
+        let session_id = "step42-list-test-session";
+
+        // Create a session with 3 queries at distinct timestamps
+        let sessions_dir = state_dir.path().join("headson").join("sessions");
+        std::fs::create_dir_all(&sessions_dir).unwrap();
+        let session_path = sessions_dir.join(format!("{session_id}.json"));
+        let mut session =
+            Session::new(session_id.to_string(), "list test".to_string());
+        session.queries.push(QueryEntry {
+            step: 1,
+            timestamp: "2026-01-01T10:00:00Z".to_string(),
+            cwd: "/home/user/alpha".to_string(),
+            argv: vec![],
+        });
+        session.queries.push(QueryEntry {
+            step: 2,
+            timestamp: "2026-01-01T11:00:00Z".to_string(),
+            cwd: "/home/user/beta".to_string(),
+            argv: vec![],
+        });
+        session.queries.push(QueryEntry {
+            step: 3,
+            timestamp: "2026-01-01T12:00:00Z".to_string(),
+            cwd: "/home/user/gamma".to_string(),
+            argv: vec![],
+        });
+        save_to_path(&session, &session_path).unwrap();
+
+        let old_state = std::env::var("XDG_STATE_HOME").ok();
+        let old_session = std::env::var("HSON_SESSION").ok();
+        unsafe {
+            std::env::set_var("XDG_STATE_HOME", state_dir.path());
+            std::env::remove_var("HSON_SESSION");
+        }
+
+        let cli = make_cli(Some(session_id));
+        let result = run_subcommand(&ExploreSubcommand::List, &cli);
+
+        unsafe {
+            match old_state {
+                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
+                None => std::env::remove_var("XDG_STATE_HOME"),
+            }
+            match old_session {
+                Some(v) => std::env::set_var("HSON_SESSION", v),
+                None => std::env::remove_var("HSON_SESSION"),
+            }
+        }
+
+        let output = result.expect("run_subcommand(List) must succeed");
+
+        // All 3 cwd values must appear
+        assert!(
+            output.contains("/home/user/alpha"),
+            "output must contain '/home/user/alpha'; got: {output:?}"
+        );
+        assert!(
+            output.contains("/home/user/beta"),
+            "output must contain '/home/user/beta'; got: {output:?}"
+        );
+        assert!(
+            output.contains("/home/user/gamma"),
+            "output must contain '/home/user/gamma'; got: {output:?}"
+        );
+
+        // Chronological order: alpha before beta before gamma
+        let pos_alpha = output
+            .find("/home/user/alpha")
+            .expect("alpha must be in output");
+        let pos_beta = output
+            .find("/home/user/beta")
+            .expect("beta must be in output");
+        let pos_gamma = output
+            .find("/home/user/gamma")
+            .expect("gamma must be in output");
+        assert!(
+            pos_alpha < pos_beta,
+            "alpha (step 1) must appear before beta (step 2) in output; alpha@{pos_alpha}, beta@{pos_beta}"
+        );
+        assert!(
+            pos_beta < pos_gamma,
+            "beta (step 2) must appear before gamma (step 3) in output; beta@{pos_beta}, gamma@{pos_gamma}"
+        );
+    }
+
+    // Silence unused-import warning for Breadcrumb (used in step 41)
+    #[allow(
+        dead_code,
+        reason = "imported for type visibility in test helpers"
+    )]
+    fn _use_breadcrumb(_: Breadcrumb) {}
+}

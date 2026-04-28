@@ -24,6 +24,7 @@ pub mod budget;
 mod debug;
 mod grep;
 mod ingest;
+pub mod node_path;
 mod order;
 mod pruner;
 mod serialization;
@@ -34,6 +35,7 @@ pub use grep::{
 };
 pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use ingest::format::Format;
+pub use ingest::{parse_json_one, parse_text_one_with_mode};
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
 pub use order::{
     DEFAULT_SAFETY_CAP, NodeId, NodeKind, PriorityConfig, PriorityOrder,
@@ -42,6 +44,7 @@ pub use order::{
 pub use utils::extensions;
 pub use utils::templates::map_json_template_for_style;
 
+pub use node_path::leaf_breadcrumb_key;
 pub use pruner::budget::find_largest_render_under_budgets;
 pub use prunist::{Budget, BudgetKind, Budgets};
 pub use serialization::color::resolve_color_enabled;
@@ -60,6 +63,10 @@ pub struct RenderOutput {
     pub text: String,
     pub warnings: Vec<String>,
     pub match_summary: Option<MatchSummary>,
+    /// `(file, path)` pairs for leaf nodes in the rendered output.
+    /// Used by CLI session middleware to record breadcrumbs. `file` is `""`
+    /// for single-file inputs; `path` is a dot-joined key chain or content hash.
+    pub shown_leaves: Vec<(String, String)>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -94,16 +101,18 @@ pub fn headson(
             priority_cfg.safety_cap
         ));
     }
-    let (text, match_summary) = find_largest_render_under_budgets(
+    let (text, match_summary, top_k) = find_largest_render_under_budgets(
         &mut order_build,
         config,
         grep,
         budgets,
     );
+    let shown_leaves = node_path::collect_shown_leaves(&order_build, top_k);
     Ok(RenderOutput {
         text,
         warnings,
         match_summary,
+        shown_leaves,
     })
 }
 
@@ -367,6 +376,100 @@ mod tests {
             "no matches should be hidden under a loose budget; \
              got shown={} hidden={}",
             summary.shown, summary.hidden,
+        );
+    }
+
+    // ── Step 25: find_largest_render_under_budgets returns a meaningful top_k ─
+
+    /// Build a `PriorityOrder` from a small JSON object for use in top_k tests.
+    fn make_order_for_top_k() -> PriorityOrder {
+        let input = InputKind::Json(
+            br#"{"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}"#.to_vec(),
+        );
+        let priority_cfg = PriorityConfig::new(usize::MAX, usize::MAX);
+        let grep_cfg = GrepConfig::default();
+        let ingest_out =
+            crate::ingest::ingest_into_arena(input, &priority_cfg, &grep_cfg)
+                .expect("ingest must succeed");
+        order::build_order(&ingest_out.arena, &priority_cfg)
+            .expect("build_order must succeed")
+    }
+
+    #[test]
+    fn step_25_find_largest_render_returns_nonzero_top_k_under_tight_budget() {
+        // A 15-byte budget is far too small to render all 5 key-value pairs of
+        // {"a":1,"b":2,"c":3,"d":4,"e":5} (full render ≈ 44 bytes), so the
+        // budget search must stop before including all nodes.
+        let mut order = make_order_for_top_k();
+        let total_nodes = order.total_nodes;
+        let tight_budgets = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 15,
+            }),
+            per_slot: None,
+        };
+        let grep_cfg = GrepConfig::default();
+
+        let (_text, _summary, top_k) = find_largest_render_under_budgets(
+            &mut order,
+            &test_render_config(),
+            &grep_cfg,
+            tight_budgets,
+        );
+
+        assert!(
+            top_k > 0,
+            "top_k must be > 0 (at least one node was selected); got {top_k}"
+        );
+        assert!(
+            top_k < total_nodes,
+            "tight budget must not select all {total_nodes} nodes; top_k={top_k}"
+        );
+    }
+
+    // ── Step 26: top_k slice contains at least one leaf node ──────────────────
+
+    #[test]
+    fn step_26_top_k_slice_contains_at_least_one_leaf_node() {
+        // The top_k slice from by_priority should include real leaf nodes
+        // (AtomicLeaf or SplittableLeaf) — not just ancestor scaffolding.
+        // 30 bytes comfortably fits root + 1-2 leaves (~16 bytes each) but
+        // not all 5 leaves (~44 bytes total), so top_k is neither 0 nor max.
+        let mut order = make_order_for_top_k();
+        let tight_budgets = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 30,
+            }),
+            per_slot: None,
+        };
+        let grep_cfg = GrepConfig::default();
+
+        let (_text, _summary, top_k) = find_largest_render_under_budgets(
+            &mut order,
+            &test_render_config(),
+            &grep_cfg,
+            tight_budgets,
+        );
+
+        let has_leaf = order.by_priority[..top_k].iter().any(|node_id| {
+            matches!(
+                order.nodes[node_id.0],
+                RankedNode::AtomicLeaf { .. }
+                    | RankedNode::SplittableLeaf { .. }
+            )
+        });
+
+        assert!(
+            has_leaf,
+            "by_priority[..{}] must contain at least one AtomicLeaf or \
+             SplittableLeaf; nodes in slice: {:?}",
+            top_k,
+            order.by_priority[..top_k]
+                .iter()
+                .map(|id| &order.nodes[id.0])
+                .collect::<Vec<_>>(),
         );
     }
 }

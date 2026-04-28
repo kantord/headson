@@ -4,6 +4,10 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
+use crate::cli::session_middleware::{
+    active_session_id, maybe_record_session,
+};
+
 use anyhow::{Context, Result, bail};
 use content_inspector::{ContentType, inspect};
 use ignore::WalkBuilder;
@@ -18,6 +22,12 @@ use crate::sorting::sort_paths_for_fileset;
 type InputEntry = (String, Vec<u8>);
 type InputEntries = Vec<InputEntry>;
 pub(crate) type CliWarnings = Vec<String>;
+type RenderResult = (
+    String,
+    CliWarnings,
+    Option<headson::MatchSummary>,
+    Vec<(String, String)>,
+);
 
 fn build_grep_config_from_cli(
     cli: &Cli,
@@ -61,7 +71,9 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
     let render_cfg = get_render_config_from(cli);
     let grep_cfg = build_grep_config_from_cli(cli)?;
     let resolved_inputs = resolve_inputs(cli)?;
-    let (out, mut warnings, match_summary) = if resolved_inputs.is_empty() {
+    let session_id = active_session_id(cli);
+    let from_stdin = resolved_inputs.is_empty();
+    let (out, mut warnings, match_summary, shown_leaves) = if from_stdin {
         if !cli.globs.is_empty() || cli.recursive {
             return Ok((
                 String::new(),
@@ -71,9 +83,12 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
         if cli.tree {
             bail!("--tree requires file inputs; stdin mode is not supported");
         }
-        run_from_stdin(cli, &render_cfg, &grep_cfg)?
+        let (text, w, ms) = run_from_stdin(cli, &render_cfg, &grep_cfg)?;
+        (text, w, ms, vec![])
     } else {
-        run_from_paths(cli, &render_cfg, &grep_cfg, &resolved_inputs)?
+        let (text, w, ms, leaves) =
+            run_from_paths(cli, &render_cfg, &grep_cfg, &resolved_inputs)?;
+        (text, w, ms, leaves)
     };
     if cli.count_matches {
         if let Some(summary) = match_summary {
@@ -83,6 +98,12 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
             ));
         }
     }
+    maybe_record_session(
+        session_id.as_deref(),
+        from_stdin,
+        cli.no_record,
+        &shown_leaves,
+    );
     Ok((out, warnings))
 }
 
@@ -115,7 +136,7 @@ fn run_from_stdin(
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
     let (cfg, prio, budgets) = build_effective_configs(cli, cfg, input_count);
     let chosen_input = cli.input_format.unwrap_or(InputFormat::Json);
-    let (out, warnings, match_summary) = render_single_input(
+    let (out, warnings, match_summary, _) = render_single_input(
         chosen_input,
         input_bytes,
         &cfg,
@@ -131,7 +152,7 @@ fn run_from_paths(
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
     inputs: &[PathBuf],
-) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
+) -> Result<RenderResult> {
     let sorted_inputs = if needs_fileset(cli, inputs.len()) && !cli.no_sort {
         sort_paths_for_fileset(inputs)
     } else {
@@ -151,7 +172,7 @@ fn run_from_paths(
         return render_fileset(entries, warnings, cli, render_cfg, grep_cfg);
     }
     if entries.is_empty() {
-        return Ok((String::new(), warnings, None));
+        return Ok((String::new(), warnings, None, vec![]));
     }
     render_single_entry(entries, warnings, cli, render_cfg, grep_cfg)
 }
@@ -478,7 +499,7 @@ fn render_single_input(
     prio: &headson::PriorityConfig,
     grep_cfg: &headson::GrepConfig,
     budgets: headson::Budgets,
-) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
+) -> Result<RenderResult> {
     let text_mode = if matches!(cfg.template, headson::OutputTemplate::Code) {
         headson::TextMode::CodeLike
     } else {
@@ -517,7 +538,7 @@ fn render_single_input(
             budgets,
         ),
     }
-    .map(|out| (out.text, out.warnings, out.match_summary))
+    .map(|out| (out.text, out.warnings, out.match_summary, out.shown_leaves))
 }
 
 fn resolve_effective_template_for_stdin(
@@ -564,7 +585,7 @@ fn render_fileset(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
-) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
+) -> Result<RenderResult> {
     if !matches!(cli.format, OutputFormat::Auto) {
         bail!(
             "--format cannot be customized for filesets; remove it or set to auto"
@@ -585,6 +606,7 @@ fn render_fileset(
         text: out,
         warnings: fallback_warnings,
         match_summary,
+        shown_leaves,
     } = headson::headson(
         headson::InputKind::Fileset(files),
         &cfg,
@@ -599,7 +621,7 @@ fn render_fileset(
     {
         warnings.push("No grep matches found".to_string());
     }
-    Ok((out, warnings, match_summary))
+    Ok((out, warnings, match_summary, shown_leaves))
 }
 
 fn render_single_entry(
@@ -608,7 +630,7 @@ fn render_single_entry(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
-) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
+) -> Result<RenderResult> {
     let (name, bytes) = entries
         .pop()
         .expect("single-entry render expects one ingested input");
@@ -623,19 +645,20 @@ fn render_single_entry(
     );
     let (cfg_for_render, prio, budgets) =
         build_effective_configs(cli, cfg_for_render, 1usize);
-    let (out, mut fallback_warnings, match_summary) = render_single_input(
-        chosen_input,
-        bytes,
-        &cfg_for_render,
-        &prio,
-        grep_cfg,
-        budgets,
-    )
-    .with_context(|| format!("failed to parse input file: {name}"))?;
+    let (out, mut fallback_warnings, match_summary, shown_leaves) =
+        render_single_input(
+            chosen_input,
+            bytes,
+            &cfg_for_render,
+            &prio,
+            grep_cfg,
+            budgets,
+        )
+        .with_context(|| format!("failed to parse input file: {name}"))?;
     if !fallback_warnings.is_empty() {
         warnings.append(&mut fallback_warnings);
     }
-    Ok((out, warnings, match_summary))
+    Ok((out, warnings, match_summary, shown_leaves))
 }
 
 fn build_single_render_config(
@@ -922,4 +945,6 @@ mod tests {
             "zero-match summary must say '0 hidden'; got: {summary:?}"
         );
     }
+
+    // Session middleware tests (steps 31–35) live in session_middleware.rs.
 }

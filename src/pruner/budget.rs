@@ -56,20 +56,20 @@ pub fn find_largest_render_under_budgets(
     config: &RenderConfig,
     grep: &GrepConfig,
     budgets: Budgets,
-) -> (String, Option<MatchSummary>) {
+) -> (String, Option<MatchSummary>, usize) {
     let total = order_build.total_nodes;
     if total == 0 {
         let summary = grep.patterns.is_active().then_some(MatchSummary {
             shown: 0,
             hidden: 0,
         });
-        return (String::new(), summary);
+        return (String::new(), summary, 0);
     }
     let root_is_fileset = is_fileset_root(order_build);
     let mut grep_state = compute_grep_state(order_build, grep);
     if strong_fileset_grep_without_matches(grep, &grep_state, root_is_fileset)
     {
-        return (String::new(), match_summary_zero_shown(&grep_state));
+        return (String::new(), match_summary_zero_shown(&grep_state), 0);
     }
     filter_fileset_without_matches(
         order_build,
@@ -140,7 +140,9 @@ pub fn find_largest_render_under_budgets(
         selection,
         &finalize_ctx,
     )
-    .unwrap_or_else(|| (String::new(), match_summary_zero_shown(&grep_state)))
+    .unwrap_or_else(|| {
+        (String::new(), match_summary_zero_shown(&grep_state), 0)
+    })
 }
 
 struct FinalizeContext<'a> {
@@ -159,7 +161,7 @@ fn finalize_render_from_selection(
     config: &RenderConfig,
     selection: PruningResult<NodeId>,
     ctx: &FinalizeContext<'_>,
-) -> Option<(String, Option<MatchSummary>)> {
+) -> Option<(String, Option<MatchSummary>, usize)> {
     let PruningResult {
         top_k: k_opt,
         mut inclusion_flags,
@@ -238,7 +240,7 @@ fn finalize_render_from_selection(
     );
     let summary =
         compute_match_summary(ctx.grep_state, &inclusion_flags, render_set_id);
-    Some((text, summary))
+    Some((text, summary, k))
 }
 
 fn strong_fileset_grep_without_matches(

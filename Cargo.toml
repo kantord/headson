@@ -48,8 +48,7 @@ syntect = "5"
 regex = "1.11"
 clap_complete = "4.5.62"
 prunist = { path = "crates/prunist", version = "0.17.0" }
-
- 
+uuid = { version = "1", features = ["v4"] }
 
 [features]
 default = []
@@ -70,6 +69,7 @@ rand = "0.9"
 rand_chacha = "0.9"
 tempfile = "3"
 serde_yaml = "0.9"
+serial_test = "3"
 
 [profile.release]
 # Prioritize runtime speed for large inputs
