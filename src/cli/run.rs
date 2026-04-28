@@ -66,12 +66,36 @@ fn needs_fileset(cli: &Cli, inputs_len: usize) -> bool {
     inputs_len > 1 || cli.tree
 }
 
+fn build_explore_context(
+    session_id: Option<&str>,
+) -> Option<headson::ExploreContext> {
+    let id = session_id?;
+    let path = crate::cli::session_middleware::session_file_path(id);
+    let session = crate::session::io::load_from_path(&path).ok()?;
+    let breadcrumbs = session
+        .breadcrumbs
+        .into_iter()
+        .map(|b| headson::ExploreBreadcrumb {
+            file: b.file,
+            path: b.path,
+            count: b.count,
+            last_step: b.last_step,
+        })
+        .collect();
+    Some(headson::ExploreContext {
+        breadcrumbs,
+        current_step: session.step_count + 1,
+        alpha: 0.5,
+    })
+}
+
 pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
     budget::validate(cli)?;
     let render_cfg = get_render_config_from(cli);
     let grep_cfg = build_grep_config_from_cli(cli)?;
     let resolved_inputs = resolve_inputs(cli)?;
     let session_id = active_session_id(cli);
+    let explore_ctx = build_explore_context(session_id.as_deref());
     let from_stdin = resolved_inputs.is_empty();
     let (out, mut warnings, match_summary, shown_leaves) = if from_stdin {
         if !cli.globs.is_empty() || cli.recursive {
@@ -86,8 +110,13 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
         let (text, w, ms) = run_from_stdin(cli, &render_cfg, &grep_cfg)?;
         (text, w, ms, vec![])
     } else {
-        let (text, w, ms, leaves) =
-            run_from_paths(cli, &render_cfg, &grep_cfg, &resolved_inputs)?;
+        let (text, w, ms, leaves) = run_from_paths(
+            cli,
+            &render_cfg,
+            &grep_cfg,
+            &resolved_inputs,
+            explore_ctx.as_ref(),
+        )?;
         (text, w, ms, leaves)
     };
     if cli.count_matches {
@@ -152,6 +181,7 @@ fn run_from_paths(
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
     inputs: &[PathBuf],
+    explore_ctx: Option<&headson::ExploreContext>,
 ) -> Result<RenderResult> {
     let sorted_inputs = if needs_fileset(cli, inputs.len()) && !cli.no_sort {
         sort_paths_for_fileset(inputs)
@@ -169,12 +199,26 @@ fn run_from_paths(
         );
     }
     if needs_fileset(cli, inputs.len()) {
-        return render_fileset(entries, warnings, cli, render_cfg, grep_cfg);
+        return render_fileset(
+            entries,
+            warnings,
+            cli,
+            render_cfg,
+            grep_cfg,
+            explore_ctx,
+        );
     }
     if entries.is_empty() {
         return Ok((String::new(), warnings, None, vec![]));
     }
-    render_single_entry(entries, warnings, cli, render_cfg, grep_cfg)
+    render_single_entry(
+        entries,
+        warnings,
+        cli,
+        render_cfg,
+        grep_cfg,
+        explore_ctx,
+    )
 }
 
 fn read_stdin() -> Result<Vec<u8>> {
@@ -585,6 +629,7 @@ fn render_fileset(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
+    explore_ctx: Option<&headson::ExploreContext>,
 ) -> Result<RenderResult> {
     if !matches!(cli.format, OutputFormat::Auto) {
         bail!(
@@ -594,7 +639,9 @@ fn render_fileset(
     let mut cfg = render_cfg.clone();
     cfg.template = headson::OutputTemplate::Auto;
     let input_count = entries.len().max(1);
-    let (cfg, prio, budgets) = build_effective_configs(cli, cfg, input_count);
+    let (cfg, mut prio, budgets) =
+        build_effective_configs(cli, cfg, input_count);
+    prio.explore = explore_ctx.cloned();
     let files: Vec<headson::FilesetInput> = entries
         .into_iter()
         .map(|(name, bytes)| {
@@ -630,6 +677,7 @@ fn render_single_entry(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
+    explore_ctx: Option<&headson::ExploreContext>,
 ) -> Result<RenderResult> {
     let (name, bytes) = entries
         .pop()
@@ -643,8 +691,9 @@ fn render_single_entry(
         &name,
         chosen_input,
     );
-    let (cfg_for_render, prio, budgets) =
+    let (cfg_for_render, mut prio, budgets) =
         build_effective_configs(cli, cfg_for_render, 1usize);
+    prio.explore = explore_ctx.cloned();
     let (out, mut fallback_warnings, match_summary, shown_leaves) =
         render_single_input(
             chosen_input,

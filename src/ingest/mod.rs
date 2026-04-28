@@ -34,11 +34,11 @@ pub(crate) fn grep_adjusted_cfg(
     grep: &GrepConfig,
 ) -> PriorityConfig {
     if grep.has_strong() {
-        let mut c = *cfg;
+        let mut c = cfg.clone();
         c.array_max_items = usize::MAX;
         c
     } else {
-        *cfg
+        cfg.clone()
     }
 }
 

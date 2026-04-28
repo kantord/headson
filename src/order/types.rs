@@ -3,7 +3,22 @@ use std::sync::Arc;
 
 use super::scoring::DEFAULT_SAFETY_CAP;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
+pub struct ExploreBreadcrumb {
+    pub file: String,
+    pub path: String,
+    pub count: u64,
+    pub last_step: u64,
+}
+
+#[derive(Clone, Debug)]
+pub struct ExploreContext {
+    pub breadcrumbs: Vec<ExploreBreadcrumb>,
+    pub current_step: u64,
+    pub alpha: f64,
+}
+
+#[derive(Clone, Debug)]
 pub struct PriorityConfig {
     pub max_string_graphemes: usize,
     pub array_max_items: usize,
@@ -19,6 +34,8 @@ pub struct PriorityConfig {
     /// Hard ceiling on priority queue nodes to prevent degenerate inputs
     /// from exhausting memory/time. Default is 2,000,000.
     pub safety_cap: usize,
+    /// Optional explore context for deprioritizing previously-seen nodes.
+    pub explore: Option<ExploreContext>,
 }
 
 impl PriorityConfig {
@@ -31,6 +48,7 @@ impl PriorityConfig {
             array_sampler: ArraySamplerStrategy::Default,
             line_budget_only: false,
             safety_cap: DEFAULT_SAFETY_CAP,
+            explore: None,
         }
     }
 
@@ -58,6 +76,7 @@ impl PriorityConfig {
             array_sampler,
             line_budget_only,
             safety_cap: DEFAULT_SAFETY_CAP,
+            explore: None,
         }
     }
 }

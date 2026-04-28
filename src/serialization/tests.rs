@@ -113,6 +113,7 @@ fn array_omitted_markers_pseudo_head_and_tail() {
         array_sampler: crate::ArraySamplerStrategy::Default,
         line_budget_only: false,
         safety_cap: crate::DEFAULT_SAFETY_CAP,
+        explore: None,
     };
     let arena = crate::ingest::formats::json::build_json_tree_arena(
         "[1,2,3]", &cfg_prio,
@@ -151,6 +152,7 @@ fn array_omitted_markers_js_head_and_tail() {
         array_sampler: crate::ArraySamplerStrategy::Default,
         line_budget_only: false,
         safety_cap: crate::DEFAULT_SAFETY_CAP,
+        explore: None,
     };
     let arena = crate::ingest::formats::json::build_json_tree_arena(
         "[1,2,3]", &cfg_prio,
@@ -189,6 +191,7 @@ fn array_omitted_markers_yaml_head_and_tail() {
         array_sampler: crate::ArraySamplerStrategy::Default,
         line_budget_only: false,
         safety_cap: crate::DEFAULT_SAFETY_CAP,
+        explore: None,
     };
     let arena = crate::ingest::formats::json::build_json_tree_arena(
         "[1,2,3]", &cfg_prio,

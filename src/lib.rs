@@ -37,6 +37,7 @@ pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use ingest::format::Format;
 pub use ingest::{parse_json_one, parse_text_one_with_mode};
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
+pub use order::types::{ExploreBreadcrumb, ExploreContext};
 pub use order::{
     DEFAULT_SAFETY_CAP, NodeId, NodeKind, PriorityConfig, PriorityOrder,
     RankedNode, build_order,
@@ -83,6 +84,30 @@ pub enum InputKind {
     Fileset(Vec<FilesetInput>),
 }
 
+fn apply_explore_context(order: &mut PriorityOrder, ctx: &ExploreContext) {
+    let penalties: Vec<(NodeId, u128)> = order
+        .by_priority
+        .iter()
+        .filter_map(|&node_id| {
+            let (file, path) = node_path::leaf_breadcrumb_key(order, node_id)?;
+            let bc = ctx
+                .breadcrumbs
+                .iter()
+                .find(|b| b.file == file && b.path == path)?;
+            let steps_ago = ctx.current_step.saturating_sub(bc.last_step);
+            let penalty = (1.0 + bc.count as f64).ln()
+                * ctx.alpha.powi(steps_ago as i32);
+            (penalty > 0.0)
+                .then_some((node_id, (penalty * 1_000_000_000.0) as u128))
+        })
+        .collect();
+    for (node_id, delta) in &penalties {
+        order.scores[node_id.0] =
+            order.scores[node_id.0].saturating_add(*delta);
+    }
+    order.by_priority.sort_by_key(|id| order.scores[id.0]);
+}
+
 pub fn headson(
     input: InputKind,
     config: &RenderConfig,
@@ -95,6 +120,9 @@ pub fn headson(
         mut warnings,
     } = crate::ingest::ingest_into_arena(input, priority_cfg, grep)?;
     let mut order_build = order::build_order(&arena, priority_cfg)?;
+    if let Some(ctx) = &priority_cfg.explore {
+        apply_explore_context(&mut order_build, ctx);
+    }
     if order_build.safety_cap_hit {
         warnings.push(format!(
             "warning: input truncated (exceeded {} node safety cap)",
@@ -425,6 +453,89 @@ mod tests {
         assert!(
             top_k < total_nodes,
             "tight budget must not select all {total_nodes} nodes; top_k={top_k}"
+        );
+    }
+
+    // ── ExploreContext integration: deprioritize seen nodes via PriorityConfig ─
+
+    /// When `headson()` is called with an `ExploreContext` that records a
+    /// breadcrumb for the 'a' key in `{"a": 1, "b": 2}`, under a tight global
+    /// byte budget (20 bytes), the rendered output must contain 'b' but not 'a'.
+    #[test]
+    fn explore_context_deprioritizes_seen_node_under_tight_budget() {
+        let crumb = ExploreBreadcrumb {
+            file: "".to_string(),
+            path: "a".to_string(),
+            count: 1,
+            last_step: 1,
+        };
+        let ctx = ExploreContext {
+            breadcrumbs: vec![crumb],
+            current_step: 2,
+            alpha: 0.5,
+        };
+        let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        prio.explore = Some(ctx);
+
+        let tight_budgets = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 20,
+            }),
+            per_slot: None,
+        };
+
+        let result = headson(
+            InputKind::Json(br#"{"a": 1, "b": 2}"#.to_vec()),
+            &test_render_config(),
+            &prio,
+            &GrepConfig::default(),
+            tight_budgets,
+        )
+        .expect("headson should succeed");
+
+        assert!(
+            !result.text.contains("a:")
+                && !result.text.contains("a :")
+                && !result.text.contains("\"a\""),
+            "penalized key 'a' must NOT appear in output under tight budget; got: {:?}",
+            result.text
+        );
+        assert!(
+            result.text.contains('b'),
+            "un-penalized key 'b' must appear in output; got: {:?}",
+            result.text
+        );
+    }
+
+    /// Baseline: with `explore = None` and the same tight budget, 'a' appears
+    /// (it has higher priority than 'b' under fair object-key ordering).
+    #[test]
+    fn explore_context_none_does_not_affect_output() {
+        let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        prio.explore = None;
+
+        let tight_budgets = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 20,
+            }),
+            per_slot: None,
+        };
+
+        let result = headson(
+            InputKind::Json(br#"{"a": 1, "b": 2}"#.to_vec()),
+            &test_render_config(),
+            &prio,
+            &GrepConfig::default(),
+            tight_budgets,
+        )
+        .expect("headson should succeed");
+
+        assert!(
+            result.text.contains('a'),
+            "without explore penalty, 'a' (first key) must appear in output under tight budget; got: {:?}",
+            result.text
         );
     }
 
