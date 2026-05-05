@@ -45,7 +45,7 @@ pub use order::{
 pub use utils::extensions;
 pub use utils::templates::map_json_template_for_style;
 
-pub use node_path::leaf_breadcrumb_key;
+pub use node_path::{compute_merkle_hashes, leaf_breadcrumb_key};
 pub use pruner::budget::find_largest_render_under_budgets;
 pub use prunist::{Budget, BudgetKind, Budgets};
 pub use serialization::color::resolve_color_enabled;
@@ -85,11 +85,13 @@ pub enum InputKind {
 }
 
 fn apply_explore_context(order: &mut PriorityOrder, ctx: &ExploreContext) {
+    let hashes = node_path::compute_merkle_hashes(order);
     let penalties: Vec<(NodeId, u128)> = order
         .by_priority
         .iter()
         .filter_map(|&node_id| {
-            let (file, path) = node_path::leaf_breadcrumb_key(order, node_id)?;
+            let (file, path) =
+                node_path::leaf_breadcrumb_key(order, node_id, &hashes)?;
             let bc = ctx
                 .breadcrumbs
                 .iter()
@@ -458,6 +460,29 @@ mod tests {
 
     // ── ExploreContext integration: deprioritize seen nodes via PriorityConfig ─
 
+    /// Compute the composite breadcrumb key (`"dot_path#hash"`) for a leaf at
+    /// `dot_path` in a single-file JSON input.
+    fn composite_key_for(json: &[u8], dot_path: &str) -> String {
+        let input = InputKind::Json(json.to_vec());
+        let prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        let grep = GrepConfig::default();
+        let ingest_out = crate::ingest::ingest_into_arena(input, &prio, &grep)
+            .expect("ingest");
+        let order =
+            order::build_order(&ingest_out.arena, &prio).expect("order");
+        let hashes = node_path::compute_merkle_hashes(&order);
+        order
+            .by_priority
+            .iter()
+            .find_map(|&node_id| {
+                let (_, path) =
+                    node_path::leaf_breadcrumb_key(&order, node_id, &hashes)?;
+                let prefix = path.split_once('#').map(|(p, _)| p)?;
+                (prefix == dot_path).then_some(path)
+            })
+            .unwrap_or_else(|| panic!("no leaf at dot_path {dot_path:?}"))
+    }
+
     /// When `headson()` is called with an `ExploreContext` that records a
     /// breadcrumb for the 'a' key in `{"a": 1, "b": 2}`, under a tight global
     /// byte budget (20 bytes), the rendered output must contain 'b' but not 'a'.
@@ -465,7 +490,7 @@ mod tests {
     fn explore_context_deprioritizes_seen_node_under_tight_budget() {
         let crumb = ExploreBreadcrumb {
             file: "".to_string(),
-            path: "a".to_string(),
+            path: composite_key_for(br#"{"a": 1, "b": 2}"#, "a"),
             count: 1,
             last_step: 1,
         };

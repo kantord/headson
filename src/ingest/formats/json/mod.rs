@@ -8,6 +8,7 @@ use serde::de::DeserializeSeed;
 use crate::PriorityConfig;
 use crate::utils::tree_arena::JsonTreeArena as TreeArena;
 
+#[allow(dead_code, reason = "used only in non-test fn parse_jsonl_into_arena")]
 type ChunkResult = (TreeArena, Vec<(usize, usize)>);
 
 #[cfg(test)]
