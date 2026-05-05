@@ -50,7 +50,7 @@ pub(crate) fn grep_adjusted_cfg(
 pub(crate) fn jsonl_grep_predicate(
     bytes: &[u8],
     grep: &GrepConfig,
-) -> Box<dyn Fn(usize) -> bool> {
+) -> Box<dyn Fn(usize) -> bool + Sync> {
     let Some(re) = grep.patterns.strong() else {
         return Box::new(|_| false);
     };

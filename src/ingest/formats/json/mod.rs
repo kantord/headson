@@ -8,6 +8,8 @@ use serde::de::DeserializeSeed;
 use crate::PriorityConfig;
 use crate::utils::tree_arena::JsonTreeArena as TreeArena;
 
+type ChunkResult = (TreeArena, Vec<(usize, usize)>);
+
 #[cfg(test)]
 pub(crate) fn build_json_tree_arena(
     input: &str,
@@ -94,11 +96,14 @@ pub(crate) fn jsonl_line_offsets(text: &str) -> Vec<(usize, usize)> {
 pub fn parse_jsonl_one(
     bytes: &[u8],
     cfg: &PriorityConfig,
-    must_include: impl Fn(usize) -> bool,
+    must_include: impl Fn(usize) -> bool + Sync,
 ) -> Result<TreeArena> {
     use crate::ingest::sampling::{
         ArraySamplerKind, choose_indices, merge_required,
     };
+    use crate::order::NodeKind;
+    use crate::utils::tree_arena::JsonTreeNode;
+    use rayon::prelude::*;
 
     let text = std::str::from_utf8(bytes)
         .map_err(|e| anyhow::anyhow!("JSONL input is not valid UTF-8: {e}"))?;
@@ -109,37 +114,90 @@ pub fn parse_jsonl_one(
     let sampled = choose_indices(sampler_kind, total, cfg.array_max_items);
     let kept_indices = merge_required(sampled, total, &must_include);
 
-    let builder = JsonTreeBuilder::new(cfg.array_max_items, sampler_kind);
-    let root_id = builder.push_default();
-    let mut child_ids: Vec<usize> = Vec::with_capacity(kept_indices.len());
-    let mut line_numbers: Vec<usize> = Vec::with_capacity(kept_indices.len());
+    let array_cap = cfg.array_max_items;
 
-    for &sampled_idx in &kept_indices {
-        let (byte_start, line_num) = line_offsets[sampled_idx];
-        let line = &text[byte_start..];
-        let line = line.split('\n').next().unwrap_or("").trim_end();
-        let mut line_bytes = line.as_bytes().to_vec();
-        let mut de = simd_json::Deserializer::from_slice(&mut line_bytes)
-            .map_err(|e| anyhow::anyhow!("JSONL line {line_num}: {e}"))?;
-        let seed = builder.seed();
-        let child_id: usize = seed
-            .deserialize(&mut de)
-            .map_err(|e| anyhow::anyhow!("JSONL line {line_num}: {e}"))?;
-        child_ids.push(child_id);
-        line_numbers.push(line_num);
+    // Parse kept lines in parallel, chunked to reduce per-task overhead.
+    // Each chunk shares a single JsonTreeBuilder, producing one arena per
+    // chunk instead of one per line.
+    let num_chunks = rayon::current_num_threads().max(1);
+    let chunk_size = (kept_indices.len() + num_chunks - 1) / num_chunks.max(1);
+
+    let per_chunk: Vec<ChunkResult> = kept_indices
+        .par_chunks(chunk_size.max(1))
+        .map(|chunk| {
+            let builder = JsonTreeBuilder::new(array_cap, sampler_kind);
+            let mut roots: Vec<(usize, usize)> =
+                Vec::with_capacity(chunk.len());
+            let mut buf: Vec<u8> = Vec::new();
+            for &idx in chunk {
+                let (byte_start, line_num) = line_offsets[idx];
+                let raw = &text[byte_start..];
+                let raw = raw.split('\n').next().unwrap_or("").trim_end();
+                let raw_bytes = raw.as_bytes();
+                buf.clear();
+                buf.extend_from_slice(raw_bytes);
+                let mut de = simd_json::Deserializer::from_slice(&mut buf)
+                    .map_err(|e| {
+                        anyhow::anyhow!("JSONL line {line_num}: {e}")
+                    })?;
+                let seed = builder.seed();
+                let root: usize = seed.deserialize(&mut de).map_err(|e| {
+                    anyhow::anyhow!("JSONL line {line_num}: {e}")
+                })?;
+                roots.push((root, line_num));
+            }
+            Ok((builder.finish(), roots))
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    // Sequential merge: combine chunk arenas into one, extracting each
+    // line's root node via its offset-adjusted ID.
+    let mut arena = TreeArena::default();
+    let root_id = arena.nodes.len();
+    arena.nodes.push(JsonTreeNode::default());
+
+    let kept = kept_indices.len();
+    let mut child_ids: Vec<usize> = Vec::with_capacity(kept);
+    let mut line_numbers: Vec<usize> = Vec::with_capacity(kept);
+
+    for (chunk_arena, roots) in per_chunk {
+        let base = arena.nodes.len();
+        let chunk_root = arena.append(chunk_arena);
+        // chunk_root is the offset-adjusted root of the chunk arena,
+        // but we need each individual line's root. The offset delta is
+        // base - 0 (chunk arenas start at node 0).
+        let _unused = chunk_root;
+        for (orig_root, line_num) in roots {
+            child_ids.push(base + orig_root);
+            line_numbers.push(line_num);
+        }
     }
 
-    let kept = child_ids.len();
-    builder.finish_array(root_id, kept, total, child_ids, line_numbers);
+    // Detect contiguous indices to skip storing arr_indices.
+    let contiguous = line_numbers.len() == kept
+        && line_numbers.iter().enumerate().all(|(i, &ln)| ln == i);
 
-    let mut arena = builder.finish();
+    let children_start = arena.children.len();
+    arena.children.extend(&child_ids);
+
+    let (arr_start, arr_len) = if kept == 0 || contiguous {
+        (0, 0)
+    } else {
+        let start = arena.arr_indices.len();
+        arena.arr_indices.extend(&line_numbers);
+        (start, line_numbers.len())
+    };
+
+    let root = &mut arena.nodes[root_id];
+    root.kind = NodeKind::Array;
+    root.children_start = children_start;
+    root.children_len = kept;
+    root.array_len = Some(total);
+    root.arr_indices_start = arr_start;
+    root.arr_indices_len = arr_len;
+    root.is_jsonl_root = true;
+
     arena.root_id = root_id;
-
-    if let Some(node) = arena.nodes.get_mut(root_id) {
-        node.array_len = Some(total);
-        node.is_jsonl_root = true;
-    }
-
     Ok(arena)
 }
 

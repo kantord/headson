@@ -691,6 +691,7 @@ dependencies = [
  "prunist",
  "rand",
  "rand_chacha",
+ "rayon",
  "regex",
  "serde",
  "serde_json",
