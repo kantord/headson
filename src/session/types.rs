@@ -87,7 +87,7 @@ impl Session {
         // Cap: keep only the `cap` most recently seen entries
         if self.breadcrumbs.len() > cap {
             self.breadcrumbs
-                .sort_by(|a, b| b.last_step.cmp(&a.last_step));
+                .sort_by_key(|b| std::cmp::Reverse(b.last_step));
             self.breadcrumbs.truncate(cap);
         }
     }

@@ -37,22 +37,29 @@ fn build_json_path(order: &PriorityOrder, node_id: NodeId) -> String {
 
 fn node_hash(order: &PriorityOrder, id: usize, hashes: &[u64]) -> u64 {
     match order.nodes.get(id) {
-        None => 0,
         Some(RankedNode::AtomicLeaf { token, .. }) => fnv1a(token.as_bytes()),
-        Some(RankedNode::SplittableLeaf { value, .. }) => fnv1a(value.as_bytes()),
-        Some(RankedNode::LeafPart { .. }) => 0,
+        Some(RankedNode::SplittableLeaf { value, .. }) => {
+            fnv1a(value.as_bytes())
+        }
+        None | Some(RankedNode::LeafPart { .. }) => 0,
         Some(RankedNode::Object { .. } | RankedNode::Array { .. }) => {
             let mut h = FNV1A_INIT;
             if let Some(children) = order.children.get(id) {
                 for &child_id in children {
-                    if let Some(key) =
-                        order.nodes.get(child_id.0).and_then(|n| n.key_in_object())
+                    if let Some(key) = order
+                        .nodes
+                        .get(child_id.0)
+                        .and_then(|n| n.key_in_object())
                     {
                         h = fnv1a_update(h, key.as_bytes());
                     }
                     h = fnv1a_update(
                         h,
-                        &hashes.get(child_id.0).copied().unwrap_or(0).to_le_bytes(),
+                        &hashes
+                            .get(child_id.0)
+                            .copied()
+                            .unwrap_or(0)
+                            .to_le_bytes(),
                     );
                 }
             }
@@ -71,6 +78,10 @@ fn node_hash(order: &PriorityOrder, id: usize, hashes: &[u64]) -> u64 {
 ///
 /// The returned `Vec<u64>` is indexed by PQ node id (`NodeId.0`).
 /// Output is deterministic across process restarts.
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "post-order tree traversal inherently requires nested control flow"
+)]
 pub fn compute_merkle_hashes(order: &PriorityOrder) -> Vec<u64> {
     let n = order.nodes.len();
     let mut hashes = vec![0u64; n];
@@ -136,13 +147,14 @@ pub(crate) fn collect_shown_leaves(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::order::PriorityConfig;
     use crate::ingest::{parse_json_one, parse_text_one_with_mode};
+    use crate::order::PriorityConfig;
     use crate::order::build_order;
 
     fn make_order(json: &[u8]) -> PriorityOrder {
         let cfg = PriorityConfig::new(usize::MAX, usize::MAX);
-        let arena = parse_json_one(json.to_vec(), &cfg).expect("parse must succeed");
+        let arena =
+            parse_json_one(json.to_vec(), &cfg).expect("parse must succeed");
         build_order(&arena, &cfg).expect("build_order must succeed")
     }
 
@@ -155,8 +167,10 @@ mod tests {
         let order2 = make_order(json);
         let hashes1 = compute_merkle_hashes(&order1);
         let hashes2 = compute_merkle_hashes(&order2);
-        assert_eq!(hashes1, hashes2,
-            "Merkle hashes must be identical across two builds of the same input");
+        assert_eq!(
+            hashes1, hashes2,
+            "Merkle hashes must be identical across two builds of the same input"
+        );
     }
 
     // B. Root-node hash differs when a leaf value changes.
@@ -197,8 +211,7 @@ mod tests {
         let id_world = find_a_leaf_id(&order_world);
 
         assert_eq!(
-            hashes_hello[id_hello],
-            hashes_world[id_world],
+            hashes_hello[id_hello], hashes_world[id_world],
             "Hash for unchanged leaf ('a': 1) must be the same regardless of sibling change"
         );
     }
@@ -218,12 +231,24 @@ mod tests {
         }).expect("must find 'alice' leaf");
 
         let result = leaf_breadcrumb_key(&order, NodeId(alice_id), &hashes);
-        let (_, path) = result.expect("leaf_breadcrumb_key must return Some for a leaf");
+        let (_, path) =
+            result.expect("leaf_breadcrumb_key must return Some for a leaf");
 
         let parts: Vec<&str> = path.splitn(2, '#').collect();
-        assert_eq!(parts.len(), 2, "path must contain exactly one '#' separator; got: {path:?}");
-        assert_eq!(parts[0], "name", "dot_path before '#' must be 'name'; got: {path:?}");
-        assert_eq!(parts[1].len(), 16, "hex hash after '#' must be 16 chars; got: {path:?}");
+        assert_eq!(
+            parts.len(),
+            2,
+            "path must contain exactly one '#' separator; got: {path:?}"
+        );
+        assert_eq!(
+            parts[0], "name",
+            "dot_path before '#' must be 'name'; got: {path:?}"
+        );
+        assert_eq!(
+            parts[1].len(),
+            16,
+            "hex hash after '#' must be 16 chars; got: {path:?}"
+        );
         assert!(
             parts[1].chars().all(|c| c.is_ascii_hexdigit()),
             "hash part must be hex digits; got: {path:?}"
@@ -248,7 +273,10 @@ mod tests {
 
         let key1 = leaf_breadcrumb_key(&order1, find_leaf(&order1), &hashes1);
         let key2 = leaf_breadcrumb_key(&order2, find_leaf(&order2), &hashes2);
-        assert_eq!(key1, key2, "composite key must be identical across two builds of the same input");
+        assert_eq!(
+            key1, key2,
+            "composite key must be identical across two builds of the same input"
+        );
     }
 
     // F. Composite key for unchanged leaf is stable when a sibling leaf changes.
@@ -266,8 +294,16 @@ mod tests {
             }).expect("must find AtomicLeaf for key 'a'"))
         };
 
-        let key_hello = leaf_breadcrumb_key(&order_hello, find_a(&order_hello), &hashes_hello);
-        let key_world = leaf_breadcrumb_key(&order_world, find_a(&order_world), &hashes_world);
+        let key_hello = leaf_breadcrumb_key(
+            &order_hello,
+            find_a(&order_hello),
+            &hashes_hello,
+        );
+        let key_world = leaf_breadcrumb_key(
+            &order_world,
+            find_a(&order_world),
+            &hashes_world,
+        );
         assert_eq!(
             key_hello, key_world,
             "composite key for unchanged leaf must be stable when a sibling changes"
@@ -282,7 +318,10 @@ mod tests {
         let hashes = compute_merkle_hashes(&order);
 
         for (idx, node) in order.nodes.iter().enumerate() {
-            if matches!(node, RankedNode::Array { .. } | RankedNode::Object { .. }) {
+            if matches!(
+                node,
+                RankedNode::Array { .. } | RankedNode::Object { .. }
+            ) {
                 let result = leaf_breadcrumb_key(&order, NodeId(idx), &hashes);
                 assert!(
                     result.is_none(),
@@ -296,18 +335,25 @@ mod tests {
     // part (before '#') is NOT a standalone hex string (old behavior was to
     // return only a hash with no dot-path prefix).
     #[test]
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "test iterates nodes and checks multiple properties"
+    )]
     fn code_mode_no_longer_special_cased() {
         let code = b"fn foo() {\n    let x = 1;\n}\n";
         let cfg = PriorityConfig::new(usize::MAX, usize::MAX);
         let arena = parse_text_one_with_mode(code.to_vec(), &cfg, true)
             .expect("parse must succeed");
-        let order = build_order(&arena, &cfg).expect("build_order must succeed");
+        let order =
+            build_order(&arena, &cfg).expect("build_order must succeed");
         let hashes = compute_merkle_hashes(&order);
 
         let mut found_leaf = false;
         for (idx, node) in order.nodes.iter().enumerate() {
             if matches!(node, RankedNode::AtomicLeaf { .. }) {
-                if let Some((_, path)) = leaf_breadcrumb_key(&order, NodeId(idx), &hashes) {
+                if let Some((_, path)) =
+                    leaf_breadcrumb_key(&order, NodeId(idx), &hashes)
+                {
                     found_leaf = true;
                     assert!(
                         path.contains('#'),
@@ -327,6 +373,9 @@ mod tests {
                 }
             }
         }
-        assert!(found_leaf, "must have found at least one AtomicLeaf in code input");
+        assert!(
+            found_leaf,
+            "must have found at least one AtomicLeaf in code input"
+        );
     }
 }
