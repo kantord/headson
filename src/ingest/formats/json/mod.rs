@@ -163,11 +163,11 @@ pub fn parse_jsonl_one(
 
     for (chunk_arena, roots) in per_chunk {
         let base = arena.nodes.len();
-        let chunk_root = arena.append(chunk_arena);
-        // chunk_root is the offset-adjusted root of the chunk arena,
-        // but we need each individual line's root. The offset delta is
-        // base - 0 (chunk arenas start at node 0).
-        let _unused = chunk_root;
+        // arena.append shifts every node index in chunk_arena by `base`.
+        // chunk_root is the builder's synthetic container root — not needed.
+        // Each JSONL line's root is orig_root (index within chunk_arena),
+        // so its global ID after the shift is base + orig_root.
+        let _ = arena.append(chunk_arena);
         for (orig_root, line_num) in roots {
             child_ids.push(base + orig_root);
             line_numbers.push(line_num);
