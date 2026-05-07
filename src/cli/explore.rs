@@ -345,8 +345,7 @@ mod tests {
         );
     }
 
-    /// Step 41: `explore clear` zeroes breadcrumbs and step_count but preserves
-    /// existing queries in the session file.
+    /// Step 41: `explore clear` zeroes breadcrumbs, step_count, and queries.
     #[test]
     #[serial]
     fn explore_clear_zeroes_breadcrumbs_preserves_queries() {
@@ -406,8 +405,9 @@ mod tests {
             updated.step_count
         );
         assert!(
-            !updated.queries.is_empty(),
-            "queries must be preserved after clear; got empty"
+            updated.queries.is_empty(),
+            "queries must be cleared after clear; got: {:?}",
+            updated.queries
         );
     }
 

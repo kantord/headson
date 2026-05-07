@@ -98,6 +98,7 @@ impl Session {
 
     pub fn clear(&mut self) {
         self.breadcrumbs = vec![];
+        self.queries = vec![];
         self.step_count = 0;
     }
 
@@ -169,10 +170,10 @@ mod tests {
         });
         session.clear();
         assert!(session.breadcrumbs.is_empty());
+        assert!(session.queries.is_empty());
         assert_eq!(session.step_count, 0);
         assert_eq!(session.label, "lbl");
         assert_eq!(session.id, "x");
-        assert_eq!(session.queries.len(), 2);
     }
 
     #[test]
