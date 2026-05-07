@@ -59,6 +59,10 @@ impl Session {
         }
     }
 
+    #[cfg_attr(
+        not(test),
+        allow(dead_code, reason = "used only in session/types tests")
+    )]
     pub fn penalty_for(
         &self,
         file: &str,

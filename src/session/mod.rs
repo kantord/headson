@@ -1,13 +1,8 @@
-#![allow(
-    dead_code,
-    unused_imports,
-    reason = "session module is work in progress; symbols will be wired up incrementally"
-)]
-
 pub mod io;
-pub mod keys;
-pub mod penalty;
 mod types;
 
-pub use keys::breadcrumb_key;
-pub use types::{Breadcrumb, QueryEntry, Session};
+pub use types::Session;
+
+// Breadcrumb and QueryEntry are only referenced in test code.
+#[cfg(test)]
+pub use types::{Breadcrumb, QueryEntry};

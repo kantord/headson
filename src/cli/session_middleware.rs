@@ -3,6 +3,13 @@ use std::path::PathBuf;
 
 use crate::cli::args::Cli;
 
+/// Maximum number of breadcrumbs kept per session; older entries are evicted.
+pub(crate) const BREADCRUMB_CAP: usize = 500;
+/// Maximum number of query log entries kept; oldest are dropped when exceeded.
+pub(crate) const QUERY_LOG_CAP: usize = 1000;
+/// Decay factor per step — matches the alpha used by the penalty engine.
+const DEFAULT_ALPHA: f64 = 0.5;
+
 pub(crate) fn active_session_id(cli: &Cli) -> Option<String> {
     cli.session.clone().or_else(|| {
         std::env::var("HSON_SESSION").ok().filter(|s| !s.is_empty())
@@ -95,7 +102,14 @@ pub(crate) fn record_session(
         session.record_breadcrumb(file, node_path, new_step);
     }
     session.record_query(new_step, &current_timestamp(), cwd, argv);
-    let _ = crate::session::io::save_to_path(&session, &path);
+    // Merge with any concurrent write, then evict and cap — all atomically.
+    let _ = crate::session::io::save_merged_with_eviction_to_path(
+        &session,
+        &path,
+        DEFAULT_ALPHA,
+        BREADCRUMB_CAP,
+        QUERY_LOG_CAP,
+    );
 }
 
 pub(crate) fn maybe_record_session(
@@ -371,6 +385,113 @@ mod tests {
                 .join(format!("{session_id}.json"))
                 .exists(),
             "session file must not be written when run() has not been called"
+        );
+    }
+
+    /// Regression: record_session must evict stale breadcrumbs so session
+    /// files don't grow without bound across long-running explorations.
+    #[test]
+    #[serial]
+    fn record_session_caps_breadcrumbs_when_limit_exceeded() {
+        let dir = tempdir().unwrap();
+        let state_dir = dir.path();
+        let session_id = "breadcrumb-cap-regression";
+
+        let old_state = std::env::var("XDG_STATE_HOME").ok();
+        let old_session_env = std::env::var("HSON_SESSION").ok();
+        unsafe {
+            std::env::set_var("XDG_STATE_HOME", state_dir);
+            std::env::remove_var("HSON_SESSION");
+        }
+
+        // Pre-populate with 600 breadcrumbs — above the BREADCRUMB_CAP of 500.
+        let path = session_file_path(session_id);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut session = crate::session::Session::new(
+            session_id.to_string(),
+            "lbl".to_string(),
+        );
+        for i in 0u64..600 {
+            session.record_breadcrumb("", &format!("k{i}#h{i}"), i + 1);
+        }
+        session.step_count = 600;
+        crate::session::io::save_to_path(&session, &path).unwrap();
+
+        record_session(
+            session_id,
+            &[(String::new(), "new#newhash".to_string())],
+            "/cwd",
+            vec![],
+        );
+
+        unsafe {
+            match old_state {
+                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
+                None => std::env::remove_var("XDG_STATE_HOME"),
+            }
+            match old_session_env {
+                Some(v) => std::env::set_var("HSON_SESSION", v),
+                None => std::env::remove_var("HSON_SESSION"),
+            }
+        }
+
+        let final_session = crate::session::io::load_from_path(&path)
+            .expect("session file must exist after record_session");
+        assert!(
+            final_session.breadcrumbs.len() <= BREADCRUMB_CAP,
+            "breadcrumbs must be capped at {} after record_session; got: {}",
+            BREADCRUMB_CAP,
+            final_session.breadcrumbs.len()
+        );
+    }
+
+    /// Regression: record_session must cap the query log to prevent unbounded growth.
+    #[test]
+    #[serial]
+    fn record_session_caps_query_log_when_limit_exceeded() {
+        let dir = tempdir().unwrap();
+        let state_dir = dir.path();
+        let session_id = "query-cap-regression";
+
+        let old_state = std::env::var("XDG_STATE_HOME").ok();
+        let old_session_env = std::env::var("HSON_SESSION").ok();
+        unsafe {
+            std::env::set_var("XDG_STATE_HOME", state_dir);
+            std::env::remove_var("HSON_SESSION");
+        }
+
+        // Pre-populate with QUERY_LOG_CAP + 100 queries.
+        let path = session_file_path(session_id);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut session = crate::session::Session::new(
+            session_id.to_string(),
+            "lbl".to_string(),
+        );
+        for i in 0u64..(QUERY_LOG_CAP as u64 + 100) {
+            session.record_query(i + 1, "ts", "/cwd", vec![]);
+        }
+        crate::session::io::save_to_path(&session, &path).unwrap();
+
+        record_session(session_id, &[], "/cwd", vec![]);
+
+        unsafe {
+            match old_state {
+                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
+                None => std::env::remove_var("XDG_STATE_HOME"),
+            }
+            match old_session_env {
+                Some(v) => std::env::set_var("HSON_SESSION", v),
+                None => std::env::remove_var("HSON_SESSION"),
+            }
+        }
+
+        let final_session = crate::session::io::load_from_path(&path)
+            .expect("session file must exist after record_session");
+        assert!(
+            final_session.queries.len() <= QUERY_LOG_CAP,
+            "query log must be capped at {}; got: {}",
+            QUERY_LOG_CAP,
+            final_session.queries.len()
         );
     }
 }

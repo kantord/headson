@@ -19,6 +19,14 @@ pub fn load_from_path(path: &Path) -> Result<Session, io::Error> {
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
+#[cfg_attr(
+    not(test),
+    allow(dead_code, reason = "used only in session/io tests")
+)]
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "merge logic touches multiple parallel collections; splitting would obscure the invariant"
+)]
 pub fn save_merged_to_path(
     new_session: &Session,
     path: &Path,
@@ -45,9 +53,72 @@ pub fn save_merged_to_path(
         }
     }
 
-    // Append queries from new_session
+    // Append queries, deduplicating by step to avoid double-counting when
+    // new_session was derived from the same base as what's on disk.
+    let existing_steps: std::collections::HashSet<u64> =
+        base.queries.iter().map(|q| q.step).collect();
     for q in &new_session.queries {
-        base.queries.push(q.clone());
+        if !existing_steps.contains(&q.step) {
+            base.queries.push(q.clone());
+        }
+    }
+
+    save_to_path(&base, path)
+}
+
+/// Merge, evict, and cap in one atomic operation.
+///
+/// 1. Re-read on-disk state to pick up concurrent writes.
+/// 2. Upsert breadcrumbs from `new_session` (new_session wins on conflict).
+/// 3. Append queries from `new_session`, deduplicating by step.
+/// 4. Apply `Session::evict` on the merged result.
+/// 5. Truncate the query log to `query_log_cap` most-recent entries.
+/// 6. Atomic-rename write the final state.
+#[allow(
+    clippy::cognitive_complexity,
+    reason = "merge + evict + cap steps all touch the same mutable state; splitting would require passing it around"
+)]
+pub fn save_merged_with_eviction_to_path(
+    new_session: &Session,
+    path: &Path,
+    alpha: f64,
+    breadcrumb_cap: usize,
+    query_log_cap: usize,
+) -> Result<(), io::Error> {
+    let mut base = if path.exists() {
+        load_from_path(path).unwrap_or_else(|_| {
+            Session::new(new_session.id.clone(), new_session.label.clone())
+        })
+    } else {
+        Session::new(new_session.id.clone(), new_session.label.clone())
+    };
+
+    for bc in &new_session.breadcrumbs {
+        if let Some(existing) = base
+            .breadcrumbs
+            .iter_mut()
+            .find(|b| b.file == bc.file && b.path == bc.path)
+        {
+            *existing = bc.clone();
+        } else {
+            base.breadcrumbs.push(bc.clone());
+        }
+    }
+
+    let existing_steps: std::collections::HashSet<u64> =
+        base.queries.iter().map(|q| q.step).collect();
+    for q in &new_session.queries {
+        if !existing_steps.contains(&q.step) {
+            base.queries.push(q.clone());
+        }
+    }
+
+    base.step_count = new_session.step_count;
+    base.evict(new_session.step_count, alpha, breadcrumb_cap);
+
+    if base.queries.len() > query_log_cap {
+        let excess = base.queries.len() - query_log_cap;
+        base.queries.drain(0..excess);
     }
 
     save_to_path(&base, path)
