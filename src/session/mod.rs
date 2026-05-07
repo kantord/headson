@@ -3,6 +3,6 @@ mod types;
 
 pub use types::Session;
 
-// Breadcrumb and QueryEntry are only referenced in test code.
+// QueryEntry is only referenced in test code.
 #[cfg(test)]
-pub use types::{Breadcrumb, QueryEntry};
+pub use types::QueryEntry;

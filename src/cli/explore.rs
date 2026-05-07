@@ -87,7 +87,7 @@ mod tests {
     use super::*;
     use crate::cli::args::ExploreSubcommand;
     use crate::session::io::{load_from_path, save_to_path};
-    use crate::session::{Breadcrumb, QueryEntry, Session};
+    use crate::session::{QueryEntry, Session};
     use clap::Parser;
     use serial_test::serial;
     use tempfile::tempdir;
@@ -501,11 +501,4 @@ mod tests {
             "beta (step 2) must appear before gamma (step 3) in output; beta@{pos_beta}, gamma@{pos_gamma}"
         );
     }
-
-    // Silence unused-import warning for Breadcrumb (used in step 41)
-    #[allow(
-        dead_code,
-        reason = "imported for type visibility in test helpers"
-    )]
-    fn _use_breadcrumb(_: Breadcrumb) {}
 }

@@ -1,12 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Breadcrumb {
-    pub file: String,
-    pub path: String,
-    pub count: u64,
-    pub last_step: u64,
-}
+pub use headson::Breadcrumb;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct QueryEntry {
@@ -59,10 +53,7 @@ impl Session {
         }
     }
 
-    #[cfg_attr(
-        not(test),
-        allow(dead_code, reason = "used only in session/types tests")
-    )]
+    #[cfg(test)]
     pub fn penalty_for(
         &self,
         file: &str,
@@ -77,8 +68,9 @@ impl Session {
         {
             None => 0.0,
             Some(b) => {
-                (1.0 + b.count as f64).ln()
-                    * alpha.powi((current_step - b.last_step) as i32)
+                let steps_ago =
+                    (current_step - b.last_step).min(i32::MAX as u64) as i32;
+                (1.0 + b.count as f64).ln() * alpha.powi(steps_ago)
             }
         }
     }
@@ -86,7 +78,9 @@ impl Session {
     pub fn evict(&mut self, current_step: u64, alpha: f64, cap: usize) {
         // Epsilon prune: drop entries whose decay factor is below 0.001
         self.breadcrumbs.retain(|b| {
-            alpha.powi((current_step - b.last_step) as i32) >= 0.001
+            let steps_ago =
+                (current_step - b.last_step).min(i32::MAX as u64) as i32;
+            alpha.powi(steps_ago) >= 0.001
         });
         // Cap: keep only the `cap` most recently seen entries
         if self.breadcrumbs.len() > cap {
@@ -104,17 +98,16 @@ impl Session {
 
     pub fn record_query(
         &mut self,
-        step: u64,
         timestamp: &str,
         cwd: &str,
-        argv: Vec<String>,
+        argv: &[String],
     ) {
         self.step_count += 1;
         self.queries.push(QueryEntry {
-            step,
+            step: self.step_count,
             timestamp: timestamp.to_string(),
             cwd: cwd.to_string(),
-            argv,
+            argv: argv.to_vec(),
         });
     }
 }
@@ -127,8 +120,8 @@ mod tests {
     fn step_count_increments_on_record_query() {
         let mut session = Session::new("id".to_string(), "lbl".to_string());
         assert_eq!(session.step_count, 0);
-        session.record_query(1, "t1", "/", vec![]);
-        session.record_query(2, "t2", "/", vec![]);
+        session.record_query("t1", "/", &[]);
+        session.record_query("t2", "/", &[]);
         assert_eq!(session.step_count, 2);
     }
 
@@ -136,10 +129,9 @@ mod tests {
     fn record_query_stores_correct_fields() {
         let mut session = Session::new("id".to_string(), "lbl".to_string());
         session.record_query(
-            1,
             "2026-01-01T00:00:00Z",
             "/home/user",
-            vec!["src/".into(), "-C".into(), "8000".into()],
+            &["src/".into(), "-C".into(), "8000".into()],
         );
         assert_eq!(session.queries.len(), 1);
         let entry = &session.queries[0];
@@ -150,7 +142,7 @@ mod tests {
     }
 
     #[test]
-    fn clear_zeroes_breadcrumbs_and_step_count_preserves_rest() {
+    fn clear_resets_all_session_state() {
         let mut session = Session::new("x".to_string(), "lbl".to_string());
         session.step_count = 5;
         session.record_breadcrumb("a.json", "x", 1);

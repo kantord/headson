@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
+
 use super::scoring::DEFAULT_SAFETY_CAP;
 
-#[derive(Clone, Debug)]
-pub struct ExploreBreadcrumb {
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct Breadcrumb {
     pub file: String,
     pub path: String,
     pub count: u64,
@@ -13,7 +15,7 @@ pub struct ExploreBreadcrumb {
 
 #[derive(Clone, Debug)]
 pub struct ExploreContext {
-    pub breadcrumbs: Vec<ExploreBreadcrumb>,
+    pub breadcrumbs: Vec<Breadcrumb>,
     pub current_step: u64,
     pub alpha: f64,
 }

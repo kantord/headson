@@ -144,7 +144,8 @@ pub fn load_or_create(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::session::{Breadcrumb, QueryEntry, Session};
+    use crate::session::{QueryEntry, Session};
+    use headson::Breadcrumb;
     use tempfile::tempdir;
 
     #[test]

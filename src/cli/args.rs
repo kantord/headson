@@ -270,15 +270,15 @@ pub struct Cli {
     pub grep_show: GrepShowArg,
     #[arg(
         long = "session",
+        env = "HSON_SESSION",
         value_name = "SESSION_ID",
-        help = "Activate an explore session by ID. Equivalent to HSON_SESSION=ID.",
+        help = "Activate an explore session by ID.",
         help_heading = "Explore"
     )]
     pub session: Option<String>,
     #[arg(
         long = "no-record",
         action = ArgAction::SetTrue,
-        default_value_t = false,
         help = "Apply session penalty without recording breadcrumbs or incrementing step count.",
         help_heading = "Explore"
     )]

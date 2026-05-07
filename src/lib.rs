@@ -37,7 +37,7 @@ pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use ingest::format::Format;
 pub use ingest::{parse_json_one, parse_text_one_with_mode};
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
-pub use order::types::{ExploreBreadcrumb, ExploreContext};
+pub use order::types::{Breadcrumb, ExploreContext};
 pub use order::{
     DEFAULT_SAFETY_CAP, NodeId, NodeKind, PriorityConfig, PriorityOrder,
     RankedNode, build_order,
@@ -426,7 +426,7 @@ mod tests {
     }
 
     #[test]
-    fn step_25_find_largest_render_returns_nonzero_top_k_under_tight_budget() {
+    fn find_largest_render_returns_nonzero_top_k_under_tight_budget() {
         // A 15-byte budget is far too small to render all 5 key-value pairs of
         // {"a":1,"b":2,"c":3,"d":4,"e":5} (full render ≈ 44 bytes), so the
         // budget search must stop before including all nodes.
@@ -488,7 +488,7 @@ mod tests {
     /// byte budget (20 bytes), the rendered output must contain 'b' but not 'a'.
     #[test]
     fn explore_context_deprioritizes_seen_node_under_tight_budget() {
-        let crumb = ExploreBreadcrumb {
+        let crumb = Breadcrumb {
             file: "".to_string(),
             path: composite_key_for(br#"{"a": 1, "b": 2}"#, "a"),
             count: 1,
@@ -567,7 +567,7 @@ mod tests {
     // ── Step 26: top_k slice contains at least one leaf node ──────────────────
 
     #[test]
-    fn step_26_top_k_slice_contains_at_least_one_leaf_node() {
+    fn top_k_slice_contains_at_least_one_leaf_node() {
         // The top_k slice from by_priority should include real leaf nodes
         // (AtomicLeaf or SplittableLeaf) — not just ancestor scaffolding.
         // 30 bytes comfortably fits root + 1-2 leaves (~16 bytes each) but

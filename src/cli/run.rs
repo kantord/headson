@@ -66,26 +66,27 @@ fn needs_fileset(cli: &Cli, inputs_len: usize) -> bool {
     inputs_len > 1 || cli.tree
 }
 
-fn build_explore_context(
+fn load_explore_context(
     session_id: Option<&str>,
 ) -> Option<headson::ExploreContext> {
     let id = session_id?;
     let path = crate::cli::session_middleware::session_file_path(id);
-    let session = crate::session::io::load_from_path(&path).ok()?;
-    let breadcrumbs = session
-        .breadcrumbs
-        .into_iter()
-        .map(|b| headson::ExploreBreadcrumb {
-            file: b.file,
-            path: b.path,
-            count: b.count,
-            last_step: b.last_step,
-        })
-        .collect();
+    let session = if path.exists() {
+        match crate::session::io::load_from_path(&path) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("warning: session file unreadable, ignoring: {e}");
+                return None;
+            }
+        }
+    } else {
+        return None;
+    };
+    let breadcrumbs = session.breadcrumbs;
     Some(headson::ExploreContext {
         breadcrumbs,
         current_step: session.step_count + 1,
-        alpha: 0.5,
+        alpha: crate::cli::session_middleware::DEFAULT_ALPHA,
     })
 }
 
@@ -95,7 +96,7 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
     let grep_cfg = build_grep_config_from_cli(cli)?;
     let resolved_inputs = resolve_inputs(cli)?;
     let session_id = active_session_id(cli);
-    let explore_ctx = build_explore_context(session_id.as_deref());
+    let explore_ctx = load_explore_context(session_id.as_deref());
     let from_stdin = resolved_inputs.is_empty();
     let (out, mut warnings, match_summary, shown_leaves) = if from_stdin {
         if !cli.globs.is_empty() || cli.recursive {

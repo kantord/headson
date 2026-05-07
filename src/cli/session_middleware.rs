@@ -8,12 +8,10 @@ pub(crate) const BREADCRUMB_CAP: usize = 500;
 /// Maximum number of query log entries kept; oldest are dropped when exceeded.
 pub(crate) const QUERY_LOG_CAP: usize = 1000;
 /// Decay factor per step — matches the alpha used by the penalty engine.
-const DEFAULT_ALPHA: f64 = 0.5;
+pub(crate) const DEFAULT_ALPHA: f64 = 0.5;
 
 pub(crate) fn active_session_id(cli: &Cli) -> Option<String> {
-    cli.session.clone().or_else(|| {
-        std::env::var("HSON_SESSION").ok().filter(|s| !s.is_empty())
-    })
+    cli.session.clone()
 }
 
 pub(crate) fn session_file_path(id: &str) -> PathBuf {
@@ -90,7 +88,7 @@ pub(crate) fn record_session(
     id: &str,
     shown_leaves: &[(String, String)],
     cwd: &str,
-    argv: Vec<String>,
+    argv: &[String],
 ) {
     let path = session_file_path(id);
     if let Some(parent) = path.parent() {
@@ -101,7 +99,7 @@ pub(crate) fn record_session(
     for (file, node_path) in shown_leaves {
         session.record_breadcrumb(file, node_path, new_step);
     }
-    session.record_query(new_step, &current_timestamp(), cwd, argv);
+    session.record_query(&current_timestamp(), cwd, argv);
     // Merge with any concurrent write, then evict and cap — all atomically.
     let _ = crate::session::io::save_merged_with_eviction_to_path(
         &session,
@@ -125,7 +123,7 @@ pub(crate) fn maybe_record_session(
                 .to_string_lossy()
                 .into_owned();
             let argv: Vec<String> = std::env::args().collect();
-            record_session(id, shown_leaves, &cwd, argv);
+            record_session(id, shown_leaves, &cwd, &argv);
         }
     }
 }
@@ -421,7 +419,7 @@ mod tests {
             session_id,
             &[(String::new(), "new#newhash".to_string())],
             "/cwd",
-            vec![],
+            &[],
         );
 
         unsafe {
@@ -467,12 +465,12 @@ mod tests {
             session_id.to_string(),
             "lbl".to_string(),
         );
-        for i in 0u64..(QUERY_LOG_CAP as u64 + 100) {
-            session.record_query(i + 1, "ts", "/cwd", vec![]);
+        for _ in 0u64..(QUERY_LOG_CAP as u64 + 100) {
+            session.record_query("ts", "/cwd", &[]);
         }
         crate::session::io::save_to_path(&session, &path).unwrap();
 
-        record_session(session_id, &[], "/cwd", vec![]);
+        record_session(session_id, &[], "/cwd", &[]);
 
         unsafe {
             match old_state {
