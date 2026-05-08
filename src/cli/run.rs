@@ -26,7 +26,7 @@ type RenderResult = (
     String,
     CliWarnings,
     Option<headson::MatchSummary>,
-    Vec<(String, String)>,
+    Vec<headson::BreadcrumbKey>,
 );
 
 fn build_grep_config_from_cli(
@@ -51,13 +51,15 @@ fn build_effective_configs(
     cli: &Cli,
     mut render_cfg: headson::RenderConfig,
     input_count: usize,
+    explore_ctx: Option<&headson::ExploreContext>,
 ) -> (
     headson::RenderConfig,
     headson::PriorityConfig,
     headson::Budgets,
 ) {
     let effective = budget::compute_effective(cli, input_count);
-    let prio = budget::build_priority_config(cli, &effective);
+    let mut prio = budget::build_priority_config(cli, &effective);
+    prio.explore = explore_ctx.cloned();
     render_cfg = budget::render_config_for_budgets(render_cfg, &effective);
     (render_cfg, prio, effective.budgets)
 }
@@ -111,14 +113,13 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
         let (text, w, ms) = run_from_stdin(cli, &render_cfg, &grep_cfg)?;
         (text, w, ms, vec![])
     } else {
-        let (text, w, ms, leaves) = run_from_paths(
+        run_from_paths(
             cli,
             &render_cfg,
             &grep_cfg,
             &resolved_inputs,
             explore_ctx.as_ref(),
-        )?;
-        (text, w, ms, leaves)
+        )?
     };
     if cli.count_matches {
         if let Some(summary) = match_summary {
@@ -164,7 +165,8 @@ fn run_from_stdin(
     let input_count = 1usize;
     let mut cfg = render_cfg.clone();
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
-    let (cfg, prio, budgets) = build_effective_configs(cli, cfg, input_count);
+    let (cfg, prio, budgets) =
+        build_effective_configs(cli, cfg, input_count, None);
     let chosen_input = cli.input_format.unwrap_or(InputFormat::Json);
     let (out, warnings, match_summary, _) = render_single_input(
         chosen_input,
@@ -177,6 +179,28 @@ fn run_from_stdin(
     Ok((out, warnings, match_summary))
 }
 
+fn prepare_file_entries(
+    cli: &Cli,
+    inputs: &[PathBuf],
+) -> Result<(InputEntries, CliWarnings)> {
+    let sorted_inputs = if needs_fileset(cli, inputs.len()) && !cli.no_sort {
+        sort_paths_for_fileset(inputs)
+    } else {
+        inputs.to_vec()
+    };
+    if std::env::var_os("HEADSON_FRECEN_TRACE").is_some() {
+        eprintln!("prepare_file_entries sorted_inputs={sorted_inputs:?}");
+    }
+    let (entries, warnings) = ingest_paths(&sorted_inputs)?;
+    if std::env::var_os("HEADSON_FRECEN_TRACE").is_some() {
+        eprintln!(
+            "prepare_file_entries ingested={:?}",
+            entries.iter().map(|(n, _)| n).collect::<Vec<_>>()
+        );
+    }
+    Ok((entries, warnings))
+}
+
 fn run_from_paths(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
@@ -184,21 +208,7 @@ fn run_from_paths(
     inputs: &[PathBuf],
     explore_ctx: Option<&headson::ExploreContext>,
 ) -> Result<RenderResult> {
-    let sorted_inputs = if needs_fileset(cli, inputs.len()) && !cli.no_sort {
-        sort_paths_for_fileset(inputs)
-    } else {
-        inputs.to_vec()
-    };
-    if std::env::var_os("HEADSON_FRECEN_TRACE").is_some() {
-        eprintln!("run_from_paths sorted_inputs={sorted_inputs:?}");
-    }
-    let (entries, warnings) = ingest_paths(&sorted_inputs)?;
-    if std::env::var_os("HEADSON_FRECEN_TRACE").is_some() {
-        eprintln!(
-            "run_from_paths ingested={:?}",
-            entries.iter().map(|(n, _)| n).collect::<Vec<_>>()
-        );
-    }
+    let (entries, warnings) = prepare_file_entries(cli, inputs)?;
     if needs_fileset(cli, inputs.len()) {
         return render_fileset(
             entries,
@@ -640,9 +650,8 @@ fn render_fileset(
     let mut cfg = render_cfg.clone();
     cfg.template = headson::OutputTemplate::Auto;
     let input_count = entries.len().max(1);
-    let (cfg, mut prio, budgets) =
-        build_effective_configs(cli, cfg, input_count);
-    prio.explore = explore_ctx.cloned();
+    let (cfg, prio, budgets) =
+        build_effective_configs(cli, cfg, input_count, explore_ctx);
     let files: Vec<headson::FilesetInput> = entries
         .into_iter()
         .map(|(name, bytes)| {
@@ -692,9 +701,8 @@ fn render_single_entry(
         &name,
         chosen_input,
     );
-    let (cfg_for_render, mut prio, budgets) =
-        build_effective_configs(cli, cfg_for_render, 1usize);
-    prio.explore = explore_ctx.cloned();
+    let (cfg_for_render, prio, budgets) =
+        build_effective_configs(cli, cfg_for_render, 1usize, explore_ctx);
     let (out, mut fallback_warnings, match_summary, shown_leaves) =
         render_single_input(
             chosen_input,

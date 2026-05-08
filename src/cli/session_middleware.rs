@@ -86,7 +86,7 @@ fn current_timestamp() -> String {
 
 pub(crate) fn record_session(
     id: &str,
-    shown_leaves: &[(String, String)],
+    shown_leaves: &[headson::BreadcrumbKey],
     cwd: &str,
     argv: &[String],
 ) {
@@ -114,7 +114,7 @@ pub(crate) fn maybe_record_session(
     session_id: Option<&str>,
     from_stdin: bool,
     no_record: bool,
-    shown_leaves: &[(String, String)],
+    shown_leaves: &[headson::BreadcrumbKey],
 ) {
     if let Some(id) = session_id {
         if !from_stdin && !no_record {
@@ -140,6 +140,44 @@ mod tests {
     use crate::cli::args::Cli;
     use crate::cli::run::run;
 
+    struct IsolatedEnv {
+        old_state: Option<String>,
+        old_session: Option<String>,
+    }
+
+    impl IsolatedEnv {
+        fn new(state_dir: &std::path::Path, session_id: Option<&str>) -> Self {
+            let old_state = std::env::var("XDG_STATE_HOME").ok();
+            let old_session = std::env::var("HSON_SESSION").ok();
+            unsafe {
+                std::env::set_var("XDG_STATE_HOME", state_dir);
+                match session_id {
+                    Some(id) => std::env::set_var("HSON_SESSION", id),
+                    None => std::env::remove_var("HSON_SESSION"),
+                }
+            }
+            Self {
+                old_state,
+                old_session,
+            }
+        }
+    }
+
+    impl Drop for IsolatedEnv {
+        fn drop(&mut self) {
+            unsafe {
+                match &self.old_state {
+                    Some(v) => std::env::set_var("XDG_STATE_HOME", v),
+                    None => std::env::remove_var("XDG_STATE_HOME"),
+                }
+                match &self.old_session {
+                    Some(v) => std::env::set_var("HSON_SESSION", v),
+                    None => std::env::remove_var("HSON_SESSION"),
+                }
+            }
+        }
+    }
+
     /// Step 31: When neither HSON_SESSION nor --session is set, running hson on
     /// a file produces the same output as a baseline run and does NOT write a
     /// session file anywhere under XDG_STATE_HOME.
@@ -151,27 +189,11 @@ mod tests {
         let path = dir.path().join("data.json");
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir.path());
-            std::env::remove_var("HSON_SESSION");
-        }
+        let _env = IsolatedEnv::new(state_dir.path(), None);
 
         let cli = Cli::parse_from(["hson", path.to_str().unwrap()]);
         let (out, warnings) =
             run(&cli).expect("run must succeed without session flag");
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         assert!(
             !out.is_empty(),
@@ -208,26 +230,10 @@ mod tests {
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
         let session_id = "step32-env-session";
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir.path());
-            std::env::set_var("HSON_SESSION", session_id);
-        }
+        let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
 
         let cli = Cli::parse_from(["hson", path.to_str().unwrap()]);
         let result = run(&cli);
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         result.expect("run must succeed with HSON_SESSION set");
 
@@ -252,12 +258,7 @@ mod tests {
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
         let session_id = "step33-flag-session";
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir.path());
-            std::env::remove_var("HSON_SESSION");
-        }
+        let _env = IsolatedEnv::new(state_dir.path(), None);
 
         let cli = Cli::parse_from([
             "hson",
@@ -266,17 +267,6 @@ mod tests {
             path.to_str().unwrap(),
         ]);
         let result = run(&cli);
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         result.expect("run must succeed with --session flag");
 
@@ -301,12 +291,7 @@ mod tests {
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
         let session_id = "step34-no-record-session";
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir.path());
-            std::env::remove_var("HSON_SESSION");
-        }
+        let _env = IsolatedEnv::new(state_dir.path(), None);
 
         let cli = Cli::parse_from([
             "hson",
@@ -316,17 +301,6 @@ mod tests {
             path.to_str().unwrap(),
         ]);
         let result = run(&cli);
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         result.expect("run must succeed with --session --no-record");
 
@@ -349,26 +323,10 @@ mod tests {
         let state_dir = tempdir().unwrap();
         let session_id = "step35-stdin-session";
 
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir.path());
-            std::env::set_var("HSON_SESSION", session_id);
-        }
+        let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
 
         let cli = Cli::parse_from(["hson"]);
         let id = active_session_id(&cli);
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         assert_eq!(
             id,
@@ -395,12 +353,7 @@ mod tests {
         let state_dir = dir.path();
         let session_id = "breadcrumb-cap-regression";
 
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session_env = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir);
-            std::env::remove_var("HSON_SESSION");
-        }
+        let _env = IsolatedEnv::new(state_dir, None);
 
         // Pre-populate with 600 breadcrumbs — above the BREADCRUMB_CAP of 500.
         let path = session_file_path(session_id);
@@ -422,17 +375,6 @@ mod tests {
             &[],
         );
 
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session_env {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
-
         let final_session = crate::session::io::load_from_path(&path)
             .expect("session file must exist after record_session");
         assert!(
@@ -451,12 +393,7 @@ mod tests {
         let state_dir = dir.path();
         let session_id = "query-cap-regression";
 
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session_env = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir);
-            std::env::remove_var("HSON_SESSION");
-        }
+        let _env = IsolatedEnv::new(state_dir, None);
 
         // Pre-populate with QUERY_LOG_CAP + 100 queries.
         let path = session_file_path(session_id);
@@ -471,17 +408,6 @@ mod tests {
         crate::session::io::save_to_path(&session, &path).unwrap();
 
         record_session(session_id, &[], "/cwd", &[]);
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session_env {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         let final_session = crate::session::io::load_from_path(&path)
             .expect("session file must exist after record_session");

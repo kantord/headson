@@ -4,6 +4,18 @@ use uuid::Uuid;
 use crate::cli::args::{Cli, ExploreSubcommand};
 use crate::cli::session_middleware::{active_session_id, session_file_path};
 
+const NO_SESSION_MSG: &str =
+    "No active session. Run `hson explore start` to begin.";
+
+fn load_active_session(
+    cli: &Cli,
+) -> Option<(String, crate::session::Session)> {
+    let id = active_session_id(cli)?;
+    let path = session_file_path(&id);
+    let session = crate::session::io::load_or_create(&path, &id, None, "");
+    Some((id, session))
+}
+
 /// Format argv for display: relativize paths that are under `cwd`, and
 /// for argv[0] (the binary) use just the filename when not under `cwd`.
 fn display_argv_relative(argv: &[String], cwd: &str) -> String {
@@ -53,45 +65,28 @@ pub(crate) fn run_subcommand(
             Ok(id)
         }
         ExploreSubcommand::Status => {
-            let Some(id) = active_session_id(cli) else {
-                return Ok(
-                    "No active session. Run `hson explore start` to begin."
-                        .to_string(),
-                );
+            let Some((_, session)) = load_active_session(cli) else {
+                return Ok(NO_SESSION_MSG.to_string());
             };
-            let path = session_file_path(&id);
-            let session =
-                crate::session::io::load_or_create(&path, &id, None, "");
             Ok(format!(
                 "Session: {}\nLabel:   {}\nSteps:   {}",
                 session.id, session.label, session.step_count
             ))
         }
         ExploreSubcommand::Clear => {
-            let Some(id) = active_session_id(cli) else {
-                return Ok(
-                    "No active session. Run `hson explore start` to begin."
-                        .to_string(),
-                );
+            let Some((id, mut session)) = load_active_session(cli) else {
+                return Ok(NO_SESSION_MSG.to_string());
             };
             let path = session_file_path(&id);
-            let mut session =
-                crate::session::io::load_or_create(&path, &id, None, "");
             session.clear();
             crate::session::io::save_to_path(&session, &path)
                 .map_err(|e| anyhow::anyhow!("failed to save session: {e}"))?;
             Ok(String::new())
         }
         ExploreSubcommand::List => {
-            let Some(id) = active_session_id(cli) else {
-                return Ok(
-                    "No active session. Run `hson explore start` to begin."
-                        .to_string(),
-                );
+            let Some((_, session)) = load_active_session(cli) else {
+                return Ok(NO_SESSION_MSG.to_string());
             };
-            let path = session_file_path(&id);
-            let session =
-                crate::session::io::load_or_create(&path, &id, None, "");
             let lines: Vec<String> = session
                 .queries
                 .iter()
@@ -115,6 +110,44 @@ mod tests {
     use serial_test::serial;
     use tempfile::tempdir;
 
+    struct IsolatedEnv {
+        old_state: Option<String>,
+        old_session: Option<String>,
+    }
+
+    impl IsolatedEnv {
+        fn new(state_dir: &std::path::Path, session_id: Option<&str>) -> Self {
+            let old_state = std::env::var("XDG_STATE_HOME").ok();
+            let old_session = std::env::var("HSON_SESSION").ok();
+            unsafe {
+                std::env::set_var("XDG_STATE_HOME", state_dir);
+                match session_id {
+                    Some(id) => std::env::set_var("HSON_SESSION", id),
+                    None => std::env::remove_var("HSON_SESSION"),
+                }
+            }
+            Self {
+                old_state,
+                old_session,
+            }
+        }
+    }
+
+    impl Drop for IsolatedEnv {
+        fn drop(&mut self) {
+            unsafe {
+                match &self.old_state {
+                    Some(v) => std::env::set_var("XDG_STATE_HOME", v),
+                    None => std::env::remove_var("XDG_STATE_HOME"),
+                }
+                match &self.old_session {
+                    Some(v) => std::env::set_var("HSON_SESSION", v),
+                    None => std::env::remove_var("HSON_SESSION"),
+                }
+            }
+        }
+    }
+
     /// Build a minimal Cli with an optional --session value and no inputs.
     /// XDG_STATE_HOME must already be set before this is called.
     fn make_cli(session_id: Option<&str>) -> Cli {
@@ -132,27 +165,11 @@ mod tests {
     #[serial]
     fn explore_start_returns_uuid_string() {
         let state_dir = tempdir().unwrap();
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir.path());
-            std::env::remove_var("HSON_SESSION");
-        }
+        let _env = IsolatedEnv::new(state_dir.path(), None);
 
         let cli = make_cli(None);
         let result =
             run_subcommand(&ExploreSubcommand::Start { label: None }, &cli);
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         let output = result.expect("run_subcommand(Start) must succeed");
         let uuid_re = regex::Regex::new(
@@ -176,12 +193,7 @@ mod tests {
     #[serial]
     fn explore_start_with_label_stores_label_in_session_file() {
         let state_dir = tempdir().unwrap();
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir.path());
-            std::env::remove_var("HSON_SESSION");
-        }
+        let _env = IsolatedEnv::new(state_dir.path(), None);
 
         let cli = make_cli(None);
         let result = run_subcommand(
@@ -199,17 +211,6 @@ mod tests {
             .join("headson")
             .join("sessions")
             .join(format!("{output}.json"));
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         assert!(
             session_path.exists(),
@@ -230,12 +231,7 @@ mod tests {
     #[serial]
     fn explore_start_no_label_stores_cwd_derived_label() {
         let state_dir = tempdir().unwrap();
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir.path());
-            std::env::remove_var("HSON_SESSION");
-        }
+        let _env = IsolatedEnv::new(state_dir.path(), None);
 
         let cwd = std::env::current_dir()
             .expect("must be able to get cwd")
@@ -258,17 +254,6 @@ mod tests {
             .join("headson")
             .join("sessions")
             .join(format!("{output}.json"));
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         assert!(
             session_path.exists(),
@@ -300,26 +285,10 @@ mod tests {
         session.step_count = 3;
         save_to_path(&session, &session_path).unwrap();
 
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir.path());
-            std::env::remove_var("HSON_SESSION");
-        }
+        let _env = IsolatedEnv::new(state_dir.path(), None);
 
         let cli = make_cli(Some(session_id));
         let result = run_subcommand(&ExploreSubcommand::Status, &cli);
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         let output = result.expect("run_subcommand(Status) must succeed");
         assert!(
@@ -338,26 +307,10 @@ mod tests {
     #[serial]
     fn explore_status_no_session_prints_helpful_message() {
         let state_dir = tempdir().unwrap();
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir.path());
-            std::env::remove_var("HSON_SESSION");
-        }
+        let _env = IsolatedEnv::new(state_dir.path(), None);
 
         let cli = make_cli(None);
         let result = run_subcommand(&ExploreSubcommand::Status, &cli);
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         let output = result.expect(
             "run_subcommand(Status) with no session must return Ok, not Err",
@@ -391,26 +344,10 @@ mod tests {
         });
         save_to_path(&session, &session_path).unwrap();
 
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir.path());
-            std::env::remove_var("HSON_SESSION");
-        }
+        let _env = IsolatedEnv::new(state_dir.path(), None);
 
         let cli = make_cli(Some(session_id));
         let result = run_subcommand(&ExploreSubcommand::Clear, &cli);
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         result.expect("run_subcommand(Clear) must succeed");
 
@@ -468,26 +405,10 @@ mod tests {
         });
         save_to_path(&session, &session_path).unwrap();
 
-        let old_state = std::env::var("XDG_STATE_HOME").ok();
-        let old_session = std::env::var("HSON_SESSION").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", state_dir.path());
-            std::env::remove_var("HSON_SESSION");
-        }
+        let _env = IsolatedEnv::new(state_dir.path(), None);
 
         let cli = make_cli(Some(session_id));
         let result = run_subcommand(&ExploreSubcommand::List, &cli);
-
-        unsafe {
-            match old_state {
-                Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                None => std::env::remove_var("XDG_STATE_HOME"),
-            }
-            match old_session {
-                Some(v) => std::env::set_var("HSON_SESSION", v),
-                None => std::env::remove_var("HSON_SESSION"),
-            }
-        }
 
         let output = result.expect("run_subcommand(List) must succeed");
 

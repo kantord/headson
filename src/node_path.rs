@@ -1,8 +1,16 @@
 use crate::RankedNode;
 use crate::order::{NodeId, PriorityOrder};
 
+/// Composite breadcrumb key: `(file, "dot_path#hex_hash")`.
+/// `file` is `""` for single-file inputs; the filename is embedded in
+/// the dot-path for fileset inputs via the synthetic root.
+pub type BreadcrumbKey = (String, String);
+
 const FNV1A_INIT: u64 = 14_695_981_039_346_656_037;
 const FNV1A_PRIME: u64 = 1_099_511_628_211;
+
+// LeafPart is a synthetic rendering node excluded from content identity.
+const EXCLUDED_NODE_HASH: u64 = 0;
 
 fn fnv1a_update(mut h: u64, data: &[u8]) -> u64 {
     for &b in data {
@@ -41,7 +49,7 @@ fn node_hash(order: &PriorityOrder, id: usize, hashes: &[u64]) -> u64 {
         Some(RankedNode::SplittableLeaf { value, .. }) => {
             fnv1a(value.as_bytes())
         }
-        None | Some(RankedNode::LeafPart { .. }) => 0,
+        None | Some(RankedNode::LeafPart { .. }) => EXCLUDED_NODE_HASH,
         Some(RankedNode::Object { .. } | RankedNode::Array { .. }) => {
             let mut h = FNV1A_INIT;
             if let Some(children) = order.children.get(id) {
@@ -58,7 +66,7 @@ fn node_hash(order: &PriorityOrder, id: usize, hashes: &[u64]) -> u64 {
                         &hashes
                             .get(child_id.0)
                             .copied()
-                            .unwrap_or(0)
+                            .unwrap_or(EXCLUDED_NODE_HASH)
                             .to_le_bytes(),
                     );
                 }
@@ -119,14 +127,15 @@ pub fn leaf_breadcrumb_key(
     order: &PriorityOrder,
     node_id: NodeId,
     hashes: &[u64],
-) -> Option<(String, String)> {
+) -> Option<BreadcrumbKey> {
     match order.nodes.get(node_id.0)? {
         RankedNode::Array { .. }
         | RankedNode::Object { .. }
         | RankedNode::LeafPart { .. } => None,
         RankedNode::AtomicLeaf { .. } | RankedNode::SplittableLeaf { .. } => {
             let dot_path = build_json_path(order, node_id);
-            let hash = hashes.get(node_id.0).copied().unwrap_or(0);
+            let hash =
+                hashes.get(node_id.0).copied().unwrap_or(EXCLUDED_NODE_HASH);
             Some((String::new(), format!("{dot_path}#{hash:016x}")))
         }
     }
@@ -135,7 +144,7 @@ pub fn leaf_breadcrumb_key(
 pub(crate) fn collect_shown_leaves(
     order: &PriorityOrder,
     top_k: usize,
-) -> Vec<(String, String)> {
+) -> Vec<BreadcrumbKey> {
     let hashes = compute_merkle_hashes(order);
     let bound = top_k.min(order.by_priority.len());
     order.by_priority[..bound]

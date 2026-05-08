@@ -19,28 +19,21 @@ pub fn load_from_path(path: &Path) -> Result<Session, io::Error> {
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-#[cfg_attr(
-    not(test),
-    allow(dead_code, reason = "used only in session/io tests")
-)]
-#[allow(
-    clippy::cognitive_complexity,
-    reason = "merge logic touches multiple parallel collections; splitting would obscure the invariant"
-)]
-pub fn save_merged_to_path(
-    new_session: &Session,
-    path: &Path,
-) -> Result<(), io::Error> {
-    // Re-read the on-disk session (or start fresh if missing/unreadable)
-    let mut base = if path.exists() {
+/// Load the on-disk session at `path`, or start a fresh one if the file is
+/// missing or unreadable.
+fn load_or_initialize(path: &Path, id: &str, label: &str) -> Session {
+    if path.exists() {
         load_from_path(path).unwrap_or_else(|_| {
-            Session::new(new_session.id.clone(), new_session.label.clone())
+            Session::new(id.to_string(), label.to_string())
         })
     } else {
-        Session::new(new_session.id.clone(), new_session.label.clone())
-    };
+        Session::new(id.to_string(), label.to_string())
+    }
+}
 
-    // Upsert breadcrumbs: new_session's entries win on conflict
+/// Upsert breadcrumbs from `new_session` into `base`; new_session wins on
+/// conflict (same file + path key).
+fn upsert_breadcrumbs(base: &mut Session, new_session: &Session) {
     for bc in &new_session.breadcrumbs {
         if let Some(existing) = base
             .breadcrumbs
@@ -52,9 +45,11 @@ pub fn save_merged_to_path(
             base.breadcrumbs.push(bc.clone());
         }
     }
+}
 
-    // Append queries, deduplicating by step to avoid double-counting when
-    // new_session was derived from the same base as what's on disk.
+/// Append queries from `new_session` into `base`, deduplicating by step to
+/// avoid double-counting when both sides were derived from the same base.
+fn append_new_queries(base: &mut Session, new_session: &Session) {
     let existing_steps: std::collections::HashSet<u64> =
         base.queries.iter().map(|q| q.step).collect();
     for q in &new_session.queries {
@@ -62,7 +57,20 @@ pub fn save_merged_to_path(
             base.queries.push(q.clone());
         }
     }
+}
 
+#[cfg_attr(
+    not(test),
+    allow(dead_code, reason = "used only in session/io tests")
+)]
+pub fn save_merged_to_path(
+    new_session: &Session,
+    path: &Path,
+) -> Result<(), io::Error> {
+    let mut base =
+        load_or_initialize(path, &new_session.id, &new_session.label);
+    upsert_breadcrumbs(&mut base, new_session);
+    append_new_queries(&mut base, new_session);
     save_to_path(&base, path)
 }
 
@@ -74,10 +82,6 @@ pub fn save_merged_to_path(
 /// 4. Apply `Session::evict` on the merged result.
 /// 5. Truncate the query log to `query_log_cap` most-recent entries.
 /// 6. Atomic-rename write the final state.
-#[allow(
-    clippy::cognitive_complexity,
-    reason = "merge + evict + cap steps all touch the same mutable state; splitting would require passing it around"
-)]
 pub fn save_merged_with_eviction_to_path(
     new_session: &Session,
     path: &Path,
@@ -85,33 +89,10 @@ pub fn save_merged_with_eviction_to_path(
     breadcrumb_cap: usize,
     query_log_cap: usize,
 ) -> Result<(), io::Error> {
-    let mut base = if path.exists() {
-        load_from_path(path).unwrap_or_else(|_| {
-            Session::new(new_session.id.clone(), new_session.label.clone())
-        })
-    } else {
-        Session::new(new_session.id.clone(), new_session.label.clone())
-    };
-
-    for bc in &new_session.breadcrumbs {
-        if let Some(existing) = base
-            .breadcrumbs
-            .iter_mut()
-            .find(|b| b.file == bc.file && b.path == bc.path)
-        {
-            *existing = bc.clone();
-        } else {
-            base.breadcrumbs.push(bc.clone());
-        }
-    }
-
-    let existing_steps: std::collections::HashSet<u64> =
-        base.queries.iter().map(|q| q.step).collect();
-    for q in &new_session.queries {
-        if !existing_steps.contains(&q.step) {
-            base.queries.push(q.clone());
-        }
-    }
+    let mut base =
+        load_or_initialize(path, &new_session.id, &new_session.label);
+    upsert_breadcrumbs(&mut base, new_session);
+    append_new_queries(&mut base, new_session);
 
     base.step_count = new_session.step_count;
     base.evict(new_session.step_count, alpha, breadcrumb_cap);

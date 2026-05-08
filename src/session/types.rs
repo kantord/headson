@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+const DECAY_EPSILON: f64 = 0.001;
+
 pub use headson::Breadcrumb;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -76,11 +78,11 @@ impl Session {
     }
 
     pub fn evict(&mut self, current_step: u64, alpha: f64, cap: usize) {
-        // Epsilon prune: drop entries whose decay factor is below 0.001
+        // Epsilon prune: drop entries whose decay factor is below DECAY_EPSILON
         self.breadcrumbs.retain(|b| {
             let steps_ago =
                 (current_step - b.last_step).min(i32::MAX as u64) as i32;
-            alpha.powi(steps_ago) >= 0.001
+            alpha.powi(steps_ago) >= DECAY_EPSILON
         });
         // Cap: keep only the `cap` most recently seen entries
         if self.breadcrumbs.len() > cap {

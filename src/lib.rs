@@ -45,7 +45,9 @@ pub use order::{
 pub use utils::extensions;
 pub use utils::templates::map_json_template_for_style;
 
-pub use node_path::{compute_merkle_hashes, leaf_breadcrumb_key};
+pub use node_path::{
+    BreadcrumbKey, compute_merkle_hashes, leaf_breadcrumb_key,
+};
 pub use pruner::budget::find_largest_render_under_budgets;
 pub use prunist::{Budget, BudgetKind, Budgets};
 pub use serialization::color::resolve_color_enabled;
@@ -67,7 +69,7 @@ pub struct RenderOutput {
     /// `(file, path)` pairs for leaf nodes in the rendered output.
     /// Used by CLI session middleware to record breadcrumbs. `file` is `""`
     /// for single-file inputs; `path` is a dot-joined key chain or content hash.
-    pub shown_leaves: Vec<(String, String)>,
+    pub shown_leaves: Vec<BreadcrumbKey>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -83,6 +85,9 @@ pub enum InputKind {
     Text { bytes: Vec<u8>, mode: TextMode },
     Fileset(Vec<FilesetInput>),
 }
+
+// Converts f64 penalty to u128 score units; large enough to preserve ordering resolution.
+const PENALTY_SCALE: f64 = 1_000_000_000.0;
 
 fn apply_explore_context(order: &mut PriorityOrder, ctx: &ExploreContext) {
     let hashes = node_path::compute_merkle_hashes(order);
@@ -100,7 +105,7 @@ fn apply_explore_context(order: &mut PriorityOrder, ctx: &ExploreContext) {
             let penalty = (1.0 + bc.count as f64).ln()
                 * ctx.alpha.powi(steps_ago as i32);
             (penalty > 0.0)
-                .then_some((node_id, (penalty * 1_000_000_000.0) as u128))
+                .then_some((node_id, (penalty * PENALTY_SCALE) as u128))
         })
         .collect();
     for (node_id, delta) in &penalties {
