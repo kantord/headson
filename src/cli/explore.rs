@@ -4,6 +4,28 @@ use uuid::Uuid;
 use crate::cli::args::{Cli, ExploreSubcommand};
 use crate::cli::session_middleware::{active_session_id, session_file_path};
 
+/// Format argv for display: relativize paths that are under `cwd`, and
+/// for argv[0] (the binary) use just the filename when not under `cwd`.
+fn display_argv_relative(argv: &[String], cwd: &str) -> String {
+    let cwd_path = std::path::Path::new(cwd);
+    argv.iter()
+        .enumerate()
+        .map(|(i, arg)| {
+            let p = std::path::Path::new(arg);
+            if let Ok(rel) = p.strip_prefix(cwd_path) {
+                rel.to_string_lossy().into_owned()
+            } else if i == 0 {
+                p.file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| arg.clone())
+            } else {
+                arg.clone()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 pub(crate) fn run_subcommand(
     cmd: &ExploreSubcommand,
     cli: &Cli,
@@ -74,7 +96,8 @@ pub(crate) fn run_subcommand(
                 .queries
                 .iter()
                 .map(|q| {
-                    format!("[{}] {} {}", q.timestamp, q.cwd, q.argv.join(" "))
+                    let display_argv = display_argv_relative(&q.argv, &q.cwd);
+                    format!("[{}] {} {}", q.timestamp, q.cwd, display_argv)
                 })
                 .collect();
             Ok(lines.join("\n"))
