@@ -1,16 +1,6 @@
 use clap::parser::ValueSource;
 use clap::{ArgAction, ArgMatches, Command};
 
-/// Walk clap's argument metadata and reconstruct a canonical argv from the
-/// parsed `matches`. `exclude` is a list of arg IDs to omit (the caller
-/// decides what is sensitive — this function makes no policy choices).
-///
-/// Any flag registered with clap is picked up automatically — there is no
-/// per-field maintenance burden when new flags are added. Short forms,
-/// `--name=value`, env-var-only sources, and defaults are all normalized:
-///  - emitted in long form (`--chars` not `-C`)
-///  - emitted as separate tokens (`--chars 500`, not `--chars=500`)
-///  - omitted when the user did not set the value on the command line
 fn emit_named(arg: &clap::Arg, matches: &ArgMatches, out: &mut Vec<String>) {
     let id = arg.get_id().as_str();
     let long = arg.get_long().unwrap_or(id);
@@ -48,6 +38,16 @@ fn emit_positional(
     }
 }
 
+/// Walk clap's argument metadata and reconstruct a canonical argv from the
+/// parsed `matches`. `exclude` is a list of arg IDs to omit (the caller
+/// decides what is sensitive — this function makes no policy choices).
+///
+/// Any flag registered with clap is picked up automatically — there is no
+/// per-field maintenance burden when new flags are added. Short forms,
+/// `--name=value`, env-var-only sources, and defaults are all normalized:
+///  - emitted in long form (`--chars` not `-C`)
+///  - emitted as separate tokens (`--chars 500`, not `--chars=500`)
+///  - omitted when the user did not set the value on the command line
 #[allow(
     dead_code,
     reason = "utility for upcoming query-log canonicalization; see deferred task"
