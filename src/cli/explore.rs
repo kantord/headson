@@ -14,7 +14,10 @@ fn load_active_session(
 ) -> Option<(String, crate::session::Session)> {
     let id = active_session_id(cli)?;
     let path = session_file_path(&id);
-    let session = crate::session::io::load_or_create(&path, &id, None, "");
+    // After `require_session_exists`, the file is guaranteed to exist on every
+    // path that calls this. A read failure here means the file became corrupt
+    // or unreadable between the two calls — surface that as "no session".
+    let session = crate::session::io::load_from_path(&path).ok()?;
     Some((id, session))
 }
 

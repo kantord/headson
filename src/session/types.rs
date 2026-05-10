@@ -32,11 +32,6 @@ impl Session {
         }
     }
 
-    pub fn new_with_cwd(id: String, cwd: &str) -> Self {
-        let label = format!("Explore session started originally in {cwd}");
-        Self::new(id, label)
-    }
-
     pub fn record_breadcrumb(&mut self, file: &str, path: &str, step: u64) {
         if let Some(entry) = self
             .breadcrumbs
@@ -244,16 +239,6 @@ mod tests {
         assert_eq!(session.breadcrumbs.len(), 1);
         assert_eq!(session.breadcrumbs[0].count, 1);
         assert_eq!(session.breadcrumbs[0].last_step, 1);
-    }
-
-    #[test]
-    fn new_with_cwd_auto_labels_from_path() {
-        let session =
-            Session::new_with_cwd("id1".to_string(), "/home/user/project");
-        assert_eq!(
-            session.label,
-            "Explore session started originally in /home/user/project"
-        );
     }
 
     #[test]
