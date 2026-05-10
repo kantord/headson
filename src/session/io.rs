@@ -20,14 +20,25 @@ pub fn load_from_path(path: &Path) -> Result<Session, io::Error> {
 }
 
 /// Load the on-disk session at `path`, or start a fresh one if the file is
-/// missing or unreadable.
-fn load_or_initialize(path: &Path, id: &str, label: &str) -> Session {
+/// missing. If the file exists but is unreadable, emit a stderr warning and
+/// return the underlying I/O error so callers do not silently overwrite a
+/// corrupt file with fresh state.
+fn load_or_initialize(
+    path: &Path,
+    id: &str,
+    label: &str,
+) -> Result<Session, io::Error> {
     if path.exists() {
-        load_from_path(path).unwrap_or_else(|_| {
-            Session::new(id.to_string(), label.to_string())
+        load_from_path(path).map_err(|e| {
+            eprintln!(
+                "warning: session file {} is unreadable ({e}); refusing \
+                 to overwrite",
+                path.display()
+            );
+            e
         })
     } else {
-        Session::new(id.to_string(), label.to_string())
+        Ok(Session::new(id.to_string(), label.to_string()))
     }
 }
 
@@ -68,7 +79,7 @@ pub fn save_merged_to_path(
     path: &Path,
 ) -> Result<(), io::Error> {
     let mut base =
-        load_or_initialize(path, &new_session.id, &new_session.label);
+        load_or_initialize(path, &new_session.id, &new_session.label)?;
     upsert_breadcrumbs(&mut base, new_session);
     append_new_queries(&mut base, new_session);
     save_to_path(&base, path)
@@ -90,7 +101,7 @@ pub fn save_merged_with_eviction_to_path(
     query_log_cap: usize,
 ) -> Result<(), io::Error> {
     let mut base =
-        load_or_initialize(path, &new_session.id, &new_session.label);
+        load_or_initialize(path, &new_session.id, &new_session.label)?;
     upsert_breadcrumbs(&mut base, new_session);
     append_new_queries(&mut base, new_session);
 
@@ -156,6 +167,49 @@ mod tests {
             .any(|b| b.file == "b.json" && b.path == "y");
         assert!(has_a, "breadcrumb (a.json, x) missing from merged session");
         assert!(has_b, "breadcrumb (b.json, y) missing from merged session");
+    }
+
+    #[test]
+    fn concurrent_record_sessions_preserve_distinct_steps() {
+        use std::collections::HashSet;
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("session.json");
+        save_to_path(&Session::new("id".into(), "lbl".into()), &path).unwrap();
+
+        const N: usize = 10;
+        std::thread::scope(|s| {
+            for i in 0..N {
+                let path = path.clone();
+                s.spawn(move || {
+                    let mut sess = load_from_path(&path).unwrap();
+                    let step = sess.step_count + 1;
+                    sess.record_breadcrumb("f", &format!("p{i}"), step);
+                    sess.record_query("ts", "/cwd", &[]);
+                    save_merged_with_eviction_to_path(
+                        &sess, &path, 0.5, 500, 1000,
+                    )
+                    .unwrap();
+                });
+            }
+        });
+
+        let final_session = load_from_path(&path).unwrap();
+        assert_eq!(
+            final_session.step_count, N as u64,
+            "step_count should equal number of concurrent writers"
+        );
+        assert_eq!(
+            final_session.queries.len(),
+            N,
+            "queries log should have one entry per concurrent writer"
+        );
+        let distinct_steps: HashSet<u64> =
+            final_session.queries.iter().map(|q| q.step).collect();
+        assert_eq!(
+            distinct_steps.len(),
+            N,
+            "every query should have a distinct step value"
+        );
     }
 
     #[test]
@@ -239,5 +293,36 @@ mod tests {
         assert_eq!(loaded.queries.len(), 1);
         assert_eq!(loaded.queries[0].step, 1);
         assert_eq!(loaded.queries[0].cwd, "/home/user");
+    }
+
+    #[test]
+    fn corrupt_session_file_is_not_silently_overwritten() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("session.json");
+
+        // Write garbage that is not valid JSON
+        let garbage = b"\x00\x01garbage{not-json,\"";
+        std::fs::write(&path, garbage).unwrap();
+
+        // Try to merge a new session into it
+        let new_session = Session::new("id".into(), "label".into());
+        let result = save_merged_with_eviction_to_path(
+            &new_session,
+            &path,
+            0.5,
+            500,
+            1000,
+        );
+
+        // Acceptable behaviors:
+        //  (a) function returns Err (refuses to overwrite corrupt file), or
+        //  (b) the on-disk bytes still equal the garbage we wrote (no overwrite)
+        let on_disk_after = std::fs::read(&path).unwrap_or_default();
+        assert!(
+            result.is_err() || on_disk_after == garbage,
+            "corrupt session file must not be silently overwritten; \
+             got Ok result and on-disk bytes changed from garbage to: {:?}",
+            String::from_utf8_lossy(&on_disk_after)
+        );
     }
 }

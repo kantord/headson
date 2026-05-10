@@ -14,6 +14,23 @@ pub(crate) fn active_session_id(cli: &Cli) -> Option<String> {
     cli.session.clone()
 }
 
+/// If `--session` was provided, require the session file to exist.
+/// New sessions are only created by `hson explore start` — every other
+/// path errors on an unknown session ID rather than silently auto-creating
+/// (which would mask typos and lose the bias context of an existing session).
+pub(crate) fn require_session_exists(cli: &Cli) -> anyhow::Result<()> {
+    if let Some(id) = &cli.session {
+        let path = session_file_path(id);
+        if !path.exists() {
+            anyhow::bail!(
+                "Session '{id}' not found. \
+                 Run `hson explore start` to create one."
+            );
+        }
+    }
+    Ok(())
+}
+
 pub(crate) fn session_file_path(id: &str) -> PathBuf {
     let state_dir = std::env::var("XDG_STATE_HOME")
         .map(PathBuf::from)
@@ -178,6 +195,17 @@ mod tests {
         }
     }
 
+    /// Pre-create an empty session file at the given ID under `state_dir`,
+    /// mimicking what `hson explore start` would do — needed because runtime
+    /// tracking now requires the session file to already exist.
+    fn pre_create_session(state_dir: &std::path::Path, id: &str) {
+        let dir = state_dir.join("headson").join("sessions");
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(format!("{id}.json"));
+        let session = crate::session::Session::new(id.into(), "lbl".into());
+        crate::session::io::save_to_path(&session, &path).unwrap();
+    }
+
     /// Step 31: When neither HSON_SESSION nor --session is set, running hson on
     /// a file produces the same output as a baseline run and does NOT write a
     /// session file anywhere under XDG_STATE_HOME.
@@ -229,8 +257,9 @@ mod tests {
         let path = dir.path().join("data.json");
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
-        let session_id = "step32-env-session";
+        let session_id = "32000000-0000-0000-0000-000000000000";
         let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
+        pre_create_session(state_dir.path(), session_id);
 
         let cli = Cli::parse_from(["hson", path.to_str().unwrap()]);
         let result = run(&cli);
@@ -257,8 +286,9 @@ mod tests {
         let path = dir.path().join("data.json");
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
-        let session_id = "step33-flag-session";
+        let session_id = "33000000-0000-0000-0000-000000000000";
         let _env = IsolatedEnv::new(state_dir.path(), None);
+        pre_create_session(state_dir.path(), session_id);
 
         let cli = Cli::parse_from([
             "hson",
@@ -281,7 +311,7 @@ mod tests {
         );
     }
 
-    /// Step 34: `--session <id> --no-record` does NOT create the session file.
+    /// Step 34: `--session <id> --no-record` does NOT mutate the session file.
     #[test]
     #[serial]
     fn no_record_flag_suppresses_session_write() {
@@ -290,8 +320,9 @@ mod tests {
         let path = dir.path().join("data.json");
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
-        let session_id = "step34-no-record-session";
+        let session_id = "34000000-0000-0000-0000-000000000000";
         let _env = IsolatedEnv::new(state_dir.path(), None);
+        pre_create_session(state_dir.path(), session_id);
 
         let cli = Cli::parse_from([
             "hson",
@@ -304,15 +335,25 @@ mod tests {
 
         result.expect("run must succeed with --session --no-record");
 
+        // Session file existed before run; with --no-record, run must not
+        // touch it — step_count and queries stay at their initial values.
         let session_file = state_dir
             .path()
             .join("headson")
             .join("sessions")
             .join(format!("{session_id}.json"));
+        let after = crate::session::io::load_from_path(&session_file).unwrap();
+        assert_eq!(
+            after.step_count, 0,
+            "--no-record must not increment step_count"
+        );
         assert!(
-            !session_file.exists(),
-            "--no-record must suppress session file creation; \
-             unexpectedly found: {session_file:?}"
+            after.queries.is_empty(),
+            "--no-record must not append to query log"
+        );
+        assert!(
+            after.breadcrumbs.is_empty(),
+            "--no-record must not record breadcrumbs"
         );
     }
 
@@ -321,7 +362,7 @@ mod tests {
     #[serial]
     fn stdin_mode_no_session_write_active_session_id_resolves() {
         let state_dir = tempdir().unwrap();
-        let session_id = "step35-stdin-session";
+        let session_id = "35000000-0000-0000-0000-000000000000";
 
         let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
 
@@ -344,6 +385,38 @@ mod tests {
         );
     }
 
+    /// Regression (issue #513): passing `--session <unknown-uuid>` to a normal
+    /// `hson` invocation must NOT silently auto-create a session file at that
+    /// path. The user likely typo'd; auto-creating overwrites their intent and
+    /// loses the original session's bias context. The command must either
+    /// return an error or leave no session file on disk.
+    #[test]
+    #[serial]
+    fn unknown_session_id_in_run_errors_or_does_not_create_file() {
+        let dir = tempdir().unwrap();
+        let state_dir = tempdir().unwrap();
+        let path = dir.path().join("data.json");
+        fs::write(&path, r#"{"x": 1}"#).unwrap();
+
+        let unknown_id = "11111111-2222-3333-4444-555555555555";
+        let _env = IsolatedEnv::new(state_dir.path(), Some(unknown_id));
+
+        let cli = Cli::parse_from(["hson", path.to_str().unwrap()]);
+        let result = run(&cli);
+
+        let expected = state_dir
+            .path()
+            .join("headson")
+            .join("sessions")
+            .join(format!("{unknown_id}.json"));
+        assert!(
+            result.is_err() || !expected.exists(),
+            "running with an unknown session ID should error OR not create the session file; \
+             got Ok and file exists: result={result:?}, file_exists={}",
+            expected.exists()
+        );
+    }
+
     /// Regression: record_session must evict stale breadcrumbs so session
     /// files don't grow without bound across long-running explorations.
     #[test]
@@ -351,7 +424,7 @@ mod tests {
     fn record_session_caps_breadcrumbs_when_limit_exceeded() {
         let dir = tempdir().unwrap();
         let state_dir = dir.path();
-        let session_id = "breadcrumb-cap-regression";
+        let session_id = "be000000-0000-0000-0000-000000000000";
 
         let _env = IsolatedEnv::new(state_dir, None);
 
@@ -391,7 +464,7 @@ mod tests {
     fn record_session_caps_query_log_when_limit_exceeded() {
         let dir = tempdir().unwrap();
         let state_dir = dir.path();
-        let session_id = "query-cap-regression";
+        let session_id = "9c000000-0000-0000-0000-000000000000";
 
         let _env = IsolatedEnv::new(state_dir, None);
 

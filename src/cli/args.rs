@@ -3,6 +3,12 @@ use std::path::PathBuf;
 use clap::{ArgAction, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
+fn parse_session_id(s: &str) -> Result<String, String> {
+    uuid::Uuid::parse_str(s)
+        .map(|u| u.to_string())
+        .map_err(|e| format!("invalid session ID (must be a UUID): {e}"))
+}
+
 /// Top-level CLI flags and enums.
 #[derive(Parser, Debug)]
 #[command(
@@ -272,7 +278,9 @@ pub struct Cli {
         long = "session",
         env = "HSON_SESSION",
         value_name = "SESSION_ID",
-        help = "Activate an explore session by ID.",
+        global = true,
+        value_parser = parse_session_id,
+        help = "Activate an explore session by ID (UUID).",
         help_heading = "Explore"
     )]
     pub session: Option<String>,
@@ -446,4 +454,80 @@ pub fn print_completions<G: clap_complete::Generator>(
         cmd.get_name().to_string(),
         &mut std::io::stdout(),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn session_flag_can_appear_after_explore_subcommand() {
+        use clap::Parser;
+        let result = Cli::try_parse_from([
+            "hson",
+            "explore",
+            "status",
+            "--session",
+            "00000000-0000-0000-0000-000000000000",
+        ]);
+        assert!(
+            result.is_ok(),
+            "--session must be accepted after `explore status`; got: {:?}",
+            result.err()
+        );
+        let cli = result.unwrap();
+        assert_eq!(
+            cli.session.as_deref(),
+            Some("00000000-0000-0000-0000-000000000000")
+        );
+    }
+
+    #[test]
+    fn non_uuid_session_value_fails_to_parse() {
+        use clap::Parser;
+        let result =
+            Cli::try_parse_from(["hson", "--session", "not-a-uuid", "file"]);
+        assert!(
+            result.is_err(),
+            "non-UUID session value must fail at parse time; got Ok with cli.session={:?}",
+            result.ok().and_then(|c| c.session)
+        );
+    }
+
+    #[test]
+    fn empty_session_value_fails_to_parse() {
+        use clap::Parser;
+        let result = Cli::try_parse_from(["hson", "--session", "", "file"]);
+        assert!(
+            result.is_err(),
+            "empty session value must fail at parse time"
+        );
+    }
+
+    #[test]
+    fn path_traversal_session_value_fails_to_parse() {
+        use clap::Parser;
+        let result = Cli::try_parse_from([
+            "hson",
+            "--session",
+            "../../etc/passwd",
+            "file",
+        ]);
+        assert!(
+            result.is_err(),
+            "session value containing path separators must fail at parse time"
+        );
+    }
+
+    #[test]
+    fn valid_uuid_session_value_parses_successfully() {
+        use clap::Parser;
+        let result = Cli::try_parse_from([
+            "hson",
+            "--session",
+            "00000000-0000-0000-0000-000000000000",
+            "file",
+        ]);
+        assert!(result.is_ok(), "valid UUID must parse: {:?}", result.err());
+    }
 }

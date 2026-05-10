@@ -5,7 +5,7 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use crate::cli::session_middleware::{
-    active_session_id, maybe_record_session,
+    active_session_id, maybe_record_session, require_session_exists,
 };
 
 use anyhow::{Context, Result, bail};
@@ -94,6 +94,7 @@ fn load_explore_context(
 
 pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
     budget::validate(cli)?;
+    require_session_exists(cli)?;
     let render_cfg = get_render_config_from(cli);
     let grep_cfg = build_grep_config_from_cli(cli)?;
     let resolved_inputs = resolve_inputs(cli)?;

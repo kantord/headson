@@ -2,7 +2,9 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::args::{Cli, ExploreSubcommand};
-use crate::cli::session_middleware::{active_session_id, session_file_path};
+use crate::cli::session_middleware::{
+    active_session_id, require_session_exists, session_file_path,
+};
 
 const NO_SESSION_MSG: &str =
     "No active session. Run `hson explore start` to begin.";
@@ -65,15 +67,29 @@ pub(crate) fn run_subcommand(
             Ok(id)
         }
         ExploreSubcommand::Status => {
+            require_session_exists(cli)?;
             let Some((_, session)) = load_active_session(cli) else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
+            let last_active = session
+                .queries
+                .last()
+                .map_or("never", |q| q.timestamp.as_str());
             Ok(format!(
-                "Session: {}\nLabel:   {}\nSteps:   {}",
-                session.id, session.label, session.step_count
+                "Session:     {}\n\
+                 Label:       {}\n\
+                 Steps:       {}\n\
+                 Breadcrumbs: {}\n\
+                 Last active: {}",
+                session.id,
+                session.label,
+                session.step_count,
+                session.breadcrumbs.len(),
+                last_active,
             ))
         }
         ExploreSubcommand::Clear => {
+            require_session_exists(cli)?;
             let Some((id, mut session)) = load_active_session(cli) else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
@@ -84,6 +100,7 @@ pub(crate) fn run_subcommand(
             Ok(String::new())
         }
         ExploreSubcommand::List => {
+            require_session_exists(cli)?;
             let Some((_, session)) = load_active_session(cli) else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
@@ -274,7 +291,7 @@ mod tests {
     #[serial]
     fn explore_status_shows_step_count_and_uuid() {
         let state_dir = tempdir().unwrap();
-        let session_id = "step39-status-test-session";
+        let session_id = "39000000-0000-0000-0000-000000000000";
 
         // Write a session file with step_count=3
         let sessions_dir = state_dir.path().join("headson").join("sessions");
@@ -324,9 +341,9 @@ mod tests {
     /// Step 41: `explore clear` zeroes breadcrumbs, step_count, and queries.
     #[test]
     #[serial]
-    fn explore_clear_zeroes_breadcrumbs_preserves_queries() {
+    fn explore_clear_zeroes_breadcrumbs_step_count_and_queries() {
         let state_dir = tempdir().unwrap();
-        let session_id = "step41-clear-test-session";
+        let session_id = "41000000-0000-0000-0000-000000000000";
 
         // Create a session with breadcrumbs and a query
         let sessions_dir = state_dir.path().join("headson").join("sessions");
@@ -371,13 +388,87 @@ mod tests {
         );
     }
 
+    /// Regression (issue #513): `explore status` with an unknown session ID
+    /// must error (e.g. "Session '<id>' not found. Run `hson explore start`
+    /// to create one.") instead of silently treating the unknown ID as a
+    /// brand-new empty session.
+    #[test]
+    #[serial]
+    fn unknown_session_id_in_explore_status_errors() {
+        let state_dir = tempdir().unwrap();
+
+        let unknown_id = "22222222-3333-4444-5555-666666666666";
+        let _env = IsolatedEnv::new(state_dir.path(), Some(unknown_id));
+
+        let cli = make_cli(None);
+        let result = run_subcommand(&ExploreSubcommand::Status, &cli);
+
+        assert!(
+            result.is_err(),
+            "explore status with an unknown session ID must return Err; \
+             today it silently fabricates an empty session and returns Ok. \
+             got: {result:?}"
+        );
+    }
+
+    /// Regression (issue #513): `explore list` with an unknown session ID
+    /// must error instead of silently treating the unknown ID as a brand-new
+    /// empty session and returning an empty query list.
+    #[test]
+    #[serial]
+    fn unknown_session_id_in_explore_list_errors() {
+        let state_dir = tempdir().unwrap();
+
+        let unknown_id = "33333333-4444-5555-6666-777777777777";
+        let _env = IsolatedEnv::new(state_dir.path(), Some(unknown_id));
+
+        let cli = make_cli(None);
+        let result = run_subcommand(&ExploreSubcommand::List, &cli);
+
+        assert!(
+            result.is_err(),
+            "explore list with an unknown session ID must return Err; \
+             today it silently fabricates an empty session and returns Ok. \
+             got: {result:?}"
+        );
+    }
+
+    /// Regression (issue #513): `explore clear` with an unknown session ID
+    /// must error instead of silently materializing a session file at that
+    /// path. The user likely typo'd; auto-creating overwrites their intent.
+    #[test]
+    #[serial]
+    fn unknown_session_id_in_explore_clear_errors() {
+        let state_dir = tempdir().unwrap();
+        // Pre-create the sessions directory so save_to_path won't fail for an
+        // unrelated reason (missing parent dir). We want the test to exercise
+        // the unknown-ID semantic, not a filesystem-error red herring.
+        let sessions_dir = state_dir.path().join("headson").join("sessions");
+        std::fs::create_dir_all(&sessions_dir).unwrap();
+
+        let unknown_id = "44444444-5555-6666-7777-888888888888";
+        let _env = IsolatedEnv::new(state_dir.path(), Some(unknown_id));
+
+        let cli = make_cli(None);
+        let result = run_subcommand(&ExploreSubcommand::Clear, &cli);
+
+        let expected = sessions_dir.join(format!("{unknown_id}.json"));
+        assert!(
+            result.is_err() || !expected.exists(),
+            "explore clear with an unknown session ID must error OR not create the session file; \
+             today it silently fabricates an empty session and writes it to disk. \
+             got: result={result:?}, file_exists={}",
+            expected.exists()
+        );
+    }
+
     /// Step 42: `explore list` returns all recorded queries in chronological
     /// order (ascending timestamp / step order).
     #[test]
     #[serial]
     fn explore_list_prints_queries_chronologically() {
         let state_dir = tempdir().unwrap();
-        let session_id = "step42-list-test-session";
+        let session_id = "42000000-0000-0000-0000-000000000000";
 
         // Create a session with 3 queries at distinct timestamps
         let sessions_dir = state_dir.path().join("headson").join("sessions");
@@ -443,6 +534,80 @@ mod tests {
         assert!(
             pos_beta < pos_gamma,
             "beta (step 2) must appear before gamma (step 3) in output; beta@{pos_beta}, gamma@{pos_gamma}"
+        );
+    }
+
+    /// Issue #513: `explore status` must surface the number of breadcrumbs in
+    /// the active session so users can gauge how much novelty bias has built
+    /// up. The existing output only shows Session/Label/Steps and hides this.
+    #[test]
+    #[serial]
+    fn explore_status_shows_breadcrumb_count() {
+        let state_dir = tempdir().unwrap();
+        let session_id = "33333333-3333-3333-3333-333333333333";
+
+        let path = state_dir
+            .path()
+            .join("headson")
+            .join("sessions")
+            .join(format!("{session_id}.json"));
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut session =
+            Session::new(session_id.to_string(), "lbl".to_string());
+        session.record_breadcrumb("a.json", "x", 1);
+        session.record_breadcrumb("b.json", "y", 2);
+        session.record_breadcrumb("c.json", "z", 3);
+        session.step_count = 3;
+        save_to_path(&session, &path).unwrap();
+
+        let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
+
+        let cli = make_cli(Some(session_id));
+        let out = run_subcommand(&ExploreSubcommand::Status, &cli)
+            .expect("run_subcommand(Status) must succeed");
+
+        assert!(
+            out.contains("Breadcrumbs:") || out.contains("breadcrumbs:"),
+            "status output must include a Breadcrumbs line; got:\n{out}"
+        );
+        assert!(
+            out.contains('3'),
+            "status output must include the breadcrumb count (3); got:\n{out}"
+        );
+    }
+
+    /// Issue #513: `explore status` must surface the timestamp of the most
+    /// recent recorded query so users can tell when a session was last active.
+    #[test]
+    #[serial]
+    fn explore_status_shows_last_active_timestamp() {
+        let state_dir = tempdir().unwrap();
+        let session_id = "44444444-4444-4444-4444-444444444444";
+
+        let path = state_dir
+            .path()
+            .join("headson")
+            .join("sessions")
+            .join(format!("{session_id}.json"));
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut session =
+            Session::new(session_id.to_string(), "lbl".to_string());
+        session.record_query("2026-05-08T12:34:56Z", "/cwd", &[]);
+        save_to_path(&session, &path).unwrap();
+
+        let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
+
+        let cli = make_cli(Some(session_id));
+        let out = run_subcommand(&ExploreSubcommand::Status, &cli)
+            .expect("run_subcommand(Status) must succeed");
+
+        assert!(
+            out.contains("Last active") || out.contains("last active"),
+            "status output must include a Last active line; got:\n{out}"
+        );
+        assert!(
+            out.contains("2026-05-08T12:34:56Z"),
+            "status output must include the most recent query timestamp; got:\n{out}"
         );
     }
 }
