@@ -549,6 +549,127 @@ mod tests {
         );
     }
 
+    // ── PENALTY_SCALE regression: array rotation under explore ────────────
+
+    /// 30 distinct numeric array items; values `1000 + i` make each index
+    /// directly greppable in the rendered text.
+    fn rotation_array_json() -> Vec<u8> {
+        let items: Vec<String> =
+            (0..30).map(|i| (1000 + i).to_string()).collect();
+        format!("[{}]", items.join(", ")).into_bytes()
+    }
+
+    /// Render `rotation_array_json()` with an explore context holding the
+    /// given breadcrumbs.
+    fn render_rotation_array(
+        breadcrumbs: Vec<Breadcrumb>,
+        current_step: u64,
+        budgets: Budgets,
+    ) -> RenderOutput {
+        let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        prio.explore = Some(ExploreContext {
+            breadcrumbs,
+            current_step,
+            alpha: 0.5,
+        });
+        headson(
+            InputKind::Json(rotation_array_json()),
+            &test_render_config(),
+            &prio,
+            &GrepConfig::default(),
+            budgets,
+        )
+        .expect("headson should succeed")
+    }
+
+    /// Indices `i` whose value `1000 + i` appears in the rendered text.
+    fn rendered_indices(text: &str) -> Vec<usize> {
+        (0..30)
+            .filter(|i| text.contains(&(1000 + i).to_string()))
+            .collect()
+    }
+
+    /// Regression for the PENALTY_SCALE tuning (issue #513): array siblings
+    /// differ by `d^3 * ARRAY_INDEX_CUBIC_WEIGHT`, so an under-scaled penalty
+    /// can only break exact ties (object keys) and never rotates arrays.
+    /// After recording breadcrumbs for everything shown in a first
+    /// tight-budget render, a second render must surface array items that the
+    /// first one did not, and the very first item must yield its slot.
+    #[test]
+    fn explore_context_rotates_array_items_under_tight_budget() {
+        let tight = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 60,
+            }),
+            per_slot: None,
+        };
+
+        let first = render_rotation_array(vec![], 1, tight);
+        let crumbs: Vec<Breadcrumb> = first
+            .shown_leaves
+            .iter()
+            .map(|(file, path)| Breadcrumb {
+                file: file.clone(),
+                path: path.clone(),
+                count: 1,
+                last_step: 1,
+            })
+            .collect();
+        assert!(
+            !crumbs.is_empty(),
+            "first render must record shown leaves; got text: {:?}",
+            first.text
+        );
+
+        let second = render_rotation_array(crumbs, 2, tight);
+        let first_idx = rendered_indices(&first.text);
+        let second_idx = rendered_indices(&second.text);
+
+        assert!(
+            second_idx.iter().any(|i| !first_idx.contains(i)),
+            "second render must surface array items unseen in the first; \
+             first: {first_idx:?}, second: {second_idx:?}"
+        );
+        assert!(
+            !second_idx.contains(&0),
+            "head item (index 0) was just seen and must yield its slot; \
+             second render showed {second_idx:?}"
+        );
+    }
+
+    /// Soft guarantee: the same breadcrumbs under a loose budget must not
+    /// exclude anything — the penalty reorders, it never filters.
+    #[test]
+    fn explore_penalty_is_soft_under_loose_budget() {
+        let tight = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 60,
+            }),
+            per_slot: None,
+        };
+        let first = render_rotation_array(vec![], 1, tight);
+        let crumbs: Vec<Breadcrumb> = first
+            .shown_leaves
+            .iter()
+            .map(|(file, path)| Breadcrumb {
+                file: file.clone(),
+                path: path.clone(),
+                count: 1,
+                last_step: 1,
+            })
+            .collect();
+
+        let loose = render_rotation_array(crumbs, 2, Budgets::default());
+        let shown = rendered_indices(&loose.text);
+        assert_eq!(
+            shown,
+            (0..30).collect::<Vec<_>>(),
+            "loose budget must still show every item, seen or not"
+        );
+    }
+
     /// With no explore context, shown-leaf collection (and its hashing) is
     /// skipped entirely: `shown_leaves` must be empty.
     #[test]
