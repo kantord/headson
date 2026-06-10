@@ -18,8 +18,14 @@ pub type BreadcrumbKey = (String, String);
 ///
 /// Canonicalizes when possible (resolving symlinks); otherwise falls back to
 /// joining onto the current directory and lexically dropping `.`/`..`
-/// components.
+/// components. Returns `""` (unknown identity) for an empty name or when a
+/// relative name cannot be anchored because the current directory is
+/// unavailable — never a relative path, which could not match a
+/// canonically-recorded key.
 pub fn resolve_breadcrumb_file(name: &str) -> String {
+    if name.is_empty() {
+        return String::new();
+    }
     let path = Path::new(name);
     if let Ok(canonical) = path.canonicalize() {
         return canonical.to_string_lossy().into_owned();
@@ -27,7 +33,10 @@ pub fn resolve_breadcrumb_file(name: &str) -> String {
     let joined = if path.is_absolute() {
         path.to_path_buf()
     } else {
-        std::env::current_dir().unwrap_or_default().join(path)
+        let Ok(cwd) = std::env::current_dir() else {
+            return String::new();
+        };
+        cwd.join(path)
     };
     lexically_normalized(&joined).to_string_lossy().into_owned()
 }
@@ -722,5 +731,10 @@ mod tests {
             Path::new(&plain).is_absolute(),
             "fallback resolution must produce an absolute path; got {plain:?}"
         );
+    }
+
+    #[test]
+    fn resolve_breadcrumb_file_maps_empty_name_to_unknown_identity() {
+        assert_eq!(resolve_breadcrumb_file(""), "");
     }
 }
