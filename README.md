@@ -309,6 +309,7 @@ Notes:
 - Stdin input is never tracked: no breadcrumbs are recorded and no penalties apply.
 - Session state lives at `$XDG_STATE_HOME/headson/sessions/<uuid>.json` (falling back to `~/.local/state` when `XDG_STATE_HOME` is unset).
 - Breadcrumbs are content-addressed: when a value changes on disk, its old breadcrumb stops matching and the penalty disappears automatically.
+- Breadcrumbs are also keyed by the file’s resolved absolute path, so identical values in two different files never share a penalty, and the same file stays recognized across working directories and invocation styles.
 - Concurrent invocations on the same session are safe (a session lock plus atomic writes).
 
 Show help:

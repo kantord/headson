@@ -281,11 +281,26 @@ pub fn leaf_breadcrumb_key(
     }
 }
 
+/// The node that carries breadcrumb identity for a selected node: a
+/// `LeafPart` resolves to its parent `SplittableLeaf`, everything else to
+/// itself.
+fn breadcrumb_carrier(order: &PriorityOrder, node_id: NodeId) -> NodeId {
+    if matches!(
+        order.nodes.get(node_id.0),
+        Some(RankedNode::LeafPart { .. })
+    ) && let Some(parent) = order.parent.get(node_id.0).copied().flatten()
+    {
+        return parent;
+    }
+    node_id
+}
+
 /// Collect breadcrumb keys for the leaves actually selected by the budget
 /// search: the top-k prefix of the ordering the search indexed into (the
 /// per-slot `selection_order` when present, `by_priority` otherwise), plus
 /// any strong-grep must-keep nodes forced into the render outside that
-/// prefix.
+/// prefix. Selected `LeafPart` nodes count as their parent string being
+/// shown.
 ///
 /// Reuses the Merkle hash table stored by explore penalty matching when
 /// available so the whole pipeline performs at most one full hash pass.
@@ -312,7 +327,12 @@ pub(crate) fn collect_shown_leaves(
     let bound = search.top_k.min(base.len());
     let mut seen: HashSet<NodeId> = HashSet::with_capacity(bound);
     let mut out = Vec::new();
-    for &node_id in base[..bound].iter().chain(&search.grep_must_keep) {
+    for &selected in base[..bound].iter().chain(&search.grep_must_keep) {
+        // A selected LeafPart renders its parent string (the SplittableLeaf
+        // is reinserted as an ancestor), so the parent carries the breadcrumb
+        // identity. Fileset selection orders can include parts without their
+        // parent in the top-k prefix.
+        let node_id = breadcrumb_carrier(order, selected);
         if !seen.insert(node_id) {
             continue;
         }

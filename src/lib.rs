@@ -730,6 +730,85 @@ mod tests {
         );
     }
 
+    /// Fileset selection orders can pick a string's LeafPart without its
+    /// parent SplittableLeaf in the top-k prefix (the parent renders as a
+    /// reinserted ancestor). Those strings count as shown: under a tight
+    /// per-slot byte budget, leaves from every rendered file must be
+    /// recorded.
+    /// 30 keys with string values long enough to be truncated under a tight
+    /// per-slot byte budget.
+    fn flat_string_object_json() -> String {
+        let entries: Vec<String> = (0..30)
+            .map(|i| {
+                format!("\"key_{i:02}\": \"value_number_{i:02}_padding\"")
+            })
+            .collect();
+        format!("{{{}}}", entries.join(","))
+    }
+
+    #[test]
+    fn fileset_truncated_strings_recorded_in_shown_leaves() {
+        let flat = flat_string_object_json();
+        let inputs = vec![
+            FilesetInput {
+                name: "flat.json".into(),
+                bytes: flat.clone().into_bytes(),
+                kind: FilesetInputKind::Json,
+            },
+            FilesetInput {
+                name: "other.json".into(),
+                bytes: flat.into_bytes(),
+                kind: FilesetInputKind::Json,
+            },
+        ];
+        let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        prio.explore = Some(ExploreContext {
+            breadcrumbs: vec![],
+            current_step: 0,
+            alpha: 0.5,
+            file: None,
+        });
+        let budgets = Budgets {
+            global: None,
+            per_slot: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 400,
+            }),
+        };
+        let result = headson(
+            InputKind::Fileset(inputs),
+            &test_render_config(),
+            &prio,
+            &GrepConfig::default(),
+            budgets,
+        )
+        .expect("headson should succeed");
+        assert!(
+            result.text.contains("key_00"),
+            "render must show truncated string leaves; got {:?}",
+            result.text
+        );
+        let files: std::collections::HashSet<&str> = result
+            .shown_leaves
+            .iter()
+            .map(|(file, _)| file.as_str())
+            .collect();
+        assert_eq!(
+            files.len(),
+            2,
+            "shown leaves must cover both fileset files; got {:?}",
+            result.shown_leaves
+        );
+        assert!(
+            result
+                .shown_leaves
+                .iter()
+                .any(|(_, path)| path.starts_with("key_00#")),
+            "truncated string leaf must be recorded; got {:?}",
+            result.shown_leaves
+        );
+    }
+
     /// Strong grep matches forced into the render outside the top-k prefix
     /// count as seen: their breadcrumb keys must land in `shown_leaves`.
     #[test]
