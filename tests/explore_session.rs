@@ -1,11 +1,13 @@
 //! Explore-session behaviour of the library pipeline: fileset round-robin
-//! fairness must survive penalty application, and shown-leaf recording must
-//! reflect the actually-selected node set.
+//! fairness must survive penalty application, shown-leaf recording must
+//! reflect the actually-selected node set, and breadcrumb identity must be
+//! per file (resolved absolute path + in-file dot-path).
 
 use headson::{
     Breadcrumb, Budget, BudgetKind, Budgets, ColorMode, ExploreContext,
     FilesetInput, FilesetInputKind, GrepConfig, InputKind, OutputTemplate,
     PriorityConfig, RenderConfig, RenderOutput, Style, headson,
+    resolve_breadcrumb_file,
 };
 
 fn render_config() -> RenderConfig {
@@ -46,20 +48,37 @@ fn two_file_fileset() -> InputKind {
     ])
 }
 
-fn run_fileset(
+fn run_input(
+    input: InputKind,
     explore: Option<ExploreContext>,
     budgets: Budgets,
 ) -> RenderOutput {
     let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
     prio.explore = explore;
     headson(
-        two_file_fileset(),
+        input,
         &render_config(),
         &prio,
         &GrepConfig::default(),
         budgets,
     )
     .expect("headson must succeed")
+}
+
+fn run_fileset(
+    explore: Option<ExploreContext>,
+    budgets: Budgets,
+) -> RenderOutput {
+    run_input(two_file_fileset(), explore, budgets)
+}
+
+fn fresh_session(file: Option<String>) -> ExploreContext {
+    ExploreContext {
+        breadcrumbs: vec![],
+        current_step: 0,
+        alpha: 0.5,
+        file,
+    }
 }
 
 fn tight_line_budget() -> Budgets {
@@ -72,22 +91,15 @@ fn tight_line_budget() -> Budgets {
     }
 }
 
-/// Shown-leaf key for the leaf whose dot-path equals `dot_path`, captured by
-/// running the fileset with a fresh (breadcrumb-free) session.
-fn captured_key_for(dot_path: &str) -> String {
-    let out = run_fileset(
-        Some(ExploreContext {
-            breadcrumbs: vec![],
-            current_step: 0,
-            alpha: 0.5,
-        }),
-        Budgets::default(),
-    );
+/// Shown-leaf key for the leaf whose in-file dot-path equals `dot_path`,
+/// captured by running the fileset with a fresh (breadcrumb-free) session.
+fn captured_key_for(dot_path: &str) -> (String, String) {
+    let out = run_fileset(Some(fresh_session(None)), Budgets::default());
     out.shown_leaves
         .iter()
-        .find_map(|(_, path)| {
+        .find_map(|(file, path)| {
             let prefix = path.split_once('#').map(|(p, _)| p)?;
-            (prefix == dot_path).then(|| path.clone())
+            (prefix == dot_path).then(|| (file.clone(), path.clone()))
         })
         .unwrap_or_else(|| {
             panic!("no shown leaf at {dot_path:?}; got {:?}", out.shown_leaves)
@@ -102,13 +114,14 @@ fn fileset_interleave_unchanged_by_non_matching_breadcrumb() {
     let with_session = run_fileset(
         Some(ExploreContext {
             breadcrumbs: vec![Breadcrumb {
-                file: String::new(),
+                file: "/nonexistent/zz.json".to_string(),
                 path: "zz.nonexistent#0000000000000000".to_string(),
                 count: 3,
                 last_step: 1,
             }],
             current_step: 2,
             alpha: 0.5,
+            file: None,
         }),
         tight_line_budget(),
     );
@@ -128,6 +141,7 @@ fn fileset_interleave_unchanged_by_empty_breadcrumbs() {
             breadcrumbs: vec![],
             current_step: 1,
             alpha: 0.5,
+            file: None,
         }),
         tight_line_budget(),
     );
@@ -142,17 +156,23 @@ fn fileset_interleave_unchanged_by_empty_breadcrumbs() {
 /// the output, the penalized leaf yields to its unpenalized siblings.
 #[test]
 fn fileset_interleave_survives_matching_breadcrumb() {
-    let key_a1 = captured_key_for("a.json.a1");
+    let (file, path) = captured_key_for("a1");
+    assert_eq!(
+        file,
+        resolve_breadcrumb_file("a.json"),
+        "fileset leaf must carry the resolved absolute path of its file"
+    );
     let out = run_fileset(
         Some(ExploreContext {
             breadcrumbs: vec![Breadcrumb {
-                file: String::new(),
-                path: key_a1,
+                file,
+                path,
                 count: 5,
                 last_step: 1,
             }],
             current_step: 2,
             alpha: 0.9,
+            file: None,
         }),
         tight_line_budget(),
     );
@@ -188,26 +208,21 @@ fn per_slot_caps_record_exactly_the_rendered_leaves() {
             cap: 4,
         }),
     };
-    let out = run_fileset(
-        Some(ExploreContext {
-            breadcrumbs: vec![],
-            current_step: 0,
-            alpha: 0.5,
-        }),
-        budgets,
-    );
-    let recorded: Vec<&str> = out
+    let out = run_fileset(Some(fresh_session(None)), budgets);
+    let recorded: Vec<(&str, &str)> = out
         .shown_leaves
         .iter()
-        .filter_map(|(_, path)| path.split_once('#').map(|(p, _)| p))
+        .filter_map(|(file, path)| {
+            path.split_once('#').map(|(p, _)| (file.as_str(), p))
+        })
         .collect();
     for key in ["a1", "a2", "a3", "b1", "b2", "b3"] {
         let rendered = out.text.contains(key);
-        let dot_path = format!(
-            "{}.json.{key}",
+        let file = resolve_breadcrumb_file(&format!(
+            "{}.json",
             key.chars().next().map(String::from).unwrap_or_default()
-        );
-        let was_recorded = recorded.contains(&dot_path.as_str());
+        ));
+        let was_recorded = recorded.contains(&(file.as_str(), key));
         assert_eq!(
             rendered, was_recorded,
             "leaf {key:?}: rendered={rendered} but recorded={was_recorded}\n\
@@ -218,5 +233,132 @@ fn per_slot_caps_record_exactly_the_rendered_leaves() {
     assert!(
         !out.shown_leaves.is_empty(),
         "per-slot run must record at least one shown leaf"
+    );
+}
+
+// ── Per-file breadcrumb identity ───────────────────────────────────────────
+
+const SHARED_CONTENT: &[u8] = br#"{"a": 1, "b": 2}"#;
+
+fn tight_byte_budget() -> Budgets {
+    Budgets {
+        global: Some(Budget {
+            kind: BudgetKind::Bytes,
+            cap: 20,
+        }),
+        per_slot: None,
+    }
+}
+
+/// Regression (issue #513 review): breadcrumbs recorded while looking at one
+/// file must not penalize an identical-valued leaf in a *different* file on
+/// the user's first look at it — and the same breadcrumbs must still
+/// penalize the file they were recorded for.
+#[test]
+fn breadcrumbs_do_not_cross_penalize_identical_files() {
+    let file_a = "/abs/fixtures/a.json".to_string();
+    let file_b = "/abs/fixtures/b.json".to_string();
+
+    let first = run_input(
+        InputKind::Json(SHARED_CONTENT.to_vec()),
+        Some(fresh_session(Some(file_a.clone()))),
+        tight_byte_budget(),
+    );
+    assert!(
+        first.shown_leaves.iter().all(|(file, _)| file == &file_a),
+        "single-file leaves must carry the context file; got {:?}",
+        first.shown_leaves
+    );
+    let crumbs: Vec<Breadcrumb> = first
+        .shown_leaves
+        .iter()
+        .map(|(file, path)| Breadcrumb {
+            file: file.clone(),
+            path: path.clone(),
+            count: 1,
+            last_step: 1,
+        })
+        .collect();
+    assert!(!crumbs.is_empty(), "first render must record shown leaves");
+
+    // First look at identically-structured file B: output must match a
+    // breadcrumb-free render exactly — no cross-file penalty.
+    let b_fresh = run_input(
+        InputKind::Json(SHARED_CONTENT.to_vec()),
+        Some(fresh_session(Some(file_b.clone()))),
+        tight_byte_budget(),
+    );
+    let b_with_a_crumbs = run_input(
+        InputKind::Json(SHARED_CONTENT.to_vec()),
+        Some(ExploreContext {
+            breadcrumbs: crumbs.clone(),
+            current_step: 2,
+            alpha: 0.5,
+            file: Some(file_b),
+        }),
+        tight_byte_budget(),
+    );
+    assert_eq!(
+        b_fresh.text, b_with_a_crumbs.text,
+        "breadcrumbs from file A must not affect the first look at file B"
+    );
+
+    // Sanity: the same breadcrumbs DO penalize file A itself.
+    let a_again = run_input(
+        InputKind::Json(SHARED_CONTENT.to_vec()),
+        Some(ExploreContext {
+            breadcrumbs: crumbs,
+            current_step: 2,
+            alpha: 0.5,
+            file: Some(file_a),
+        }),
+        tight_byte_budget(),
+    );
+    assert_ne!(
+        b_fresh.text, a_again.text,
+        "breadcrumbs must still penalize the file they were recorded for"
+    );
+}
+
+/// The same file produces identical breadcrumb keys whether rendered as a
+/// single input or inside a fileset, and regardless of relative path
+/// spelling — penalty continuity must survive `hson a.json` vs `hson .`.
+#[test]
+fn keys_stable_across_single_file_and_fileset_invocations() {
+    let bytes = br#"{"k1": "v1", "k2": 42}"#;
+    let name = "stable_fixture.json";
+
+    let single = run_input(
+        InputKind::Json(bytes.to_vec()),
+        Some(fresh_session(Some(resolve_breadcrumb_file(name)))),
+        Budgets::default(),
+    );
+    let fileset_keys_for = |spelled: &str| {
+        let out = run_input(
+            InputKind::Fileset(vec![FilesetInput {
+                name: spelled.to_string(),
+                bytes: bytes.to_vec(),
+                kind: FilesetInputKind::Json,
+            }]),
+            Some(fresh_session(None)),
+            Budgets::default(),
+        );
+        let mut keys = out.shown_leaves;
+        keys.sort();
+        keys
+    };
+
+    let mut single_keys = single.shown_leaves;
+    single_keys.sort();
+    assert!(!single_keys.is_empty(), "must record shown leaves");
+    assert_eq!(
+        single_keys,
+        fileset_keys_for(name),
+        "single-file and fileset invocations must produce identical keys"
+    );
+    assert_eq!(
+        single_keys,
+        fileset_keys_for(&format!("./{name}")),
+        "a different relative spelling must produce identical keys"
     );
 }

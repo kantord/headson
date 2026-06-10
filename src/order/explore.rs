@@ -60,6 +60,7 @@ pub(crate) fn apply_explore_penalty(
         return;
     }
     let hashes = node_path::compute_merkle_hashes(order);
+    let files = node_path::NodeFiles::for_order(order, ctx.file.as_deref());
     let by_key: HashMap<(&str, &str), &Breadcrumb> = ctx
         .breadcrumbs
         .iter()
@@ -69,8 +70,9 @@ pub(crate) fn apply_explore_penalty(
         .by_priority
         .iter()
         .filter_map(|&node_id| {
-            let (file, path) =
-                node_path::leaf_breadcrumb_key(order, node_id, &hashes)?;
+            let (file, path) = node_path::leaf_breadcrumb_key(
+                order, node_id, &hashes, &files,
+            )?;
             let bc = by_key.get(&(file.as_str(), path.as_str()))?;
             let steps_ago = ctx.current_step.saturating_sub(bc.last_step);
             let penalty = novelty_penalty(bc.count, steps_ago, ctx.alpha);
@@ -116,12 +118,14 @@ mod tests {
 
     fn key_for(order: &PriorityOrder, dot_path: &str) -> (String, String) {
         let hashes = node_path::compute_merkle_hashes(order);
+        let files = node_path::NodeFiles::for_order(order, None);
         order
             .by_priority
             .iter()
             .find_map(|&node_id| {
-                let key =
-                    node_path::leaf_breadcrumb_key(order, node_id, &hashes)?;
+                let key = node_path::leaf_breadcrumb_key(
+                    order, node_id, &hashes, &files,
+                )?;
                 let prefix = key.1.split_once('#').map(|(p, _)| p)?;
                 (prefix == dot_path).then_some(key)
             })
@@ -136,6 +140,7 @@ mod tests {
             breadcrumbs: vec![],
             current_step: 3,
             alpha: 0.5,
+            file: None,
         };
         apply_explore_penalty(&mut order, &ctx);
         assert_eq!(order.by_priority, before);
@@ -158,6 +163,7 @@ mod tests {
             }],
             current_step: 2,
             alpha: 0.9,
+            file: None,
         };
         apply_explore_penalty(&mut order, &ctx);
 
@@ -185,6 +191,32 @@ mod tests {
         assert!(
             order.merkle_hashes.is_some(),
             "hash table must be stored for reuse by shown-leaf collection"
+        );
+    }
+
+    #[test]
+    fn breadcrumb_for_other_file_does_not_match_identical_content() {
+        // The breadcrumb's path matches leaf "x" exactly (same content hash),
+        // but it was recorded for a different file — no penalty may apply.
+        let json = b"{\"x\": \"alpha\", \"y\": \"beta\"}";
+        let mut order = make_order(json);
+        let before = order.by_priority.clone();
+        let (_, path) = key_for(&order, "x");
+        let ctx = ExploreContext {
+            breadcrumbs: vec![Breadcrumb {
+                file: "/abs/other.json".to_string(),
+                path,
+                count: 5,
+                last_step: 1,
+            }],
+            current_step: 2,
+            alpha: 0.9,
+            file: Some("/abs/this.json".to_string()),
+        };
+        apply_explore_penalty(&mut order, &ctx);
+        assert_eq!(
+            order.by_priority, before,
+            "a breadcrumb from another file must not penalize this file"
         );
     }
 }

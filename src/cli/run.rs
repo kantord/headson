@@ -5,7 +5,7 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use crate::cli::session_middleware::{
-    active_session_id, maybe_record_session, require_session_exists,
+    maybe_record_session, require_session_exists, resolve_session_id,
 };
 
 use anyhow::{Context, Result, bail};
@@ -98,16 +98,19 @@ fn load_explore_context(
         breadcrumbs,
         current_step: session.step_count + 1,
         alpha,
+        // Filled in per input: single-file renders resolve their path into
+        // it; fileset slots resolve their own paths from input names.
+        file: None,
     })
 }
 
 pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
     budget::validate(cli)?;
-    require_session_exists(cli)?;
+    let session_id = resolve_session_id(cli)?;
+    require_session_exists(session_id.as_deref())?;
     let render_cfg = get_render_config_from(cli);
     let grep_cfg = build_grep_config_from_cli(cli)?;
     let resolved_inputs = resolve_inputs(cli)?;
-    let session_id = active_session_id(cli);
     let explore_ctx =
         load_explore_context(session_id.as_deref(), cli.explore_decay);
     let from_stdin = resolved_inputs.is_empty();
@@ -712,8 +715,18 @@ fn render_single_entry(
         &name,
         chosen_input,
     );
-    let (cfg_for_render, prio, budgets) =
-        build_effective_configs(cli, cfg_for_render, 1usize, explore_ctx);
+    // Single inputs lose their filename before reaching the library, so the
+    // breadcrumb file identity is resolved here and threaded via the context.
+    let explore_ctx = explore_ctx.cloned().map(|mut ctx| {
+        ctx.file = Some(headson::resolve_breadcrumb_file(&name));
+        ctx
+    });
+    let (cfg_for_render, prio, budgets) = build_effective_configs(
+        cli,
+        cfg_for_render,
+        1usize,
+        explore_ctx.as_ref(),
+    );
     let (out, mut fallback_warnings, match_summary, shown_leaves) =
         render_single_input(
             chosen_input,

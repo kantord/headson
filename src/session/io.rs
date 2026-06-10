@@ -29,7 +29,7 @@ pub fn load_from_path(path: &Path) -> Result<Session, io::Error> {
 /// RAII guard for a sibling-file advisory lock acquired via `O_CREAT|O_EXCL`.
 /// Released on drop. Stale locks (from crashed processes) require manual
 /// cleanup — acceptable trade-off for zero deps and a CLI use case.
-struct SessionLock {
+pub struct SessionLock {
     path: PathBuf,
 }
 
@@ -39,7 +39,9 @@ impl Drop for SessionLock {
     }
 }
 
-fn acquire_session_lock(session_path: &Path) -> io::Result<SessionLock> {
+/// Acquire the advisory lock that serializes all read-modify-write cycles on
+/// a session file (`record_step_atomic`, `explore clear`).
+pub fn acquire_session_lock(session_path: &Path) -> io::Result<SessionLock> {
     let lock_path = session_path.with_extension("lock");
     if let Some(parent) = lock_path.parent() {
         fs::create_dir_all(parent)?;
@@ -304,11 +306,16 @@ mod tests {
             },
         );
 
-        let on_disk_after = std::fs::read(&path).unwrap_or_default();
         assert!(
-            result.is_err() || on_disk_after == garbage,
-            "corrupt session file must not be silently overwritten; \
-             got Ok result and on-disk bytes changed from garbage to: {:?}",
+            result.is_err(),
+            "recording against a corrupt session file must error; got: {result:?}"
+        );
+        let on_disk_after = std::fs::read(&path).unwrap();
+        assert_eq!(
+            on_disk_after,
+            garbage,
+            "corrupt session file must not be modified; on-disk bytes \
+             changed to: {:?}",
             String::from_utf8_lossy(&on_disk_after)
         );
     }

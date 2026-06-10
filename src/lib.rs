@@ -35,7 +35,6 @@ pub use grep::{
 };
 pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use ingest::format::Format;
-pub use ingest::{parse_json_one, parse_text_one_with_mode};
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
 pub use order::types::{Breadcrumb, ExploreContext};
 pub use order::{
@@ -46,7 +45,8 @@ pub use utils::extensions;
 pub use utils::templates::map_json_template_for_style;
 
 pub use node_path::{
-    BreadcrumbKey, compute_merkle_hashes, leaf_breadcrumb_key,
+    BreadcrumbKey, NodeFiles, compute_merkle_hashes, leaf_breadcrumb_key,
+    resolve_breadcrumb_file,
 };
 pub use order::types::novelty_penalty;
 pub use pruner::budget::{
@@ -70,8 +70,9 @@ pub struct RenderOutput {
     pub warnings: Vec<String>,
     pub match_summary: Option<MatchSummary>,
     /// `(file, path)` pairs for leaf nodes in the rendered output.
-    /// Used by CLI session middleware to record breadcrumbs. `file` is `""`
-    /// for single-file inputs; `path` is a dot-joined key chain or content hash.
+    /// Used by CLI session middleware to record breadcrumbs. `file` is the
+    /// input file's resolved absolute path (or `""` when unknown); `path` is
+    /// the in-file dot-path plus a content-hash suffix.
     pub shown_leaves: Vec<BreadcrumbKey>,
 }
 
@@ -117,8 +118,12 @@ pub fn headson(
     );
     // Leaf recording (and its Merkle hashing) only matters when a session is
     // active; without one, skip the hash pass entirely.
-    let shown_leaves = if priority_cfg.explore.is_some() {
-        node_path::collect_shown_leaves(&order_build, &search)
+    let shown_leaves = if let Some(explore) = priority_cfg.explore.as_ref() {
+        node_path::collect_shown_leaves(
+            &order_build,
+            &search,
+            explore.file.as_deref(),
+        )
     } else {
         Vec::new()
     };
@@ -456,12 +461,14 @@ mod tests {
         let order =
             order::build_order(&ingest_out.arena, &prio).expect("order");
         let hashes = node_path::compute_merkle_hashes(&order);
+        let files = node_path::NodeFiles::for_order(&order, None);
         order
             .by_priority
             .iter()
             .find_map(|&node_id| {
-                let (_, path) =
-                    node_path::leaf_breadcrumb_key(&order, node_id, &hashes)?;
+                let (_, path) = node_path::leaf_breadcrumb_key(
+                    &order, node_id, &hashes, &files,
+                )?;
                 let prefix = path.split_once('#').map(|(p, _)| p)?;
                 (prefix == dot_path).then_some(path)
             })
@@ -483,6 +490,7 @@ mod tests {
             breadcrumbs: vec![crumb],
             current_step: 2,
             alpha: 0.5,
+            file: None,
         };
         let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
         prio.explore = Some(ctx);
@@ -571,6 +579,7 @@ mod tests {
             breadcrumbs,
             current_step,
             alpha: 0.5,
+            file: None,
         });
         headson(
             InputKind::Json(rotation_array_json()),
@@ -699,6 +708,7 @@ mod tests {
             breadcrumbs: vec![],
             current_step: 0,
             alpha: 0.5,
+            file: None,
         });
         let result = headson(
             InputKind::Json(br#"{"a": 1, "b": 2}"#.to_vec()),
@@ -738,6 +748,7 @@ mod tests {
             breadcrumbs: vec![],
             current_step: 0,
             alpha: 0.5,
+            file: None,
         });
         // 1-line global budget: matches are only present because strong grep
         // forces them in, outside the top-k prefix.

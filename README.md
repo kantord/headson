@@ -304,7 +304,8 @@ Flags (on normal `hson` invocations):
 
 Notes:
 
-- Sessions are only created by `hson explore start`. An unknown session ID — via `--session` or `HSON_SESSION` — is an error, so a typo can’t silently start a fresh session and lose the bias context of the one you meant.
+- Sessions are only created by `hson explore start`. An unknown session ID — via `--session` or `HSON_SESSION` — is an error, so a typo can’t silently start a fresh session and lose the bias context of the one you meant. An empty `HSON_SESSION` is treated as unset, and an invalid one never blocks `hson explore start` (you only get a warning).
+- The `explore` subcommand shadows an input literally named `explore`: `hson explore` in a directory containing `explore/` shows the subcommand help. Use `hson ./explore` to preview such a file or directory.
 - Stdin input is never tracked: no breadcrumbs are recorded and no penalties apply.
 - Session state lives at `$XDG_STATE_HOME/headson/sessions/<uuid>.json` (falling back to `~/.local/state` when `XDG_STATE_HOME` is unset).
 - Breadcrumbs are content-addressed: when a value changes on disk, its old breadcrumb stops matching and the penalty disappears automatically.

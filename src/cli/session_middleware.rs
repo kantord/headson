@@ -20,16 +20,46 @@ const STRIPPED_VALUE_FLAGS: [&str; 3] =
 /// Session-control boolean flags stripped from recorded argv.
 const STRIPPED_BOOL_FLAGS: [&str; 1] = ["--no-record"];
 
-pub(crate) fn active_session_id(cli: &Cli) -> Option<String> {
-    cli.session.clone()
+/// Resolve the active session ID with precedence: an explicit `--session`
+/// flag (already UUID-validated by clap) wins over the `HSON_SESSION`
+/// environment variable.
+pub(crate) fn resolve_session_id(cli: &Cli) -> anyhow::Result<Option<String>> {
+    if let Some(id) = &cli.session {
+        return Ok(Some(id.clone()));
+    }
+    session_id_from_env()
 }
 
-/// If `--session` was provided, require the session file to exist.
+/// Read `HSON_SESSION`. Empty or whitespace-only values act as unset (so
+/// `export HSON_SESSION=""` doesn't break every invocation); any other
+/// non-UUID value errors, naming the env var rather than the --session flag.
+fn session_id_from_env() -> anyhow::Result<Option<String>> {
+    let Some(raw) = env::var_os("HSON_SESSION") else {
+        return Ok(None);
+    };
+    let raw = raw.to_string_lossy();
+    let value = raw.trim();
+    if value.is_empty() {
+        return Ok(None);
+    }
+    match uuid::Uuid::parse_str(value) {
+        Ok(uuid) => Ok(Some(uuid.to_string())),
+        Err(e) => anyhow::bail!(
+            "invalid HSON_SESSION environment variable {value:?} \
+             (must be a UUID): {e}. Unset HSON_SESSION or run \
+             `hson explore start` to create a fresh session."
+        ),
+    }
+}
+
+/// If a session is active, require the session file to exist.
 /// New sessions are only created by `hson explore start` — every other
 /// path errors on an unknown session ID rather than silently auto-creating
 /// (which would mask typos and lose the bias context of an existing session).
-pub(crate) fn require_session_exists(cli: &Cli) -> anyhow::Result<()> {
-    if let Some(id) = &cli.session {
+pub(crate) fn require_session_exists(
+    session_id: Option<&str>,
+) -> anyhow::Result<()> {
+    if let Some(id) = session_id {
         let path = session_file_path(id)?;
         if !path.exists() {
             anyhow::bail!(
@@ -126,6 +156,18 @@ pub(crate) fn record_session(
     }
 }
 
+/// Lossily convert OS-level argv to `String`s. `std::env::args()` PANICS on
+/// non-Unicode arguments (e.g. a filename with invalid UTF-8 bytes), which
+/// would abort after the preview was already computed; degrading to U+FFFD
+/// replacement characters in the query log is the right trade-off.
+fn argv_to_string_lossy(
+    args: impl IntoIterator<Item = std::ffi::OsString>,
+) -> Vec<String> {
+    args.into_iter()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect()
+}
+
 pub(crate) fn maybe_record_session(
     cli: &Cli,
     session_id: Option<&str>,
@@ -140,7 +182,7 @@ pub(crate) fn maybe_record_session(
         .unwrap_or_default()
         .to_string_lossy()
         .into_owned();
-    let raw_argv: Vec<String> = std::env::args().collect();
+    let raw_argv = argv_to_string_lossy(env::args_os());
     let argv = strip_session_control_args(&raw_argv);
     record_session(
         id,
@@ -284,6 +326,48 @@ mod tests {
         );
     }
 
+    /// Recorded breadcrumbs identify the input file by its resolved absolute
+    /// path; the path component is the in-file dot-path plus content hash,
+    /// with no filename embedded (issue #513 review).
+    #[test]
+    #[serial]
+    fn recorded_breadcrumbs_carry_absolute_file_and_inner_path() {
+        let dir = tempdir().unwrap();
+        let state_dir = tempdir().unwrap();
+        let path = dir.path().join("data.json");
+        fs::write(&path, r#"{"x": 1}"#).unwrap();
+
+        let session_id = "3b000000-0000-0000-0000-000000000000";
+        let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
+        pre_create_session(state_dir.path(), session_id);
+
+        let cli = Cli::parse_from(["hson", path.to_str().unwrap()]);
+        run(&cli).expect("run must succeed");
+
+        let session_file = state_dir
+            .path()
+            .join("headson")
+            .join("sessions")
+            .join(format!("{session_id}.json"));
+        let session =
+            crate::session::io::load_from_path(&session_file).unwrap();
+        let expected_file = path.canonicalize().unwrap();
+        assert!(!session.breadcrumbs.is_empty(), "must record breadcrumbs");
+        for crumb in &session.breadcrumbs {
+            assert_eq!(
+                crumb.file,
+                expected_file.to_string_lossy(),
+                "breadcrumb file must be the resolved absolute input path"
+            );
+            assert!(
+                crumb.path.starts_with("x#"),
+                "path must be the in-file dot-path plus hash, with no \
+                 filename embedded; got: {:?}",
+                crumb.path
+            );
+        }
+    }
+
     /// Step 33: Using `--session <id>` creates the session file.
     #[test]
     #[serial]
@@ -374,12 +458,13 @@ mod tests {
         let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
 
         let cli = Cli::parse_from(["hson"]);
-        let id = active_session_id(&cli);
+        let id = resolve_session_id(&cli)
+            .expect("valid HSON_SESSION must resolve without error");
 
         assert_eq!(
             id,
             Some(session_id.to_string()),
-            "active_session_id must return Some(id) from HSON_SESSION env var"
+            "resolve_session_id must return Some(id) from HSON_SESSION env var"
         );
         assert!(
             !state_dir
@@ -395,11 +480,11 @@ mod tests {
     /// Regression (issue #513): passing `--session <unknown-uuid>` to a normal
     /// `hson` invocation must NOT silently auto-create a session file at that
     /// path. The user likely typo'd; auto-creating overwrites their intent and
-    /// loses the original session's bias context. The command must either
-    /// return an error or leave no session file on disk.
+    /// loses the original session's bias context. The command must return an
+    /// error AND leave no session file on disk.
     #[test]
     #[serial]
-    fn unknown_session_id_in_run_errors_or_does_not_create_file() {
+    fn unknown_session_id_in_run_errors_and_does_not_create_file() {
         let dir = tempdir().unwrap();
         let state_dir = tempdir().unwrap();
         let path = dir.path().join("data.json");
@@ -417,10 +502,103 @@ mod tests {
             .join("sessions")
             .join(format!("{unknown_id}.json"));
         assert!(
-            result.is_err() || !expected.exists(),
-            "running with an unknown session ID should error OR not create the session file; \
-             got Ok and file exists: result={result:?}, file_exists={}",
-            expected.exists()
+            result.is_err(),
+            "running with an unknown session ID must error; got: {result:?}"
+        );
+        assert!(
+            !expected.exists(),
+            "running with an unknown session ID must not create the session \
+             file at {expected:?}"
+        );
+    }
+
+    /// An EMPTY exported HSON_SESSION must behave exactly as if it were
+    /// unset: the run succeeds and no session file is written.
+    #[test]
+    #[serial]
+    fn empty_hson_session_env_is_treated_as_unset() {
+        let dir = tempdir().unwrap();
+        let state_dir = tempdir().unwrap();
+        let path = dir.path().join("data.json");
+        fs::write(&path, r#"{"x": 1}"#).unwrap();
+
+        let _env = IsolatedEnv::new(state_dir.path(), Some(""));
+
+        let cli = Cli::parse_from(["hson", path.to_str().unwrap()]);
+        let id = resolve_session_id(&cli)
+            .expect("empty HSON_SESSION must not be an error");
+        assert_eq!(id, None, "empty HSON_SESSION must resolve to no session");
+
+        let (out, _) = run(&cli).expect("run must succeed");
+        assert!(!out.is_empty(), "output must be non-empty");
+    }
+
+    /// Whitespace-only HSON_SESSION is also treated as unset.
+    #[test]
+    #[serial]
+    fn whitespace_hson_session_env_is_treated_as_unset() {
+        let state_dir = tempdir().unwrap();
+        let _env = IsolatedEnv::new(state_dir.path(), Some("  \t "));
+
+        let cli = Cli::parse_from(["hson"]);
+        let id = resolve_session_id(&cli)
+            .expect("whitespace-only HSON_SESSION must not be an error");
+        assert_eq!(id, None);
+    }
+
+    /// A non-empty, non-UUID HSON_SESSION must produce a clear error that
+    /// names HSON_SESSION (not the --session flag the user never typed).
+    #[test]
+    #[serial]
+    fn invalid_hson_session_env_errors_naming_the_env_var() {
+        let state_dir = tempdir().unwrap();
+        let _env = IsolatedEnv::new(state_dir.path(), Some("not-a-uuid"));
+
+        let cli = Cli::parse_from(["hson"]);
+        let err = resolve_session_id(&cli)
+            .expect_err("non-UUID HSON_SESSION must be an error");
+
+        let msg = err.to_string();
+        assert!(
+            msg.contains("HSON_SESSION"),
+            "error must name HSON_SESSION; got: {msg}"
+        );
+        assert!(
+            !msg.contains("--session"),
+            "error must not blame the --session flag; got: {msg}"
+        );
+    }
+
+    /// An explicit --session flag takes precedence over HSON_SESSION, even
+    /// when the env value is garbage.
+    #[test]
+    #[serial]
+    fn session_flag_takes_precedence_over_env() {
+        let state_dir = tempdir().unwrap();
+        let _env = IsolatedEnv::new(state_dir.path(), Some("not-a-uuid"));
+
+        let flag_id = "ab000000-0000-0000-0000-000000000000";
+        let cli = Cli::parse_from(["hson", "--session", flag_id]);
+        let id = resolve_session_id(&cli)
+            .expect("--session flag must win over an invalid env value");
+        assert_eq!(id.as_deref(), Some(flag_id));
+    }
+
+    /// Non-UTF-8 argv must be lossily converted, never panic — a panic here
+    /// would discard the already-rendered preview (issue #513 review).
+    #[test]
+    #[cfg(unix)]
+    fn argv_to_string_lossy_replaces_invalid_utf8() {
+        use std::os::unix::ffi::OsStringExt;
+
+        let bad = std::ffi::OsString::from_vec(b"bad\xff.json".to_vec());
+        let argv =
+            argv_to_string_lossy(vec![std::ffi::OsString::from("hson"), bad]);
+
+        assert_eq!(argv[0], "hson");
+        assert_eq!(
+            argv[1], "bad\u{FFFD}.json",
+            "invalid UTF-8 bytes must degrade to U+FFFD, not panic"
         );
     }
 

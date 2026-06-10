@@ -3,19 +3,19 @@ use uuid::Uuid;
 
 use crate::cli::args::{Cli, ExploreSubcommand};
 use crate::cli::session_middleware::{
-    active_session_id, require_session_exists, session_file_path,
+    require_session_exists, resolve_session_id, session_file_path,
 };
 
 const NO_SESSION_MSG: &str =
     "No active session. Run `hson explore start` to begin.";
 
 fn load_active_session(
-    cli: &Cli,
+    session_id: Option<&str>,
 ) -> Result<Option<(String, crate::session::Session)>> {
-    let Some(id) = active_session_id(cli) else {
+    let Some(id) = session_id else {
         return Ok(None);
     };
-    let path = session_file_path(&id)?;
+    let path = session_file_path(id)?;
     // `require_session_exists` runs before this on every path; a missing file
     // here is a race (deleted in between) and keeps the friendly "no session"
     // behavior. A file that exists but fails to parse is corruption — surface
@@ -29,7 +29,7 @@ fn load_active_session(
             path.display()
         )
     })?;
-    Ok(Some((id, session)))
+    Ok(Some((id.to_string(), session)))
 }
 
 /// Format argv for display: relativize paths that are under `cwd`, and
@@ -60,6 +60,12 @@ pub(crate) fn run_subcommand(
 ) -> Result<String> {
     match cmd {
         ExploreSubcommand::Start { label } => {
+            // `explore start` is the escape hatch out of a broken
+            // HSON_SESSION: an invalid env value must never block creating a
+            // fresh session, so surface it as a warning only.
+            if let Err(e) = resolve_session_id(cli) {
+                eprintln!("warning: {e}");
+            }
             let id = Uuid::new_v4().to_string();
             let path = session_file_path(&id)?;
             if let Some(parent) = path.parent() {
@@ -81,8 +87,10 @@ pub(crate) fn run_subcommand(
             Ok(id)
         }
         ExploreSubcommand::Status => {
-            require_session_exists(cli)?;
-            let Some((_, session)) = load_active_session(cli)? else {
+            let active = resolve_session_id(cli)?;
+            require_session_exists(active.as_deref())?;
+            let Some((_, session)) = load_active_session(active.as_deref())?
+            else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
             let last_active = session
@@ -103,19 +111,31 @@ pub(crate) fn run_subcommand(
             ))
         }
         ExploreSubcommand::Clear => {
-            require_session_exists(cli)?;
-            let Some((id, mut session)) = load_active_session(cli)? else {
+            let active = resolve_session_id(cli)?;
+            require_session_exists(active.as_deref())?;
+            let Some(id) = active else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
             let path = session_file_path(&id)?;
+            // Clearing is a read-modify-write; hold the session lock so a
+            // concurrent `record_step_atomic` writer can't be lost between
+            // our load and save.
+            let _lock = crate::session::io::acquire_session_lock(&path)
+                .map_err(|e| anyhow::anyhow!("failed to lock session: {e}"))?;
+            let Some((_, mut session)) = load_active_session(Some(&id))?
+            else {
+                return Ok(NO_SESSION_MSG.to_string());
+            };
             session.clear();
             crate::session::io::save_to_path(&session, &path)
                 .map_err(|e| anyhow::anyhow!("failed to save session: {e}"))?;
             Ok(String::new())
         }
         ExploreSubcommand::List => {
-            require_session_exists(cli)?;
-            let Some((_, session)) = load_active_session(cli)? else {
+            let active = resolve_session_id(cli)?;
+            require_session_exists(active.as_deref())?;
+            let Some((_, session)) = load_active_session(active.as_deref())?
+            else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
             let lines: Vec<String> = session
@@ -322,9 +342,12 @@ mod tests {
         let result = run_subcommand(&ExploreSubcommand::Status, &cli);
 
         let output = result.expect("run_subcommand(Status) must succeed");
+        // The fixture session ID contains '3' too, so assert the exact
+        // labeled line rather than a bare contains('3').
         assert!(
-            output.contains("3"),
-            "status output must contain the step count '3'; got: {output:?}"
+            output.lines().any(|l| l == "Steps:       3"),
+            "status output must contain the labeled step count line \
+             'Steps:       3'; got: {output:?}"
         );
         assert!(
             output.contains(session_id),
@@ -510,11 +533,13 @@ mod tests {
 
         let expected = sessions_dir.join(format!("{unknown_id}.json"));
         assert!(
-            result.is_err() || !expected.exists(),
-            "explore clear with an unknown session ID must error OR not create the session file; \
-             today it silently fabricates an empty session and writes it to disk. \
-             got: result={result:?}, file_exists={}",
-            expected.exists()
+            result.is_err(),
+            "explore clear with an unknown session ID must error; got: {result:?}"
+        );
+        assert!(
+            !expected.exists(),
+            "explore clear with an unknown session ID must not create the \
+             session file at {expected:?}"
         );
     }
 
@@ -622,13 +647,12 @@ mod tests {
         let out = run_subcommand(&ExploreSubcommand::Status, &cli)
             .expect("run_subcommand(Status) must succeed");
 
+        // The fixture session ID contains '3' too, so assert the exact
+        // labeled line rather than a bare contains('3').
         assert!(
-            out.contains("Breadcrumbs:") || out.contains("breadcrumbs:"),
-            "status output must include a Breadcrumbs line; got:\n{out}"
-        );
-        assert!(
-            out.contains('3'),
-            "status output must include the breadcrumb count (3); got:\n{out}"
+            out.lines().any(|l| l == "Breadcrumbs: 3"),
+            "status output must include the labeled breadcrumb count line \
+             'Breadcrumbs: 3'; got:\n{out}"
         );
     }
 
@@ -664,6 +688,101 @@ mod tests {
         assert!(
             out.contains("2026-05-08T12:34:56Z"),
             "status output must include the most recent query timestamp; got:\n{out}"
+        );
+    }
+
+    /// Escape hatch: an invalid (non-UUID) HSON_SESSION must NOT block
+    /// `hson explore start` — it's the very command users need to fix their
+    /// environment. At most a warning goes to stderr.
+    #[test]
+    #[serial]
+    fn invalid_hson_session_env_does_not_break_explore_start() {
+        let state_dir = tempdir().unwrap();
+        let _env = IsolatedEnv::new(state_dir.path(), Some("not-a-uuid"));
+
+        let cli = make_cli(None);
+        let result =
+            run_subcommand(&ExploreSubcommand::Start { label: None }, &cli);
+
+        let output = result.expect(
+            "explore start must succeed despite an invalid HSON_SESSION",
+        );
+        let session_path = state_dir
+            .path()
+            .join("headson")
+            .join("sessions")
+            .join(format!("{output}.json"));
+        assert!(
+            session_path.exists(),
+            "explore start must create the new session file at {session_path:?}"
+        );
+    }
+
+    /// An invalid HSON_SESSION must produce a clear error naming HSON_SESSION
+    /// for `explore status` (and the other read subcommands).
+    #[test]
+    #[serial]
+    fn invalid_hson_session_env_errors_in_explore_status() {
+        let state_dir = tempdir().unwrap();
+        let _env = IsolatedEnv::new(state_dir.path(), Some("not-a-uuid"));
+
+        let cli = make_cli(None);
+        let result = run_subcommand(&ExploreSubcommand::Status, &cli);
+
+        let err = result.expect_err(
+            "explore status with an invalid HSON_SESSION must error",
+        );
+        let msg = format!("{err:#}");
+        assert!(
+            msg.contains("HSON_SESSION"),
+            "error must name HSON_SESSION; got: {msg}"
+        );
+    }
+
+    /// An empty HSON_SESSION is treated as unset: `explore status` reports
+    /// "no active session" instead of failing.
+    #[test]
+    #[serial]
+    fn empty_hson_session_env_is_unset_for_explore_status() {
+        let state_dir = tempdir().unwrap();
+        let _env = IsolatedEnv::new(state_dir.path(), Some(""));
+
+        let cli = make_cli(None);
+        let result = run_subcommand(&ExploreSubcommand::Status, &cli);
+
+        let output = result
+            .expect("explore status with empty HSON_SESSION must succeed");
+        assert_eq!(
+            output, NO_SESSION_MSG,
+            "empty HSON_SESSION must behave exactly as unset"
+        );
+    }
+
+    /// `explore clear` must release its session lock: a leftover `.lock`
+    /// sibling would block all subsequent recording on the session.
+    #[test]
+    #[serial]
+    fn explore_clear_releases_session_lock() {
+        let state_dir = tempdir().unwrap();
+        let session_id = "43000000-0000-0000-0000-000000000000";
+
+        let sessions_dir = state_dir.path().join("headson").join("sessions");
+        std::fs::create_dir_all(&sessions_dir).unwrap();
+        let session_path = sessions_dir.join(format!("{session_id}.json"));
+        let session =
+            Session::new(session_id.to_string(), "lock test".to_string());
+        save_to_path(&session, &session_path).unwrap();
+
+        let _env = IsolatedEnv::new(state_dir.path(), None);
+
+        let cli = make_cli(Some(session_id));
+        run_subcommand(&ExploreSubcommand::Clear, &cli)
+            .expect("run_subcommand(Clear) must succeed");
+
+        let lock_path = session_path.with_extension("lock");
+        assert!(
+            !lock_path.exists(),
+            "session lock must be released after clear; found {lock_path:?}"
         );
     }
 }

@@ -28,6 +28,10 @@ pub struct ExploreContext {
     pub breadcrumbs: Vec<Breadcrumb>,
     pub current_step: u64,
     pub alpha: f64,
+    /// Resolved absolute path of a single (non-fileset) input file, used as
+    /// the breadcrumb `file` component. `None` for stdin and fileset inputs
+    /// (fileset slots resolve their own per-file paths from input names).
+    pub file: Option<String>,
 }
 
 #[derive(Clone, Debug)]

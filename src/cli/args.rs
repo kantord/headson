@@ -298,13 +298,16 @@ pub struct Cli {
         help_heading = "Filtering"
     )]
     pub grep_show: GrepShowArg,
+    // HSON_SESSION is intentionally NOT wired through clap's `env` attribute:
+    // env resolution happens in `session_middleware::resolve_session_id` so an
+    // empty value acts as unset and an invalid value cannot fail parsing for
+    // every invocation (including `hson explore start`, the escape hatch).
     #[arg(
         long = "session",
-        env = "HSON_SESSION",
         value_name = "SESSION_ID",
         global = true,
         value_parser = parse_session_id,
-        help = "Activate an explore session by ID (UUID).",
+        help = "Activate an explore session by ID (UUID). Falls back to a non-empty HSON_SESSION environment variable.",
         help_heading = "Explore"
     )]
     pub session: Option<String>,
