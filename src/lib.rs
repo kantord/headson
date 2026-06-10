@@ -48,7 +48,10 @@ pub use utils::templates::map_json_template_for_style;
 pub use node_path::{
     BreadcrumbKey, compute_merkle_hashes, leaf_breadcrumb_key,
 };
-pub use pruner::budget::find_largest_render_under_budgets;
+pub use order::types::novelty_penalty;
+pub use pruner::budget::{
+    BudgetSearchResult, find_largest_render_under_budgets,
+};
 pub use prunist::{Budget, BudgetKind, Budgets};
 pub use serialization::color::resolve_color_enabled;
 pub use serialization::types::{
@@ -86,35 +89,6 @@ pub enum InputKind {
     Fileset(Vec<FilesetInput>),
 }
 
-// Converts f64 penalty to u128 score units; large enough to preserve ordering resolution.
-const PENALTY_SCALE: f64 = 1_000_000_000.0;
-
-fn apply_explore_context(order: &mut PriorityOrder, ctx: &ExploreContext) {
-    let hashes = node_path::compute_merkle_hashes(order);
-    let penalties: Vec<(NodeId, u128)> = order
-        .by_priority
-        .iter()
-        .filter_map(|&node_id| {
-            let (file, path) =
-                node_path::leaf_breadcrumb_key(order, node_id, &hashes)?;
-            let bc = ctx
-                .breadcrumbs
-                .iter()
-                .find(|b| b.file == file && b.path == path)?;
-            let steps_ago = ctx.current_step.saturating_sub(bc.last_step);
-            let penalty = (1.0 + bc.count as f64).ln()
-                * ctx.alpha.powi(steps_ago as i32);
-            (penalty > 0.0)
-                .then_some((node_id, (penalty * PENALTY_SCALE) as u128))
-        })
-        .collect();
-    for (node_id, delta) in &penalties {
-        order.scores[node_id.0] =
-            order.scores[node_id.0].saturating_add(*delta);
-    }
-    order.by_priority.sort_by_key(|id| order.scores[id.0]);
-}
-
 pub fn headson(
     input: InputKind,
     config: &RenderConfig,
@@ -126,27 +100,32 @@ pub fn headson(
         arena,
         mut warnings,
     } = crate::ingest::ingest_into_arena(input, priority_cfg, grep)?;
+    // Explore penalties (when active) are applied inside build_order, before
+    // fileset interleaving, so round-robin fairness survives the re-sort.
     let mut order_build = order::build_order(&arena, priority_cfg)?;
-    if let Some(ctx) = &priority_cfg.explore {
-        apply_explore_context(&mut order_build, ctx);
-    }
     if order_build.safety_cap_hit {
         warnings.push(format!(
             "warning: input truncated (exceeded {} node safety cap)",
             priority_cfg.safety_cap
         ));
     }
-    let (text, match_summary, top_k) = find_largest_render_under_budgets(
+    let search = find_largest_render_under_budgets(
         &mut order_build,
         config,
         grep,
         budgets,
     );
-    let shown_leaves = node_path::collect_shown_leaves(&order_build, top_k);
+    // Leaf recording (and its Merkle hashing) only matters when a session is
+    // active; without one, skip the hash pass entirely.
+    let shown_leaves = if priority_cfg.explore.is_some() {
+        node_path::collect_shown_leaves(&order_build, &search)
+    } else {
+        Vec::new()
+    };
     Ok(RenderOutput {
-        text,
+        text: search.text,
         warnings,
-        match_summary,
+        match_summary: search.match_summary,
         shown_leaves,
     })
 }
@@ -446,12 +425,13 @@ mod tests {
         };
         let grep_cfg = GrepConfig::default();
 
-        let (_text, _summary, top_k) = find_largest_render_under_budgets(
+        let search = find_largest_render_under_budgets(
             &mut order,
             &test_render_config(),
             &grep_cfg,
             tight_budgets,
         );
+        let top_k = search.top_k;
 
         assert!(
             top_k > 0,
@@ -569,6 +549,109 @@ mod tests {
         );
     }
 
+    /// With no explore context, shown-leaf collection (and its hashing) is
+    /// skipped entirely: `shown_leaves` must be empty.
+    #[test]
+    fn shown_leaves_empty_when_explore_is_none() {
+        let prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        let result = headson(
+            InputKind::Json(br#"{"a": 1, "b": 2}"#.to_vec()),
+            &test_render_config(),
+            &prio,
+            &GrepConfig::default(),
+            Budgets::default(),
+        )
+        .expect("headson should succeed");
+        assert!(
+            result.shown_leaves.is_empty(),
+            "shown_leaves must be empty without explore; got {:?}",
+            result.shown_leaves
+        );
+    }
+
+    /// An active session with no breadcrumbs yet (first invocation) must
+    /// still record shown leaves, while skipping the penalty work.
+    #[test]
+    fn shown_leaves_recorded_when_explore_has_empty_breadcrumbs() {
+        let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        prio.explore = Some(ExploreContext {
+            breadcrumbs: vec![],
+            current_step: 0,
+            alpha: 0.5,
+        });
+        let result = headson(
+            InputKind::Json(br#"{"a": 1, "b": 2}"#.to_vec()),
+            &test_render_config(),
+            &prio,
+            &GrepConfig::default(),
+            Budgets::default(),
+        )
+        .expect("headson should succeed");
+        let paths: Vec<&str> = result
+            .shown_leaves
+            .iter()
+            .map(|(_, p)| p.as_str())
+            .collect();
+        assert!(
+            paths.iter().any(|p| p.starts_with("a#"))
+                && paths.iter().any(|p| p.starts_with("b#")),
+            "both leaves must be recorded as shown; got {paths:?}"
+        );
+    }
+
+    /// Strong grep matches forced into the render outside the top-k prefix
+    /// count as seen: their breadcrumb keys must land in `shown_leaves`.
+    #[test]
+    fn strong_grep_must_keep_leaves_recorded_in_shown_leaves() {
+        let input = br#"{"alpha": "needle one", "beta": "no match here", "gamma": "needle two"}"#;
+        let grep_cfg = build_grep_config(
+            Some("needle"),
+            None,
+            GrepShow::Matching,
+            false,
+            true,
+        )
+        .expect("valid grep pattern");
+        let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        prio.explore = Some(ExploreContext {
+            breadcrumbs: vec![],
+            current_step: 0,
+            alpha: 0.5,
+        });
+        // 1-line global budget: matches are only present because strong grep
+        // forces them in, outside the top-k prefix.
+        let budgets = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Lines,
+                cap: 1,
+            }),
+            per_slot: None,
+        };
+
+        let result = headson(
+            InputKind::Json(input.to_vec()),
+            &test_render_config(),
+            &prio,
+            &grep_cfg,
+            budgets,
+        )
+        .expect("headson should succeed");
+
+        let paths: Vec<&str> = result
+            .shown_leaves
+            .iter()
+            .map(|(_, p)| p.as_str())
+            .collect();
+        assert!(
+            paths.iter().any(|p| p.starts_with("alpha#")),
+            "grep-forced leaf 'alpha' must be recorded as shown; got {paths:?}"
+        );
+        assert!(
+            paths.iter().any(|p| p.starts_with("gamma#")),
+            "grep-forced leaf 'gamma' must be recorded as shown; got {paths:?}"
+        );
+    }
+
     // ── Step 26: top_k slice contains at least one leaf node ──────────────────
 
     #[test]
@@ -587,12 +670,13 @@ mod tests {
         };
         let grep_cfg = GrepConfig::default();
 
-        let (_text, _summary, top_k) = find_largest_render_under_budgets(
+        let search = find_largest_render_under_budgets(
             &mut order,
             &test_render_config(),
             &grep_cfg,
             tight_budgets,
         );
+        let top_k = search.top_k;
 
         let has_leaf = order.by_priority[..top_k].iter().any(|node_id| {
             matches!(

@@ -3,12 +3,22 @@ use std::path::PathBuf;
 
 use crate::cli::args::Cli;
 
-/// Maximum number of breadcrumbs kept per session; older entries are evicted.
-pub(crate) const BREADCRUMB_CAP: usize = 500;
+/// Default maximum breadcrumbs kept per session (`--explore-memory` default);
+/// older entries are evicted.
+pub(crate) const BREADCRUMB_CAP: usize = 10_000;
 /// Maximum number of query log entries kept; oldest are dropped when exceeded.
 pub(crate) const QUERY_LOG_CAP: usize = 1000;
-/// Decay factor per step — matches the alpha used by the penalty engine.
+/// Default decay factor per step (`--explore-decay` default) — matches the
+/// alpha used by the penalty engine.
 pub(crate) const DEFAULT_ALPHA: f64 = 0.5;
+
+/// Session-control flags that take a value; stripped together with their
+/// value from recorded argv so the query log reflects only the preview
+/// request itself.
+const STRIPPED_VALUE_FLAGS: [&str; 3] =
+    ["--session", "--explore-decay", "--explore-memory"];
+/// Session-control boolean flags stripped from recorded argv.
+const STRIPPED_BOOL_FLAGS: [&str; 1] = ["--no-record"];
 
 pub(crate) fn active_session_id(cli: &Cli) -> Option<String> {
     cli.session.clone()
@@ -20,7 +30,7 @@ pub(crate) fn active_session_id(cli: &Cli) -> Option<String> {
 /// (which would mask typos and lose the bias context of an existing session).
 pub(crate) fn require_session_exists(cli: &Cli) -> anyhow::Result<()> {
     if let Some(id) = &cli.session {
-        let path = session_file_path(id);
+        let path = session_file_path(id)?;
         if !path.exists() {
             anyhow::bail!(
                 "Session '{id}' not found. \
@@ -31,17 +41,56 @@ pub(crate) fn require_session_exists(cli: &Cli) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(crate) fn session_file_path(id: &str) -> PathBuf {
-    let state_dir = std::env::var("XDG_STATE_HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| {
-            let home = std::env::var("HOME").unwrap_or_default();
-            PathBuf::from(home).join(".local").join("state")
-        });
-    state_dir
+fn state_dir() -> anyhow::Result<PathBuf> {
+    if let Some(dir) = env::var_os("XDG_STATE_HOME").filter(|v| !v.is_empty())
+    {
+        return Ok(PathBuf::from(dir));
+    }
+    match env::var_os("HOME").filter(|v| !v.is_empty()) {
+        Some(home) => Ok(PathBuf::from(home).join(".local").join("state")),
+        None => anyhow::bail!(
+            "cannot determine session state directory: \
+             neither XDG_STATE_HOME nor HOME is set"
+        ),
+    }
+}
+
+pub(crate) fn session_file_path(id: &str) -> anyhow::Result<PathBuf> {
+    Ok(state_dir()?
         .join("headson")
         .join("sessions")
-        .join(format!("{id}.json"))
+        .join(format!("{id}.json")))
+}
+
+fn is_equals_form(arg: &str, flag: &str) -> bool {
+    arg.len() > flag.len()
+        && arg.starts_with(flag)
+        && arg.as_bytes()[flag.len()] == b'='
+}
+
+/// Remove session-control flags from a raw argv before it is written to the
+/// session query log. Handles both `--flag value` and `--flag=value` forms.
+pub(crate) fn strip_session_control_args(argv: &[String]) -> Vec<String> {
+    let mut out = Vec::with_capacity(argv.len());
+    let mut tokens = argv.iter();
+    while let Some(token) = tokens.next() {
+        let is_bool_flag = STRIPPED_BOOL_FLAGS
+            .iter()
+            .any(|f| token == f || is_equals_form(token, f));
+        if is_bool_flag
+            || STRIPPED_VALUE_FLAGS
+                .iter()
+                .any(|f| is_equals_form(token, f))
+        {
+            continue;
+        }
+        if STRIPPED_VALUE_FLAGS.iter().any(|f| token == f) {
+            tokens.next(); // drop the flag's value token too
+            continue;
+        }
+        out.push(token.clone());
+    }
+    out
 }
 
 pub(crate) fn record_session(
@@ -49,38 +98,58 @@ pub(crate) fn record_session(
     shown_leaves: &[headson::BreadcrumbKey],
     cwd: &str,
     argv: &[String],
+    alpha: f64,
+    breadcrumb_cap: usize,
 ) {
-    let path = session_file_path(id);
-    let _ = crate::session::io::record_step_atomic(
+    let path = match session_file_path(id) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!(
+                "warning: failed to record step for session '{id}': {e}"
+            );
+            return;
+        }
+    };
+    if let Err(e) = crate::session::io::record_step_atomic(
         &path,
         shown_leaves,
         &crate::cli::timestamp::current_timestamp(),
         cwd,
         argv,
         &crate::session::io::EvictionPolicy {
-            alpha: DEFAULT_ALPHA,
-            breadcrumb_cap: BREADCRUMB_CAP,
+            alpha,
+            breadcrumb_cap,
             query_log_cap: QUERY_LOG_CAP,
         },
-    );
+    ) {
+        eprintln!("warning: failed to record step for session '{id}': {e}");
+    }
 }
 
 pub(crate) fn maybe_record_session(
+    cli: &Cli,
     session_id: Option<&str>,
     from_stdin: bool,
-    no_record: bool,
     shown_leaves: &[headson::BreadcrumbKey],
 ) {
-    if let Some(id) = session_id {
-        if !from_stdin && !no_record {
-            let cwd = env::current_dir()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .into_owned();
-            let argv: Vec<String> = std::env::args().collect();
-            record_session(id, shown_leaves, &cwd, &argv);
-        }
+    let Some(id) = session_id else { return };
+    if from_stdin || cli.no_record {
+        return;
     }
+    let cwd = env::current_dir()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned();
+    let raw_argv: Vec<String> = std::env::args().collect();
+    let argv = strip_session_control_args(&raw_argv);
+    record_session(
+        id,
+        shown_leaves,
+        &cwd,
+        &argv,
+        cli.explore_decay,
+        cli.explore_memory,
+    );
 }
 
 #[cfg(test)]
@@ -356,7 +425,8 @@ mod tests {
     }
 
     /// Regression: record_session must evict stale breadcrumbs so session
-    /// files don't grow without bound across long-running explorations.
+    /// files don't grow without bound across long-running explorations. The
+    /// cap comes from --explore-memory rather than a hard-coded constant.
     #[test]
     #[serial]
     fn record_session_caps_breadcrumbs_when_limit_exceeded() {
@@ -366,32 +436,44 @@ mod tests {
 
         let _env = IsolatedEnv::new(state_dir, None);
 
-        // Pre-populate with 600 breadcrumbs — above the BREADCRUMB_CAP of 500.
-        let path = session_file_path(session_id);
+        // Pre-populate with 20 recent breadcrumbs — above the cap of 5.
+        let path = session_file_path(session_id).unwrap();
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         let mut session = crate::session::Session::new(
             session_id.to_string(),
             "lbl".to_string(),
         );
-        for i in 0u64..600 {
+        for i in 0u64..20 {
             session.record_breadcrumb("", &format!("k{i}#h{i}"), i + 1);
         }
-        session.step_count = 600;
+        session.step_count = 20;
         crate::session::io::save_to_path(&session, &path).unwrap();
 
+        // --explore-decay 1.0 disables decay-based pruning so only the
+        // --explore-memory cap is exercised here.
+        let cli = Cli::parse_from([
+            "hson",
+            "--explore-decay",
+            "1.0",
+            "--explore-memory",
+            "5",
+            "input",
+        ]);
         record_session(
             session_id,
             &[(String::new(), "new#newhash".to_string())],
             "/cwd",
             &[],
+            cli.explore_decay,
+            cli.explore_memory,
         );
 
         let final_session = crate::session::io::load_from_path(&path)
             .expect("session file must exist after record_session");
         assert!(
-            final_session.breadcrumbs.len() <= BREADCRUMB_CAP,
+            final_session.breadcrumbs.len() <= cli.explore_memory,
             "breadcrumbs must be capped at {} after record_session; got: {}",
-            BREADCRUMB_CAP,
+            cli.explore_memory,
             final_session.breadcrumbs.len()
         );
     }
@@ -407,7 +489,7 @@ mod tests {
         let _env = IsolatedEnv::new(state_dir, None);
 
         // Pre-populate with QUERY_LOG_CAP + 100 queries.
-        let path = session_file_path(session_id);
+        let path = session_file_path(session_id).unwrap();
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         let mut session = crate::session::Session::new(
             session_id.to_string(),
@@ -418,7 +500,14 @@ mod tests {
         }
         crate::session::io::save_to_path(&session, &path).unwrap();
 
-        record_session(session_id, &[], "/cwd", &[]);
+        record_session(
+            session_id,
+            &[],
+            "/cwd",
+            &[],
+            DEFAULT_ALPHA,
+            BREADCRUMB_CAP,
+        );
 
         let final_session = crate::session::io::load_from_path(&path)
             .expect("session file must exist after record_session");
@@ -427,6 +516,142 @@ mod tests {
             "query log must be capped at {}; got: {}",
             QUERY_LOG_CAP,
             final_session.queries.len()
+        );
+    }
+
+    fn to_argv(args: &[&str]) -> Vec<String> {
+        args.iter().map(|s| (*s).to_string()).collect()
+    }
+
+    #[test]
+    fn strip_removes_session_control_flags_space_form() {
+        let argv = to_argv(&[
+            "hson",
+            "--session",
+            "be000000-0000-0000-0000-000000000000",
+            "--explore-decay",
+            "0.7",
+            "--explore-memory",
+            "42",
+            "--no-record",
+            "-n",
+            "5",
+            "data.json",
+        ]);
+        assert_eq!(
+            strip_session_control_args(&argv),
+            to_argv(&["hson", "-n", "5", "data.json"])
+        );
+    }
+
+    #[test]
+    fn strip_removes_session_control_flags_equals_form() {
+        let argv = to_argv(&[
+            "hson",
+            "--session=be000000-0000-0000-0000-000000000000",
+            "--explore-decay=0.7",
+            "--explore-memory=42",
+            "data.json",
+        ]);
+        assert_eq!(
+            strip_session_control_args(&argv),
+            to_argv(&["hson", "data.json"])
+        );
+    }
+
+    #[test]
+    fn strip_keeps_unrelated_args_untouched() {
+        let argv = to_argv(&["hson", "--bytes", "200", "--tree", "src/"]);
+        assert_eq!(strip_session_control_args(&argv), argv);
+    }
+
+    #[test]
+    fn strip_does_not_drop_prefix_lookalike_flags() {
+        // `--session-x` is not `--session`; only exact or `=`-joined forms
+        // are session-control flags.
+        let argv = to_argv(&["hson", "--session-x", "v", "data.json"]);
+        assert_eq!(strip_session_control_args(&argv), argv);
+    }
+
+    #[test]
+    fn strip_handles_trailing_value_flag_without_value() {
+        let argv = to_argv(&["hson", "data.json", "--session"]);
+        assert_eq!(
+            strip_session_control_args(&argv),
+            to_argv(&["hson", "data.json"])
+        );
+    }
+
+    struct StateEnvGuard {
+        old_state: Option<std::ffi::OsString>,
+        old_home: Option<std::ffi::OsString>,
+    }
+
+    impl StateEnvGuard {
+        fn unset_all() -> Self {
+            let old_state = std::env::var_os("XDG_STATE_HOME");
+            let old_home = std::env::var_os("HOME");
+            unsafe {
+                std::env::remove_var("XDG_STATE_HOME");
+                std::env::remove_var("HOME");
+            }
+            Self {
+                old_state,
+                old_home,
+            }
+        }
+    }
+
+    impl Drop for StateEnvGuard {
+        fn drop(&mut self) {
+            unsafe {
+                match &self.old_state {
+                    Some(v) => std::env::set_var("XDG_STATE_HOME", v),
+                    None => std::env::remove_var("XDG_STATE_HOME"),
+                }
+                match &self.old_home {
+                    Some(v) => std::env::set_var("HOME", v),
+                    None => std::env::remove_var("HOME"),
+                }
+            }
+        }
+    }
+
+    /// With neither XDG_STATE_HOME nor HOME available, session_file_path
+    /// must return a clear error instead of silently building a relative
+    /// path like `.local/state/...` under the current directory.
+    #[test]
+    #[serial]
+    fn session_file_path_errors_when_no_state_dir_env() {
+        let _guard = StateEnvGuard::unset_all();
+
+        let result = session_file_path("be000000-0000-0000-0000-000000000000");
+
+        let err = result.expect_err(
+            "session_file_path must error when XDG_STATE_HOME and HOME are unset",
+        );
+        let msg = err.to_string();
+        assert!(
+            msg.contains("XDG_STATE_HOME") && msg.contains("HOME"),
+            "error must name the missing env vars; got: {msg}"
+        );
+    }
+
+    /// Empty-string env values must be treated the same as unset.
+    #[test]
+    #[serial]
+    fn session_file_path_errors_when_state_dir_env_empty() {
+        let _guard = StateEnvGuard::unset_all();
+        unsafe {
+            std::env::set_var("XDG_STATE_HOME", "");
+            std::env::set_var("HOME", "");
+        }
+
+        let result = session_file_path("be000000-0000-0000-0000-000000000000");
+
+        assert!(
+            result.is_err(),
+            "empty XDG_STATE_HOME and HOME must be treated as unset; got: {result:?}"
         );
     }
 }

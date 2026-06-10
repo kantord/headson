@@ -34,7 +34,11 @@ fn main() -> Result<()> {
     {
         let output =
             crate::cli::explore::run_subcommand(&explore.command, &cli)?;
-        println!("{output}");
+        // Some subcommands (e.g. `explore clear`) succeed with nothing to
+        // say; printing would emit a stray blank line.
+        if !output.is_empty() {
+            println!("{output}");
+        }
         return Ok(());
     }
 

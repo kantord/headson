@@ -9,6 +9,30 @@ fn parse_session_id(s: &str) -> Result<String, String> {
         .map_err(|e| format!("invalid session ID (must be a UUID): {e}"))
 }
 
+fn parse_explore_decay(s: &str) -> Result<f64, String> {
+    let alpha: f64 = s
+        .parse()
+        .map_err(|e| format!("invalid decay factor: {e}"))?;
+    if alpha > 0.0 && alpha <= 1.0 {
+        Ok(alpha)
+    } else {
+        Err(format!(
+            "decay factor must satisfy 0.0 < ALPHA <= 1.0 (got {alpha})"
+        ))
+    }
+}
+
+fn parse_explore_memory(s: &str) -> Result<usize, String> {
+    let n: usize = s
+        .parse()
+        .map_err(|e| format!("invalid breadcrumb capacity: {e}"))?;
+    if n >= 1 {
+        Ok(n)
+    } else {
+        Err("breadcrumb capacity must be at least 1".to_string())
+    }
+}
+
 /// Top-level CLI flags and enums.
 #[derive(Parser, Debug)]
 #[command(
@@ -292,6 +316,24 @@ pub struct Cli {
     )]
     pub no_record: bool,
     #[arg(
+        long = "explore-decay",
+        value_name = "ALPHA",
+        default_value_t = crate::cli::session_middleware::DEFAULT_ALPHA,
+        value_parser = parse_explore_decay,
+        help = "Decay factor per step for session novelty penalties (0 < ALPHA <= 1; 1.0 = no decay). Only takes effect with an active session.",
+        help_heading = "Explore"
+    )]
+    pub explore_decay: f64,
+    #[arg(
+        long = "explore-memory",
+        value_name = "N",
+        default_value_t = crate::cli::session_middleware::BREADCRUMB_CAP,
+        value_parser = parse_explore_memory,
+        help = "Maximum breadcrumbs retained per session; older entries are evicted. Only takes effect with an active session.",
+        help_heading = "Explore"
+    )]
+    pub explore_memory: usize,
+    #[arg(
         long = "completions",
         value_name = "SHELL",
         value_enum,
@@ -517,6 +559,63 @@ mod tests {
             result.is_err(),
             "session value containing path separators must fail at parse time"
         );
+    }
+
+    #[test]
+    fn explore_decay_and_memory_use_documented_defaults() {
+        use clap::Parser;
+        let cli = Cli::try_parse_from(["hson", "file"])
+            .expect("plain invocation must parse");
+        assert!(
+            (cli.explore_decay - 0.5).abs() < f64::EPSILON,
+            "default --explore-decay must be 0.5; got {}",
+            cli.explore_decay
+        );
+        assert_eq!(
+            cli.explore_memory, 10_000,
+            "default --explore-memory must be 10000"
+        );
+    }
+
+    #[test]
+    fn explore_decay_rejects_out_of_range_values() {
+        use clap::Parser;
+        for bad in ["0", "0.0", "1.5", "nan"] {
+            let result =
+                Cli::try_parse_from(["hson", "--explore-decay", bad, "file"]);
+            assert!(
+                result.is_err(),
+                "--explore-decay {bad} must fail at parse time"
+            );
+        }
+    }
+
+    #[test]
+    fn explore_decay_accepts_boundary_and_interior_values() {
+        use clap::Parser;
+        for good in ["1.0", "0.5", "0.001"] {
+            let result =
+                Cli::try_parse_from(["hson", "--explore-decay", good, "file"]);
+            assert!(
+                result.is_ok(),
+                "--explore-decay {good} must parse; got: {:?}",
+                result.err()
+            );
+        }
+    }
+
+    #[test]
+    fn explore_memory_rejects_zero_and_accepts_one() {
+        use clap::Parser;
+        assert!(
+            Cli::try_parse_from(["hson", "--explore-memory", "0", "file"])
+                .is_err(),
+            "--explore-memory 0 must fail at parse time"
+        );
+        let cli =
+            Cli::try_parse_from(["hson", "--explore-memory", "1", "file"])
+                .expect("--explore-memory 1 must parse");
+        assert_eq!(cli.explore_memory, 1);
     }
 
     #[test]

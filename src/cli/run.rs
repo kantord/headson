@@ -70,9 +70,18 @@ fn needs_fileset(cli: &Cli, inputs_len: usize) -> bool {
 
 fn load_explore_context(
     session_id: Option<&str>,
+    alpha: f64,
 ) -> Option<headson::ExploreContext> {
     let id = session_id?;
-    let path = crate::cli::session_middleware::session_file_path(id);
+    let path = match crate::cli::session_middleware::session_file_path(id) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!(
+                "warning: cannot resolve session path, ignoring session: {e}"
+            );
+            return None;
+        }
+    };
     let session = if path.exists() {
         match crate::session::io::load_from_path(&path) {
             Ok(s) => s,
@@ -88,7 +97,7 @@ fn load_explore_context(
     Some(headson::ExploreContext {
         breadcrumbs,
         current_step: session.step_count + 1,
-        alpha: crate::cli::session_middleware::DEFAULT_ALPHA,
+        alpha,
     })
 }
 
@@ -99,7 +108,8 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
     let grep_cfg = build_grep_config_from_cli(cli)?;
     let resolved_inputs = resolve_inputs(cli)?;
     let session_id = active_session_id(cli);
-    let explore_ctx = load_explore_context(session_id.as_deref());
+    let explore_ctx =
+        load_explore_context(session_id.as_deref(), cli.explore_decay);
     let from_stdin = resolved_inputs.is_empty();
     let (out, mut warnings, match_summary, shown_leaves) = if from_stdin {
         if !cli.globs.is_empty() || cli.recursive {
@@ -131,9 +141,9 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
         }
     }
     maybe_record_session(
+        cli,
         session_id.as_deref(),
         from_stdin,
-        cli.no_record,
         &shown_leaves,
     );
     Ok((out, warnings))

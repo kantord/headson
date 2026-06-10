@@ -141,16 +141,41 @@ pub fn leaf_breadcrumb_key(
     }
 }
 
+/// Collect breadcrumb keys for the leaves actually selected by the budget
+/// search: the top-k prefix of the ordering the search indexed into (the
+/// per-slot `selection_order` when present, `by_priority` otherwise), plus
+/// any strong-grep must-keep nodes forced into the render outside that
+/// prefix.
+///
+/// Reuses the Merkle hash table stored by explore penalty matching when
+/// available so the whole pipeline performs at most one full hash pass.
 pub(crate) fn collect_shown_leaves(
     order: &PriorityOrder,
-    top_k: usize,
+    search: &crate::pruner::budget::BudgetSearchResult,
 ) -> Vec<BreadcrumbKey> {
-    let hashes = compute_merkle_hashes(order);
-    let bound = top_k.min(order.by_priority.len());
-    order.by_priority[..bound]
-        .iter()
-        .filter_map(|&node_id| leaf_breadcrumb_key(order, node_id, &hashes))
-        .collect()
+    use std::borrow::Cow;
+    use std::collections::HashSet;
+
+    let hashes: Cow<'_, [u64]> = order.merkle_hashes.as_deref().map_or_else(
+        || Cow::Owned(compute_merkle_hashes(order)),
+        Cow::Borrowed,
+    );
+    let base: &[NodeId] = search
+        .selection_order
+        .as_deref()
+        .unwrap_or(&order.by_priority);
+    let bound = search.top_k.min(base.len());
+    let mut seen: HashSet<NodeId> = HashSet::with_capacity(bound);
+    let mut out = Vec::new();
+    for &node_id in base[..bound].iter().chain(&search.grep_must_keep) {
+        if !seen.insert(node_id) {
+            continue;
+        }
+        if let Some(key) = leaf_breadcrumb_key(order, node_id, &hashes) {
+            out.push(key);
+        }
+    }
+    out
 }
 
 #[cfg(test)]

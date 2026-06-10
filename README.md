@@ -32,6 +32,7 @@ Available as:
 - Multi-file mode: preview many files at once (paths, `--glob ...`, or `--recursive` on directories) with shared or per-file budgets
 - Repo-aware ordering: in git repos, frequent+recent files show up first (rarely touched files drift to the end; mtime fallback)
 - `grep`-like search and `tree`-like view: `--grep <regex>` and `--tree` emulate the workflows while still summarizing file contents inline
+- Explore sessions: with an active session (`hson explore start`), repeated runs under tight budgets surface fresh content instead of repeating the same preview
 - Fast: processes gigabyte‑scale files in seconds (mostly disk‑bound)
 - Available as a CLI app and as a Python library
 
@@ -143,6 +144,7 @@ hson -n 20 src/main.py
 - [Budget modes](#budget-modes)
 - [Text mode](#text-mode)
 - [Source code support](#source-code-support)
+- [Explore sessions](#explore-sessions)
 
 #### Common flags
 
@@ -272,6 +274,41 @@ For source code files, headson uses an indentation-aware heuristic to build an o
 - Lines are kept atomic: omission markers never split a line in half.
 - Under tight budgets, it tends to keep block-introducing lines (like function/class headers) and omit less relevant blocks from the middle.
 - With colors enabled, you also get syntax highlighting and line numbers.
+
+#### Explore sessions
+
+With an active explore session, `hson` remembers which leaves it already showed (its “breadcrumbs”) and penalizes them in priority scoring. Repeated runs under a tight budget surface fresh content instead of the same preview every time; under a loose budget previously-seen items still appear — the penalty is soft, never an exclusion.
+
+```bash
+export HSON_SESSION=$(hson explore start)   # create a session; prints a bare UUID
+hson src/ -C 8000 --tree                    # first look
+hson src/ -C 8000 --tree                    # same command, fresher content
+hson explore status                         # id, label, step count, breadcrumbs, last activity
+hson explore list                           # chronological query log
+hson explore clear                          # forget breadcrumbs; keep the query log
+```
+
+Subcommands:
+
+- `hson explore start [label]`: create a new session and print its UUID to stdout (bare, so it can be assigned directly to `HSON_SESSION`). The label defaults to `Explore session started originally in <cwd>`.
+- `hson explore status`: show the active session: id, label, step count, breadcrumb count, and last activity.
+- `hson explore clear`: clear the breadcrumbs and reset the step count; the query log and label are preserved.
+- `hson explore list`: print the session’s query log in chronological order.
+
+Flags (on normal `hson` invocations):
+
+- `--session <uuid>`: activate a session for this invocation only, overriding `HSON_SESSION`.
+- `--no-record`: apply the session’s penalties but write nothing back (no breadcrumbs, no query log entry, no step increment).
+- `--explore-decay <alpha>`: per-step penalty decay factor (default: 0.5). With the default, content you saw a few steps ago is already mostly “forgiven”; use `1.0` for no decay (seen content keeps its full penalty for the rest of the session).
+- `--explore-memory <N>`: maximum breadcrumbs retained per session (default: 10000). Oldest entries are evicted first.
+
+Notes:
+
+- Sessions are only created by `hson explore start`. An unknown session ID — via `--session` or `HSON_SESSION` — is an error, so a typo can’t silently start a fresh session and lose the bias context of the one you meant.
+- Stdin input is never tracked: no breadcrumbs are recorded and no penalties apply.
+- Session state lives at `$XDG_STATE_HOME/headson/sessions/<uuid>.json` (falling back to `~/.local/state` when `XDG_STATE_HOME` is unset).
+- Breadcrumbs are content-addressed: when a value changes on disk, its old breadcrumb stops matching and the penalty disappears automatically.
+- Concurrent invocations on the same session are safe (a session lock plus atomic writes).
 
 Show help:
 

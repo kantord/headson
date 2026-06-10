@@ -13,6 +13,16 @@ pub struct Breadcrumb {
     pub last_step: u64,
 }
 
+/// Novelty penalty for a previously-seen node: `ln(1 + count) * alpha^steps_ago`.
+///
+/// `steps_ago` is clamped before the `i32` conversion: a raw `as i32` cast of
+/// a large `u64` could wrap negative, turning the decay into a huge
+/// amplification for `alpha < 1`.
+pub fn novelty_penalty(count: u64, steps_ago: u64, alpha: f64) -> f64 {
+    let steps = i32::try_from(steps_ago).unwrap_or(i32::MAX);
+    (1.0 + count as f64).ln() * alpha.powi(steps)
+}
+
 #[derive(Clone, Debug)]
 pub struct ExploreContext {
     pub breadcrumbs: Vec<Breadcrumb>,
@@ -210,6 +220,10 @@ pub struct PriorityOrder {
     pub fileset_render_slots: Option<Vec<FilesetRenderSlot>>,
     /// True if the priority queue expansion hit the safety cap.
     pub safety_cap_hit: bool,
+    /// FNV-1a Merkle hashes indexed by PQ node id, populated when explore
+    /// penalty matching computed them, so shown-leaf collection can reuse
+    /// the table instead of running a second full-tree hash pass.
+    pub merkle_hashes: Option<Vec<u64>>,
 }
 
 #[derive(Copy, Clone, Debug)]

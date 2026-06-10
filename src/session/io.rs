@@ -95,12 +95,15 @@ pub fn record_step_atomic(
 ) -> Result<(), io::Error> {
     let _lock = acquire_session_lock(path)?;
     let mut session = load_from_path(path).map_err(|e| {
-        eprintln!(
-            "warning: session file {} is unreadable ({e}); refusing to \
-             overwrite",
-            path.display()
-        );
-        e
+        io::Error::new(
+            e.kind(),
+            format!(
+                "session file {} is unreadable ({e}); refusing to overwrite \
+                 — delete the file or run `hson explore start` to create a \
+                 fresh session",
+                path.display()
+            ),
+        )
     })?;
 
     session.record_query(timestamp, cwd, argv);
@@ -308,5 +311,67 @@ mod tests {
              got Ok result and on-disk bytes changed from garbage to: {:?}",
             String::from_utf8_lossy(&on_disk_after)
         );
+    }
+
+    #[test]
+    fn unreadable_session_error_carries_path_and_remedy() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("session.json");
+        std::fs::write(&path, b"not json").unwrap();
+
+        let err = record_step_atomic(
+            &path,
+            &[],
+            "ts",
+            "/cwd",
+            &[],
+            &EvictionPolicy {
+                alpha: 0.5,
+                breadcrumb_cap: 500,
+                query_log_cap: 1000,
+            },
+        )
+        .unwrap_err();
+
+        let msg = err.to_string();
+        assert!(
+            msg.contains(&path.display().to_string()),
+            "error message should name the session file path: {msg}"
+        );
+        assert!(
+            msg.contains("refusing to overwrite"),
+            "error message should explain what happened: {msg}"
+        );
+        assert!(
+            msg.contains("hson explore start"),
+            "error message should suggest a remedy: {msg}"
+        );
+    }
+
+    #[test]
+    fn record_step_atomic_accepts_legacy_file_without_version_field() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("session.json");
+        let legacy = r#"{"id":"sid","label":"lbl","step_count":0,"breadcrumbs":[],"queries":[]}"#;
+        std::fs::write(&path, legacy).unwrap();
+
+        record_step_atomic(
+            &path,
+            &[("a.json".into(), "x".into())],
+            "ts",
+            "/",
+            &[],
+            &EvictionPolicy {
+                alpha: 0.5,
+                breadcrumb_cap: 500,
+                query_log_cap: 1000,
+            },
+        )
+        .unwrap();
+
+        let on_disk = load_from_path(&path).unwrap();
+        assert_eq!(on_disk.version, 1);
+        assert_eq!(on_disk.step_count, 1);
+        assert_eq!(on_disk.breadcrumbs.len(), 1);
     }
 }

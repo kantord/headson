@@ -530,6 +530,7 @@ fn force_child_hooks_removed() {
         code_lines: HashMap::new(),
         fileset_render_slots: None,
         safety_cap_hit: false,
+        merkle_hashes: None,
     };
     let mut flags = Vec::new();
     let render_id = 1u32;

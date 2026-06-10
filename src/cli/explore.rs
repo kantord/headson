@@ -11,14 +11,25 @@ const NO_SESSION_MSG: &str =
 
 fn load_active_session(
     cli: &Cli,
-) -> Option<(String, crate::session::Session)> {
-    let id = active_session_id(cli)?;
-    let path = session_file_path(&id);
-    // After `require_session_exists`, the file is guaranteed to exist on every
-    // path that calls this. A read failure here means the file became corrupt
-    // or unreadable between the two calls — surface that as "no session".
-    let session = crate::session::io::load_from_path(&path).ok()?;
-    Some((id, session))
+) -> Result<Option<(String, crate::session::Session)>> {
+    let Some(id) = active_session_id(cli) else {
+        return Ok(None);
+    };
+    let path = session_file_path(&id)?;
+    // `require_session_exists` runs before this on every path; a missing file
+    // here is a race (deleted in between) and keeps the friendly "no session"
+    // behavior. A file that exists but fails to parse is corruption — surface
+    // it loudly instead of masking it as "no active session".
+    if !path.exists() {
+        return Ok(None);
+    }
+    let session = crate::session::io::load_from_path(&path).map_err(|e| {
+        anyhow::anyhow!(
+            "session file {} is corrupt or unreadable: {e}",
+            path.display()
+        )
+    })?;
+    Ok(Some((id, session)))
 }
 
 /// Format argv for display: relativize paths that are under `cwd`, and
@@ -50,7 +61,7 @@ pub(crate) fn run_subcommand(
     match cmd {
         ExploreSubcommand::Start { label } => {
             let id = Uuid::new_v4().to_string();
-            let path = session_file_path(&id);
+            let path = session_file_path(&id)?;
             if let Some(parent) = path.parent() {
                 let _ = std::fs::create_dir_all(parent);
             }
@@ -71,7 +82,7 @@ pub(crate) fn run_subcommand(
         }
         ExploreSubcommand::Status => {
             require_session_exists(cli)?;
-            let Some((_, session)) = load_active_session(cli) else {
+            let Some((_, session)) = load_active_session(cli)? else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
             let last_active = session
@@ -93,10 +104,10 @@ pub(crate) fn run_subcommand(
         }
         ExploreSubcommand::Clear => {
             require_session_exists(cli)?;
-            let Some((id, mut session)) = load_active_session(cli) else {
+            let Some((id, mut session)) = load_active_session(cli)? else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
-            let path = session_file_path(&id);
+            let path = session_file_path(&id)?;
             session.clear();
             crate::session::io::save_to_path(&session, &path)
                 .map_err(|e| anyhow::anyhow!("failed to save session: {e}"))?;
@@ -104,7 +115,7 @@ pub(crate) fn run_subcommand(
         }
         ExploreSubcommand::List => {
             require_session_exists(cli)?;
-            let Some((_, session)) = load_active_session(cli) else {
+            let Some((_, session)) = load_active_session(cli)? else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
             let lines: Vec<String> = session
@@ -341,10 +352,12 @@ mod tests {
         );
     }
 
-    /// Step 41: `explore clear` zeroes breadcrumbs, step_count, and queries.
+    /// Step 41: `explore clear` zeroes breadcrumbs and step_count but
+    /// PRESERVES the query log, label, and id — matching the `clear` help
+    /// text ("query log and label are preserved").
     #[test]
     #[serial]
-    fn explore_clear_zeroes_breadcrumbs_step_count_and_queries() {
+    fn explore_clear_zeroes_breadcrumbs_and_step_count_preserves_queries() {
         let state_dir = tempdir().unwrap();
         let session_id = "41000000-0000-0000-0000-000000000000";
 
@@ -384,10 +397,50 @@ mod tests {
             "step_count must be 0 after clear; got: {}",
             updated.step_count
         );
-        assert!(
-            updated.queries.is_empty(),
-            "queries must be cleared after clear; got: {:?}",
+        assert_eq!(
+            updated.queries.len(),
+            1,
+            "query log must be preserved by clear; got: {:?}",
             updated.queries
+        );
+        assert_eq!(
+            updated.id, session_id,
+            "session id must be preserved by clear"
+        );
+        assert_eq!(
+            updated.label, "clear test",
+            "session label must be preserved by clear"
+        );
+    }
+
+    /// Issue #513: a session file that EXISTS but fails to parse must produce
+    /// a clear error naming the file path — not the misleading "No active
+    /// session" success that masks corruption.
+    #[test]
+    #[serial]
+    fn corrupt_session_file_errors_and_mentions_path() {
+        let state_dir = tempdir().unwrap();
+        let session_id = "55555555-5555-5555-5555-555555555555";
+
+        let sessions_dir = state_dir.path().join("headson").join("sessions");
+        std::fs::create_dir_all(&sessions_dir).unwrap();
+        let session_path = sessions_dir.join(format!("{session_id}.json"));
+        std::fs::write(&session_path, "{not valid json").unwrap();
+
+        let _env = IsolatedEnv::new(state_dir.path(), None);
+
+        let cli = make_cli(Some(session_id));
+        let result = run_subcommand(&ExploreSubcommand::Status, &cli);
+
+        let err = result.expect_err(
+            "explore status with a corrupt session file must return Err, \
+             not the friendly no-session message",
+        );
+        let msg = format!("{err:#}");
+        assert!(
+            msg.contains(session_path.to_str().unwrap()),
+            "error must mention the corrupt session file path \
+             {session_path:?}; got: {msg}"
         );
     }
 

@@ -51,25 +51,55 @@ fn match_summary_zero_shown(
     })
 }
 
+/// Outcome of the budget search: rendered text plus the data needed to
+/// reconstruct exactly which nodes were selected.
+#[derive(Debug)]
+pub struct BudgetSearchResult {
+    pub text: String,
+    pub match_summary: Option<MatchSummary>,
+    /// Number of selected nodes. Indexes into `selection_order` when present,
+    /// otherwise into `order.by_priority`.
+    pub top_k: usize,
+    /// Custom selection ordering used when per-slot caps are active; in that
+    /// mode `by_priority[..top_k]` is NOT the selected set.
+    pub selection_order: Option<Vec<NodeId>>,
+    /// Nodes force-included by strong grep, possibly outside the top-k prefix.
+    pub grep_must_keep: Vec<NodeId>,
+}
+
+impl BudgetSearchResult {
+    fn empty(match_summary: Option<MatchSummary>) -> Self {
+        Self {
+            text: String::new(),
+            match_summary,
+            top_k: 0,
+            selection_order: None,
+            grep_must_keep: Vec::new(),
+        }
+    }
+}
+
 pub fn find_largest_render_under_budgets(
     order_build: &mut PriorityOrder,
     config: &RenderConfig,
     grep: &GrepConfig,
     budgets: Budgets,
-) -> (String, Option<MatchSummary>, usize) {
+) -> BudgetSearchResult {
     let total = order_build.total_nodes;
     if total == 0 {
         let summary = grep.patterns.is_active().then_some(MatchSummary {
             shown: 0,
             hidden: 0,
         });
-        return (String::new(), summary, 0);
+        return BudgetSearchResult::empty(summary);
     }
     let root_is_fileset = is_fileset_root(order_build);
     let mut grep_state = compute_grep_state(order_build, grep);
     if strong_fileset_grep_without_matches(grep, &grep_state, root_is_fileset)
     {
-        return (String::new(), match_summary_zero_shown(&grep_state), 0);
+        return BudgetSearchResult::empty(match_summary_zero_shown(
+            &grep_state,
+        ));
     }
     filter_fileset_without_matches(
         order_build,
@@ -141,7 +171,7 @@ pub fn find_largest_render_under_budgets(
         &finalize_ctx,
     )
     .unwrap_or_else(|| {
-        (String::new(), match_summary_zero_shown(&grep_state), 0)
+        BudgetSearchResult::empty(match_summary_zero_shown(&grep_state))
     })
 }
 
@@ -161,7 +191,7 @@ fn finalize_render_from_selection(
     config: &RenderConfig,
     selection: PruningResult<NodeId>,
     ctx: &FinalizeContext<'_>,
-) -> Option<(String, Option<MatchSummary>, usize)> {
+) -> Option<BudgetSearchResult> {
     let PruningResult {
         top_k: k_opt,
         mut inclusion_flags,
@@ -196,6 +226,9 @@ fn finalize_render_from_selection(
         &mut inclusion_flags,
         render_set_id,
     );
+    // Strong-grep matches count as "seen" for explore sessions even though
+    // they sit outside the top-k prefix; surface them for leaf recording.
+    let grep_must_keep = grep_must_keep_nodes(ctx.grep, ctx.grep_state);
     if per_slot_caps_active && !config.count_fileset_headers_in_budgets {
         ensure_fileset_headers_for_empty_slots(
             order_build,
@@ -240,7 +273,13 @@ fn finalize_render_from_selection(
     );
     let summary =
         compute_match_summary(ctx.grep_state, &inclusion_flags, render_set_id);
-    Some((text, summary, k))
+    Some(BudgetSearchResult {
+        text,
+        match_summary: summary,
+        top_k: k,
+        selection_order,
+        grep_must_keep,
+    })
 }
 
 fn strong_fileset_grep_without_matches(
@@ -265,6 +304,27 @@ fn strong_fileset_grep_without_matches(
 fn is_strong_grep(grep: &GrepConfig, state: &Option<GrepState>) -> bool {
     let count = state.as_ref().map(|s| s.guaranteed_count).unwrap_or(0);
     grep.has_strong() && grep.force_strong_inclusion && count > 0
+}
+
+/// Node ids force-included by `include_strong_grep_must_keep`; empty when
+/// strong grep is not forcing inclusion.
+fn grep_must_keep_nodes(
+    grep: &GrepConfig,
+    state: &Option<GrepState>,
+) -> Vec<NodeId> {
+    if !is_strong_grep(grep, state) {
+        return Vec::new();
+    }
+    state
+        .as_ref()
+        .map(|s| {
+            s.guaranteed_nodes
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, keep)| keep.then_some(NodeId(idx)))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn apply_selection(

@@ -77,6 +77,7 @@ pub(crate) fn canonical_argv(
 mod tests {
     use super::*;
     use clap::{CommandFactory, Parser};
+    use serial_test::serial;
 
     #[derive(Parser)]
     #[command(name = "t")]
@@ -145,6 +146,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn env_set_args_omitted() {
         let prev = std::env::var("T_FROM_ENV").ok();
         // SAFETY: tests touching env vars must run serially; this test

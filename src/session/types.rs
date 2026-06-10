@@ -1,8 +1,14 @@
 use serde::{Deserialize, Serialize};
 
 const DECAY_EPSILON: f64 = 0.001;
+const SCHEMA_VERSION: u64 = 1;
 
 pub use headson::Breadcrumb;
+
+// Files written before the version field existed must keep loading.
+fn default_schema_version() -> u64 {
+    SCHEMA_VERSION
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct QueryEntry {
@@ -12,18 +18,29 @@ pub struct QueryEntry {
     pub argv: Vec<String>,
 }
 
+// Every field defaults so that adding fields later never makes existing
+// session files unreadable (record_step_atomic refuses to overwrite
+// unreadable files, which would otherwise wedge a session permanently).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Session {
+    #[serde(default = "default_schema_version")]
+    pub version: u64,
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub label: String,
+    #[serde(default)]
     pub step_count: u64,
+    #[serde(default)]
     pub breadcrumbs: Vec<Breadcrumb>,
+    #[serde(default)]
     pub queries: Vec<QueryEntry>,
 }
 
 impl Session {
     pub fn new(id: String, label: String) -> Self {
         Self {
+            version: SCHEMA_VERSION,
             id,
             label,
             step_count: 0,
@@ -65,8 +82,10 @@ impl Session {
         {
             None => 0.0,
             Some(b) => {
-                let steps_ago =
-                    (current_step - b.last_step).min(i32::MAX as u64) as i32;
+                let steps_ago = current_step
+                    .saturating_sub(b.last_step)
+                    .min(i32::MAX as u64)
+                    as i32;
                 (1.0 + b.count as f64).ln() * alpha.powi(steps_ago)
             }
         }
@@ -75,8 +94,9 @@ impl Session {
     pub fn evict(&mut self, current_step: u64, alpha: f64, cap: usize) {
         // Epsilon prune: drop entries whose decay factor is below DECAY_EPSILON
         self.breadcrumbs.retain(|b| {
-            let steps_ago =
-                (current_step - b.last_step).min(i32::MAX as u64) as i32;
+            let steps_ago = current_step
+                .saturating_sub(b.last_step)
+                .min(i32::MAX as u64) as i32;
             alpha.powi(steps_ago) >= DECAY_EPSILON
         });
         // Cap: keep only the `cap` most recently seen entries
@@ -89,7 +109,6 @@ impl Session {
 
     pub fn clear(&mut self) {
         self.breadcrumbs = vec![];
-        self.queries = vec![];
         self.step_count = 0;
     }
 
@@ -139,7 +158,7 @@ mod tests {
     }
 
     #[test]
-    fn clear_resets_all_session_state() {
+    fn clear_zeroes_breadcrumbs_and_step_count_preserving_the_rest() {
         let mut session = Session::new("x".to_string(), "lbl".to_string());
         session.step_count = 5;
         session.record_breadcrumb("a.json", "x", 1);
@@ -159,8 +178,10 @@ mod tests {
         });
         session.clear();
         assert!(session.breadcrumbs.is_empty());
-        assert!(session.queries.is_empty());
         assert_eq!(session.step_count, 0);
+        assert_eq!(session.queries.len(), 2);
+        assert_eq!(session.queries[0].timestamp, "t1");
+        assert_eq!(session.queries[1].timestamp, "t2");
         assert_eq!(session.label, "lbl");
         assert_eq!(session.id, "x");
     }
@@ -176,8 +197,6 @@ mod tests {
                 &format!("key.{i}"),
                 *last_step,
             );
-            // Override last_step to the desired value (record_breadcrumb sets it to 1 always on first insert)
-            session.breadcrumbs.last_mut().unwrap().last_step = *last_step;
         }
         session.evict(6, 0.5, 3);
         assert_eq!(session.breadcrumbs.len(), 3);
@@ -246,10 +265,46 @@ mod tests {
         let session = Session::new("s1".to_string(), "lbl".to_string());
         let json = serde_json::to_string(&session).unwrap();
         let deserialized: Session = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.version, 1);
         assert_eq!(deserialized.id, "s1");
         assert_eq!(deserialized.label, "lbl");
         assert_eq!(deserialized.step_count, 0);
         assert!(deserialized.breadcrumbs.is_empty());
         assert!(deserialized.queries.is_empty());
+    }
+
+    #[test]
+    fn legacy_session_json_without_version_field_still_loads() {
+        // Written by code that predates the version field.
+        let legacy = r#"{
+            "id": "legacy-id",
+            "label": "legacy label",
+            "step_count": 7,
+            "breadcrumbs": [
+                {"file": "a.json", "path": "x.y", "count": 2, "last_step": 6}
+            ],
+            "queries": [
+                {"step": 1, "timestamp": "t", "cwd": "/", "argv": ["src/"]}
+            ]
+        }"#;
+        let session: Session = serde_json::from_str(legacy).unwrap();
+        assert_eq!(session.version, 1);
+        assert_eq!(session.id, "legacy-id");
+        assert_eq!(session.label, "legacy label");
+        assert_eq!(session.step_count, 7);
+        assert_eq!(session.breadcrumbs.len(), 1);
+        assert_eq!(session.queries.len(), 1);
+    }
+
+    #[test]
+    fn penalty_and_evict_tolerate_last_step_ahead_of_current_step() {
+        // last_step > current_step can happen if a session file is hand-edited
+        // or written by a newer step counter; must not panic on subtraction.
+        let mut session = Session::new("id".to_string(), "lbl".to_string());
+        session.record_breadcrumb("file.json", "a.b", 10);
+        let p = session.penalty_for("file.json", "a.b", 5, 0.5);
+        assert!((p - f64::ln(2.0)).abs() < 1e-12); // steps_ago saturates to 0
+        session.evict(5, 0.5, 10);
+        assert_eq!(session.breadcrumbs.len(), 1);
     }
 }

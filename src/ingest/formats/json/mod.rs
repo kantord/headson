@@ -8,7 +8,7 @@ use serde::de::DeserializeSeed;
 use crate::PriorityConfig;
 use crate::utils::tree_arena::JsonTreeArena as TreeArena;
 
-#[allow(dead_code, reason = "used only in non-test fn parse_jsonl_into_arena")]
+#[allow(dead_code, reason = "used only in non-test fn parse_jsonl_one")]
 type ChunkResult = (TreeArena, Vec<(usize, usize)>);
 
 #[cfg(test)]
@@ -175,6 +175,11 @@ pub fn parse_jsonl_one(
     }
 
     // Detect contiguous indices to skip storing arr_indices.
+    // NOTE: `jsonl_line_offsets` yields 1-based line numbers while `i` is
+    // 0-based, so `ln == i` never holds and this branch is only taken for
+    // empty inputs (`all` on an empty iterator is true). If the intent was
+    // "no sampling gaps", the check would be `ln == i + 1`. Left unchanged
+    // to preserve behavior: arr_indices are always stored when `kept > 0`.
     let contiguous = line_numbers.len() == kept
         && line_numbers.iter().enumerate().all(|(i, &ln)| ln == i);
 
