@@ -38,7 +38,8 @@ fn parse_explore_memory(s: &str) -> Result<usize, String> {
 #[command(
     name = "hson",
     version,
-    about = "Get a small but useful preview of JSON or YAML"
+    about = "Get a small but useful preview of JSON or YAML",
+    subcommand_precedence_over_arg = true
 )]
 #[clap(group = clap::ArgGroup::new("strong_grep").args(["grep", "igrep", "capped_grep", "capped_igrep"]).multiple(true))]
 #[clap(group = clap::ArgGroup::new("weak_grep_group").args(["weak_grep", "weak_igrep"]).multiple(true))]
