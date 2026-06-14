@@ -6,40 +6,12 @@ use crate::order::types::{
     novelty_penalty,
 };
 
-/// Scales the raw novelty penalty (`ln(1 + count) * alpha^steps_ago`, range
-/// roughly 0–5 in practice) into `u128` score space before adding it to
-/// `order.scores` (lower score = higher priority, so the penalty pushes seen
-/// leaves back).
-///
-/// Score-space anchors the penalty competes with:
-/// - Object/string siblings differ by ~1 (`OBJECT_CHILD_BASE_INCREMENT`), so
-///   any scale well above the tree-depth increments reorders a seen object
-///   key behind all of its unseen siblings.
-/// - Array/JSONL/code-line siblings differ by `d^3 * ARRAY_INDEX_CUBIC_WEIGHT`
-///   (1e12, `order::scoring`), where `d` is the distance to the nearest
-///   head/mid/tail sampling anchor. Displacing a seen leaf past `d` unseen
-///   sibling indices requires a penalty above `d^3 * 1e12`.
-/// - Code-line heuristics (`CODE_BRACE_ONLY_PENALTY`, `CODE_EMPTY_LINE_PENALTY`)
-///   sit at 1–4 × 1e12 and stay subordinate: a recently seen line yields even
-///   to unseen low-value lines, which is the intended explore behavior.
-///
-/// At 1e15 (1000 × `ARRAY_INDEX_CUBIC_WEIGHT`) a leaf seen once on the
-/// previous step (raw penalty `ln(2) * 0.5` ≈ 0.347, scaled ≈ 3.47e14)
-/// outranks unseen siblings up to `d = 7` (7³ = 343 < 347 < 512 = 8³). With
-/// the default `alpha = 0.5` the suppression decays to `d ≈ 5` after two
-/// steps and `d ≈ 4` after three, so repeated identical invocations explore
-/// outward in rings of ~5–8 fresh indices around each sampling anchor before
-/// decayed items re-enter; `alpha` → 1 keeps the rings expanding instead.
-///
-/// Empirical tuning (issue #513 end-of-Phase-1 checkpoint; 100-element array
-/// and 100-line JSONL fixtures at `-c 200..1000`, plus a code fileset at
-/// `-C 500`): at the original 1e9 arrays never rotated — only exact-tie
-/// object keys did; 1e13 moved the frontier ±1 index per run; 1e14 reached
-/// ±2 while mostly re-showing anchors; 1e15 produced near-disjoint fresh
-/// rings per run while loose budgets (`-c 100000`) still rendered every item
-/// (the penalty reorders, never excludes). Larger scales push the no-go
-/// radius past what tight budgets can render, wasting budget on the
-/// structural shells of suppressed slots, so 1e15 is the chosen balance.
+/// Scales the raw novelty penalty (`ln(1 + count) * alpha^steps_ago`) into
+/// `u128` score space. Score anchors: object/string siblings differ by ~1;
+/// array siblings by `d^3 * 1e12` where `d` is distance to the nearest
+/// sampling anchor. At 1e15 a leaf seen once on the previous step (scaled
+/// ≈ 3.47e14) outranks unseen siblings up to `d ≈ 7`, shrinking to `d ≈ 4`
+/// after three steps at alpha=0.5. The penalty reorders, never excludes.
 const PENALTY_SCALE: f64 = 1_000_000_000_000_000.0;
 
 /// Apply the explore novelty penalty to previously-seen leaves and re-sort

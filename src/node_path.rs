@@ -41,7 +41,7 @@ pub fn resolve_breadcrumb_file(name: &str) -> String {
     lexically_normalized(&joined).to_string_lossy().into_owned()
 }
 
-fn lexically_normalized(path: &Path) -> PathBuf {
+pub fn lexically_normalized(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     let mut has_root = false;
     for comp in path.components() {

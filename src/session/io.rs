@@ -46,7 +46,7 @@ pub fn acquire_session_lock(session_path: &Path) -> io::Result<SessionLock> {
     if let Some(parent) = lock_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let max_attempts: u32 = 1000; // ~10s at 10ms per attempt
+    let max_attempts: u32 = 100; // ~1s at 10ms per attempt
     for _ in 0..max_attempts {
         match fs::OpenOptions::new()
             .write(true)

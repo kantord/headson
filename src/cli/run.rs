@@ -371,7 +371,7 @@ impl InputCollector {
         no_sort: bool,
     ) -> Result<()> {
         let dir = ensure_recursive_dir(&self.display_root, path)?;
-        let dir_norm = normalize_path(&dir);
+        let dir_norm = headson::node_path::lexically_normalized(&dir);
         self.expand_globs_in_root(&dir_norm, &["**/*".to_string()], no_sort)
     }
 
@@ -535,30 +535,6 @@ where
             .with_context(|| format!("invalid glob pattern: {pattern}"))?;
     }
     builder.build().context("failed to compile glob overrides")
-}
-
-fn normalize_path(path: &Path) -> PathBuf {
-    let mut out = PathBuf::new();
-    let mut has_root = false;
-    for comp in path.components() {
-        match comp {
-            std::path::Component::Prefix(prefix) => {
-                out.push(prefix.as_os_str());
-            }
-            std::path::Component::RootDir => {
-                out.push(comp.as_os_str());
-                has_root = true;
-            }
-            std::path::Component::CurDir => {}
-            std::path::Component::ParentDir => {
-                if !out.pop() && !has_root {
-                    out.push(comp.as_os_str());
-                }
-            }
-            std::path::Component::Normal(part) => out.push(part),
-        }
-    }
-    out
 }
 
 fn render_single_input(
