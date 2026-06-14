@@ -1,3 +1,4 @@
+#![cfg(test)]
 /// Shared test isolation helper for tests that mutate XDG_STATE_HOME and/or
 /// HSON_SESSION environment variables. Restores prior values on drop.
 pub(crate) struct IsolatedEnv {
