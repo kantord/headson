@@ -296,7 +296,7 @@ fn ingest_paths(paths: &[PathBuf]) -> Result<(InputEntries, CliWarnings)> {
         let display = path.display().to_string();
         if let Ok(meta) = std::fs::metadata(path) {
             if meta.is_dir() {
-                warnings.push(format!("Ignored directory: {display}"));
+                warnings.push(format!("Ignored directory: {display} (use -r/--recursive to include directory contents)"));
                 continue;
             }
         }
