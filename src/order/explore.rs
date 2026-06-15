@@ -53,12 +53,73 @@ pub(crate) fn apply_explore_penalty(
         })
         .collect();
     if !penalties.is_empty() {
-        for (node_id, delta) in &penalties {
-            bump_score(order, *node_id, *delta);
+        // Phase 1: bump leaf scores.
+        let mut leaf_penalties: Vec<u128> = vec![0; order.total_nodes];
+        for &(node_id, delta) in &penalties {
+            leaf_penalties[node_id.0] = delta;
+            bump_score(order, node_id, delta);
         }
+        // Phase 4: propagate mean child penalty upward through structural nodes
+        // so that heavily-seen subtrees (e.g. Cargo.lock) lose budget priority
+        // relative to less-explored peers, not just individual leaves.
+        propagate_penalties_upward(order, &leaf_penalties);
         order.by_priority.sort_by_key(|id| order.scores[id.0]);
     }
     order.merkle_hashes = Some(hashes);
+}
+
+/// Propagate leaf penalties upward through the priority tree.
+///
+/// For each structural node (Array/Object), applies a penalty equal to the
+/// mean of its direct children's penalties. This makes heavily-explored
+/// subtrees lose budget priority relative to untouched peers, not just
+/// individual leaves. One pass over all nodes suffices because the tree is
+/// acyclic and we only read leaf penalties (not yet-accumulated parent ones).
+fn propagate_penalties_upward(
+    order: &mut PriorityOrder,
+    leaf_penalties: &[u128],
+) {
+    let (child_sum, child_cnt) =
+        accumulate_child_penalties(order, leaf_penalties);
+    apply_mean_penalties(order, &child_sum, &child_cnt);
+}
+
+fn accumulate_child_penalties(
+    order: &PriorityOrder,
+    leaf_penalties: &[u128],
+) -> (Vec<u128>, Vec<u32>) {
+    let n = order.total_nodes;
+    let mut child_sum: Vec<u128> = vec![0; n];
+    let mut child_cnt: Vec<u32> = vec![0; n];
+    for (pq_idx, &penalty) in leaf_penalties.iter().enumerate().take(n) {
+        if penalty == 0 {
+            continue;
+        }
+        if let Some(parent_id) = order.parent[pq_idx] {
+            child_sum[parent_id.0] =
+                child_sum[parent_id.0].saturating_add(penalty);
+            child_cnt[parent_id.0] += 1;
+        }
+    }
+    (child_sum, child_cnt)
+}
+
+fn apply_mean_penalties(
+    order: &mut PriorityOrder,
+    child_sum: &[u128],
+    child_cnt: &[u32],
+) {
+    for (pq_idx, (&sum, &cnt)) in
+        child_sum.iter().zip(child_cnt.iter()).enumerate()
+    {
+        if cnt == 0 {
+            continue;
+        }
+        let mean = sum / u128::from(cnt);
+        if mean > 0 {
+            order.scores[pq_idx] = order.scores[pq_idx].saturating_add(mean);
+        }
+    }
 }
 
 fn bump_score(order: &mut PriorityOrder, node_id: NodeId, delta: u128) {
@@ -189,6 +250,83 @@ mod tests {
         assert_eq!(
             order.by_priority, before,
             "a breadcrumb from another file must not penalize this file"
+        );
+    }
+
+    /// Phase 4: when all leaves under a top-level key "a" are penalized, the
+    /// Object node for "a" accumulates a mean penalty and sorts AFTER the
+    /// unpenalized "b" Object node.
+    ///
+    /// Without Phase 4, both Object nodes have the same low base score, so
+    /// "a" keeps its original position ahead of "b". With Phase 4, "a" gets
+    /// a propagated penalty and moves behind "b" in by_priority.
+    #[test]
+    fn phase4_penalized_section_ranks_below_unpenalized_sibling() {
+        // Two top-level objects. Penalize all leaves under "a".
+        let json = br#"{"a": {"x": 1, "y": 2}, "b": {"p": 3, "q": 4}}"#;
+        let base_order = make_order(json);
+
+        // Collect breadcrumb keys for all leaves under "a".
+        let hashes = node_path::compute_merkle_hashes(&base_order);
+        let files = node_path::NodeFiles::for_order(&base_order, None);
+        let a_breadcrumbs: Vec<Breadcrumb> = base_order
+            .by_priority
+            .iter()
+            .filter_map(|&id| {
+                let (file, path) = node_path::leaf_breadcrumb_key(
+                    &base_order,
+                    id,
+                    &hashes,
+                    &files,
+                )?;
+                // Keys under "a" start with "a." in their dot-path.
+                let dot_path = path.split_once('#').map(|(p, _)| p)?;
+                (dot_path.starts_with("a.")).then_some(Breadcrumb {
+                    file,
+                    path,
+                    count: 3,
+                    last_step: 1,
+                })
+            })
+            .collect();
+        assert!(!a_breadcrumbs.is_empty(), "must find leaves under 'a'");
+
+        let mut cfg = PriorityConfig::new(usize::MAX, usize::MAX);
+        cfg.explore = Some(ExploreContext {
+            breadcrumbs: a_breadcrumbs,
+            current_step: 2,
+            alpha: 0.5,
+            file: None,
+        });
+
+        // Build via ingest so the explore penalty (including Phase 4) runs.
+        use crate::InputKind;
+        use crate::grep::GrepConfig;
+        use crate::ingest::ingest_into_arena;
+        let arena = ingest_into_arena(
+            InputKind::Json(json.to_vec()),
+            &cfg,
+            &GrepConfig::default(),
+        )
+        .unwrap()
+        .arena;
+        let order = build_order(&arena, &cfg).unwrap();
+
+        // Find positions of the "a" and "b" Object nodes in by_priority.
+        let pos_of_obj = |key: &str| {
+            order.by_priority.iter().position(|id| {
+                matches!(&order.nodes[id.0],
+                    RankedNode::Object { key_in_object: Some(k), .. } if k == key)
+            })
+        };
+        let a_pos = pos_of_obj("a").expect("Object 'a' in by_priority");
+        let b_pos = pos_of_obj("b").expect("Object 'b' in by_priority");
+
+        assert!(
+            b_pos < a_pos,
+            "Object 'b' (pos {b_pos}) must rank ahead of penalized Object 'a' \
+             (pos {a_pos}) — Phase 4 must propagate the leaf penalty to the \
+             parent Object"
         );
     }
 }

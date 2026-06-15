@@ -767,6 +767,7 @@ mod tests {
     use super::*;
     use crate::cli::args::Cli;
     use clap::Parser;
+    use serial_test::serial;
     use std::fs;
     use tempfile::tempdir;
 
@@ -871,8 +872,13 @@ mod tests {
     /// With --count-matches and --grep, loose budget: all matches shown.
     /// The warnings vec must contain exactly one line "N matches shown, 0 hidden".
     #[test]
+    #[serial]
     fn count_matches_summary_in_warnings_when_all_shown() {
         let dir = tempdir().unwrap();
+        // Isolate HSON_SESSION so explore tests running in parallel don't leak
+        // a non-existent session ID into this test's env.
+        let _env =
+            crate::cli::test_helpers::IsolatedEnv::new(dir.path(), None);
         let path = dir.path().join("data.json");
         // Three keys that each contain "match" somewhere in their string value;
         // 10 000-byte budget is ample so nothing is hidden.
@@ -918,8 +924,11 @@ mod tests {
     /// With --count-matches and --weak-grep under a very tight line budget,
     /// some matches must be hidden (N hidden > 0).
     #[test]
+    #[serial]
     fn count_matches_summary_in_warnings_when_some_hidden() {
         let dir = tempdir().unwrap();
+        let _env =
+            crate::cli::test_helpers::IsolatedEnv::new(dir.path(), None);
         let path = dir.path().join("data.json");
         // Six matches spread across many lines; --lines 1 forces tight truncation.
         fs::write(
