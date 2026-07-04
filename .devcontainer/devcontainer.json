@@ -1,0 +1,22 @@
+{
+  "name": "headson",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    // claude-code requires the node feature (validated in enwiro's own
+    // devcontainer research); pinning here keeps that dependency explicit.
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+  "postCreateCommand": "cargo fetch && uv sync --group dev --locked",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "charliermarsh.ruff"
+      ]
+    }
+  },
+  "remoteUser": "vscode"
+}
