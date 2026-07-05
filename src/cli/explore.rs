@@ -3,7 +3,8 @@ use uuid::Uuid;
 
 use crate::cli::args::{Cli, ExploreSubcommand};
 use crate::cli::session_middleware::{
-    require_session_exists, resolve_session_id, session_file_path,
+    SessionEnv, require_session_exists, resolve_session_id,
+    session_file_path,
 };
 
 const NO_SESSION_MSG: &str =
@@ -11,11 +12,12 @@ const NO_SESSION_MSG: &str =
 
 fn load_active_session(
     session_id: Option<&str>,
+    env: &SessionEnv,
 ) -> Result<Option<(String, crate::session::Session)>> {
     let Some(id) = session_id else {
         return Ok(None);
     };
-    let path = session_file_path(id)?;
+    let path = session_file_path(id, env)?;
     // `require_session_exists` runs before this on every path; a missing file
     // here is a race (deleted in between) and keeps the friendly "no session"
     // behavior. A file that exists but fails to parse is corruption — surface
@@ -58,16 +60,27 @@ pub(crate) fn run_subcommand(
     cmd: &ExploreSubcommand,
     cli: &Cli,
 ) -> Result<String> {
+    run_subcommand_with_env(cmd, cli, &SessionEnv::from_process_env())
+}
+
+/// Core of `run_subcommand`, parameterized over the session/state-dir
+/// environment instead of reading `std::env` directly, so tests can supply
+/// values in-process without mutating real (process-global) env vars.
+pub(crate) fn run_subcommand_with_env(
+    cmd: &ExploreSubcommand,
+    cli: &Cli,
+    env: &SessionEnv,
+) -> Result<String> {
     match cmd {
         ExploreSubcommand::Start { label } => {
             // `explore start` is the escape hatch out of a broken
             // HSON_SESSION: an invalid env value must never block creating a
             // fresh session, so surface it as a warning only.
-            if let Err(e) = resolve_session_id(cli) {
+            if let Err(e) = resolve_session_id(cli, env) {
                 eprintln!("warning: {e}");
             }
             let id = Uuid::new_v4().to_string();
-            let path = session_file_path(&id)?;
+            let path = session_file_path(&id, env)?;
             if let Some(parent) = path.parent() {
                 let _ = std::fs::create_dir_all(parent);
             }
@@ -87,9 +100,10 @@ pub(crate) fn run_subcommand(
             Ok(id)
         }
         ExploreSubcommand::Status => {
-            let active = resolve_session_id(cli)?;
-            require_session_exists(active.as_deref())?;
-            let Some((_, session)) = load_active_session(active.as_deref())?
+            let active = resolve_session_id(cli, env)?;
+            require_session_exists(active.as_deref(), env)?;
+            let Some((_, session)) =
+                load_active_session(active.as_deref(), env)?
             else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
@@ -111,18 +125,19 @@ pub(crate) fn run_subcommand(
             ))
         }
         ExploreSubcommand::Clear => {
-            let active = resolve_session_id(cli)?;
-            require_session_exists(active.as_deref())?;
+            let active = resolve_session_id(cli, env)?;
+            require_session_exists(active.as_deref(), env)?;
             let Some(id) = active else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
-            let path = session_file_path(&id)?;
+            let path = session_file_path(&id, env)?;
             // Clearing is a read-modify-write; hold the session lock so a
             // concurrent `record_step_atomic` writer can't be lost between
             // our load and save.
             let _lock = crate::session::io::acquire_session_lock(&path)
                 .map_err(|e| anyhow::anyhow!("failed to lock session: {e}"))?;
-            let Some((_, mut session)) = load_active_session(Some(&id))?
+            let Some((_, mut session)) =
+                load_active_session(Some(&id), env)?
             else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
@@ -132,9 +147,10 @@ pub(crate) fn run_subcommand(
             Ok(String::new())
         }
         ExploreSubcommand::List => {
-            let active = resolve_session_id(cli)?;
-            require_session_exists(active.as_deref())?;
-            let Some((_, session)) = load_active_session(active.as_deref())?
+            let active = resolve_session_id(cli, env)?;
+            require_session_exists(active.as_deref(), env)?;
+            let Some((_, session)) =
+                load_active_session(active.as_deref(), env)?
             else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
@@ -158,10 +174,7 @@ mod tests {
     use crate::session::io::{load_from_path, save_to_path};
     use crate::session::{QueryEntry, Session};
     use clap::Parser;
-    use serial_test::serial;
     use tempfile::tempdir;
-
-    use crate::cli::test_helpers::IsolatedEnv;
 
     /// Build a minimal Cli with an optional --session value and no inputs.
     /// XDG_STATE_HOME must already be set before this is called.
@@ -177,16 +190,23 @@ mod tests {
     /// Step 36: `explore start` with no label returns a bare UUID string — no
     /// trailing whitespace or newline, matches the canonical UUID pattern.
     #[test]
-    #[serial]
     fn explore_start_returns_uuid_string() {
         let state_dir = tempdir().unwrap();
-        let _env = IsolatedEnv::new(state_dir.path(), None);
+        let env = SessionEnv {
+            hson_session: None,
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(None);
         let result =
-            run_subcommand(&ExploreSubcommand::Start { label: None }, &cli);
+            run_subcommand_with_env(
+                &ExploreSubcommand::Start { label: None },
+                &cli,
+                &env,
+            );
 
-        let output = result.expect("run_subcommand(Start) must succeed");
+        let output = result.expect("run_subcommand_with_env(Start) must succeed");
         let uuid_re = regex::Regex::new(
             r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
         )
@@ -205,20 +225,24 @@ mod tests {
     /// Step 37: `explore start --label "my label"` stores `label = Some("my label")`
     /// in the session file on disk.
     #[test]
-    #[serial]
     fn explore_start_with_label_stores_label_in_session_file() {
         let state_dir = tempdir().unwrap();
-        let _env = IsolatedEnv::new(state_dir.path(), None);
+        let env = SessionEnv {
+            hson_session: None,
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(None);
-        let result = run_subcommand(
+        let result = run_subcommand_with_env(
             &ExploreSubcommand::Start {
                 label: Some("my label".to_string()),
             },
             &cli,
+            &env,
         );
 
-        let output = result.expect("run_subcommand(Start) must succeed");
+        let output = result.expect("run_subcommand_with_env(Start) must succeed");
 
         // Load the session file that was just created
         let session_path = state_dir
@@ -243,10 +267,13 @@ mod tests {
     /// Step 38: `explore start` with no label stores a label that contains the
     /// last path component of the current working directory.
     #[test]
-    #[serial]
     fn explore_start_no_label_stores_cwd_derived_label() {
         let state_dir = tempdir().unwrap();
-        let _env = IsolatedEnv::new(state_dir.path(), None);
+        let env = SessionEnv {
+            hson_session: None,
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cwd = std::env::current_dir()
             .expect("must be able to get cwd")
@@ -260,9 +287,13 @@ mod tests {
 
         let cli = make_cli(None);
         let result =
-            run_subcommand(&ExploreSubcommand::Start { label: None }, &cli);
+            run_subcommand_with_env(
+                &ExploreSubcommand::Start { label: None },
+                &cli,
+                &env,
+            );
 
-        let output = result.expect("run_subcommand(Start) must succeed");
+        let output = result.expect("run_subcommand_with_env(Start) must succeed");
 
         let session_path = state_dir
             .path()
@@ -286,7 +317,6 @@ mod tests {
     /// Step 39: `explore status` with a session containing step_count=3 returns
     /// a string that mentions the step count ("3") and the session ID.
     #[test]
-    #[serial]
     fn explore_status_shows_step_count_and_uuid() {
         let state_dir = tempdir().unwrap();
         let session_id = "39000000-0000-0000-0000-000000000000";
@@ -300,12 +330,16 @@ mod tests {
         session.step_count = 3;
         save_to_path(&session, &session_path).unwrap();
 
-        let _env = IsolatedEnv::new(state_dir.path(), None);
+        let env = SessionEnv {
+            hson_session: None,
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(Some(session_id));
-        let result = run_subcommand(&ExploreSubcommand::Status, &cli);
+        let result = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
 
-        let output = result.expect("run_subcommand(Status) must succeed");
+        let output = result.expect("run_subcommand_with_env(Status) must succeed");
         // The fixture session ID contains '3' too, so assert the exact
         // labeled line rather than a bare contains('3').
         assert!(
@@ -322,16 +356,19 @@ mod tests {
     /// Step 40: `explore status` with no active session returns Ok and a helpful
     /// message that includes "start" (suggesting `hson explore start`).
     #[test]
-    #[serial]
     fn explore_status_no_session_prints_helpful_message() {
         let state_dir = tempdir().unwrap();
-        let _env = IsolatedEnv::new(state_dir.path(), None);
+        let env = SessionEnv {
+            hson_session: None,
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(None);
-        let result = run_subcommand(&ExploreSubcommand::Status, &cli);
+        let result = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
 
         let output = result.expect(
-            "run_subcommand(Status) with no session must return Ok, not Err",
+            "run_subcommand_with_env(Status) with no session must return Ok, not Err",
         );
         assert!(
             output.contains("start"),
@@ -343,7 +380,6 @@ mod tests {
     /// PRESERVES the query log, label, and id — matching the `clear` help
     /// text ("query log and label are preserved").
     #[test]
-    #[serial]
     fn explore_clear_zeroes_breadcrumbs_and_step_count_preserves_queries() {
         let state_dir = tempdir().unwrap();
         let session_id = "41000000-0000-0000-0000-000000000000";
@@ -364,12 +400,16 @@ mod tests {
         });
         save_to_path(&session, &session_path).unwrap();
 
-        let _env = IsolatedEnv::new(state_dir.path(), None);
+        let env = SessionEnv {
+            hson_session: None,
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(Some(session_id));
-        let result = run_subcommand(&ExploreSubcommand::Clear, &cli);
+        let result = run_subcommand_with_env(&ExploreSubcommand::Clear, &cli, &env);
 
-        result.expect("run_subcommand(Clear) must succeed");
+        result.expect("run_subcommand_with_env(Clear) must succeed");
 
         // Reload and verify
         let updated = load_from_path(&session_path)
@@ -404,7 +444,6 @@ mod tests {
     /// a clear error naming the file path — not the misleading "No active
     /// session" success that masks corruption.
     #[test]
-    #[serial]
     fn corrupt_session_file_errors_and_mentions_path() {
         let state_dir = tempdir().unwrap();
         let session_id = "55555555-5555-5555-5555-555555555555";
@@ -414,10 +453,14 @@ mod tests {
         let session_path = sessions_dir.join(format!("{session_id}.json"));
         std::fs::write(&session_path, "{not valid json").unwrap();
 
-        let _env = IsolatedEnv::new(state_dir.path(), None);
+        let env = SessionEnv {
+            hson_session: None,
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(Some(session_id));
-        let result = run_subcommand(&ExploreSubcommand::Status, &cli);
+        let result = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
 
         let err = result.expect_err(
             "explore status with a corrupt session file must return Err, \
@@ -436,15 +479,18 @@ mod tests {
     /// to create one.") instead of silently treating the unknown ID as a
     /// brand-new empty session.
     #[test]
-    #[serial]
     fn unknown_session_id_in_explore_status_errors() {
         let state_dir = tempdir().unwrap();
 
         let unknown_id = "22222222-3333-4444-5555-666666666666";
-        let _env = IsolatedEnv::new(state_dir.path(), Some(unknown_id));
+        let env = SessionEnv {
+            hson_session: Some(std::ffi::OsString::from(unknown_id)),
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(None);
-        let result = run_subcommand(&ExploreSubcommand::Status, &cli);
+        let result = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
 
         assert!(
             result.is_err(),
@@ -458,15 +504,18 @@ mod tests {
     /// must error instead of silently treating the unknown ID as a brand-new
     /// empty session and returning an empty query list.
     #[test]
-    #[serial]
     fn unknown_session_id_in_explore_list_errors() {
         let state_dir = tempdir().unwrap();
 
         let unknown_id = "33333333-4444-5555-6666-777777777777";
-        let _env = IsolatedEnv::new(state_dir.path(), Some(unknown_id));
+        let env = SessionEnv {
+            hson_session: Some(std::ffi::OsString::from(unknown_id)),
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(None);
-        let result = run_subcommand(&ExploreSubcommand::List, &cli);
+        let result = run_subcommand_with_env(&ExploreSubcommand::List, &cli, &env);
 
         assert!(
             result.is_err(),
@@ -480,7 +529,6 @@ mod tests {
     /// must error instead of silently materializing a session file at that
     /// path. The user likely typo'd; auto-creating overwrites their intent.
     #[test]
-    #[serial]
     fn unknown_session_id_in_explore_clear_errors() {
         let state_dir = tempdir().unwrap();
         // Pre-create the sessions directory so save_to_path won't fail for an
@@ -490,10 +538,14 @@ mod tests {
         std::fs::create_dir_all(&sessions_dir).unwrap();
 
         let unknown_id = "44444444-5555-6666-7777-888888888888";
-        let _env = IsolatedEnv::new(state_dir.path(), Some(unknown_id));
+        let env = SessionEnv {
+            hson_session: Some(std::ffi::OsString::from(unknown_id)),
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(None);
-        let result = run_subcommand(&ExploreSubcommand::Clear, &cli);
+        let result = run_subcommand_with_env(&ExploreSubcommand::Clear, &cli, &env);
 
         let expected = sessions_dir.join(format!("{unknown_id}.json"));
         assert!(
@@ -510,7 +562,6 @@ mod tests {
     /// Step 42: `explore list` returns all recorded queries in chronological
     /// order (ascending timestamp / step order).
     #[test]
-    #[serial]
     fn explore_list_prints_queries_chronologically() {
         let state_dir = tempdir().unwrap();
         let session_id = "42000000-0000-0000-0000-000000000000";
@@ -541,12 +592,16 @@ mod tests {
         });
         save_to_path(&session, &session_path).unwrap();
 
-        let _env = IsolatedEnv::new(state_dir.path(), None);
+        let env = SessionEnv {
+            hson_session: None,
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(Some(session_id));
-        let result = run_subcommand(&ExploreSubcommand::List, &cli);
+        let result = run_subcommand_with_env(&ExploreSubcommand::List, &cli, &env);
 
-        let output = result.expect("run_subcommand(List) must succeed");
+        let output = result.expect("run_subcommand_with_env(List) must succeed");
 
         // All 3 cwd values must appear
         assert!(
@@ -586,7 +641,6 @@ mod tests {
     /// the active session so users can gauge how much novelty bias has built
     /// up. The existing output only shows Session/Label/Steps and hides this.
     #[test]
-    #[serial]
     fn explore_status_shows_breadcrumb_count() {
         let state_dir = tempdir().unwrap();
         let session_id = "33333333-3333-3333-3333-333333333333";
@@ -605,11 +659,15 @@ mod tests {
         session.step_count = 3;
         save_to_path(&session, &path).unwrap();
 
-        let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
+        let env = SessionEnv {
+            hson_session: Some(std::ffi::OsString::from(session_id)),
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(Some(session_id));
-        let out = run_subcommand(&ExploreSubcommand::Status, &cli)
-            .expect("run_subcommand(Status) must succeed");
+        let out = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env)
+            .expect("run_subcommand_with_env(Status) must succeed");
 
         // The fixture session ID contains '3' too, so assert the exact
         // labeled line rather than a bare contains('3').
@@ -623,7 +681,6 @@ mod tests {
     /// Issue #513: `explore status` must surface the timestamp of the most
     /// recent recorded query so users can tell when a session was last active.
     #[test]
-    #[serial]
     fn explore_status_shows_last_active_timestamp() {
         let state_dir = tempdir().unwrap();
         let session_id = "44444444-4444-4444-4444-444444444444";
@@ -639,11 +696,15 @@ mod tests {
         session.record_query("2026-05-08T12:34:56Z", "/cwd", &[]);
         save_to_path(&session, &path).unwrap();
 
-        let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
+        let env = SessionEnv {
+            hson_session: Some(std::ffi::OsString::from(session_id)),
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(Some(session_id));
-        let out = run_subcommand(&ExploreSubcommand::Status, &cli)
-            .expect("run_subcommand(Status) must succeed");
+        let out = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env)
+            .expect("run_subcommand_with_env(Status) must succeed");
 
         assert!(
             out.contains("Last active") || out.contains("last active"),
@@ -659,14 +720,21 @@ mod tests {
     /// `hson explore start` — it's the very command users need to fix their
     /// environment. At most a warning goes to stderr.
     #[test]
-    #[serial]
     fn invalid_hson_session_env_does_not_break_explore_start() {
         let state_dir = tempdir().unwrap();
-        let _env = IsolatedEnv::new(state_dir.path(), Some("not-a-uuid"));
+        let env = SessionEnv {
+            hson_session: Some(std::ffi::OsString::from("not-a-uuid")),
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(None);
         let result =
-            run_subcommand(&ExploreSubcommand::Start { label: None }, &cli);
+            run_subcommand_with_env(
+                &ExploreSubcommand::Start { label: None },
+                &cli,
+                &env,
+            );
 
         let output = result.expect(
             "explore start must succeed despite an invalid HSON_SESSION",
@@ -685,13 +753,16 @@ mod tests {
     /// An invalid HSON_SESSION must produce a clear error naming HSON_SESSION
     /// for `explore status` (and the other read subcommands).
     #[test]
-    #[serial]
     fn invalid_hson_session_env_errors_in_explore_status() {
         let state_dir = tempdir().unwrap();
-        let _env = IsolatedEnv::new(state_dir.path(), Some("not-a-uuid"));
+        let env = SessionEnv {
+            hson_session: Some(std::ffi::OsString::from("not-a-uuid")),
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(None);
-        let result = run_subcommand(&ExploreSubcommand::Status, &cli);
+        let result = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
 
         let err = result.expect_err(
             "explore status with an invalid HSON_SESSION must error",
@@ -706,13 +777,16 @@ mod tests {
     /// An empty HSON_SESSION is treated as unset: `explore status` reports
     /// "no active session" instead of failing.
     #[test]
-    #[serial]
     fn empty_hson_session_env_is_unset_for_explore_status() {
         let state_dir = tempdir().unwrap();
-        let _env = IsolatedEnv::new(state_dir.path(), Some(""));
+        let env = SessionEnv {
+            hson_session: Some(std::ffi::OsString::from("")),
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(None);
-        let result = run_subcommand(&ExploreSubcommand::Status, &cli);
+        let result = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
 
         let output = result
             .expect("explore status with empty HSON_SESSION must succeed");
@@ -725,7 +799,6 @@ mod tests {
     /// `explore clear` must release its session lock: a leftover `.lock`
     /// sibling would block all subsequent recording on the session.
     #[test]
-    #[serial]
     fn explore_clear_releases_session_lock() {
         let state_dir = tempdir().unwrap();
         let session_id = "43000000-0000-0000-0000-000000000000";
@@ -737,11 +810,15 @@ mod tests {
             Session::new(session_id.to_string(), "lock test".to_string());
         save_to_path(&session, &session_path).unwrap();
 
-        let _env = IsolatedEnv::new(state_dir.path(), None);
+        let env = SessionEnv {
+            hson_session: None,
+            xdg_state_home: Some(std::ffi::OsString::from(state_dir.path())),
+            home: None,
+        };
 
         let cli = make_cli(Some(session_id));
-        run_subcommand(&ExploreSubcommand::Clear, &cli)
-            .expect("run_subcommand(Clear) must succeed");
+        run_subcommand_with_env(&ExploreSubcommand::Clear, &cli, &env)
+            .expect("run_subcommand_with_env(Clear) must succeed");
 
         let lock_path = session_path.with_extension("lock");
         assert!(

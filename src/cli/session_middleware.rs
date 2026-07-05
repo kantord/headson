@@ -1,7 +1,29 @@
 use std::env;
+use std::ffi::OsString;
 use std::path::PathBuf;
 
 use crate::cli::args::Cli;
+
+/// Resolved environment inputs for session/state-dir resolution, captured
+/// once per invocation so the rest of the pipeline is pure and testable
+/// without mutating real process env vars (which isn't safe across tests
+/// running in parallel).
+#[derive(Clone, Debug, Default)]
+pub(crate) struct SessionEnv {
+    pub(crate) hson_session: Option<OsString>,
+    pub(crate) xdg_state_home: Option<OsString>,
+    pub(crate) home: Option<OsString>,
+}
+
+impl SessionEnv {
+    pub(crate) fn from_process_env() -> Self {
+        Self {
+            hson_session: env::var_os("HSON_SESSION"),
+            xdg_state_home: env::var_os("XDG_STATE_HOME"),
+            home: env::var_os("HOME"),
+        }
+    }
+}
 
 /// Default maximum breadcrumbs kept per session (`--explore-memory` default);
 /// older entries are evicted.
@@ -23,18 +45,21 @@ const STRIPPED_BOOL_FLAGS: [&str; 1] = ["--no-record"];
 /// Resolve the active session ID with precedence: an explicit `--session`
 /// flag (already UUID-validated by clap) wins over the `HSON_SESSION`
 /// environment variable.
-pub(crate) fn resolve_session_id(cli: &Cli) -> anyhow::Result<Option<String>> {
+pub(crate) fn resolve_session_id(
+    cli: &Cli,
+    env: &SessionEnv,
+) -> anyhow::Result<Option<String>> {
     if let Some(id) = &cli.session {
         return Ok(Some(id.clone()));
     }
-    session_id_from_env()
+    session_id_from_env(env)
 }
 
 /// Read `HSON_SESSION`. Empty or whitespace-only values act as unset (so
 /// `export HSON_SESSION=""` doesn't break every invocation); any other
 /// non-UUID value errors, naming the env var rather than the --session flag.
-fn session_id_from_env() -> anyhow::Result<Option<String>> {
-    let Some(raw) = env::var_os("HSON_SESSION") else {
+fn session_id_from_env(env: &SessionEnv) -> anyhow::Result<Option<String>> {
+    let Some(raw) = env.hson_session.as_ref() else {
         return Ok(None);
     };
     let raw = raw.to_string_lossy();
@@ -58,9 +83,10 @@ fn session_id_from_env() -> anyhow::Result<Option<String>> {
 /// (which would mask typos and lose the bias context of an existing session).
 pub(crate) fn require_session_exists(
     session_id: Option<&str>,
+    env: &SessionEnv,
 ) -> anyhow::Result<()> {
     if let Some(id) = session_id {
-        let path = session_file_path(id)?;
+        let path = session_file_path(id, env)?;
         if !path.exists() {
             anyhow::bail!(
                 "Session '{id}' not found. \
@@ -71,12 +97,15 @@ pub(crate) fn require_session_exists(
     Ok(())
 }
 
-fn state_dir() -> anyhow::Result<PathBuf> {
-    if let Some(dir) = env::var_os("XDG_STATE_HOME").filter(|v| !v.is_empty())
+fn state_dir(env: &SessionEnv) -> anyhow::Result<PathBuf> {
+    if let Some(dir) = env
+        .xdg_state_home
+        .as_ref()
+        .filter(|v| !v.is_empty())
     {
         return Ok(PathBuf::from(dir));
     }
-    match env::var_os("HOME").filter(|v| !v.is_empty()) {
+    match env.home.as_ref().filter(|v| !v.is_empty()) {
         Some(home) => Ok(PathBuf::from(home).join(".local").join("state")),
         None => anyhow::bail!(
             "cannot determine session state directory: \
@@ -85,8 +114,11 @@ fn state_dir() -> anyhow::Result<PathBuf> {
     }
 }
 
-pub(crate) fn session_file_path(id: &str) -> anyhow::Result<PathBuf> {
-    Ok(state_dir()?
+pub(crate) fn session_file_path(
+    id: &str,
+    env: &SessionEnv,
+) -> anyhow::Result<PathBuf> {
+    Ok(state_dir(env)?
         .join("headson")
         .join("sessions")
         .join(format!("{id}.json")))
@@ -128,10 +160,10 @@ pub(crate) fn record_session(
     shown_leaves: &[headson::BreadcrumbKey],
     cwd: &str,
     argv: &[String],
-    alpha: f64,
-    breadcrumb_cap: usize,
+    policy: &crate::session::io::EvictionPolicy,
+    env: &SessionEnv,
 ) {
-    let path = match session_file_path(id) {
+    let path = match session_file_path(id, env) {
         Ok(p) => p,
         Err(e) => {
             eprintln!(
@@ -146,11 +178,7 @@ pub(crate) fn record_session(
         &crate::cli::timestamp::current_timestamp(),
         cwd,
         argv,
-        &crate::session::io::EvictionPolicy {
-            alpha,
-            breadcrumb_cap,
-            query_log_cap: QUERY_LOG_CAP,
-        },
+        policy,
     ) {
         eprintln!("warning: failed to record step for session '{id}': {e}");
     }
@@ -173,6 +201,7 @@ pub(crate) fn maybe_record_session(
     session_id: Option<&str>,
     from_stdin: bool,
     shown_leaves: &[headson::BreadcrumbKey],
+    env: &SessionEnv,
 ) {
     let Some(id) = session_id else { return };
     if from_stdin || cli.no_record {
@@ -189,8 +218,12 @@ pub(crate) fn maybe_record_session(
         shown_leaves,
         &cwd,
         &argv,
-        cli.explore_decay,
-        cli.explore_memory,
+        &crate::session::io::EvictionPolicy {
+            alpha: cli.explore_decay,
+            breadcrumb_cap: cli.explore_memory,
+            query_log_cap: QUERY_LOG_CAP,
+        },
+        env,
     );
 }
 
@@ -199,14 +232,24 @@ mod tests {
     use std::fs;
 
     use clap::Parser;
-    use serial_test::serial;
     use tempfile::tempdir;
 
     use super::*;
     use crate::cli::args::Cli;
-    use crate::cli::run::run;
+    use crate::cli::run::run_with_env;
 
-    use crate::cli::test_helpers::IsolatedEnv;
+    /// Build a `SessionEnv` for tests: an explicit state dir plus an optional
+    /// `HSON_SESSION` value, with no real process env involved.
+    fn env_with(
+        state_dir: &std::path::Path,
+        session_id: Option<&str>,
+    ) -> SessionEnv {
+        SessionEnv {
+            hson_session: session_id.map(OsString::from),
+            xdg_state_home: Some(OsString::from(state_dir)),
+            home: None,
+        }
+    }
 
     /// Pre-create an empty session file at the given ID under `state_dir`,
     /// mimicking what `hson explore start` would do — needed because runtime
@@ -223,18 +266,17 @@ mod tests {
     /// a file produces the same output as a baseline run and does NOT write a
     /// session file anywhere under XDG_STATE_HOME.
     #[test]
-    #[serial]
     fn no_hson_session_env_output_unchanged() {
         let dir = tempdir().unwrap();
         let state_dir = tempdir().unwrap();
         let path = dir.path().join("data.json");
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
-        let _env = IsolatedEnv::new(state_dir.path(), None);
+        let env = env_with(state_dir.path(), None);
 
         let cli = Cli::parse_from(["hson", path.to_str().unwrap()]);
-        let (out, warnings) =
-            run(&cli).expect("run must succeed without session flag");
+        let (out, warnings) = run_with_env(&cli, &env)
+            .expect("run must succeed without session flag");
 
         assert!(
             !out.is_empty(),
@@ -263,7 +305,6 @@ mod tests {
     /// Step 32: When HSON_SESSION=<id> env var is set, running hson on a file
     /// creates `$XDG_STATE_HOME/headson/sessions/<id>.json`.
     #[test]
-    #[serial]
     fn hson_session_env_creates_session_file() {
         let dir = tempdir().unwrap();
         let state_dir = tempdir().unwrap();
@@ -271,11 +312,11 @@ mod tests {
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
         let session_id = "32000000-0000-0000-0000-000000000000";
-        let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
+        let env = env_with(state_dir.path(), Some(session_id));
         pre_create_session(state_dir.path(), session_id);
 
         let cli = Cli::parse_from(["hson", path.to_str().unwrap()]);
-        let result = run(&cli);
+        let result = run_with_env(&cli, &env);
 
         result.expect("run must succeed with HSON_SESSION set");
 
@@ -294,7 +335,6 @@ mod tests {
     /// path; the path component is the in-file dot-path plus content hash,
     /// with no filename embedded (issue #513 review).
     #[test]
-    #[serial]
     fn recorded_breadcrumbs_carry_absolute_file_and_inner_path() {
         let dir = tempdir().unwrap();
         let state_dir = tempdir().unwrap();
@@ -302,11 +342,11 @@ mod tests {
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
         let session_id = "3b000000-0000-0000-0000-000000000000";
-        let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
+        let env = env_with(state_dir.path(), Some(session_id));
         pre_create_session(state_dir.path(), session_id);
 
         let cli = Cli::parse_from(["hson", path.to_str().unwrap()]);
-        run(&cli).expect("run must succeed");
+        run_with_env(&cli, &env).expect("run must succeed");
 
         let session_file = state_dir
             .path()
@@ -334,7 +374,6 @@ mod tests {
 
     /// Step 33: Using `--session <id>` creates the session file.
     #[test]
-    #[serial]
     fn session_flag_creates_session_file() {
         let dir = tempdir().unwrap();
         let state_dir = tempdir().unwrap();
@@ -342,7 +381,7 @@ mod tests {
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
         let session_id = "33000000-0000-0000-0000-000000000000";
-        let _env = IsolatedEnv::new(state_dir.path(), None);
+        let env = env_with(state_dir.path(), None);
         pre_create_session(state_dir.path(), session_id);
 
         let cli = Cli::parse_from([
@@ -351,7 +390,7 @@ mod tests {
             session_id,
             path.to_str().unwrap(),
         ]);
-        let result = run(&cli);
+        let result = run_with_env(&cli, &env);
 
         result.expect("run must succeed with --session flag");
 
@@ -368,7 +407,6 @@ mod tests {
 
     /// Step 34: `--session <id> --no-record` does NOT mutate the session file.
     #[test]
-    #[serial]
     fn no_record_flag_suppresses_session_write() {
         let dir = tempdir().unwrap();
         let state_dir = tempdir().unwrap();
@@ -376,7 +414,7 @@ mod tests {
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
         let session_id = "34000000-0000-0000-0000-000000000000";
-        let _env = IsolatedEnv::new(state_dir.path(), None);
+        let env = env_with(state_dir.path(), None);
         pre_create_session(state_dir.path(), session_id);
 
         let cli = Cli::parse_from([
@@ -386,7 +424,7 @@ mod tests {
             "--no-record",
             path.to_str().unwrap(),
         ]);
-        let result = run(&cli);
+        let result = run_with_env(&cli, &env);
 
         result.expect("run must succeed with --session --no-record");
 
@@ -414,15 +452,14 @@ mod tests {
 
     /// Step 35: Structural confirmation that stdin mode suppresses session writes.
     #[test]
-    #[serial]
     fn stdin_mode_no_session_write_active_session_id_resolves() {
         let state_dir = tempdir().unwrap();
         let session_id = "35000000-0000-0000-0000-000000000000";
 
-        let _env = IsolatedEnv::new(state_dir.path(), Some(session_id));
+        let env = env_with(state_dir.path(), Some(session_id));
 
         let cli = Cli::parse_from(["hson"]);
-        let id = resolve_session_id(&cli)
+        let id = resolve_session_id(&cli, &env)
             .expect("valid HSON_SESSION must resolve without error");
 
         assert_eq!(
@@ -447,7 +484,6 @@ mod tests {
     /// loses the original session's bias context. The command must return an
     /// error AND leave no session file on disk.
     #[test]
-    #[serial]
     fn unknown_session_id_in_run_errors_and_does_not_create_file() {
         let dir = tempdir().unwrap();
         let state_dir = tempdir().unwrap();
@@ -455,10 +491,10 @@ mod tests {
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
         let unknown_id = "11111111-2222-3333-4444-555555555555";
-        let _env = IsolatedEnv::new(state_dir.path(), Some(unknown_id));
+        let env = env_with(state_dir.path(), Some(unknown_id));
 
         let cli = Cli::parse_from(["hson", path.to_str().unwrap()]);
-        let result = run(&cli);
+        let result = run_with_env(&cli, &env);
 
         let expected = state_dir
             .path()
@@ -479,33 +515,31 @@ mod tests {
     /// An EMPTY exported HSON_SESSION must behave exactly as if it were
     /// unset: the run succeeds and no session file is written.
     #[test]
-    #[serial]
     fn empty_hson_session_env_is_treated_as_unset() {
         let dir = tempdir().unwrap();
         let state_dir = tempdir().unwrap();
         let path = dir.path().join("data.json");
         fs::write(&path, r#"{"x": 1}"#).unwrap();
 
-        let _env = IsolatedEnv::new(state_dir.path(), Some(""));
+        let env = env_with(state_dir.path(), Some(""));
 
         let cli = Cli::parse_from(["hson", path.to_str().unwrap()]);
-        let id = resolve_session_id(&cli)
+        let id = resolve_session_id(&cli, &env)
             .expect("empty HSON_SESSION must not be an error");
         assert_eq!(id, None, "empty HSON_SESSION must resolve to no session");
 
-        let (out, _) = run(&cli).expect("run must succeed");
+        let (out, _) = run_with_env(&cli, &env).expect("run must succeed");
         assert!(!out.is_empty(), "output must be non-empty");
     }
 
     /// Whitespace-only HSON_SESSION is also treated as unset.
     #[test]
-    #[serial]
     fn whitespace_hson_session_env_is_treated_as_unset() {
         let state_dir = tempdir().unwrap();
-        let _env = IsolatedEnv::new(state_dir.path(), Some("  \t "));
+        let env = env_with(state_dir.path(), Some("  \t "));
 
         let cli = Cli::parse_from(["hson"]);
-        let id = resolve_session_id(&cli)
+        let id = resolve_session_id(&cli, &env)
             .expect("whitespace-only HSON_SESSION must not be an error");
         assert_eq!(id, None);
     }
@@ -513,13 +547,12 @@ mod tests {
     /// A non-empty, non-UUID HSON_SESSION must produce a clear error that
     /// names HSON_SESSION (not the --session flag the user never typed).
     #[test]
-    #[serial]
     fn invalid_hson_session_env_errors_naming_the_env_var() {
         let state_dir = tempdir().unwrap();
-        let _env = IsolatedEnv::new(state_dir.path(), Some("not-a-uuid"));
+        let env = env_with(state_dir.path(), Some("not-a-uuid"));
 
         let cli = Cli::parse_from(["hson"]);
-        let err = resolve_session_id(&cli)
+        let err = resolve_session_id(&cli, &env)
             .expect_err("non-UUID HSON_SESSION must be an error");
 
         let msg = err.to_string();
@@ -536,14 +569,13 @@ mod tests {
     /// An explicit --session flag takes precedence over HSON_SESSION, even
     /// when the env value is garbage.
     #[test]
-    #[serial]
     fn session_flag_takes_precedence_over_env() {
         let state_dir = tempdir().unwrap();
-        let _env = IsolatedEnv::new(state_dir.path(), Some("not-a-uuid"));
+        let env = env_with(state_dir.path(), Some("not-a-uuid"));
 
         let flag_id = "ab000000-0000-0000-0000-000000000000";
         let cli = Cli::parse_from(["hson", "--session", flag_id]);
-        let id = resolve_session_id(&cli)
+        let id = resolve_session_id(&cli, &env)
             .expect("--session flag must win over an invalid env value");
         assert_eq!(id.as_deref(), Some(flag_id));
     }
@@ -570,16 +602,15 @@ mod tests {
     /// files don't grow without bound across long-running explorations. The
     /// cap comes from --explore-memory rather than a hard-coded constant.
     #[test]
-    #[serial]
     fn record_session_caps_breadcrumbs_when_limit_exceeded() {
         let dir = tempdir().unwrap();
         let state_dir = dir.path();
         let session_id = "be000000-0000-0000-0000-000000000000";
 
-        let _env = IsolatedEnv::new(state_dir, None);
+        let env = env_with(state_dir, None);
 
         // Pre-populate with 20 recent breadcrumbs — above the cap of 5.
-        let path = session_file_path(session_id).unwrap();
+        let path = session_file_path(session_id, &env).unwrap();
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         let mut session = crate::session::Session::new(
             session_id.to_string(),
@@ -606,8 +637,12 @@ mod tests {
             &[(String::new(), "new#newhash".to_string())],
             "/cwd",
             &[],
-            cli.explore_decay,
-            cli.explore_memory,
+            &crate::session::io::EvictionPolicy {
+                alpha: cli.explore_decay,
+                breadcrumb_cap: cli.explore_memory,
+                query_log_cap: QUERY_LOG_CAP,
+            },
+            &env,
         );
 
         let final_session = crate::session::io::load_from_path(&path)
@@ -622,16 +657,15 @@ mod tests {
 
     /// Regression: record_session must cap the query log to prevent unbounded growth.
     #[test]
-    #[serial]
     fn record_session_caps_query_log_when_limit_exceeded() {
         let dir = tempdir().unwrap();
         let state_dir = dir.path();
         let session_id = "9c000000-0000-0000-0000-000000000000";
 
-        let _env = IsolatedEnv::new(state_dir, None);
+        let env = env_with(state_dir, None);
 
         // Pre-populate with QUERY_LOG_CAP + 100 queries.
-        let path = session_file_path(session_id).unwrap();
+        let path = session_file_path(session_id, &env).unwrap();
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         let mut session = crate::session::Session::new(
             session_id.to_string(),
@@ -647,8 +681,12 @@ mod tests {
             &[],
             "/cwd",
             &[],
-            DEFAULT_ALPHA,
-            BREADCRUMB_CAP,
+            &crate::session::io::EvictionPolicy {
+                alpha: DEFAULT_ALPHA,
+                breadcrumb_cap: BREADCRUMB_CAP,
+                query_log_cap: QUERY_LOG_CAP,
+            },
+            &env,
         );
 
         let final_session = crate::session::io::load_from_path(&path)
@@ -724,50 +762,15 @@ mod tests {
         );
     }
 
-    struct StateEnvGuard {
-        old_state: Option<std::ffi::OsString>,
-        old_home: Option<std::ffi::OsString>,
-    }
-
-    impl StateEnvGuard {
-        fn unset_all() -> Self {
-            let old_state = std::env::var_os("XDG_STATE_HOME");
-            let old_home = std::env::var_os("HOME");
-            unsafe {
-                std::env::remove_var("XDG_STATE_HOME");
-                std::env::remove_var("HOME");
-            }
-            Self {
-                old_state,
-                old_home,
-            }
-        }
-    }
-
-    impl Drop for StateEnvGuard {
-        fn drop(&mut self) {
-            unsafe {
-                match &self.old_state {
-                    Some(v) => std::env::set_var("XDG_STATE_HOME", v),
-                    None => std::env::remove_var("XDG_STATE_HOME"),
-                }
-                match &self.old_home {
-                    Some(v) => std::env::set_var("HOME", v),
-                    None => std::env::remove_var("HOME"),
-                }
-            }
-        }
-    }
-
     /// With neither XDG_STATE_HOME nor HOME available, session_file_path
     /// must return a clear error instead of silently building a relative
     /// path like `.local/state/...` under the current directory.
     #[test]
-    #[serial]
     fn session_file_path_errors_when_no_state_dir_env() {
-        let _guard = StateEnvGuard::unset_all();
+        let env = SessionEnv::default();
 
-        let result = session_file_path("be000000-0000-0000-0000-000000000000");
+        let result =
+            session_file_path("be000000-0000-0000-0000-000000000000", &env);
 
         let err = result.expect_err(
             "session_file_path must error when XDG_STATE_HOME and HOME are unset",
@@ -781,15 +784,15 @@ mod tests {
 
     /// Empty-string env values must be treated the same as unset.
     #[test]
-    #[serial]
     fn session_file_path_errors_when_state_dir_env_empty() {
-        let _guard = StateEnvGuard::unset_all();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", "");
-            std::env::set_var("HOME", "");
-        }
+        let env = SessionEnv {
+            hson_session: None,
+            xdg_state_home: Some(OsString::from("")),
+            home: Some(OsString::from("")),
+        };
 
-        let result = session_file_path("be000000-0000-0000-0000-000000000000");
+        let result =
+            session_file_path("be000000-0000-0000-0000-000000000000", &env);
 
         assert!(
             result.is_err(),

@@ -5,7 +5,8 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use crate::cli::session_middleware::{
-    maybe_record_session, require_session_exists, resolve_session_id,
+    SessionEnv, maybe_record_session, require_session_exists,
+    resolve_session_id,
 };
 
 use anyhow::{Context, Result, bail};
@@ -71,9 +72,12 @@ fn needs_fileset(cli: &Cli, inputs_len: usize) -> bool {
 fn load_explore_context(
     session_id: Option<&str>,
     alpha: f64,
+    env: &SessionEnv,
 ) -> Option<headson::ExploreContext> {
     let id = session_id?;
-    let path = match crate::cli::session_middleware::session_file_path(id) {
+    let path = match crate::cli::session_middleware::session_file_path(
+        id, env,
+    ) {
         Ok(p) => p,
         Err(e) => {
             eprintln!(
@@ -105,14 +109,24 @@ fn load_explore_context(
 }
 
 pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
+    run_with_env(cli, &SessionEnv::from_process_env())
+}
+
+/// Core of `run`, parameterized over the session/state-dir environment
+/// instead of reading `std::env` directly, so tests can supply values
+/// in-process without mutating real (process-global) env vars.
+pub(crate) fn run_with_env(
+    cli: &Cli,
+    env: &SessionEnv,
+) -> Result<(String, CliWarnings)> {
     budget::validate(cli)?;
-    let session_id = resolve_session_id(cli)?;
-    require_session_exists(session_id.as_deref())?;
+    let session_id = resolve_session_id(cli, env)?;
+    require_session_exists(session_id.as_deref(), env)?;
     let render_cfg = get_render_config_from(cli);
     let grep_cfg = build_grep_config_from_cli(cli)?;
     let resolved_inputs = resolve_inputs(cli)?;
     let explore_ctx =
-        load_explore_context(session_id.as_deref(), cli.explore_decay);
+        load_explore_context(session_id.as_deref(), cli.explore_decay, env);
     let from_stdin = resolved_inputs.is_empty();
     let (out, mut warnings, match_summary, shown_leaves) = if from_stdin {
         if !cli.globs.is_empty() || cli.recursive {
@@ -148,6 +162,7 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
         session_id.as_deref(),
         from_stdin,
         &shown_leaves,
+        env,
     );
     Ok((out, warnings))
 }
@@ -767,9 +782,15 @@ mod tests {
     use super::*;
     use crate::cli::args::Cli;
     use clap::Parser;
-    use serial_test::serial;
     use std::fs;
     use tempfile::tempdir;
+
+    /// All tests here run against an explicit, empty `SessionEnv` — no real
+    /// process env is read, so no session/state-dir isolation is needed
+    /// between tests running in parallel.
+    fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
+        run_with_env(cli, &SessionEnv::default())
+    }
 
     #[test]
     fn explicit_input_format_overrides_auto_detection_for_single_file() {
@@ -872,13 +893,8 @@ mod tests {
     /// With --count-matches and --grep, loose budget: all matches shown.
     /// The warnings vec must contain exactly one line "N matches shown, 0 hidden".
     #[test]
-    #[serial]
     fn count_matches_summary_in_warnings_when_all_shown() {
         let dir = tempdir().unwrap();
-        // Isolate HSON_SESSION so explore tests running in parallel don't leak
-        // a non-existent session ID into this test's env.
-        let _env =
-            crate::cli::test_helpers::IsolatedEnv::new(dir.path(), None);
         let path = dir.path().join("data.json");
         // Three keys that each contain "match" somewhere in their string value;
         // 10 000-byte budget is ample so nothing is hidden.
@@ -924,11 +940,8 @@ mod tests {
     /// With --count-matches and --weak-grep under a very tight line budget,
     /// some matches must be hidden (N hidden > 0).
     #[test]
-    #[serial]
     fn count_matches_summary_in_warnings_when_some_hidden() {
         let dir = tempdir().unwrap();
-        let _env =
-            crate::cli::test_helpers::IsolatedEnv::new(dir.path(), None);
         let path = dir.path().join("data.json");
         // Six matches spread across many lines; --lines 1 forces tight truncation.
         fs::write(
