@@ -816,7 +816,7 @@ pub fn build_order(
         }
     }
 
-    let fileset_render_slots = if arena.is_fileset {
+    let (fileset_root_ids, fileset_render_slots) = if arena.is_fileset {
         let root = &arena.nodes[arena.root_id];
         let mut ids: Vec<NodeId> = Vec::with_capacity(root.children_len);
         let mut slots: Vec<FilesetRenderSlot> =
@@ -833,10 +833,9 @@ pub fn build_order(
                 slots.push(FilesetRenderSlot { id, suppressed });
             }
         }
-        interleave_fileset_priority(&mut order, &node_slots, &ids);
-        Some(slots)
+        (Some(ids), Some(slots))
     } else {
-        None
+        (None, None)
     };
 
     let total = next_pq_id;
@@ -853,7 +852,7 @@ pub fn build_order(
             }
         }
     }
-    Ok(PriorityOrder {
+    let mut result = PriorityOrder {
         metrics,
         nodes,
         scores,
@@ -866,7 +865,23 @@ pub fn build_order(
         code_lines,
         fileset_render_slots,
         safety_cap_hit,
-    })
+        merkle_hashes: None,
+    };
+    // Penalty must precede interleaving: its re-sort is by raw score, which
+    // would silently undo the round-robin fairness if applied afterwards.
+    if let Some(ctx) = config.explore.as_ref()
+        && !ctx.breadcrumbs.is_empty()
+    {
+        super::explore::apply_explore_penalty(&mut result, ctx);
+    }
+    if let Some(ids) = fileset_root_ids {
+        interleave_fileset_priority(
+            &mut result.by_priority,
+            &node_slots,
+            &ids,
+        );
+    }
+    Ok(result)
 }
 
 #[allow(

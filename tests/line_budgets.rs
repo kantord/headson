@@ -73,7 +73,7 @@ fn json_js_lines_cap() {
 #[test]
 fn yaml_lines_cap_multiline_values() {
     use std::fs;
-    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let tmp = tempfile::tempdir().expect("tmp");
     let p = tmp.path().join("doc.yaml");
     let doc =
         "root:\n  items: [1,2,3,4,5,6]\n  desc: \"line1\\nline2\\nline3\"\n";
@@ -90,7 +90,7 @@ fn yaml_lines_cap_multiline_values() {
 #[test]
 fn text_lines_cap_with_omission() {
     use std::fs;
-    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let tmp = tempfile::tempdir().expect("tmp");
     let p = tmp.path().join("lines.txt");
     let content = (1..=10).map(|i| format!("L{i}\n")).collect::<String>();
     fs::write(&p, content).unwrap();
@@ -111,7 +111,7 @@ fn text_lines_cap_with_omission() {
 #[test]
 fn text_single_line_fits_under_cap() {
     use std::fs;
-    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let tmp = tempfile::tempdir().expect("tmp");
     let p = tmp.path().join("single.txt");
     fs::write(&p, "onlyline\n").unwrap();
     let out =
@@ -161,7 +161,7 @@ fn combined_char_and_line_caps() {
 #[test]
 fn fileset_global_lines() {
     use std::fs;
-    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let tmp = tempfile::tempdir().expect("tmp");
     let a = tmp.path().join("a.json");
     let b = tmp.path().join("b.json");
     fs::write(&a, b"{}\n").unwrap();
@@ -192,7 +192,7 @@ fn fileset_global_lines() {
 #[test]
 fn fileset_global_lines_count_headers() {
     use std::fs;
-    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let tmp = tempfile::tempdir().expect("tmp");
     let a = tmp.path().join("a.json");
     let b = tmp.path().join("b.json");
     fs::write(&a, b"{}\n").unwrap();
@@ -230,7 +230,7 @@ fn fileset_global_lines_count_headers() {
 #[test]
 fn fileset_per_file_lines_count_headers() {
     use std::fs;
-    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let tmp = tempfile::tempdir().expect("tmp");
     let a = tmp.path().join("a.json");
     let b = tmp.path().join("b.json");
     fs::write(&a, b"{}\n").unwrap();
@@ -267,33 +267,40 @@ fn fileset_per_file_lines_count_headers() {
 
 #[test]
 fn fileset_global_bytes_count_headers() {
+    // Runs against bare relative filenames (via `run_cli_in_dir`, not the
+    // test's own cwd) rather than `tmp.path().join(..)`'s absolute paths:
+    // the cap below is tuned against header length, which must stay fixed
+    // regardless of how deep the repo happens to be checked out.
     use std::fs;
-    let tmp = tempfile::tempdir_in(".").expect("tmp");
-    let a = tmp.path().join("a.json");
-    let b = tmp.path().join("b.json");
-    let c = tmp.path().join("c.json");
-    fs::write(&a, b"{}\n").unwrap();
-    fs::write(&b, b"{}\n").unwrap();
-    fs::write(&c, b"{}\n").unwrap();
-    let cap = 120usize;
-    let out = run(&[
-        "-f",
-        "auto",
-        "--global-bytes",
-        &cap.to_string(),
-        "-H",
-        a.to_str().unwrap(),
-        b.to_str().unwrap(),
-        c.to_str().unwrap(),
-    ]);
+    let tmp = tempfile::tempdir().expect("tmp");
+    fs::write(tmp.path().join("a.json"), b"{}\n").unwrap();
+    fs::write(tmp.path().join("b.json"), b"{}\n").unwrap();
+    fs::write(tmp.path().join("c.json"), b"{}\n").unwrap();
+    let cap = 40usize;
+    let out = common::run_cli_in_dir(
+        tmp.path(),
+        &[
+            "--no-color",
+            "--no-sort",
+            "-f",
+            "auto",
+            "--global-bytes",
+            &cap.to_string(),
+            "-H",
+            "a.json",
+            "b.json",
+            "c.json",
+        ],
+        None,
+    )
+    .stdout;
     assert!(
         count_bytes(&out) <= cap,
         "global byte cap should include headers when -H is set: len={}, cap={}, out={out:?}",
         count_bytes(&out),
         cap
     );
-    let header_a = format!("==> {} <==", a.display());
-    assert!(out.contains(&header_a), "first header present");
+    assert!(out.contains("==> a.json <=="), "first header present");
     assert!(
         out.contains("more files"),
         "summary should appear when not all files fit under counted headers"
@@ -303,7 +310,7 @@ fn fileset_global_bytes_count_headers() {
 #[test]
 fn fileset_chars_count_headers() {
     use std::fs;
-    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let tmp = tempfile::tempdir().expect("tmp");
     let a = tmp.path().join("a.json");
     let b = tmp.path().join("b.json");
     fs::write(&a, b"{}\n").unwrap();

@@ -631,6 +631,7 @@ fn tree_omitted_folders_render_in_input_order() {
             array_sampler: headson::ArraySamplerStrategy::Default,
             line_budget_only: true,
             safety_cap: headson::DEFAULT_SAFETY_CAP,
+            explore: None,
         };
         let grep_cfg = headson::GrepConfig::default();
         let budgets = headson::Budgets {

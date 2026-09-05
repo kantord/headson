@@ -1,7 +1,37 @@
 use std::path::PathBuf;
 
-use clap::{ArgAction, Parser, ValueEnum};
+use clap::{ArgAction, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
+
+pub(crate) fn parse_session_id(s: &str) -> Result<String, String> {
+    uuid::Uuid::parse_str(s)
+        .map(|u| u.to_string())
+        .map_err(|e| format!("invalid session ID (must be a UUID): {e}"))
+}
+
+fn parse_explore_decay(s: &str) -> Result<f64, String> {
+    let alpha: f64 = s
+        .parse()
+        .map_err(|e| format!("invalid decay factor: {e}"))?;
+    if alpha > 0.0 && alpha <= 1.0 {
+        Ok(alpha)
+    } else {
+        Err(format!(
+            "decay factor must satisfy 0.0 < ALPHA <= 1.0 (got {alpha})"
+        ))
+    }
+}
+
+fn parse_explore_memory(s: &str) -> Result<usize, String> {
+    let n: usize = s
+        .parse()
+        .map_err(|e| format!("invalid breadcrumb capacity: {e}"))?;
+    if n >= 1 {
+        Ok(n)
+    } else {
+        Err("breadcrumb capacity must be at least 1".to_string())
+    }
+}
 
 /// Top-level CLI flags and enums.
 #[derive(Parser, Debug)]
@@ -268,6 +298,51 @@ pub struct Cli {
         help_heading = "Filtering"
     )]
     pub grep_show: GrepShowArg,
+    // HSON_SESSION is intentionally NOT wired through clap's `env` attribute:
+    // env resolution happens in `session_middleware::resolve_session_id` so an
+    // empty value acts as unset and an invalid value cannot fail parsing for
+    // every invocation (including `hson explore start`, the escape hatch).
+    #[arg(
+        long = "session",
+        value_name = "SESSION_ID",
+        global = true,
+        value_parser = parse_session_id,
+        help = "Activate an explore session by ID (UUID). Falls back to a non-empty HSON_SESSION environment variable. See --explore for a zero-setup alternative.",
+        help_heading = "Explore"
+    )]
+    pub session: Option<String>,
+    #[arg(
+        long = "explore",
+        action = ArgAction::SetTrue,
+        help = "Enable novelty-bias mode with zero setup: uses an implicit session tied to the current directory, auto-created on first use. Ignored if --session or HSON_SESSION is also set (those take precedence).",
+        help_heading = "Explore"
+    )]
+    pub explore: bool,
+    #[arg(
+        long = "no-record",
+        action = ArgAction::SetTrue,
+        help = "Apply session penalty without recording breadcrumbs or incrementing step count.",
+        help_heading = "Explore"
+    )]
+    pub no_record: bool,
+    #[arg(
+        long = "explore-decay",
+        value_name = "ALPHA",
+        default_value_t = crate::cli::session_middleware::DEFAULT_ALPHA,
+        value_parser = parse_explore_decay,
+        help = "Decay factor per step for session novelty penalties (0 < ALPHA <= 1; 1.0 = no decay). Only takes effect with an active session.",
+        help_heading = "Explore"
+    )]
+    pub explore_decay: f64,
+    #[arg(
+        long = "explore-memory",
+        value_name = "N",
+        default_value_t = crate::cli::session_middleware::BREADCRUMB_CAP,
+        value_parser = parse_explore_memory,
+        help = "Maximum breadcrumbs retained per session; older entries are evicted. Only takes effect with an active session.",
+        help_heading = "Explore"
+    )]
+    pub explore_memory: usize,
     #[arg(
         long = "completions",
         value_name = "SHELL",
@@ -275,6 +350,35 @@ pub struct Cli {
         help = "Print shell completions for the given shell"
     )]
     pub completions: Option<Shell>,
+    #[command(subcommand)]
+    pub subcommand: Option<TopSubcommand>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum TopSubcommand {
+    /// Manage explore sessions (novelty-bias mode)
+    Explore(ExploreArgs),
+}
+
+#[derive(clap::Args, Debug)]
+pub struct ExploreArgs {
+    #[command(subcommand)]
+    pub command: ExploreSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ExploreSubcommand {
+    /// Start a new explore session and print the session ID to stdout
+    Start {
+        /// Optional human-readable label for this session
+        label: Option<String>,
+    },
+    /// Show the current session status
+    Status,
+    /// Clear breadcrumb memory (query log and label are preserved)
+    Clear,
+    /// Print the query log for the current session in chronological order
+    List,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -402,4 +506,137 @@ pub fn print_completions<G: clap_complete::Generator>(
         cmd.get_name().to_string(),
         &mut std::io::stdout(),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn session_flag_can_appear_after_explore_subcommand() {
+        use clap::Parser;
+        let result = Cli::try_parse_from([
+            "hson",
+            "explore",
+            "status",
+            "--session",
+            "00000000-0000-0000-0000-000000000000",
+        ]);
+        assert!(
+            result.is_ok(),
+            "--session must be accepted after `explore status`; got: {:?}",
+            result.err()
+        );
+        let cli = result.unwrap();
+        assert_eq!(
+            cli.session.as_deref(),
+            Some("00000000-0000-0000-0000-000000000000")
+        );
+    }
+
+    #[test]
+    fn non_uuid_session_value_fails_to_parse() {
+        use clap::Parser;
+        let result =
+            Cli::try_parse_from(["hson", "--session", "not-a-uuid", "file"]);
+        assert!(
+            result.is_err(),
+            "non-UUID session value must fail at parse time; got Ok with cli.session={:?}",
+            result.ok().and_then(|c| c.session)
+        );
+    }
+
+    #[test]
+    fn empty_session_value_fails_to_parse() {
+        use clap::Parser;
+        let result = Cli::try_parse_from(["hson", "--session", "", "file"]);
+        assert!(
+            result.is_err(),
+            "empty session value must fail at parse time"
+        );
+    }
+
+    #[test]
+    fn path_traversal_session_value_fails_to_parse() {
+        use clap::Parser;
+        let result = Cli::try_parse_from([
+            "hson",
+            "--session",
+            "../../etc/passwd",
+            "file",
+        ]);
+        assert!(
+            result.is_err(),
+            "session value containing path separators must fail at parse time"
+        );
+    }
+
+    #[test]
+    fn explore_decay_and_memory_use_documented_defaults() {
+        use clap::Parser;
+        let cli = Cli::try_parse_from(["hson", "file"])
+            .expect("plain invocation must parse");
+        assert!(
+            (cli.explore_decay - 0.5).abs() < f64::EPSILON,
+            "default --explore-decay must be 0.5; got {}",
+            cli.explore_decay
+        );
+        assert_eq!(
+            cli.explore_memory, 10_000,
+            "default --explore-memory must be 10000"
+        );
+    }
+
+    #[test]
+    fn explore_decay_rejects_out_of_range_values() {
+        use clap::Parser;
+        for bad in ["0", "0.0", "1.5", "nan"] {
+            let result =
+                Cli::try_parse_from(["hson", "--explore-decay", bad, "file"]);
+            assert!(
+                result.is_err(),
+                "--explore-decay {bad} must fail at parse time"
+            );
+        }
+    }
+
+    #[test]
+    fn explore_decay_accepts_boundary_and_interior_values() {
+        use clap::Parser;
+        for good in ["1.0", "0.5", "0.001"] {
+            let result =
+                Cli::try_parse_from(["hson", "--explore-decay", good, "file"]);
+            assert!(
+                result.is_ok(),
+                "--explore-decay {good} must parse; got: {:?}",
+                result.err()
+            );
+        }
+    }
+
+    #[test]
+    fn explore_memory_rejects_zero_and_accepts_one() {
+        use clap::Parser;
+        assert!(
+            Cli::try_parse_from(["hson", "--explore-memory", "0", "file"])
+                .is_err(),
+            "--explore-memory 0 must fail at parse time"
+        );
+        let cli =
+            Cli::try_parse_from(["hson", "--explore-memory", "1", "file"])
+                .expect("--explore-memory 1 must parse");
+        assert_eq!(cli.explore_memory, 1);
+    }
+
+    #[test]
+    fn valid_uuid_session_value_parses_successfully() {
+        use clap::Parser;
+        let result = Cli::try_parse_from([
+            "hson",
+            "--session",
+            "00000000-0000-0000-0000-000000000000",
+            "file",
+        ]);
+        assert!(result.is_ok(), "valid UUID must parse: {:?}", result.err());
+    }
 }
