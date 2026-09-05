@@ -81,19 +81,22 @@ pub struct NodeFiles {
 
 impl NodeFiles {
     pub fn for_order(order: &PriorityOrder, single: Option<&str>) -> Self {
+        // Slot indices here must line up with `compute_fileset_slot_map`'s,
+        // since both iterate `fileset_render_slots()` in the same order.
         let render_slots = order.fileset_render_slots().unwrap_or(&[]);
-        let mut slot_of: Vec<Option<usize>> = vec![None; order.nodes.len()];
-        let mut paths: Vec<String> = Vec::with_capacity(render_slots.len());
-        for slot in render_slots {
-            let name = order
-                .nodes
-                .get(slot.id.0)
-                .and_then(RankedNode::key_in_object)
-                .unwrap_or("");
-            let path_idx = paths.len();
-            paths.push(resolve_breadcrumb_file(name));
-            mark_subtree(order, slot.id, path_idx, &mut slot_of);
-        }
+        let paths: Vec<String> = render_slots
+            .iter()
+            .map(|slot| {
+                let name = order
+                    .nodes
+                    .get(slot.id.0)
+                    .and_then(RankedNode::key_in_object)
+                    .unwrap_or("");
+                resolve_breadcrumb_file(name)
+            })
+            .collect();
+        let slot_of = crate::pruner::budget::compute_fileset_slot_map(order)
+            .unwrap_or_else(|| vec![None; order.nodes.len()]);
         Self {
             slot_of,
             paths,
@@ -105,26 +108,6 @@ impl NodeFiles {
         match self.slot_of.get(node_id.0).copied().flatten() {
             Some(idx) => self.paths.get(idx).map_or("", String::as_str),
             None => self.single.as_deref().unwrap_or(""),
-        }
-    }
-}
-
-/// Assign `path_idx` to every node in the subtree rooted at `root` that has
-/// not been claimed by an earlier fileset slot.
-fn mark_subtree(
-    order: &PriorityOrder,
-    root: NodeId,
-    path_idx: usize,
-    slot_of: &mut [Option<usize>],
-) {
-    let mut stack = vec![root];
-    while let Some(id) = stack.pop() {
-        let Some(entry @ None) = slot_of.get_mut(id.0) else {
-            continue;
-        };
-        *entry = Some(path_idx);
-        if let Some(children) = order.children.get(id.0) {
-            stack.extend(children.iter().copied());
         }
     }
 }

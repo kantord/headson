@@ -69,12 +69,12 @@ fn session_id_from_env(env: &SessionEnv) -> anyhow::Result<Option<String>> {
     if value.is_empty() {
         return Ok(None);
     }
-    match uuid::Uuid::parse_str(value) {
-        Ok(uuid) => Ok(Some(uuid.to_string())),
+    match crate::cli::args::parse_session_id(value) {
+        Ok(id) => Ok(Some(id)),
         Err(e) => anyhow::bail!(
-            "invalid HSON_SESSION environment variable {value:?} \
-             (must be a UUID): {e}. Unset HSON_SESSION or run \
-             `hson explore start` to create a fresh session."
+            "invalid HSON_SESSION environment variable {value:?} ({e}). \
+             Unset HSON_SESSION or run `hson explore start` to create a \
+             fresh session."
         ),
     }
 }
@@ -110,6 +110,24 @@ fn implicit_session_id_for_cwd(cwd: &std::path::Path) -> String {
 /// alone has no explicit ID to typo, so it derives a deterministic
 /// per-directory ID and creates that session's file on first use — the
 /// zero-setup counterpart to `hson explore start` + `--session <uuid>`.
+/// Write a fresh session file at `path` with the given id/label, creating
+/// the parent directory if needed. Always writes, even over an existing
+/// file — callers that must not clobber one check `path.exists()` first.
+pub(crate) fn create_session_file(
+    id: &str,
+    label: String,
+    path: &std::path::Path,
+) -> anyhow::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).with_context(|| {
+            format!("failed to create session directory {}", parent.display())
+        })?;
+    }
+    let session = crate::session::Session::new(id.to_string(), label);
+    crate::session::io::save_to_path(&session, path)
+        .map_err(|e| anyhow::anyhow!("failed to create session file: {e}"))
+}
+
 pub(crate) fn resolve_or_create_session_id(
     cli: &Cli,
     env: &SessionEnv,
@@ -126,23 +144,11 @@ pub(crate) fn resolve_or_create_session_id(
     let id = implicit_session_id_for_cwd(&cwd);
     let path = session_file_path(&id, env)?;
     if !path.exists() {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).with_context(|| {
-                format!(
-                    "failed to create session directory {}",
-                    parent.display()
-                )
-            })?;
-        }
-        let session = crate::session::Session::new(
-            id.clone(),
+        create_session_file(
+            &id,
             format!("Implicit --explore session for {}", cwd.display()),
-        );
-        crate::session::io::save_to_path(&session, &path).map_err(|e| {
-            anyhow::anyhow!(
-                "failed to create implicit session file for --explore: {e}"
-            )
-        })?;
+            &path,
+        )?;
     }
     Ok(Some(id))
 }

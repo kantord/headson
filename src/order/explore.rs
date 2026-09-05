@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use crate::node_path;
 use crate::order::types::{
-    Breadcrumb, ExploreContext, NodeId, PriorityOrder, RankedNode,
-    novelty_penalty,
+    Breadcrumb, ExploreContext, NodeId, PriorityOrder, novelty_penalty,
 };
 
 /// Scales the raw novelty penalty (`ln(1 + count) * alpha^steps_ago`) into
@@ -53,13 +52,13 @@ pub(crate) fn apply_explore_penalty(
         })
         .collect();
     if !penalties.is_empty() {
-        // Phase 1: bump leaf scores.
+        // Step 1: bump leaf scores.
         let mut leaf_penalties: Vec<u128> = vec![0; order.total_nodes];
         for &(node_id, delta) in &penalties {
             leaf_penalties[node_id.0] = delta;
             bump_score(order, node_id, delta);
         }
-        // Phase 4: propagate mean child penalty upward through structural nodes
+        // Step 2: propagate mean child penalty upward through structural nodes
         // so that heavily-seen subtrees (e.g. Cargo.lock) lose budget priority
         // relative to less-explored peers, not just individual leaves.
         propagate_penalties_upward(order, &leaf_penalties);
@@ -124,16 +123,15 @@ fn apply_mean_penalties(
 
 fn bump_score(order: &mut PriorityOrder, node_id: NodeId, delta: u128) {
     order.scores[node_id.0] = order.scores[node_id.0].saturating_add(delta);
-    // Carry the penalty onto the LeafPart children of a penalized
-    // SplittableLeaf so the parts cannot sort ahead of their parent;
+    // Carry the penalty onto any children (a SplittableLeaf's LeafPart
+    // children today) so they cannot sort ahead of their penalized parent;
     // otherwise a part inside the top-k prefix would render the string while
-    // the parent leaf goes unrecorded as shown.
-    if matches!(order.nodes[node_id.0], RankedNode::SplittableLeaf { .. }) {
-        for i in 0..order.children[node_id.0].len() {
-            let child = order.children[node_id.0][i];
-            order.scores[child.0] =
-                order.scores[child.0].saturating_add(delta);
-        }
+    // the parent leaf goes unrecorded as shown. Keyed on "has children" —
+    // the invariant that matters — rather than the node's specific type, so
+    // it stays correct if another child-bearing leaf kind is added later.
+    for i in 0..order.children[node_id.0].len() {
+        let child = order.children[node_id.0][i];
+        order.scores[child.0] = order.scores[child.0].saturating_add(delta);
     }
 }
 
@@ -141,6 +139,7 @@ fn bump_score(order: &mut PriorityOrder, node_id: NodeId, delta: u128) {
 mod tests {
     use super::*;
     use crate::ingest::parse_json_one;
+    use crate::order::types::RankedNode;
     use crate::order::{PriorityConfig, build_order};
 
     fn make_order(json: &[u8]) -> PriorityOrder {
@@ -253,15 +252,15 @@ mod tests {
         );
     }
 
-    /// Phase 4: when all leaves under a top-level key "a" are penalized, the
-    /// Object node for "a" accumulates a mean penalty and sorts AFTER the
-    /// unpenalized "b" Object node.
+    /// Upward propagation: when all leaves under a top-level key "a" are
+    /// penalized, the Object node for "a" accumulates a mean penalty and
+    /// sorts AFTER the unpenalized "b" Object node.
     ///
-    /// Without Phase 4, both Object nodes have the same low base score, so
-    /// "a" keeps its original position ahead of "b". With Phase 4, "a" gets
+    /// Without it, both Object nodes have the same low base score, so
+    /// "a" keeps its original position ahead of "b". With it, "a" gets
     /// a propagated penalty and moves behind "b" in by_priority.
     #[test]
-    fn phase4_penalized_section_ranks_below_unpenalized_sibling() {
+    fn upward_propagation_ranks_penalized_section_below_sibling() {
         // Two top-level objects. Penalize all leaves under "a".
         let json = br#"{"a": {"x": 1, "y": 2}, "b": {"p": 3, "q": 4}}"#;
         let base_order = make_order(json);
@@ -299,7 +298,8 @@ mod tests {
             file: None,
         });
 
-        // Build via ingest so the explore penalty (including Phase 4) runs.
+        // Build via ingest so the explore penalty (including upward
+        // propagation) runs.
         use crate::InputKind;
         use crate::grep::GrepConfig;
         use crate::ingest::ingest_into_arena;
@@ -325,8 +325,8 @@ mod tests {
         assert!(
             b_pos < a_pos,
             "Object 'b' (pos {b_pos}) must rank ahead of penalized Object 'a' \
-             (pos {a_pos}) — Phase 4 must propagate the leaf penalty to the \
-             parent Object"
+             (pos {a_pos}) — upward propagation must carry the leaf penalty \
+             to the parent Object"
         );
     }
 }

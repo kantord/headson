@@ -85,16 +85,14 @@ fn load_explore_context(
             return None;
         }
     };
-    let session = if path.exists() {
-        match crate::session::io::load_from_path(&path) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("warning: session file unreadable, ignoring: {e}");
-                return None;
-            }
+    // `run_with_env` calls `require_session_exists` before this, so the
+    // file existing is already guaranteed barring a concurrent delete.
+    let session = match crate::session::io::load_from_path(&path) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("warning: session file unreadable, ignoring: {e}");
+            return None;
         }
-    } else {
-        return None;
     };
     let breadcrumbs = session.breadcrumbs;
     Some(headson::ExploreContext {

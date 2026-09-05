@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{ArgAction, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
-fn parse_session_id(s: &str) -> Result<String, String> {
+pub(crate) fn parse_session_id(s: &str) -> Result<String, String> {
     uuid::Uuid::parse_str(s)
         .map(|u| u.to_string())
         .map_err(|e| format!("invalid session ID (must be a UUID): {e}"))

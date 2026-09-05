@@ -70,6 +70,18 @@ pub(crate) fn run_subcommand_with_env(
     cli: &Cli,
     env: &SessionEnv,
 ) -> Result<String> {
+    /// Shared prelude for the read/clear subcommands: resolve the active
+    /// session id, erroring if an explicit one doesn't exist (`start` is
+    /// the only path allowed to auto-create).
+    fn resolve_active_session_id(
+        cli: &Cli,
+        env: &SessionEnv,
+    ) -> Result<Option<String>> {
+        let active = resolve_session_id(cli, env)?;
+        require_session_exists(active.as_deref(), env)?;
+        Ok(active)
+    }
+
     match cmd {
         ExploreSubcommand::Start { label } => {
             // `explore start` is the escape hatch out of a broken
@@ -80,9 +92,6 @@ pub(crate) fn run_subcommand_with_env(
             }
             let id = Uuid::new_v4().to_string();
             let path = session_file_path(&id, env)?;
-            if let Some(parent) = path.parent() {
-                let _ = std::fs::create_dir_all(parent);
-            }
             let cwd = std::env::current_dir()
                 .unwrap_or_default()
                 .to_string_lossy()
@@ -91,16 +100,15 @@ pub(crate) fn run_subcommand_with_env(
                 Some(l) => l.clone(),
                 None => format!("Explore session started originally in {cwd}"),
             };
-            let session =
-                crate::session::Session::new(id.clone(), resolved_label);
-            crate::session::io::save_to_path(&session, &path).map_err(
-                |e| anyhow::anyhow!("failed to create session file: {e}"),
+            crate::cli::session_middleware::create_session_file(
+                &id,
+                resolved_label,
+                &path,
             )?;
             Ok(id)
         }
         ExploreSubcommand::Status => {
-            let active = resolve_session_id(cli, env)?;
-            require_session_exists(active.as_deref(), env)?;
+            let active = resolve_active_session_id(cli, env)?;
             let Some((_, session)) =
                 load_active_session(active.as_deref(), env)?
             else {
@@ -124,9 +132,7 @@ pub(crate) fn run_subcommand_with_env(
             ))
         }
         ExploreSubcommand::Clear => {
-            let active = resolve_session_id(cli, env)?;
-            require_session_exists(active.as_deref(), env)?;
-            let Some(id) = active else {
+            let Some(id) = resolve_active_session_id(cli, env)? else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
             let path = session_file_path(&id, env)?;
@@ -145,8 +151,7 @@ pub(crate) fn run_subcommand_with_env(
             Ok(String::new())
         }
         ExploreSubcommand::List => {
-            let active = resolve_session_id(cli, env)?;
-            require_session_exists(active.as_deref(), env)?;
+            let active = resolve_active_session_id(cli, env)?;
             let Some((_, session)) =
                 load_active_session(active.as_deref(), env)?
             else {
