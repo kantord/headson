@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::cli::session_middleware::{
     SessionEnv, maybe_record_session, require_session_exists,
-    resolve_session_id,
+    resolve_or_create_session_id,
 };
 
 use anyhow::{Context, Result, bail};
@@ -75,9 +75,8 @@ fn load_explore_context(
     env: &SessionEnv,
 ) -> Option<headson::ExploreContext> {
     let id = session_id?;
-    let path = match crate::cli::session_middleware::session_file_path(
-        id, env,
-    ) {
+    let path = match crate::cli::session_middleware::session_file_path(id, env)
+    {
         Ok(p) => p,
         Err(e) => {
             eprintln!(
@@ -120,7 +119,7 @@ pub(crate) fn run_with_env(
     env: &SessionEnv,
 ) -> Result<(String, CliWarnings)> {
     budget::validate(cli)?;
-    let session_id = resolve_session_id(cli, env)?;
+    let session_id = resolve_or_create_session_id(cli, env)?;
     require_session_exists(session_id.as_deref(), env)?;
     let render_cfg = get_render_config_from(cli);
     let grep_cfg = build_grep_config_from_cli(cli)?;

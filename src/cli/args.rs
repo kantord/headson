@@ -307,10 +307,17 @@ pub struct Cli {
         value_name = "SESSION_ID",
         global = true,
         value_parser = parse_session_id,
-        help = "Activate an explore session by ID (UUID). Falls back to a non-empty HSON_SESSION environment variable.",
+        help = "Activate an explore session by ID (UUID). Falls back to a non-empty HSON_SESSION environment variable. See --explore for a zero-setup alternative.",
         help_heading = "Explore"
     )]
     pub session: Option<String>,
+    #[arg(
+        long = "explore",
+        action = ArgAction::SetTrue,
+        help = "Enable novelty-bias mode with zero setup: uses an implicit session tied to the current directory, auto-created on first use. Ignored if --session or HSON_SESSION is also set (those take precedence).",
+        help_heading = "Explore"
+    )]
+    pub explore: bool,
     #[arg(
         long = "no-record",
         action = ArgAction::SetTrue,

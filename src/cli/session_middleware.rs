@@ -2,6 +2,8 @@ use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+use anyhow::Context;
+
 use crate::cli::args::Cli;
 
 /// Resolved environment inputs for session/state-dir resolution, captured
@@ -40,7 +42,7 @@ pub(crate) const DEFAULT_ALPHA: f64 = 0.5;
 const STRIPPED_VALUE_FLAGS: [&str; 3] =
     ["--session", "--explore-decay", "--explore-memory"];
 /// Session-control boolean flags stripped from recorded argv.
-const STRIPPED_BOOL_FLAGS: [&str; 1] = ["--no-record"];
+const STRIPPED_BOOL_FLAGS: [&str; 2] = ["--no-record", "--explore"];
 
 /// Resolve the active session ID with precedence: an explicit `--session`
 /// flag (already UUID-validated by clap) wins over the `HSON_SESSION`
@@ -77,6 +79,74 @@ fn session_id_from_env(env: &SessionEnv) -> anyhow::Result<Option<String>> {
     }
 }
 
+/// Fixed namespace for deriving `--explore`'s implicit per-directory session
+/// IDs via UUID v5. Arbitrary but must never change: changing it would
+/// silently orphan every implicit session already on disk (each directory
+/// would start mapping to a different ID, losing its accumulated novelty
+/// bias). Generated once with `uuidgen`; has no meaning beyond being a fixed
+/// constant.
+const IMPLICIT_SESSION_NAMESPACE: uuid::Uuid = uuid::Uuid::from_bytes([
+    0x6a, 0x1e, 0x3f, 0x2c, 0x8b, 0x77, 0x4b, 0x0a, 0x9e, 0x21, 0x5d, 0x3a,
+    0x0c, 0xf4, 0x9d, 0x88,
+]);
+
+/// Derive `--explore`'s implicit session ID: a UUID v5 hash of the resolved
+/// absolute cwd, so repeated invocations in the same directory reuse the
+/// same session with nothing to pass around. Deliberately deterministic
+/// (not `Uuid::new_v4`, which `hson explore start` uses) so no lookup file
+/// or persisted mapping is needed between cwd and session ID.
+fn implicit_session_id_for_cwd(cwd: &std::path::Path) -> String {
+    uuid::Uuid::new_v5(
+        &IMPLICIT_SESSION_NAMESPACE,
+        cwd.to_string_lossy().as_bytes(),
+    )
+    .to_string()
+}
+
+/// Resolve the active session, including `--explore`'s implicit per-directory
+/// fallback. An explicit `--session`/`HSON_SESSION` always takes precedence
+/// and stays strict (per `require_session_exists`: an unknown explicit ID
+/// errors rather than auto-creating, to protect against typos). `--explore`
+/// alone has no explicit ID to typo, so it derives a deterministic
+/// per-directory ID and creates that session's file on first use — the
+/// zero-setup counterpart to `hson explore start` + `--session <uuid>`.
+pub(crate) fn resolve_or_create_session_id(
+    cli: &Cli,
+    env: &SessionEnv,
+) -> anyhow::Result<Option<String>> {
+    if let Some(id) = resolve_session_id(cli, env)? {
+        return Ok(Some(id));
+    }
+    if !cli.explore {
+        return Ok(None);
+    }
+    let cwd = env::current_dir().context(
+        "failed to read current directory for --explore's implicit session",
+    )?;
+    let id = implicit_session_id_for_cwd(&cwd);
+    let path = session_file_path(&id, env)?;
+    if !path.exists() {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!(
+                    "failed to create session directory {}",
+                    parent.display()
+                )
+            })?;
+        }
+        let session = crate::session::Session::new(
+            id.clone(),
+            format!("Implicit --explore session for {}", cwd.display()),
+        );
+        crate::session::io::save_to_path(&session, &path).map_err(|e| {
+            anyhow::anyhow!(
+                "failed to create implicit session file for --explore: {e}"
+            )
+        })?;
+    }
+    Ok(Some(id))
+}
+
 /// If a session is active, require the session file to exist.
 /// New sessions are only created by `hson explore start` — every other
 /// path errors on an unknown session ID rather than silently auto-creating
@@ -98,11 +168,7 @@ pub(crate) fn require_session_exists(
 }
 
 fn state_dir(env: &SessionEnv) -> anyhow::Result<PathBuf> {
-    if let Some(dir) = env
-        .xdg_state_home
-        .as_ref()
-        .filter(|v| !v.is_empty())
-    {
+    if let Some(dir) = env.xdg_state_home.as_ref().filter(|v| !v.is_empty()) {
         return Ok(PathBuf::from(dir));
     }
     match env.home.as_ref().filter(|v| !v.is_empty()) {
@@ -260,6 +326,114 @@ mod tests {
         let path = dir.join(format!("{id}.json"));
         let session = crate::session::Session::new(id.into(), "lbl".into());
         crate::session::io::save_to_path(&session, &path).unwrap();
+    }
+
+    /// Build a minimal Cli with `--explore` set (or not) and no inputs.
+    fn make_explore_cli(explore: bool) -> Cli {
+        let mut args = vec!["hson"];
+        if explore {
+            args.push("--explore");
+        }
+        Cli::parse_from(args)
+    }
+
+    /// `--explore` alone (no `--session`/`HSON_SESSION`) must auto-create an
+    /// implicit session file rather than returning `None`.
+    #[test]
+    fn explore_flag_alone_creates_implicit_session() {
+        let state_dir = tempdir().unwrap();
+        let env = env_with(state_dir.path(), None);
+        let cli = make_explore_cli(true);
+
+        let id = resolve_or_create_session_id(&cli, &env)
+            .expect("must succeed")
+            .expect("--explore alone must yield a session id");
+
+        let path = session_file_path(&id, &env).unwrap();
+        assert!(
+            path.exists(),
+            "--explore must create the implicit session file at {path:?}"
+        );
+    }
+
+    /// Two invocations of `--explore` from the same directory (same `env`,
+    /// no chdir between calls) must resolve to the same session id, so
+    /// novelty bias accumulates instead of resetting every call.
+    #[test]
+    fn explore_flag_reuses_same_implicit_session_across_calls() {
+        let state_dir = tempdir().unwrap();
+        let env = env_with(state_dir.path(), None);
+        let cli = make_explore_cli(true);
+
+        let id1 = resolve_or_create_session_id(&cli, &env)
+            .unwrap()
+            .expect("first call must yield a session id");
+        let id2 = resolve_or_create_session_id(&cli, &env)
+            .unwrap()
+            .expect("second call must yield a session id");
+
+        assert_eq!(
+            id1, id2,
+            "repeated --explore calls from the same directory must reuse \
+             the same implicit session id"
+        );
+    }
+
+    /// Without `--explore` and without any explicit session, resolution must
+    /// stay `None` — `--explore` must not become the default.
+    #[test]
+    fn no_explore_flag_and_no_explicit_session_resolves_to_none() {
+        let state_dir = tempdir().unwrap();
+        let env = env_with(state_dir.path(), None);
+        let cli = make_explore_cli(false);
+
+        let id = resolve_or_create_session_id(&cli, &env).unwrap();
+        assert!(
+            id.is_none(),
+            "no session must be active without --explore or an explicit \
+             session; got: {id:?}"
+        );
+    }
+
+    /// An explicit `--session` must take precedence over `--explore` when
+    /// both are given, and must NOT trigger implicit-session auto-creation
+    /// semantics (the explicit id still must already exist elsewhere).
+    #[test]
+    fn explicit_session_wins_over_explore_flag() {
+        let state_dir = tempdir().unwrap();
+        let session_id = "99999999-9999-9999-9999-999999999999";
+        pre_create_session(state_dir.path(), session_id);
+        let env = env_with(state_dir.path(), None);
+
+        let cli =
+            Cli::parse_from(["hson", "--explore", "--session", session_id]);
+
+        let id = resolve_or_create_session_id(&cli, &env)
+            .unwrap()
+            .expect("must resolve to the explicit session");
+        assert_eq!(
+            id, session_id,
+            "--session must take precedence over --explore"
+        );
+    }
+
+    /// `HSON_SESSION` must also take precedence over `--explore`, matching
+    /// `--session`'s precedence.
+    #[test]
+    fn hson_session_env_wins_over_explore_flag() {
+        let state_dir = tempdir().unwrap();
+        let session_id = "88888888-8888-8888-8888-888888888888";
+        pre_create_session(state_dir.path(), session_id);
+        let env = env_with(state_dir.path(), Some(session_id));
+        let cli = make_explore_cli(true);
+
+        let id = resolve_or_create_session_id(&cli, &env)
+            .unwrap()
+            .expect("must resolve to the HSON_SESSION session");
+        assert_eq!(
+            id, session_id,
+            "HSON_SESSION must take precedence over --explore"
+        );
     }
 
     /// Step 31: When neither HSON_SESSION nor --session is set, running hson on

@@ -49,7 +49,7 @@ rayon = "1"
 regex = "1.11"
 clap_complete = "4.5.62"
 prunist = { path = "crates/prunist", version = "0.17.0" }
-uuid = { version = "1", features = ["v4"] }
+uuid = { version = "1", features = ["v4", "v5"] }
 
 [features]
 default = []

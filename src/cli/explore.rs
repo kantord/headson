@@ -3,8 +3,7 @@ use uuid::Uuid;
 
 use crate::cli::args::{Cli, ExploreSubcommand};
 use crate::cli::session_middleware::{
-    SessionEnv, require_session_exists, resolve_session_id,
-    session_file_path,
+    SessionEnv, require_session_exists, resolve_session_id, session_file_path,
 };
 
 const NO_SESSION_MSG: &str =
@@ -136,8 +135,7 @@ pub(crate) fn run_subcommand_with_env(
             // our load and save.
             let _lock = crate::session::io::acquire_session_lock(&path)
                 .map_err(|e| anyhow::anyhow!("failed to lock session: {e}"))?;
-            let Some((_, mut session)) =
-                load_active_session(Some(&id), env)?
+            let Some((_, mut session)) = load_active_session(Some(&id), env)?
             else {
                 return Ok(NO_SESSION_MSG.to_string());
             };
@@ -199,14 +197,14 @@ mod tests {
         };
 
         let cli = make_cli(None);
-        let result =
-            run_subcommand_with_env(
-                &ExploreSubcommand::Start { label: None },
-                &cli,
-                &env,
-            );
+        let result = run_subcommand_with_env(
+            &ExploreSubcommand::Start { label: None },
+            &cli,
+            &env,
+        );
 
-        let output = result.expect("run_subcommand_with_env(Start) must succeed");
+        let output =
+            result.expect("run_subcommand_with_env(Start) must succeed");
         let uuid_re = regex::Regex::new(
             r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
         )
@@ -242,7 +240,8 @@ mod tests {
             &env,
         );
 
-        let output = result.expect("run_subcommand_with_env(Start) must succeed");
+        let output =
+            result.expect("run_subcommand_with_env(Start) must succeed");
 
         // Load the session file that was just created
         let session_path = state_dir
@@ -286,14 +285,14 @@ mod tests {
             .into_owned();
 
         let cli = make_cli(None);
-        let result =
-            run_subcommand_with_env(
-                &ExploreSubcommand::Start { label: None },
-                &cli,
-                &env,
-            );
+        let result = run_subcommand_with_env(
+            &ExploreSubcommand::Start { label: None },
+            &cli,
+            &env,
+        );
 
-        let output = result.expect("run_subcommand_with_env(Start) must succeed");
+        let output =
+            result.expect("run_subcommand_with_env(Start) must succeed");
 
         let session_path = state_dir
             .path()
@@ -337,9 +336,11 @@ mod tests {
         };
 
         let cli = make_cli(Some(session_id));
-        let result = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
+        let result =
+            run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
 
-        let output = result.expect("run_subcommand_with_env(Status) must succeed");
+        let output =
+            result.expect("run_subcommand_with_env(Status) must succeed");
         // The fixture session ID contains '3' too, so assert the exact
         // labeled line rather than a bare contains('3').
         assert!(
@@ -365,7 +366,8 @@ mod tests {
         };
 
         let cli = make_cli(None);
-        let result = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
+        let result =
+            run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
 
         let output = result.expect(
             "run_subcommand_with_env(Status) with no session must return Ok, not Err",
@@ -407,7 +409,8 @@ mod tests {
         };
 
         let cli = make_cli(Some(session_id));
-        let result = run_subcommand_with_env(&ExploreSubcommand::Clear, &cli, &env);
+        let result =
+            run_subcommand_with_env(&ExploreSubcommand::Clear, &cli, &env);
 
         result.expect("run_subcommand_with_env(Clear) must succeed");
 
@@ -460,7 +463,8 @@ mod tests {
         };
 
         let cli = make_cli(Some(session_id));
-        let result = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
+        let result =
+            run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
 
         let err = result.expect_err(
             "explore status with a corrupt session file must return Err, \
@@ -490,7 +494,8 @@ mod tests {
         };
 
         let cli = make_cli(None);
-        let result = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
+        let result =
+            run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
 
         assert!(
             result.is_err(),
@@ -515,7 +520,8 @@ mod tests {
         };
 
         let cli = make_cli(None);
-        let result = run_subcommand_with_env(&ExploreSubcommand::List, &cli, &env);
+        let result =
+            run_subcommand_with_env(&ExploreSubcommand::List, &cli, &env);
 
         assert!(
             result.is_err(),
@@ -545,7 +551,8 @@ mod tests {
         };
 
         let cli = make_cli(None);
-        let result = run_subcommand_with_env(&ExploreSubcommand::Clear, &cli, &env);
+        let result =
+            run_subcommand_with_env(&ExploreSubcommand::Clear, &cli, &env);
 
         let expected = sessions_dir.join(format!("{unknown_id}.json"));
         assert!(
@@ -599,9 +606,11 @@ mod tests {
         };
 
         let cli = make_cli(Some(session_id));
-        let result = run_subcommand_with_env(&ExploreSubcommand::List, &cli, &env);
+        let result =
+            run_subcommand_with_env(&ExploreSubcommand::List, &cli, &env);
 
-        let output = result.expect("run_subcommand_with_env(List) must succeed");
+        let output =
+            result.expect("run_subcommand_with_env(List) must succeed");
 
         // All 3 cwd values must appear
         assert!(
@@ -666,8 +675,9 @@ mod tests {
         };
 
         let cli = make_cli(Some(session_id));
-        let out = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env)
-            .expect("run_subcommand_with_env(Status) must succeed");
+        let out =
+            run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env)
+                .expect("run_subcommand_with_env(Status) must succeed");
 
         // The fixture session ID contains '3' too, so assert the exact
         // labeled line rather than a bare contains('3').
@@ -703,8 +713,9 @@ mod tests {
         };
 
         let cli = make_cli(Some(session_id));
-        let out = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env)
-            .expect("run_subcommand_with_env(Status) must succeed");
+        let out =
+            run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env)
+                .expect("run_subcommand_with_env(Status) must succeed");
 
         assert!(
             out.contains("Last active") || out.contains("last active"),
@@ -729,12 +740,11 @@ mod tests {
         };
 
         let cli = make_cli(None);
-        let result =
-            run_subcommand_with_env(
-                &ExploreSubcommand::Start { label: None },
-                &cli,
-                &env,
-            );
+        let result = run_subcommand_with_env(
+            &ExploreSubcommand::Start { label: None },
+            &cli,
+            &env,
+        );
 
         let output = result.expect(
             "explore start must succeed despite an invalid HSON_SESSION",
@@ -762,7 +772,8 @@ mod tests {
         };
 
         let cli = make_cli(None);
-        let result = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
+        let result =
+            run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
 
         let err = result.expect_err(
             "explore status with an invalid HSON_SESSION must error",
@@ -786,7 +797,8 @@ mod tests {
         };
 
         let cli = make_cli(None);
-        let result = run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
+        let result =
+            run_subcommand_with_env(&ExploreSubcommand::Status, &cli, &env);
 
         let output = result
             .expect("explore status with empty HSON_SESSION must succeed");
