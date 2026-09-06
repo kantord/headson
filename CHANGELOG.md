@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.1](https://github.com/kantord/headson/compare/headson-v0.17.0...headson-v0.17.1) - 2026-09-06
+
+### Added
+
+- add experimental explore mode ([#517](https://github.com/kantord/headson/pull/517))
+
 ## [0.17.0](https://github.com/kantord/headson/compare/headson-v0.16.1...headson-v0.17.0) - 2026-02-08
 
 ### Added
