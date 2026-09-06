@@ -117,9 +117,9 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "base64"
-version = "0.22.1"
+version = "0.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
 name = "bincode"
@@ -664,7 +664,7 @@ dependencies = [
 
 [[package]]
 name = "headson"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -696,7 +696,7 @@ dependencies = [
 
 [[package]]
 name = "headson-python"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "anyhow",
  "headson",
@@ -1112,9 +1112,9 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
 name = "plist"
-version = "1.10.0"
+version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7da1d65da6dd5d1e44199ac0f58712d241c0f439f80adea8924d832384087f85"
+checksum = "2896bade328c13f7042a297ea5ac5b0951f6cf989dea5f32c2fd98da398195cb"
 dependencies = [
  "base64",
  "indexmap",
@@ -1191,7 +1191,7 @@ dependencies = [
 
 [[package]]
 name = "prunist"
-version = "0.17.0"
+version = "0.17.1"
 
 [[package]]
 name = "pyo3"
@@ -1252,9 +1252,9 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.41.0"
+version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e660451e55124f798a69a5af3f49ccfbefbd41910eefd25caf2393e1f3473ec1"
+checksum = "41b1177fdf999d2321d3fb46ff47159d9c1fb9ad66a4879f8c50a0b504615e9b"
 dependencies = [
  "memchr",
 ]
