@@ -24,6 +24,7 @@ pub mod budget;
 mod debug;
 mod grep;
 mod ingest;
+pub mod node_path;
 mod order;
 mod pruner;
 mod serialization;
@@ -35,6 +36,7 @@ pub use grep::{
 pub use ingest::fileset::{FilesetInput, FilesetInputKind};
 pub use ingest::format::Format;
 pub use order::types::{ArrayBias, ArraySamplerStrategy};
+pub use order::types::{Breadcrumb, ExploreContext};
 pub use order::{
     DEFAULT_SAFETY_CAP, NodeId, NodeKind, PriorityConfig, PriorityOrder,
     RankedNode, build_order,
@@ -42,7 +44,14 @@ pub use order::{
 pub use utils::extensions;
 pub use utils::templates::map_json_template_for_style;
 
-pub use pruner::budget::find_largest_render_under_budgets;
+pub use node_path::{
+    BreadcrumbKey, NodeFiles, compute_merkle_hashes, leaf_breadcrumb_key,
+    resolve_breadcrumb_file,
+};
+pub use order::types::novelty_penalty;
+pub use pruner::budget::{
+    BudgetSearchResult, find_largest_render_under_budgets,
+};
 pub use prunist::{Budget, BudgetKind, Budgets};
 pub use serialization::color::resolve_color_enabled;
 pub use serialization::types::{
@@ -60,6 +69,11 @@ pub struct RenderOutput {
     pub text: String,
     pub warnings: Vec<String>,
     pub match_summary: Option<MatchSummary>,
+    /// `(file, path)` pairs for leaf nodes in the rendered output.
+    /// Used by CLI session middleware to record breadcrumbs. `file` is the
+    /// input file's resolved absolute path (or `""` when unknown); `path` is
+    /// the in-file dot-path plus a content-hash suffix.
+    pub shown_leaves: Vec<BreadcrumbKey>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -87,6 +101,8 @@ pub fn headson(
         arena,
         mut warnings,
     } = crate::ingest::ingest_into_arena(input, priority_cfg, grep)?;
+    // Explore penalties (when active) are applied inside build_order, before
+    // fileset interleaving, so round-robin fairness survives the re-sort.
     let mut order_build = order::build_order(&arena, priority_cfg)?;
     if order_build.safety_cap_hit {
         warnings.push(format!(
@@ -94,16 +110,28 @@ pub fn headson(
             priority_cfg.safety_cap
         ));
     }
-    let (text, match_summary) = find_largest_render_under_budgets(
+    let search = find_largest_render_under_budgets(
         &mut order_build,
         config,
         grep,
         budgets,
     );
+    // Leaf recording (and its Merkle hashing) only matters when a session is
+    // active; without one, skip the hash pass entirely.
+    let shown_leaves = if let Some(explore) = priority_cfg.explore.as_ref() {
+        node_path::collect_shown_leaves(
+            &order_build,
+            &search,
+            explore.file.as_deref(),
+        )
+    } else {
+        Vec::new()
+    };
     Ok(RenderOutput {
-        text,
+        text: search.text,
         warnings,
-        match_summary,
+        match_summary: search.match_summary,
+        shown_leaves,
     })
 }
 
@@ -367,6 +395,517 @@ mod tests {
             "no matches should be hidden under a loose budget; \
              got shown={} hidden={}",
             summary.shown, summary.hidden,
+        );
+    }
+
+    // ── Step 25: find_largest_render_under_budgets returns a meaningful top_k ─
+
+    /// Build a `PriorityOrder` from a small JSON object for use in top_k tests.
+    fn make_order_for_top_k() -> PriorityOrder {
+        let input = InputKind::Json(
+            br#"{"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}"#.to_vec(),
+        );
+        let priority_cfg = PriorityConfig::new(usize::MAX, usize::MAX);
+        let grep_cfg = GrepConfig::default();
+        let ingest_out =
+            crate::ingest::ingest_into_arena(input, &priority_cfg, &grep_cfg)
+                .expect("ingest must succeed");
+        order::build_order(&ingest_out.arena, &priority_cfg)
+            .expect("build_order must succeed")
+    }
+
+    #[test]
+    fn find_largest_render_returns_nonzero_top_k_under_tight_budget() {
+        // A 15-byte budget is far too small to render all 5 key-value pairs of
+        // {"a":1,"b":2,"c":3,"d":4,"e":5} (full render ≈ 44 bytes), so the
+        // budget search must stop before including all nodes.
+        let mut order = make_order_for_top_k();
+        let total_nodes = order.total_nodes;
+        let tight_budgets = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 15,
+            }),
+            per_slot: None,
+        };
+        let grep_cfg = GrepConfig::default();
+
+        let search = find_largest_render_under_budgets(
+            &mut order,
+            &test_render_config(),
+            &grep_cfg,
+            tight_budgets,
+        );
+        let top_k = search.top_k;
+
+        assert!(
+            top_k > 0,
+            "top_k must be > 0 (at least one node was selected); got {top_k}"
+        );
+        assert!(
+            top_k < total_nodes,
+            "tight budget must not select all {total_nodes} nodes; top_k={top_k}"
+        );
+    }
+
+    // ── ExploreContext integration: deprioritize seen nodes via PriorityConfig ─
+
+    /// Compute the composite breadcrumb key (`"dot_path#hash"`) for a leaf at
+    /// `dot_path` in a single-file JSON input.
+    fn composite_key_for(json: &[u8], dot_path: &str) -> String {
+        let input = InputKind::Json(json.to_vec());
+        let prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        let grep = GrepConfig::default();
+        let ingest_out = crate::ingest::ingest_into_arena(input, &prio, &grep)
+            .expect("ingest");
+        let order =
+            order::build_order(&ingest_out.arena, &prio).expect("order");
+        let hashes = node_path::compute_merkle_hashes(&order);
+        let files = node_path::NodeFiles::for_order(&order, None);
+        order
+            .by_priority
+            .iter()
+            .find_map(|&node_id| {
+                let (_, path) = node_path::leaf_breadcrumb_key(
+                    &order, node_id, &hashes, &files,
+                )?;
+                let prefix = path.split_once('#').map(|(p, _)| p)?;
+                (prefix == dot_path).then_some(path)
+            })
+            .unwrap_or_else(|| panic!("no leaf at dot_path {dot_path:?}"))
+    }
+
+    /// When `headson()` is called with an `ExploreContext` that records a
+    /// breadcrumb for the 'a' key in `{"a": 1, "b": 2}`, under a tight global
+    /// byte budget (20 bytes), the rendered output must contain 'b' but not 'a'.
+    #[test]
+    fn explore_context_deprioritizes_seen_node_under_tight_budget() {
+        let crumb = Breadcrumb {
+            file: "".to_string(),
+            path: composite_key_for(br#"{"a": 1, "b": 2}"#, "a"),
+            count: 1,
+            last_step: 1,
+        };
+        let ctx = ExploreContext {
+            breadcrumbs: vec![crumb],
+            current_step: 2,
+            alpha: 0.5,
+            file: None,
+        };
+        let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        prio.explore = Some(ctx);
+
+        let tight_budgets = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 20,
+            }),
+            per_slot: None,
+        };
+
+        let result = headson(
+            InputKind::Json(br#"{"a": 1, "b": 2}"#.to_vec()),
+            &test_render_config(),
+            &prio,
+            &GrepConfig::default(),
+            tight_budgets,
+        )
+        .expect("headson should succeed");
+
+        assert!(
+            !result.text.contains("a:")
+                && !result.text.contains("a :")
+                && !result.text.contains("\"a\""),
+            "penalized key 'a' must NOT appear in output under tight budget; got: {:?}",
+            result.text
+        );
+        assert!(
+            result.text.contains('b'),
+            "un-penalized key 'b' must appear in output; got: {:?}",
+            result.text
+        );
+    }
+
+    /// Baseline: with `explore = None` and the same tight budget, 'a' appears
+    /// (it has higher priority than 'b' under fair object-key ordering).
+    #[test]
+    fn explore_context_none_does_not_affect_output() {
+        let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        prio.explore = None;
+
+        let tight_budgets = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 20,
+            }),
+            per_slot: None,
+        };
+
+        let result = headson(
+            InputKind::Json(br#"{"a": 1, "b": 2}"#.to_vec()),
+            &test_render_config(),
+            &prio,
+            &GrepConfig::default(),
+            tight_budgets,
+        )
+        .expect("headson should succeed");
+
+        assert!(
+            result.text.contains('a'),
+            "without explore penalty, 'a' (first key) must appear in output under tight budget; got: {:?}",
+            result.text
+        );
+    }
+
+    // ── PENALTY_SCALE regression: array rotation under explore ────────────
+
+    /// 30 distinct numeric array items; values `1000 + i` make each index
+    /// directly greppable in the rendered text.
+    fn rotation_array_json() -> Vec<u8> {
+        let items: Vec<String> =
+            (0..30).map(|i| (1000 + i).to_string()).collect();
+        format!("[{}]", items.join(", ")).into_bytes()
+    }
+
+    /// Render `rotation_array_json()` with an explore context holding the
+    /// given breadcrumbs.
+    fn render_rotation_array(
+        breadcrumbs: Vec<Breadcrumb>,
+        current_step: u64,
+        budgets: Budgets,
+    ) -> RenderOutput {
+        let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        prio.explore = Some(ExploreContext {
+            breadcrumbs,
+            current_step,
+            alpha: 0.5,
+            file: None,
+        });
+        headson(
+            InputKind::Json(rotation_array_json()),
+            &test_render_config(),
+            &prio,
+            &GrepConfig::default(),
+            budgets,
+        )
+        .expect("headson should succeed")
+    }
+
+    /// Indices `i` whose value `1000 + i` appears in the rendered text.
+    fn rendered_indices(text: &str) -> Vec<usize> {
+        (0..30)
+            .filter(|i| text.contains(&(1000 + i).to_string()))
+            .collect()
+    }
+
+    /// Regression for the PENALTY_SCALE tuning (issue #513): array siblings
+    /// differ by `d^3 * ARRAY_INDEX_CUBIC_WEIGHT`, so an under-scaled penalty
+    /// can only break exact ties (object keys) and never rotates arrays.
+    /// After recording breadcrumbs for everything shown in a first
+    /// tight-budget render, a second render must surface array items that the
+    /// first one did not, and the very first item must yield its slot.
+    #[test]
+    fn explore_context_rotates_array_items_under_tight_budget() {
+        let tight = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 60,
+            }),
+            per_slot: None,
+        };
+
+        let first = render_rotation_array(vec![], 1, tight);
+        let crumbs: Vec<Breadcrumb> = first
+            .shown_leaves
+            .iter()
+            .map(|(file, path)| Breadcrumb {
+                file: file.clone(),
+                path: path.clone(),
+                count: 1,
+                last_step: 1,
+            })
+            .collect();
+        assert!(
+            !crumbs.is_empty(),
+            "first render must record shown leaves; got text: {:?}",
+            first.text
+        );
+
+        let second = render_rotation_array(crumbs, 2, tight);
+        let first_idx = rendered_indices(&first.text);
+        let second_idx = rendered_indices(&second.text);
+
+        assert!(
+            second_idx.iter().any(|i| !first_idx.contains(i)),
+            "second render must surface array items unseen in the first; \
+             first: {first_idx:?}, second: {second_idx:?}"
+        );
+        assert!(
+            !second_idx.contains(&0),
+            "head item (index 0) was just seen and must yield its slot; \
+             second render showed {second_idx:?}"
+        );
+    }
+
+    /// Soft guarantee: the same breadcrumbs under a loose budget must not
+    /// exclude anything — the penalty reorders, it never filters.
+    #[test]
+    fn explore_penalty_is_soft_under_loose_budget() {
+        let tight = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 60,
+            }),
+            per_slot: None,
+        };
+        let first = render_rotation_array(vec![], 1, tight);
+        let crumbs: Vec<Breadcrumb> = first
+            .shown_leaves
+            .iter()
+            .map(|(file, path)| Breadcrumb {
+                file: file.clone(),
+                path: path.clone(),
+                count: 1,
+                last_step: 1,
+            })
+            .collect();
+
+        let loose = render_rotation_array(crumbs, 2, Budgets::default());
+        let shown = rendered_indices(&loose.text);
+        assert_eq!(
+            shown,
+            (0..30).collect::<Vec<_>>(),
+            "loose budget must still show every item, seen or not"
+        );
+    }
+
+    /// With no explore context, shown-leaf collection (and its hashing) is
+    /// skipped entirely: `shown_leaves` must be empty.
+    #[test]
+    fn shown_leaves_empty_when_explore_is_none() {
+        let prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        let result = headson(
+            InputKind::Json(br#"{"a": 1, "b": 2}"#.to_vec()),
+            &test_render_config(),
+            &prio,
+            &GrepConfig::default(),
+            Budgets::default(),
+        )
+        .expect("headson should succeed");
+        assert!(
+            result.shown_leaves.is_empty(),
+            "shown_leaves must be empty without explore; got {:?}",
+            result.shown_leaves
+        );
+    }
+
+    /// An active session with no breadcrumbs yet (first invocation) must
+    /// still record shown leaves, while skipping the penalty work.
+    #[test]
+    fn shown_leaves_recorded_when_explore_has_empty_breadcrumbs() {
+        let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        prio.explore = Some(ExploreContext {
+            breadcrumbs: vec![],
+            current_step: 0,
+            alpha: 0.5,
+            file: None,
+        });
+        let result = headson(
+            InputKind::Json(br#"{"a": 1, "b": 2}"#.to_vec()),
+            &test_render_config(),
+            &prio,
+            &GrepConfig::default(),
+            Budgets::default(),
+        )
+        .expect("headson should succeed");
+        let paths: Vec<&str> = result
+            .shown_leaves
+            .iter()
+            .map(|(_, p)| p.as_str())
+            .collect();
+        assert!(
+            paths.iter().any(|p| p.starts_with("a#"))
+                && paths.iter().any(|p| p.starts_with("b#")),
+            "both leaves must be recorded as shown; got {paths:?}"
+        );
+    }
+
+    /// Fileset selection orders can pick a string's LeafPart without its
+    /// parent SplittableLeaf in the top-k prefix (the parent renders as a
+    /// reinserted ancestor). Those strings count as shown: under a tight
+    /// per-slot byte budget, leaves from every rendered file must be
+    /// recorded.
+    /// 30 keys with string values long enough to be truncated under a tight
+    /// per-slot byte budget.
+    fn flat_string_object_json() -> String {
+        let entries: Vec<String> = (0..30)
+            .map(|i| {
+                format!("\"key_{i:02}\": \"value_number_{i:02}_padding\"")
+            })
+            .collect();
+        format!("{{{}}}", entries.join(","))
+    }
+
+    #[test]
+    fn fileset_truncated_strings_recorded_in_shown_leaves() {
+        let flat = flat_string_object_json();
+        let inputs = vec![
+            FilesetInput {
+                name: "flat.json".into(),
+                bytes: flat.clone().into_bytes(),
+                kind: FilesetInputKind::Json,
+            },
+            FilesetInput {
+                name: "other.json".into(),
+                bytes: flat.into_bytes(),
+                kind: FilesetInputKind::Json,
+            },
+        ];
+        let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        prio.explore = Some(ExploreContext {
+            breadcrumbs: vec![],
+            current_step: 0,
+            alpha: 0.5,
+            file: None,
+        });
+        let budgets = Budgets {
+            global: None,
+            per_slot: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 400,
+            }),
+        };
+        let result = headson(
+            InputKind::Fileset(inputs),
+            &test_render_config(),
+            &prio,
+            &GrepConfig::default(),
+            budgets,
+        )
+        .expect("headson should succeed");
+        assert!(
+            result.text.contains("key_00"),
+            "render must show truncated string leaves; got {:?}",
+            result.text
+        );
+        let files: std::collections::HashSet<&str> = result
+            .shown_leaves
+            .iter()
+            .map(|(file, _)| file.as_str())
+            .collect();
+        assert_eq!(
+            files.len(),
+            2,
+            "shown leaves must cover both fileset files; got {:?}",
+            result.shown_leaves
+        );
+        assert!(
+            result
+                .shown_leaves
+                .iter()
+                .any(|(_, path)| path.starts_with("key_00#")),
+            "truncated string leaf must be recorded; got {:?}",
+            result.shown_leaves
+        );
+    }
+
+    /// Strong grep matches forced into the render outside the top-k prefix
+    /// count as seen: their breadcrumb keys must land in `shown_leaves`.
+    #[test]
+    fn strong_grep_must_keep_leaves_recorded_in_shown_leaves() {
+        let input = br#"{"alpha": "needle one", "beta": "no match here", "gamma": "needle two"}"#;
+        let grep_cfg = build_grep_config(
+            Some("needle"),
+            None,
+            GrepShow::Matching,
+            false,
+            true,
+        )
+        .expect("valid grep pattern");
+        let mut prio = PriorityConfig::new(usize::MAX, usize::MAX);
+        prio.explore = Some(ExploreContext {
+            breadcrumbs: vec![],
+            current_step: 0,
+            alpha: 0.5,
+            file: None,
+        });
+        // 1-line global budget: matches are only present because strong grep
+        // forces them in, outside the top-k prefix.
+        let budgets = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Lines,
+                cap: 1,
+            }),
+            per_slot: None,
+        };
+
+        let result = headson(
+            InputKind::Json(input.to_vec()),
+            &test_render_config(),
+            &prio,
+            &grep_cfg,
+            budgets,
+        )
+        .expect("headson should succeed");
+
+        let paths: Vec<&str> = result
+            .shown_leaves
+            .iter()
+            .map(|(_, p)| p.as_str())
+            .collect();
+        assert!(
+            paths.iter().any(|p| p.starts_with("alpha#")),
+            "grep-forced leaf 'alpha' must be recorded as shown; got {paths:?}"
+        );
+        assert!(
+            paths.iter().any(|p| p.starts_with("gamma#")),
+            "grep-forced leaf 'gamma' must be recorded as shown; got {paths:?}"
+        );
+    }
+
+    // ── Step 26: top_k slice contains at least one leaf node ──────────────────
+
+    #[test]
+    fn top_k_slice_contains_at_least_one_leaf_node() {
+        // The top_k slice from by_priority should include real leaf nodes
+        // (AtomicLeaf or SplittableLeaf) — not just ancestor scaffolding.
+        // 30 bytes comfortably fits root + 1-2 leaves (~16 bytes each) but
+        // not all 5 leaves (~44 bytes total), so top_k is neither 0 nor max.
+        let mut order = make_order_for_top_k();
+        let tight_budgets = Budgets {
+            global: Some(Budget {
+                kind: BudgetKind::Bytes,
+                cap: 30,
+            }),
+            per_slot: None,
+        };
+        let grep_cfg = GrepConfig::default();
+
+        let search = find_largest_render_under_budgets(
+            &mut order,
+            &test_render_config(),
+            &grep_cfg,
+            tight_budgets,
+        );
+        let top_k = search.top_k;
+
+        let has_leaf = order.by_priority[..top_k].iter().any(|node_id| {
+            matches!(
+                order.nodes[node_id.0],
+                RankedNode::AtomicLeaf { .. }
+                    | RankedNode::SplittableLeaf { .. }
+            )
+        });
+
+        assert!(
+            has_leaf,
+            "by_priority[..{}] must contain at least one AtomicLeaf or \
+             SplittableLeaf; nodes in slice: {:?}",
+            top_k,
+            order.by_priority[..top_k]
+                .iter()
+                .map(|id| &order.nodes[id.0])
+                .collect::<Vec<_>>(),
         );
     }
 }

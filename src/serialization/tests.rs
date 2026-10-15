@@ -113,6 +113,7 @@ fn array_omitted_markers_pseudo_head_and_tail() {
         array_sampler: crate::ArraySamplerStrategy::Default,
         line_budget_only: false,
         safety_cap: crate::DEFAULT_SAFETY_CAP,
+        explore: None,
     };
     let arena = crate::ingest::formats::json::build_json_tree_arena(
         "[1,2,3]", &cfg_prio,
@@ -151,6 +152,7 @@ fn array_omitted_markers_js_head_and_tail() {
         array_sampler: crate::ArraySamplerStrategy::Default,
         line_budget_only: false,
         safety_cap: crate::DEFAULT_SAFETY_CAP,
+        explore: None,
     };
     let arena = crate::ingest::formats::json::build_json_tree_arena(
         "[1,2,3]", &cfg_prio,
@@ -189,6 +191,7 @@ fn array_omitted_markers_yaml_head_and_tail() {
         array_sampler: crate::ArraySamplerStrategy::Default,
         line_budget_only: false,
         safety_cap: crate::DEFAULT_SAFETY_CAP,
+        explore: None,
     };
     let arena = crate::ingest::formats::json::build_json_tree_arena(
         "[1,2,3]", &cfg_prio,
@@ -527,6 +530,7 @@ fn force_child_hooks_removed() {
         code_lines: HashMap::new(),
         fileset_render_slots: None,
         safety_cap_hit: false,
+        merkle_hashes: None,
     };
     let mut flags = Vec::new();
     let render_id = 1u32;

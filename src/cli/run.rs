@@ -4,6 +4,11 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
+use crate::cli::session_middleware::{
+    SessionEnv, maybe_record_session, require_session_exists,
+    resolve_or_create_session_id,
+};
+
 use anyhow::{Context, Result, bail};
 use content_inspector::{ContentType, inspect};
 use ignore::WalkBuilder;
@@ -18,6 +23,12 @@ use crate::sorting::sort_paths_for_fileset;
 type InputEntry = (String, Vec<u8>);
 type InputEntries = Vec<InputEntry>;
 pub(crate) type CliWarnings = Vec<String>;
+type RenderResult = (
+    String,
+    CliWarnings,
+    Option<headson::MatchSummary>,
+    Vec<headson::BreadcrumbKey>,
+);
 
 fn build_grep_config_from_cli(
     cli: &Cli,
@@ -41,13 +52,15 @@ fn build_effective_configs(
     cli: &Cli,
     mut render_cfg: headson::RenderConfig,
     input_count: usize,
+    explore_ctx: Option<&headson::ExploreContext>,
 ) -> (
     headson::RenderConfig,
     headson::PriorityConfig,
     headson::Budgets,
 ) {
     let effective = budget::compute_effective(cli, input_count);
-    let prio = budget::build_priority_config(cli, &effective);
+    let mut prio = budget::build_priority_config(cli, &effective);
+    prio.explore = explore_ctx.cloned();
     render_cfg = budget::render_config_for_budgets(render_cfg, &effective);
     (render_cfg, prio, effective.budgets)
 }
@@ -56,12 +69,63 @@ fn needs_fileset(cli: &Cli, inputs_len: usize) -> bool {
     inputs_len > 1 || cli.tree
 }
 
+fn load_explore_context(
+    session_id: Option<&str>,
+    alpha: f64,
+    env: &SessionEnv,
+) -> Option<headson::ExploreContext> {
+    let id = session_id?;
+    let path = match crate::cli::session_middleware::session_file_path(id, env)
+    {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!(
+                "warning: cannot resolve session path, ignoring session: {e}"
+            );
+            return None;
+        }
+    };
+    // `run_with_env` calls `require_session_exists` before this, so the
+    // file existing is already guaranteed barring a concurrent delete.
+    let session = match crate::session::io::load_from_path(&path) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("warning: session file unreadable, ignoring: {e}");
+            return None;
+        }
+    };
+    let breadcrumbs = session.breadcrumbs;
+    Some(headson::ExploreContext {
+        breadcrumbs,
+        current_step: session.step_count + 1,
+        alpha,
+        // Filled in per input: single-file renders resolve their path into
+        // it; fileset slots resolve their own paths from input names.
+        file: None,
+    })
+}
+
 pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
+    run_with_env(cli, &SessionEnv::from_process_env())
+}
+
+/// Core of `run`, parameterized over the session/state-dir environment
+/// instead of reading `std::env` directly, so tests can supply values
+/// in-process without mutating real (process-global) env vars.
+pub(crate) fn run_with_env(
+    cli: &Cli,
+    env: &SessionEnv,
+) -> Result<(String, CliWarnings)> {
     budget::validate(cli)?;
+    let session_id = resolve_or_create_session_id(cli, env)?;
+    require_session_exists(session_id.as_deref(), env)?;
     let render_cfg = get_render_config_from(cli);
     let grep_cfg = build_grep_config_from_cli(cli)?;
     let resolved_inputs = resolve_inputs(cli)?;
-    let (out, mut warnings, match_summary) = if resolved_inputs.is_empty() {
+    let explore_ctx =
+        load_explore_context(session_id.as_deref(), cli.explore_decay, env);
+    let from_stdin = resolved_inputs.is_empty();
+    let (out, mut warnings, match_summary, shown_leaves) = if from_stdin {
         if !cli.globs.is_empty() || cli.recursive {
             return Ok((
                 String::new(),
@@ -71,9 +135,16 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
         if cli.tree {
             bail!("--tree requires file inputs; stdin mode is not supported");
         }
-        run_from_stdin(cli, &render_cfg, &grep_cfg)?
+        let (text, w, ms) = run_from_stdin(cli, &render_cfg, &grep_cfg)?;
+        (text, w, ms, vec![])
     } else {
-        run_from_paths(cli, &render_cfg, &grep_cfg, &resolved_inputs)?
+        run_from_paths(
+            cli,
+            &render_cfg,
+            &grep_cfg,
+            &resolved_inputs,
+            explore_ctx.as_ref(),
+        )?
     };
     if cli.count_matches {
         if let Some(summary) = match_summary {
@@ -83,6 +154,13 @@ pub(crate) fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
             ));
         }
     }
+    maybe_record_session(
+        cli,
+        session_id.as_deref(),
+        from_stdin,
+        &shown_leaves,
+        env,
+    );
     Ok((out, warnings))
 }
 
@@ -113,9 +191,10 @@ fn run_from_stdin(
     let input_count = 1usize;
     let mut cfg = render_cfg.clone();
     cfg.template = resolve_effective_template_for_stdin(cli.format, cfg.style);
-    let (cfg, prio, budgets) = build_effective_configs(cli, cfg, input_count);
+    let (cfg, prio, budgets) =
+        build_effective_configs(cli, cfg, input_count, None);
     let chosen_input = cli.input_format.unwrap_or(InputFormat::Json);
-    let (out, warnings, match_summary) = render_single_input(
+    let (out, warnings, match_summary, _) = render_single_input(
         chosen_input,
         input_bytes,
         &cfg,
@@ -126,34 +205,57 @@ fn run_from_stdin(
     Ok((out, warnings, match_summary))
 }
 
-fn run_from_paths(
+fn prepare_file_entries(
     cli: &Cli,
-    render_cfg: &headson::RenderConfig,
-    grep_cfg: &headson::GrepConfig,
     inputs: &[PathBuf],
-) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
+) -> Result<(InputEntries, CliWarnings)> {
     let sorted_inputs = if needs_fileset(cli, inputs.len()) && !cli.no_sort {
         sort_paths_for_fileset(inputs)
     } else {
         inputs.to_vec()
     };
     if std::env::var_os("HEADSON_FRECEN_TRACE").is_some() {
-        eprintln!("run_from_paths sorted_inputs={sorted_inputs:?}");
+        eprintln!("prepare_file_entries sorted_inputs={sorted_inputs:?}");
     }
     let (entries, warnings) = ingest_paths(&sorted_inputs)?;
     if std::env::var_os("HEADSON_FRECEN_TRACE").is_some() {
         eprintln!(
-            "run_from_paths ingested={:?}",
+            "prepare_file_entries ingested={:?}",
             entries.iter().map(|(n, _)| n).collect::<Vec<_>>()
         );
     }
+    Ok((entries, warnings))
+}
+
+fn run_from_paths(
+    cli: &Cli,
+    render_cfg: &headson::RenderConfig,
+    grep_cfg: &headson::GrepConfig,
+    inputs: &[PathBuf],
+    explore_ctx: Option<&headson::ExploreContext>,
+) -> Result<RenderResult> {
+    let (entries, warnings) = prepare_file_entries(cli, inputs)?;
     if needs_fileset(cli, inputs.len()) {
-        return render_fileset(entries, warnings, cli, render_cfg, grep_cfg);
+        return render_fileset(
+            entries,
+            warnings,
+            cli,
+            render_cfg,
+            grep_cfg,
+            explore_ctx,
+        );
     }
     if entries.is_empty() {
-        return Ok((String::new(), warnings, None));
+        return Ok((String::new(), warnings, None, vec![]));
     }
-    render_single_entry(entries, warnings, cli, render_cfg, grep_cfg)
+    render_single_entry(
+        entries,
+        warnings,
+        cli,
+        render_cfg,
+        grep_cfg,
+        explore_ctx,
+    )
 }
 
 fn read_stdin() -> Result<Vec<u8>> {
@@ -206,7 +308,7 @@ fn ingest_paths(paths: &[PathBuf]) -> Result<(InputEntries, CliWarnings)> {
         let display = path.display().to_string();
         if let Ok(meta) = std::fs::metadata(path) {
             if meta.is_dir() {
-                warnings.push(format!("Ignored directory: {display}"));
+                warnings.push(format!("Ignored directory: {display} (use -r/--recursive to include directory contents)"));
                 continue;
             }
         }
@@ -281,7 +383,7 @@ impl InputCollector {
         no_sort: bool,
     ) -> Result<()> {
         let dir = ensure_recursive_dir(&self.display_root, path)?;
-        let dir_norm = normalize_path(&dir);
+        let dir_norm = headson::node_path::lexically_normalized(&dir);
         self.expand_globs_in_root(&dir_norm, &["**/*".to_string()], no_sort)
     }
 
@@ -447,30 +549,6 @@ where
     builder.build().context("failed to compile glob overrides")
 }
 
-fn normalize_path(path: &Path) -> PathBuf {
-    let mut out = PathBuf::new();
-    let mut has_root = false;
-    for comp in path.components() {
-        match comp {
-            std::path::Component::Prefix(prefix) => {
-                out.push(prefix.as_os_str());
-            }
-            std::path::Component::RootDir => {
-                out.push(comp.as_os_str());
-                has_root = true;
-            }
-            std::path::Component::CurDir => {}
-            std::path::Component::ParentDir => {
-                if !out.pop() && !has_root {
-                    out.push(comp.as_os_str());
-                }
-            }
-            std::path::Component::Normal(part) => out.push(part),
-        }
-    }
-    out
-}
-
 fn render_single_input(
     input_format: InputFormat,
     bytes: Vec<u8>,
@@ -478,7 +556,7 @@ fn render_single_input(
     prio: &headson::PriorityConfig,
     grep_cfg: &headson::GrepConfig,
     budgets: headson::Budgets,
-) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
+) -> Result<RenderResult> {
     let text_mode = if matches!(cfg.template, headson::OutputTemplate::Code) {
         headson::TextMode::CodeLike
     } else {
@@ -517,7 +595,7 @@ fn render_single_input(
             budgets,
         ),
     }
-    .map(|out| (out.text, out.warnings, out.match_summary))
+    .map(|out| (out.text, out.warnings, out.match_summary, out.shown_leaves))
 }
 
 fn resolve_effective_template_for_stdin(
@@ -564,7 +642,8 @@ fn render_fileset(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
-) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
+    explore_ctx: Option<&headson::ExploreContext>,
+) -> Result<RenderResult> {
     if !matches!(cli.format, OutputFormat::Auto) {
         bail!(
             "--format cannot be customized for filesets; remove it or set to auto"
@@ -573,7 +652,8 @@ fn render_fileset(
     let mut cfg = render_cfg.clone();
     cfg.template = headson::OutputTemplate::Auto;
     let input_count = entries.len().max(1);
-    let (cfg, prio, budgets) = build_effective_configs(cli, cfg, input_count);
+    let (cfg, prio, budgets) =
+        build_effective_configs(cli, cfg, input_count, explore_ctx);
     let files: Vec<headson::FilesetInput> = entries
         .into_iter()
         .map(|(name, bytes)| {
@@ -585,6 +665,7 @@ fn render_fileset(
         text: out,
         warnings: fallback_warnings,
         match_summary,
+        shown_leaves,
     } = headson::headson(
         headson::InputKind::Fileset(files),
         &cfg,
@@ -599,7 +680,7 @@ fn render_fileset(
     {
         warnings.push("No grep matches found".to_string());
     }
-    Ok((out, warnings, match_summary))
+    Ok((out, warnings, match_summary, shown_leaves))
 }
 
 fn render_single_entry(
@@ -608,7 +689,8 @@ fn render_single_entry(
     cli: &Cli,
     render_cfg: &headson::RenderConfig,
     grep_cfg: &headson::GrepConfig,
-) -> Result<(String, CliWarnings, Option<headson::MatchSummary>)> {
+    explore_ctx: Option<&headson::ExploreContext>,
+) -> Result<RenderResult> {
     let (name, bytes) = entries
         .pop()
         .expect("single-entry render expects one ingested input");
@@ -621,21 +703,32 @@ fn render_single_entry(
         &name,
         chosen_input,
     );
-    let (cfg_for_render, prio, budgets) =
-        build_effective_configs(cli, cfg_for_render, 1usize);
-    let (out, mut fallback_warnings, match_summary) = render_single_input(
-        chosen_input,
-        bytes,
-        &cfg_for_render,
-        &prio,
-        grep_cfg,
-        budgets,
-    )
-    .with_context(|| format!("failed to parse input file: {name}"))?;
+    // Single inputs lose their filename before reaching the library, so the
+    // breadcrumb file identity is resolved here and threaded via the context.
+    let explore_ctx = explore_ctx.cloned().map(|mut ctx| {
+        ctx.file = Some(headson::resolve_breadcrumb_file(&name));
+        ctx
+    });
+    let (cfg_for_render, prio, budgets) = build_effective_configs(
+        cli,
+        cfg_for_render,
+        1usize,
+        explore_ctx.as_ref(),
+    );
+    let (out, mut fallback_warnings, match_summary, shown_leaves) =
+        render_single_input(
+            chosen_input,
+            bytes,
+            &cfg_for_render,
+            &prio,
+            grep_cfg,
+            budgets,
+        )
+        .with_context(|| format!("failed to parse input file: {name}"))?;
     if !fallback_warnings.is_empty() {
         warnings.append(&mut fallback_warnings);
     }
-    Ok((out, warnings, match_summary))
+    Ok((out, warnings, match_summary, shown_leaves))
 }
 
 fn build_single_render_config(
@@ -688,6 +781,13 @@ mod tests {
     use clap::Parser;
     use std::fs;
     use tempfile::tempdir;
+
+    /// All tests here run against an explicit, empty `SessionEnv` — no real
+    /// process env is read, so no session/state-dir isolation is needed
+    /// between tests running in parallel.
+    fn run(cli: &Cli) -> Result<(String, CliWarnings)> {
+        run_with_env(cli, &SessionEnv::default())
+    }
 
     #[test]
     fn explicit_input_format_overrides_auto_detection_for_single_file() {
@@ -922,4 +1022,6 @@ mod tests {
             "zero-match summary must say '0 hidden'; got: {summary:?}"
         );
     }
+
+    // Session middleware tests (steps 31–35) live in session_middleware.rs.
 }

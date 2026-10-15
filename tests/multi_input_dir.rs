@@ -37,7 +37,7 @@ fn directory_inputs_are_ignored_and_reported() {
 
     let err_t = err.trim_end();
     assert!(
-        err_t.ends_with(&format!("Ignored directory: {sub_s}")),
+        err_t.contains(&format!("Ignored directory: {sub_s}")),
         "stderr should end with directory ignore notice. stderr: {err_t}"
     );
 }

@@ -34,11 +34,11 @@ pub(crate) fn grep_adjusted_cfg(
     grep: &GrepConfig,
 ) -> PriorityConfig {
     if grep.has_strong() {
-        let mut c = *cfg;
+        let mut c = cfg.clone();
         c.array_max_items = usize::MAX;
         c
     } else {
-        *cfg
+        cfg.clone()
     }
 }
 
@@ -50,7 +50,7 @@ pub(crate) fn grep_adjusted_cfg(
 pub(crate) fn jsonl_grep_predicate(
     bytes: &[u8],
     grep: &GrepConfig,
-) -> Box<dyn Fn(usize) -> bool> {
+) -> Box<dyn Fn(usize) -> bool + Sync> {
     let Some(re) = grep.patterns.strong() else {
         return Box::new(|_| false);
     };

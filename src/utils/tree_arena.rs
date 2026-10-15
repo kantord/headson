@@ -19,6 +19,53 @@ pub struct JsonTreeArena {
     pub code_lines: HashMap<usize, Arc<Vec<String>>>,
 }
 
+impl JsonTreeArena {
+    /// Append all nodes from `src` into `self`, adjusting internal offsets.
+    /// Returns the new node ID of `src`'s root within `self`.
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Tree merge touches multiple parallel arrays and offsets; easier to follow inline"
+    )]
+    pub fn append(&mut self, src: JsonTreeArena) -> usize {
+        let node_offset = self.nodes.len();
+        let child_offset = self.children.len();
+        let obj_key_offset = self.obj_keys.len();
+        let arr_idx_offset = self.arr_indices.len();
+        let root_id = src.root_id;
+        let JsonTreeArena {
+            nodes,
+            children,
+            obj_keys,
+            arr_indices,
+            code_lines,
+            ..
+        } = src;
+
+        self.nodes.extend(nodes);
+        for node in self.nodes.iter_mut().skip(node_offset) {
+            if node.children_len > 0 {
+                node.children_start += child_offset;
+            }
+            if node.obj_keys_len > 0 {
+                node.obj_keys_start += obj_key_offset;
+            }
+            if node.arr_indices_len > 0 {
+                node.arr_indices_start += arr_idx_offset;
+            }
+        }
+
+        self.children
+            .extend(children.into_iter().map(|child| child + node_offset));
+        self.obj_keys.extend(obj_keys);
+        self.arr_indices.extend(arr_indices);
+        for (arena_idx, lines) in code_lines {
+            self.code_lines.insert(arena_idx + node_offset, lines);
+        }
+
+        node_offset + root_id
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct JsonTreeNode {
     pub kind: NodeKind,

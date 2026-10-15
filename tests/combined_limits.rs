@@ -12,7 +12,7 @@ fn run_args(args: &[&str]) -> String {
 
 fn make_tmp_with_files(count: usize) -> (tempfile::TempDir, Vec<String>) {
     use std::fs;
-    let tmp = tempfile::tempdir_in(".").expect("tmp");
+    let tmp = tempfile::tempdir().expect("tmp");
     let mut names: Vec<String> = Vec::with_capacity(count);
     for i in 0..count {
         let name = format!("a{i}.json");

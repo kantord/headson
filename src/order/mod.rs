@@ -1,4 +1,5 @@
 pub mod build;
+pub(crate) mod explore;
 pub mod scoring;
 pub mod types;
 
